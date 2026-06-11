@@ -16,6 +16,9 @@ from human_microcircuit.physiology.scaling import (
     scale_neuron_number,
     scale_synapse_number,
 )
+from human_microcircuit.physiology.synaptic_parameters import (
+    psp_to_psc,
+)
 
 
 class ParameterBuilder:
@@ -50,7 +53,10 @@ class ParameterBuilder:
         network = self._network_config.model_copy(deep=True)
 
         network = self._apply_n_scaling(network)
+
         network = self._apply_k_scaling(network)
+
+        network = self._apply_psp_to_psc(network)
 
         network = self._apply_external_poisson_rates(network)
 
@@ -171,6 +177,81 @@ class ParameterBuilder:
 
         return network.model_copy(
             update={
+                "inputs": inputs,
+            }
+        )
+
+    def _apply_psp_to_psc(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Convert biological PSP amplitudes into PSC amplitudes.
+        """
+
+        #
+        # recurrent connections
+        #
+
+        connections = []
+
+        for connection in network.connections:
+
+            target = network.populations[connection.target]
+
+            tau_syn = target.neuron.parameters.tau_syn_ex
+
+            weight = connection.weight.model_copy(
+                update={
+                    "mean": psp_to_psc(
+                        psp=connection.weight.mean,
+                        C_m=target.neuron.parameters.C_m,
+                        tau_m=target.neuron.parameters.tau_m,
+                        tau_syn=tau_syn,
+                    )
+                }
+            )
+
+            connections.append(
+                connection.model_copy(
+                    update={
+                        "weight": weight,
+                    }
+                )
+            )
+
+        #
+        # external inputs
+        #
+
+        inputs = {}
+
+        for pop_name, input_cfg in network.inputs.items():
+
+            target = network.populations[pop_name]
+
+            tau_syn = target.neuron.parameters.tau_syn_ex
+
+            weight = input_cfg.weight.model_copy(
+                update={
+                    "mean": psp_to_psc(
+                        psp=input_cfg.weight.mean,
+                        C_m=target.neuron.parameters.C_m,
+                        tau_m=target.neuron.parameters.tau_m,
+                        tau_syn=tau_syn,
+                    )
+                }
+            )
+
+            inputs[pop_name] = input_cfg.model_copy(
+                update={
+                    "weight": weight,
+                }
+            )
+
+        return network.model_copy(
+            update={
+                "connections": connections,
                 "inputs": inputs,
             }
         )

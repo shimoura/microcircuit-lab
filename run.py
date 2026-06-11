@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def main():
 
     simulation = Simulation.from_yaml(
-        network_name="toy",
+        network_name="pd14",
         simulation_name="default",
     )
     simulation.run()
