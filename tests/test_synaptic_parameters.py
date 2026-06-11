@@ -51,3 +51,14 @@ def test_reference_value():
         factor,
         585.3899568613896,
     )
+
+def test_known_conversion():
+
+    psc = psp_to_psc(
+        psp=0.15,
+        C_m=250.0,
+        tau_m=10.0,
+        tau_syn=0.5,
+    )
+
+    assert abs(psc - 87.80849352920844) < 1e-12
