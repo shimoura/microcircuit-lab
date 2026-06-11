@@ -84,3 +84,48 @@ def dc_input_compensating_poisson(
     """
 
     return bg_rate * K_ext * PSC_ext * tau_syn * 0.001
+
+
+def adjust_weights_and_input_to_synapse_scaling(
+    PSC_matrix_mean,
+    PSC_ext,
+    K_scaling,
+    mean_PSC_matrix,
+    mean_PSC_ext,
+    DC_amp,
+    poisson_input,
+    bg_rate,
+    K_ext,
+    tau_syn,
+):
+    """
+    Reproduce the PD14 adjustment for synapse scaling.
+
+    This function intentionally mirrors the mathematics of the
+    original implementation and should remain free of simulator
+    dependencies.
+    """
+
+    PSC_matrix_new = PSC_matrix_mean / np.sqrt(K_scaling)
+
+    PSC_ext_new = PSC_ext / np.sqrt(K_scaling)
+
+    if poisson_input:
+
+        input_rec = np.sum(mean_PSC_matrix, axis=1)
+
+        input_ext = mean_PSC_ext
+
+        DC_amp_new = DC_amp + 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * (
+            input_rec + input_ext
+        )
+
+    else:
+
+        DC_amp_new = DC_amp
+
+    return (
+        PSC_matrix_new,
+        PSC_ext_new,
+        DC_amp_new,
+    )
