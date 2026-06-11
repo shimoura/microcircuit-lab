@@ -42,13 +42,17 @@ class ParameterBuilder:
 
         network = self._network_config.model_copy(deep=True)
 
-        network = self._apply_n_scaling(network)
+        scaling = network.scaling
+        if scaling.N_scaling != 1.0:
+            network = self._apply_n_scaling(network)
 
-        network = self._apply_k_scaling(network)
+        if scaling.K_scaling != 1.0:
+            network = self._apply_k_scaling(network)
 
         network = self._apply_psp_to_psc(network)
 
-        network = self._apply_weight_scaling(network)
+        if scaling.K_scaling != 1.0:
+            network = self._apply_weight_scaling(network)
 
         network = self._apply_external_poisson_rates(network)
 
