@@ -374,3 +374,17 @@ class ParameterBuilder:
             matrix[i, j] = connection.weight.mean
 
         return matrix, pop_names
+
+    def _build_pd14_external_weight_vector(
+        self,
+        network: NetworkConfig,
+        pop_names: list[str],
+    ) -> np.ndarray:
+        """
+        Build the external weight vector in population order.
+        """
+
+        return np.asarray(
+            [network.inputs[name].weight.mean for name in pop_names],
+            dtype=float,
+        )

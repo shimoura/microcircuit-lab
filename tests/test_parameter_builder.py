@@ -186,3 +186,23 @@ def test_build_pd14_weight_matrix():
     # first recurrent connection
     #
     assert matrix[0, 0] == pytest.approx(network.connections[0].weight.mean)
+
+
+def test_build_pd14_external_weight_vector():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+
+    builder = ParameterBuilder(network)
+
+    _, pop_names = builder._build_pd14_weight_matrix(network)
+
+    ext = builder._build_pd14_external_weight_vector(
+        network,
+        pop_names,
+    )
+
+    assert ext.shape == (8,)
+
+    assert ext[0] == pytest.approx(network.inputs["L23_E"].weight.mean)
