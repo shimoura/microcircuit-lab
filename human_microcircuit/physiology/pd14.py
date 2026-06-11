@@ -129,3 +129,35 @@ def adjust_weights_and_input_to_synapse_scaling(
         PSC_ext_new,
         DC_amp_new,
     )
+
+
+def recurrent_mean_input(
+    mean_PSC_matrix: np.ndarray,
+    indegree_matrix: np.ndarray,
+    mean_rates: np.ndarray,
+) -> np.ndarray:
+    """
+    Compute the recurrent mean synaptic input used in the
+    Potjans & Diesmann (2014) scaling equations.
+
+    Parameters
+    ----------
+    mean_PSC_matrix
+        Matrix of mean PSC amplitudes (pA).
+
+    indegree_matrix
+        Matrix of indegrees.
+
+    mean_rates
+        Mean firing rate of each source population (Hz).
+
+    Returns
+    -------
+    np.ndarray
+        Mean recurrent input for each target population.
+    """
+
+    return np.sum(
+        mean_PSC_matrix * indegree_matrix * mean_rates,
+        axis=1,
+    )

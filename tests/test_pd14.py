@@ -11,6 +11,7 @@ from human_microcircuit.physiology.pd14 import (
     num_synapses_from_conn_prob,
     dc_input_compensating_poisson,
     adjust_weights_and_input_to_synapse_scaling,
+    recurrent_mean_input,
 )
 from human_microcircuit.physiology.synaptic_parameters import psp_to_psc
 from human_microcircuit.utils.io import read_network_directory
@@ -115,3 +116,42 @@ def test_pd14_first_weight():
     ) / math.sqrt(0.2)
 
     assert network.connections[0].weight.mean == pytest.approx(expected)
+
+
+def test_recurrent_mean_input():
+
+    PSC = np.array(
+        [
+            [2.0, 2.0],
+            [3.0, 3.0],
+        ]
+    )
+
+    indegree = np.array(
+        [
+            [10.0, 20.0],
+            [30.0, 40.0],
+        ]
+    )
+
+    rates = np.array(
+        [
+            5.0,
+            7.0,
+        ]
+    )
+
+    result = recurrent_mean_input(
+        mean_PSC_matrix=PSC,
+        indegree_matrix=indegree,
+        mean_rates=rates,
+    )
+
+    expected = np.array(
+        [
+            2 * 10 * 5 + 2 * 20 * 7,
+            3 * 30 * 5 + 3 * 40 * 7,
+        ]
+    )
+
+    assert np.allclose(result, expected)
