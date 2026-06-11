@@ -166,3 +166,23 @@ def test_identity_scaling():
     assert derived.populations["L23_E"].size == 20683
 
     assert derived.populations["L23_E"].background_indegree == 1600
+
+
+def test_build_pd14_weight_matrix():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+
+    builder = ParameterBuilder(network)
+
+    matrix, names = builder._build_pd14_weight_matrix(network)
+
+    assert matrix.shape == (8, 8)
+
+    assert len(names) == 8
+
+    #
+    # first recurrent connection
+    #
+    assert matrix[0, 0] == pytest.approx(network.connections[0].weight.mean)

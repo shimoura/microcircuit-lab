@@ -8,6 +8,8 @@ configuration.
 
 from __future__ import annotations
 
+import numpy as np
+
 from human_microcircuit.config.network import (
     NetworkConfig,
 )
@@ -338,3 +340,37 @@ class ParameterBuilder:
         #
 
         return network
+
+    def _build_pd14_weight_matrix(
+        self,
+        network: NetworkConfig,
+    ) -> tuple[np.ndarray, list[str]]:
+        """
+        Build the recurrent weight matrix in population order.
+
+        Returns
+        -------
+        matrix
+            Mean recurrent PSC matrix.
+
+        pop_names
+            Population ordering used by the matrix.
+        """
+
+        pop_names = list(network.populations.keys())
+
+        name_to_idx = {name: i for i, name in enumerate(pop_names)}
+
+        matrix = np.zeros(
+            (len(pop_names), len(pop_names)),
+            dtype=float,
+        )
+
+        for connection in network.connections:
+
+            i = name_to_idx[connection.target]
+            j = name_to_idx[connection.source]
+
+            matrix[i, j] = connection.weight.mean
+
+        return matrix, pop_names
