@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,7 @@ from human_microcircuit.physiology.pd14 import (
     dc_input_compensating_poisson,
     adjust_weights_and_input_to_synapse_scaling,
 )
+from human_microcircuit.physiology.synaptic_parameters import psp_to_psc
 from human_microcircuit.utils.io import read_network_directory
 
 
@@ -94,6 +97,24 @@ def test_pd14_parameter_builder():
 
     assert network.populations["L23_I"].size == round(5834 * 0.2)
 
-    assert network.populations["L23_E"].background_indegree == 1600 * 0.2
+    assert network.inputs["L23_E"].rate == pytest.approx(8.0 * 1600 * 0.2)
 
     assert network.inputs["L23_E"].rate == 8.0 * 1600 * 0.2
+
+    assert network.populations["L23_E"].background_indegree == pytest.approx(1600 * 0.2)
+
+
+def test_pd14_first_weight():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+
+    expected = psp_to_psc(
+        psp=0.15,
+        C_m=250.0,
+        tau_m=10.0,
+        tau_syn=0.5,
+    ) / math.sqrt(0.2)
+
+    assert network.connections[0].weight.mean == pytest.approx(expected)
