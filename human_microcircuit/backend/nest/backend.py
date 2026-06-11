@@ -77,6 +77,12 @@ class NestBackend:
 
         for pop_name, pop_cfg in self._network.config.populations.items():
 
+            logger.info(
+                "Creating %s (%d neurons)",
+                pop_name,
+                pop_cfg.size,
+            )
+
             nodes = nest.Create(
                 pop_cfg.neuron.model,
                 pop_cfg.size,
@@ -174,8 +180,15 @@ class NestBackend:
         Create one Poisson generator per configured population.
         """
 
+        logger.info("Creating Poisson generators:")
+
         for pop_name, input_cfg in self._network.config.inputs.items():
 
+            logger.info(
+                "Creating Poisson input for %s (rate=%g Hz)",
+                pop_name,
+                input_cfg.rate,
+            )
             pg = nest.Create(
                 "poisson_generator",
                 params={
@@ -213,16 +226,25 @@ class NestBackend:
         Print simple statistics.
         """
 
-        logger.info("Printing simulation statistics:")
+        logger.info("")
         logger.info("Simulation statistics")
         logger.info("---------------------")
 
+
         for pop_name in self.spike_recorders:
             sr = self.spike_recorders[pop_name]
+
+            n_spikes = sr.n_events
+            n_neurons = self._network.config.populations[pop_name].size
+            t_sim_s = self._simulation_config.t_sim / 1000.0
+            mean_rate = n_spikes / (n_neurons * t_sim_s)
+
             logger.info(
-                "%s: %d spikes",
+                "%-6s  N=%5d  spikes=%7d  rate=%8.3f Hz",
                 pop_name,
-                sr.n_events,
+                n_neurons,
+                n_spikes,
+                mean_rate,
             )
 
     def create_weight_parameter(self, weight):
