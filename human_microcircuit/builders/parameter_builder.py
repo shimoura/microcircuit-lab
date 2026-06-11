@@ -14,6 +14,7 @@ from human_microcircuit.config.network import (
 
 from human_microcircuit.physiology.scaling import (
     scale_neuron_number,
+    scale_synapse_number,
 )
 
 
@@ -31,16 +32,11 @@ class ParameterBuilder:
     def build(self) -> NetworkConfig:
         """
         Build a derived configuration.
-
-        Transformation order:
-
-            1. N scaling
-
-        Additional transformations (K scaling, DC compensation, etc.)
-        will be added incrementally.
         """
 
         network = self._apply_n_scaling(self._network_config)
+
+        network = self._apply_k_scaling(network)
 
         return network
 
@@ -70,5 +66,65 @@ class ParameterBuilder:
         return network.model_copy(
             update={
                 "populations": populations,
+            }
+        )
+
+
+    def _apply_k_scaling(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Apply indegree scaling.
+
+        Currently scales:
+            - recurrent synapse numbers
+            - background indegrees
+
+        Synaptic weights and DC compensation are intentionally
+        handled in later transformations.
+        """
+
+        scaling = network.scaling
+
+        #
+        # populations
+        #
+
+        populations = {}
+
+        for name, population in network.populations.items():
+
+            populations[name] = population.model_copy(
+                update={
+                    "background_indegree": (
+                        population.background_indegree * scaling.K_scaling
+                    )
+                }
+            )
+
+        #
+        # connections
+        #
+
+        connections = []
+
+        for connection in network.connections:
+
+            connections.append(
+                connection.model_copy(
+                    update={
+                        "n_synapses": scale_synapse_number(
+                            connection.n_synapses,
+                            scaling.K_scaling,
+                        )
+                    }
+                )
+            )
+
+        return network.model_copy(
+            update={
+                "populations": populations,
+                "connections": connections,
             }
         )
