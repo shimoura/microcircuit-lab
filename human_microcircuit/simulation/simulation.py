@@ -40,6 +40,7 @@ class Simulation:
 
         self.network = network
         self.simulation_config = simulation_config
+        self.backend: NestBackend | None = None
 
     @classmethod
     def from_yaml(
@@ -84,13 +85,29 @@ class Simulation:
         Run the simulation.
         """
 
-        backend = NestBackend(
+        self.backend = NestBackend(
             network=self.network,
             simulation_config=self.simulation_config,
         )
 
-        backend.build()
+        self.backend.build()
 
-        backend.simulate()
+        self.backend.simulate()
 
-        backend.print_statistics()
+        self.backend.print_statistics()
+
+
+    def get_spike_events(
+        self,
+        population: str,
+    ):
+        """
+        Return native NEST spike events.
+        """
+
+        if self.backend is None:
+            raise RuntimeError(
+                "Simulation has not been run yet."
+            )
+
+        return self.backend.get_spike_events(population)

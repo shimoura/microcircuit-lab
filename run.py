@@ -17,6 +17,14 @@ def main():
     )
     simulation.run()
 
+    events = simulation.get_spike_events("L23_E")
+
+    print(events.keys())
+
+    print(events["senders"][:10])
+
+    print(events["times"][:10])
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

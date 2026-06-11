@@ -298,3 +298,13 @@ class NestBackend:
             min=nest.resolution - 0.5 * nest.resolution,
             max=float("inf"),
         )
+
+    def get_spike_events(
+        self,
+        population: str,
+    ) -> dict:
+        """
+        Return the native NEST spike events for one population.
+        """
+
+        return self.spike_recorders[population].get("events")
