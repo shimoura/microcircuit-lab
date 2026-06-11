@@ -1,0 +1,9 @@
+name: human-microcircuit
+dependencies:
+  - nest-simulator
+  - matplotlib
+  - pytest
+  - ipykernel
+  - pip
+  - pip:
+    - microcircuit
