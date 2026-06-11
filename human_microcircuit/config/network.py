@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+
 # -----------------------------------------------------------------------------
 # Base class
 # -----------------------------------------------------------------------------
@@ -47,11 +48,12 @@ class NeuronParams(FrozenConfig):
     t_ref: float
     I_e: float = 0.0
 
+
 # -----------------------------------------------------------------------------
 # Neuron model
 # -----------------------------------------------------------------------------
 class NeuronConfig(FrozenConfig):
-    """ 
+    """
     Configuration for a neuron model.
     This is a pure data container for the parameters of a neuron model.
     """
@@ -71,7 +73,7 @@ class PopulationConfig(FrozenConfig):
     size: int = Field(gt=0)
 
     neuron: NeuronConfig
-    
+
     V0_mean: float
     V0_std: float = Field(ge=0.0)
     background_indegree: float = Field(default=0.0, ge=0.0)
@@ -167,6 +169,22 @@ class ScalingConfig(FrozenConfig):
 
 
 # -----------------------------------------------------------------------------
+# Reference data
+# -----------------------------------------------------------------------------
+
+
+class ReferenceConfig(FrozenConfig):
+    """
+    Reference quantities used for reproducing published models.
+
+    These values are not part of the biological network definition itself,
+    but are useful for benchmark-specific parameter derivations.
+    """
+
+    full_mean_rates: list[float]
+
+
+# -----------------------------------------------------------------------------
 # Network
 # -----------------------------------------------------------------------------
 class NetworkConfig(FrozenConfig):
@@ -182,3 +200,5 @@ class NetworkConfig(FrozenConfig):
 
     inputs: dict[str, PoissonInputConfig]
     scaling: ScalingConfig
+
+    reference: ReferenceConfig | None = None

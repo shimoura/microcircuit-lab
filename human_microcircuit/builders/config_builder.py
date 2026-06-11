@@ -21,6 +21,7 @@ from human_microcircuit.config.network import (
     PopulationConfig,
     ScalingConfig,
     WeightDistribution,
+    ReferenceConfig,
 )
 
 from human_microcircuit.utils.io import NetworkFiles
@@ -40,6 +41,7 @@ class ConfigBuilder:
         self._connectivity_data = network_files.connectivity
         self._inputs_data = network_files.inputs
         self._scaling_data = network_files.scaling
+        self._reference_data = network_files.reference
 
     def build(self) -> NetworkConfig:
         """
@@ -55,12 +57,14 @@ class ConfigBuilder:
         inputs = self._build_inputs(populations)
 
         scaling = ScalingConfig.model_validate(self._scaling_data)
+        reference = ReferenceConfig.model_validate(self._reference_data)
 
         return NetworkConfig(
             populations=populations,
             connections=connections,
             inputs=inputs,
             scaling=scaling,
+            reference=reference
         )
 
     # ------------------------------------------------------------------
