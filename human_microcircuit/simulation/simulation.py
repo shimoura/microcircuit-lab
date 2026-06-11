@@ -45,12 +45,16 @@ class Simulation:
     def from_yaml(
         cls,
         config_dir: str | Path = "configs",
+        network_name: str = "toy",
+        simulation_name: str = "default",
     ) -> "Simulation":
         """
         Build a Simulation from YAML files.
         """
 
-        network_files = read_network_directory(Path(config_dir) / "network")
+        network_files = read_network_directory(
+            Path(config_dir) / "network" / network_name
+        )
 
         network_config = ConfigBuilder(
             network_files,
@@ -64,7 +68,9 @@ class Simulation:
             network_config,
         )
 
-        simulation_data = read_yaml(Path(config_dir) / "simulation" / "simulation.yaml")
+        simulation_data = read_yaml(
+            Path(config_dir) / "simulation" / f"{simulation_name}.yaml"
+        )
 
         simulation_config = SimulationConfig.model_validate(simulation_data)
 
