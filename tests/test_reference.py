@@ -36,3 +36,30 @@ def test_reference_matrices():
     assert neurons[1] == pytest.approx(5834, abs=2)
     assert synapses[0, 0] > 0.0
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
+
+
+def test_parameter_builder_preserves_original_network():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    original = ConfigBuilder(network_files).build()
+
+    derived = ParameterBuilder(original).build()
+
+    #
+    # original untouched
+    #
+    assert original.populations["L23_E"].size == 20683
+
+    #
+    # derived scaled
+    #
+    assert derived.populations["L23_E"].size == round(20683 * 0.2)
+
+    #
+    # they are different objects
+    #
+    assert original is not derived
+    assert original.populations["L23_E"].background_indegree == 1600
+    assert derived.populations["L23_E"].background_indegree == pytest.approx(1600 * 0.2)
+    assert original.populations["L23_E"] is not derived.populations["L23_E"]
