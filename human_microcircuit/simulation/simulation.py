@@ -95,19 +95,3 @@ class Simulation:
         self.backend.simulate()
 
         self.backend.print_statistics()
-
-
-    def get_spike_events(
-        self,
-        population: str,
-    ):
-        """
-        Return native NEST spike events.
-        """
-
-        if self.backend is None:
-            raise RuntimeError(
-                "Simulation has not been run yet."
-            )
-
-        return self.backend.get_spike_events(population)
