@@ -31,14 +31,23 @@ class ParameterBuilder:
 
     def build(self) -> NetworkConfig:
         """
-        Build a derived configuration.
+        Build a derived NetworkConfig.
+
+        The returned object is independent from the original one.
         """
 
-        network = self._apply_n_scaling(self._network_config)
+        #
+        # For now we simply return a copy.
+        #
+        # Future transformations:
+        #
+        # - neuron scaling
+        # - synapse scaling
+        # - weight scaling
+        # - DC compensation
+        #
 
-        network = self._apply_k_scaling(network)
-
-        return network
+        return self._network_config.model_copy(deep=True)
 
     def _apply_n_scaling(
         self,
