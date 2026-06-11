@@ -2,6 +2,7 @@ from human_microcircuit.physiology.scaling import (
     scale_neuron_number,
     scale_synapse_number,
     scale_weight,
+    scale_synaptic_weight,
 )
 
 
@@ -18,3 +19,14 @@ def test_scale_synapses():
 def test_scale_weight():
 
     assert scale_weight(80.0, 2.0) == 40.0
+
+
+def test_scale_synaptic_weight():
+
+    assert (
+        scale_synaptic_weight(
+            100.0,
+            4.0,
+        )
+        == 50.0
+    )
