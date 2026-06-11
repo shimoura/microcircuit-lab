@@ -1,8 +1,10 @@
+import math
+import pytest
+
 from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
-
 from human_microcircuit.config.network import (
     NetworkConfig,
     PopulationConfig,
@@ -11,7 +13,9 @@ from human_microcircuit.config.network import (
     NeuronParams,
 )
 from human_microcircuit.utils.io import read_network_directory
-
+from human_microcircuit.physiology.synaptic_parameters import (
+    psp_to_psc,
+)
 
 def test_n_scaling():
 
@@ -66,6 +70,7 @@ def test_n_scaling():
 
     assert derived.populations["L23_E"].size == 50
 
+
 def test_k_scaling():
 
     neuron = NeuronConfig(
@@ -119,6 +124,7 @@ def test_k_scaling():
 
     assert derived.populations["L23_E"].background_indegree == 50
 
+
 def test_weight_scaling():
 
     network_files = read_network_directory(
@@ -133,4 +139,16 @@ def test_weight_scaling():
         network_config
     ).build()
 
-    print(derived.connections[0].weight.mean)
+    expected = (
+        psp_to_psc(
+            psp=0.15,
+            C_m=250.0,
+            tau_m=10.0,
+            tau_syn=0.5,
+        )
+        / math.sqrt(0.2)
+    )
+
+    assert derived.connections[0].weight.mean == pytest.approx(
+        expected
+    )
