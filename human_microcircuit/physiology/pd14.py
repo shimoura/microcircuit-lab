@@ -97,32 +97,73 @@ def adjust_weights_and_input_to_synapse_scaling(
     bg_rate,
     K_ext,
     tau_syn,
+    indegree_matrix,
+    full_mean_rates,
 ):
     """
-    Reproduce the PD14 adjustment for synapse scaling.
+    Adjust synaptic weights and DC compensation according to the
+    Potjans & Diesmann (2014) synapse scaling procedure.
+    
+    Parameters
+    ----------
+    PSC_matrix_mean
+        Matrix of mean PSC amplitudes (pA).
+    PSC_ext
+        External synaptic weight (pA).
+    K_scaling
+        Indegree scaling factor.
+    mean_PSC_matrix
+        Matrix of mean PSC amplitudes (pA) before scaling.
+    mean_PSC_ext
+        External synaptic weight (pA) before scaling.
+    DC_amp
+        DC compensation amplitude (pA) before scaling.
+    poisson_input
+        Whether Poisson input is used.
+    bg_rate
+        External Poisson firing rate (spikes/s).
+    K_ext
+        External indegree for each population.
+    tau_syn
+        Synaptic time constant (ms).
+    indegree_matrix
+        Matrix of indegrees for each connection.
+    full_mean_rates
+        Mean firing rates of all populations (Hz).
 
-    This function intentionally mirrors the mathematics of the
-    original implementation and should remain free of simulator
-    dependencies.
+    Returns
+    -------
+    tuple
+        Adjusted PSC matrices and DC amplitude.
     """
+    # 1. Scale recurrent PSC
+    PSC_matrix_new = mean_PSC_matrix / np.sqrt(K_scaling)
 
-    PSC_matrix_new = PSC_matrix_mean / np.sqrt(K_scaling)
-
+    # 2. Scale external PSC
     PSC_ext_new = PSC_ext / np.sqrt(K_scaling)
 
-    if poisson_input:
+    # 3. Recurrent mean input
+    input_rec = recurrent_mean_input(
+        mean_PSC_matrix=mean_PSC_matrix,
+        indegree_matrix=indegree_matrix,
+        mean_rates=full_mean_rates,
+    )
 
-        input_rec = np.sum(mean_PSC_matrix, axis=1)
+    # 4. Recurrent DC compensation
+    DC_amp_new = DC_amp + recurrent_dc_compensation(
+        input_rec=input_rec,
+        tau_syn=tau_syn,
+        K_scaling=K_scaling,
+    )
 
-        input_ext = mean_PSC_ext
-
-        DC_amp_new = DC_amp + 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * (
-            input_rec + input_ext
+    # 5. External compensation (only if no Poisson input)
+    if not poisson_input:
+        DC_amp_new = DC_amp_new + dc_input_compensating_poisson(
+            bg_rate=bg_rate,
+            K_ext=K_ext,
+            tau_syn=tau_syn,
+            PSC_ext=PSC_ext,
         )
-
-    else:
-
-        DC_amp_new = DC_amp
 
     return (
         PSC_matrix_new,

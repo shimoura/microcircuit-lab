@@ -55,7 +55,7 @@ def test_dc_input_compensation():
     assert dc == pytest.approx(expected)
 
 
-def test_adjust_weights_shape():
+def test_adjust_weights_and_input_to_synapse_scaling():
 
     PSC = np.ones((2, 2))
 
@@ -67,6 +67,10 @@ def test_adjust_weights_shape():
 
     DC = np.zeros(2)
 
+    indegree = np.ones((2, 2))
+
+    full_mean_rates = np.ones(2)
+
     new_PSC, new_ext, new_DC = adjust_weights_and_input_to_synapse_scaling(
         PSC_matrix_mean=PSC,
         PSC_ext=PSC_ext,
@@ -74,16 +78,40 @@ def test_adjust_weights_shape():
         mean_PSC_matrix=mean_matrix,
         mean_PSC_ext=mean_ext,
         DC_amp=DC,
-        poisson_input=True,
+        poisson_input=False,
         bg_rate=8.0,
         K_ext=np.ones(2),
         tau_syn=0.5,
+        indegree_matrix=indegree,
+        full_mean_rates=full_mean_rates,
     )
 
     assert new_PSC.shape == (2, 2)
     assert new_DC.shape == (2,)
     assert new_PSC[0, 0] == pytest.approx(1.0 / np.sqrt(4.0))
     assert new_ext == pytest.approx(100.0 / np.sqrt(4.0))
+
+    input_rec = np.array([
+        2.0,
+        2.0,
+    ])
+    expected_rec = (
+        0.001
+        * 0.5
+        * (1.0 - np.sqrt(4.0))
+        * input_rec
+    )
+    expected_ext = (
+        8.0
+        * 1.0
+        * 0.5
+        * 100.0
+        * 1e-3
+    )
+    assert np.allclose(
+        new_DC,
+        expected_rec + expected_ext,
+    )
 
 
 def test_pd14_parameter_builder():
