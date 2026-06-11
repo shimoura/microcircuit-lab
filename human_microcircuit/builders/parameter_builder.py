@@ -47,7 +47,14 @@ class ParameterBuilder:
         # - DC compensation
         #
 
-        return self._network_config.model_copy(deep=True)
+        network = self._network_config.model_copy(deep=True)
+
+        network = self._apply_n_scaling(network)
+        network = self._apply_k_scaling(network)
+
+        network = self._apply_external_poisson_rates(network)
+
+        return network
 
     def _apply_n_scaling(
         self,
@@ -77,7 +84,6 @@ class ParameterBuilder:
                 "populations": populations,
             }
         )
-
 
     def _apply_k_scaling(
         self,
@@ -135,5 +141,36 @@ class ParameterBuilder:
             update={
                 "populations": populations,
                 "connections": connections,
+            }
+        )
+
+    def _apply_external_poisson_rates(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Convert biological background rates into effective
+        Poisson generator rates.
+
+        PD14:
+
+            effective_rate = bg_rate * K_ext
+        """
+
+        inputs = {}
+
+        for pop_name, input_cfg in network.inputs.items():
+
+            K_ext = network.populations[pop_name].background_indegree
+
+            inputs[pop_name] = input_cfg.model_copy(
+                update={
+                    "rate": input_cfg.rate * K_ext,
+                }
+            )
+
+        return network.model_copy(
+            update={
+                "inputs": inputs,
             }
         )

@@ -182,6 +182,7 @@ class NestBackend:
                     "rate": input_cfg.rate,
                 },
             )
+            print(pop_name, input_cfg.rate)
 
             self.poisson_generators[pop_name] = pg
 
