@@ -1,0 +1,17 @@
+neurons:
+
+  excitatory:
+
+    model: iaf_psc_exp
+
+    parameters:
+
+      C_m: 250.0
+      tau_m: 10.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -70.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      I_e: 0.0

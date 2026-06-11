@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "human_microcircuit"
+version = "0.1.0"
+description = "Human cortical microcircuit simulator"
+readme = "README.md"
+requires-python = ">=3.11"
+
+authors = [
+    { name = "Renan O. Shimoura" }
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "PyYAML>=6.0",
+    "nest-simulator>=3.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["human_microcircuit*"]
