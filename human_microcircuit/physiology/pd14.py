@@ -53,39 +53,6 @@ def num_synapses_from_conn_prob(
     return int(round(num_syn))
 
 
-def dc_input_compensating_poisson(
-    bg_rate: float,
-    K_ext: np.ndarray,
-    tau_syn: float,
-    PSC_ext: float,
-) -> np.ndarray:
-    """
-    Compute the DC input that compensates for replacing Poisson
-    background input.
-
-    Parameters
-    ----------
-    bg_rate
-        External Poisson firing rate (spikes/s).
-
-    K_ext
-        External indegree for each population.
-
-    tau_syn
-        Synaptic time constant (ms).
-
-    PSC_ext
-        External synaptic weight (pA).
-
-    Returns
-    -------
-    np.ndarray
-        DC input (pA) for each population.
-    """
-
-    return bg_rate * K_ext * PSC_ext * tau_syn * 0.001
-
-
 def adjust_weights_and_input_to_synapse_scaling(
     PSC_matrix_mean,
     PSC_ext,
@@ -93,7 +60,7 @@ def adjust_weights_and_input_to_synapse_scaling(
     mean_PSC_matrix,
     mean_PSC_ext,
     DC_amp,
-    poisson_input,
+    bg_input_type,
     bg_rate,
     K_ext,
     tau_syn,
@@ -156,13 +123,17 @@ def adjust_weights_and_input_to_synapse_scaling(
         K_scaling=K_scaling,
     )
 
-    # 5. External compensation (only if no Poisson input)
-    if not poisson_input:
-        DC_amp_new = DC_amp_new + dc_input_compensating_poisson(
-            bg_rate=bg_rate,
-            K_ext=K_ext,
-            tau_syn=tau_syn,
-            PSC_ext=PSC_ext,
+    # 5. External compensation
+    if bg_input_type == "poisson":
+
+        input_ext = PSC_ext * K_ext * bg_rate
+
+        DC_amp_new = (
+            DC_amp_new
+            + 0.001
+            * tau_syn
+            * (1.0 - np.sqrt(K_scaling))
+            * input_ext
         )
 
     return (

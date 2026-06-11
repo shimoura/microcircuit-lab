@@ -9,7 +9,6 @@ from human_microcircuit.builders.parameter_builder import (
 from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.physiology.pd14 import (
     num_synapses_from_conn_prob,
-    dc_input_compensating_poisson,
     adjust_weights_and_input_to_synapse_scaling,
     recurrent_dc_compensation,
     recurrent_mean_input,
@@ -41,20 +40,6 @@ def test_positive_connection_probability():
     assert n > 0
 
 
-def test_dc_input_compensation():
-
-    dc = dc_input_compensating_poisson(
-        bg_rate=8.0,
-        K_ext=1600,
-        tau_syn=0.5,
-        PSC_ext=87.8,
-    )
-
-    expected = 8.0 * 1600 * 0.5 * 87.8 * 1e-3
-
-    assert dc == pytest.approx(expected)
-
-
 def test_adjust_weights_and_input_to_synapse_scaling():
 
     PSC = np.ones((2, 2))
@@ -78,7 +63,7 @@ def test_adjust_weights_and_input_to_synapse_scaling():
         mean_PSC_matrix=mean_matrix,
         mean_PSC_ext=mean_ext,
         DC_amp=DC,
-        poisson_input=False,
+        bg_input_type="poisson",
         bg_rate=8.0,
         K_ext=np.ones(2),
         tau_syn=0.5,
@@ -102,11 +87,12 @@ def test_adjust_weights_and_input_to_synapse_scaling():
         * input_rec
     )
     expected_ext = (
-        8.0
-        * 1.0
+        0.001
         * 0.5
+        * (1.0 - np.sqrt(4.0))
         * 100.0
-        * 1e-3
+        * 1.0
+        * 8.0
     )
     assert np.allclose(
         new_DC,
