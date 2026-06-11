@@ -131,8 +131,8 @@ class NestBackend:
                     "N": connection.n_synapses,
                 },
                 syn_spec={
-                    "weight": connection.weight.mean,
-                    "delay": connection.delay.mean,
+                    "weight": self.create_weight_parameter(connection.weight),
+                    "delay": self.create_delay_parameter(connection.delay),
                 },
             )
 
@@ -197,8 +197,8 @@ class NestBackend:
                 self.poisson_generators[pop_name],
                 self.get_population(pop_name),
                 syn_spec={
-                    "weight": input_cfg.weight.mean,
-                    "delay": input_cfg.delay.mean,
+                    "weight": self.create_weight_parameter(input_cfg.weight),
+                    "delay": self.create_delay_parameter(input_cfg.delay),
                 },
             )
 
@@ -225,3 +225,37 @@ class NestBackend:
                 pop_name,
                 sr.n_events,
             )
+
+    def create_weight_parameter(
+        self,
+        weight,
+    ):
+        """
+        Create a NEST weight parameter.
+
+        Currently returns a constant value.
+
+        Future:
+            - normal distribution
+            - lognormal distribution
+            - redraw
+        """
+
+        return weight.mean
+
+    def create_delay_parameter(
+        self,
+        delay,
+    ):
+        """
+        Create a NEST delay parameter.
+
+        Currently returns a constant value.
+
+        Future:
+            - normal distribution
+            - lognormal distribution
+            - redraw
+        """
+
+        return delay.mean
