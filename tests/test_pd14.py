@@ -1,10 +1,16 @@
 import numpy as np
+import pytest
 
+from human_microcircuit.builders.parameter_builder import (
+    ParameterBuilder,
+)
+from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.physiology.pd14 import (
     num_synapses_from_conn_prob,
     dc_input_compensating_poisson,
     adjust_weights_and_input_to_synapse_scaling,
 )
+from human_microcircuit.utils.io import read_network_directory
 
 
 def test_zero_connection_probability():
@@ -39,7 +45,9 @@ def test_dc_input_compensation():
         PSC_ext=87.8,
     )
 
-    assert dc > 0.0
+    expected = 8.0 * 1600 * 0.5 * 87.8 * 1e-3
+
+    assert dc == pytest.approx(expected)
 
 
 def test_adjust_weights_shape():
@@ -70,3 +78,22 @@ def test_adjust_weights_shape():
     assert new_PSC.shape == (2, 2)
 
     assert new_DC.shape == (2,)
+
+    assert new_PSC[0, 0] == pytest.approx(1.0 / np.sqrt(4.0))
+
+    assert new_ext == pytest.approx(100.0 / np.sqrt(4.0))
+
+
+def test_pd14_parameter_builder():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+
+    assert network.populations["L23_E"].size == round(20683 * 0.2)
+
+    assert network.populations["L23_I"].size == round(5834 * 0.2)
+
+    assert network.populations["L23_E"].background_indegree == 1600 * 0.2
+
+    assert network.inputs["L23_E"].rate == 8.0 * 1600 * 0.2
