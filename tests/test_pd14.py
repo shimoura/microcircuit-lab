@@ -79,11 +79,8 @@ def test_adjust_weights_shape():
     )
 
     assert new_PSC.shape == (2, 2)
-
     assert new_DC.shape == (2,)
-
     assert new_PSC[0, 0] == pytest.approx(1.0 / np.sqrt(4.0))
-
     assert new_ext == pytest.approx(100.0 / np.sqrt(4.0))
 
 
