@@ -175,13 +175,14 @@ class ScalingConfig(FrozenConfig):
 
 class ReferenceConfig(FrozenConfig):
     """
-    Reference quantities used for reproducing published models.
+    Reference quantities from published benchmark models.
 
-    These values are not part of the biological network definition itself,
-    but are useful for benchmark-specific parameter derivations.
+    These values are not intrinsic properties of the biological
+    network itself, but are used to reproduce or validate
+    published reference implementations.
     """
 
-    full_mean_rates: list[float]
+    full_mean_rates: list[float] = Field(default_factory=list)
 
 
 # -----------------------------------------------------------------------------
