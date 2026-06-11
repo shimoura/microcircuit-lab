@@ -1,47 +1,70 @@
-from pathlib import Path
+"""
+Main entry point for the human microcircuit simulation.
+"""
 
-from human_microcircuit.utils.io import read_network_directory
-from human_microcircuit.utils.io import read_yaml
+from human_microcircuit.backend.nest.backend import NestBackend
 
 from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import ParameterBuilder
 
+from human_microcircuit.config.simulation import SimulationConfig
+
 from human_microcircuit.network.network import Network
-from human_microcircuit.backend.nest.backend import NestBackend
+
+from human_microcircuit.utils.io import (
+    read_network_directory,
+    read_yaml,
+)
+
 
 def main() -> None:
+    """
+    Run a simulation.
+    """
 
+    # ------------------------------------------------------------------
+    # Read configuration files
+    # ------------------------------------------------------------------
     simulation_data = read_yaml("configs/simulation.yaml")
-
-    network_data = read_network_directory(
-        "configs/network"
-    )
+    network_files = read_network_directory("configs/network")
+    
+    # ------------------------------------------------------------------
+    # Build immutable configuration objects
+    # ------------------------------------------------------------------
+    simulation_config = SimulationConfig.model_validate(simulation_data)
 
     network_config = ConfigBuilder(
-        populations_data=network_data["populations"],
-        neurons_data=network_data["neurons"],
-        connectivity_data=network_data["connectivity"],
-        inputs_data=network_data["inputs"],
-        scaling_data=network_data["scaling"],
+        network_files=network_files,
     ).build()
 
+    # ------------------------------------------------------------------
+    # Derive parameters
+    # ------------------------------------------------------------------
     network_config = ParameterBuilder(network_config).build()
 
-    print()
-
-    print("Configuration successfully loaded.")
-
-    print()
-
-    print(network_config)
-
+    # ------------------------------------------------------------------
+    # Build simulator-independent network
+    # ------------------------------------------------------------------
     network = Network(network_config)
 
-    backend = NestBackend(network)
+    # ------------------------------------------------------------------
+    # Create backend
+    # ------------------------------------------------------------------
+    backend = NestBackend(
+        network=network,
+        simulation_config=simulation_config,
+    )
 
-    backend.initialize()
+    # ------------------------------------------------------------------
+    # Build and simulate
+    # ------------------------------------------------------------------
+    backend.build()
+    backend.simulate()
 
-    print("NEST initialized successfully.")
+    # ------------------------------------------------------------------
+    # Print statistics
+    # ------------------------------------------------------------------
+    backend.print_statistics()
 
 
 if __name__ == "__main__":

@@ -23,6 +23,8 @@ from human_microcircuit.config.network import (
     WeightDistribution,
 )
 
+from human_microcircuit.utils.io import NetworkFiles
+
 
 class ConfigBuilder:
     """
@@ -31,17 +33,13 @@ class ConfigBuilder:
 
     def __init__(
         self,
-        populations_data: dict,
-        neurons_data: dict,
-        connectivity_data: dict,
-        inputs_data: dict,
-        scaling_data: dict,
+        network_files: NetworkFiles,
     ) -> None:
-        self._populations_data = populations_data
-        self._neurons_data = neurons_data
-        self._connectivity_data = connectivity_data
-        self._inputs_data = inputs_data
-        self._scaling_data = scaling_data
+        self._populations_data = network_files.populations
+        self._neurons_data = network_files.neurons
+        self._connectivity_data = network_files.connectivity
+        self._inputs_data = network_files.inputs
+        self._scaling_data = network_files.scaling
 
     def build(self) -> NetworkConfig:
         """

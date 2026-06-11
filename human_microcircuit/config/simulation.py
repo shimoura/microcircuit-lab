@@ -45,7 +45,7 @@ class RecordingConfig(FrozenConfig):
 class OutputConfig(FrozenConfig):
     """Configuration of simulation output."""
 
-    output_dir: Path
+    output_dir: Path = Path("output")
     overwrite: bool = False
     save_metadata: bool = True
     save_config: bool = True
@@ -62,10 +62,10 @@ class SimulationConfig(FrozenConfig):
     No biological network parameters belong here.
     """
 
-    t_sim: float = Field(gt=0.0)
-    resolution: float = Field(gt=0.0)
-    rng_seed: int
+    t_sim: float = Field(default=100.0, gt=0.0)
+    resolution: float = Field(default=0.1, gt=0.0)
+    rng_seed: int = 42
     local_num_threads: int = Field(default=1, ge=1)
     print_time: bool = True
     recording: RecordingConfig = RecordingConfig()
-    output: OutputConfig
+    output: OutputConfig = OutputConfig()

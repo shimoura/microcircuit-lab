@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from dataclasses import dataclass
 
 import yaml
 
@@ -46,7 +47,7 @@ def read_yaml(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def read_network_directory(path: str | Path) -> dict[str, dict]:
+def read_network_directory(path: str | Path) -> NetworkFiles:
     """
     Read all YAML files from a network configuration directory.
 
@@ -57,15 +58,27 @@ def read_network_directory(path: str | Path) -> dict[str, dict]:
 
     Returns
     -------
-    dict
-        Dictionary containing the raw contents of all configuration files.
+    NetworkFiles
+        Data class containing the raw contents of all configuration files.
     """
     path = Path(path)
 
-    return {
-        "populations": read_yaml(path / "populations.yaml"),
-        "neurons": read_yaml(path / "neurons.yaml"),
-        "connectivity": read_yaml(path / "connectivity.yaml"),
-        "inputs": read_yaml(path / "inputs.yaml"),
-        "scaling": read_yaml(path / "scaling.yaml"),
-    }
+    return NetworkFiles(
+        populations=read_yaml(path / "populations.yaml"),
+        neurons=read_yaml(path / "neurons.yaml"),
+        connectivity=read_yaml(path / "connectivity.yaml"),
+        inputs=read_yaml(path / "inputs.yaml"),
+        scaling=read_yaml(path / "scaling.yaml"),
+    )
+
+@dataclass(frozen=True)
+class NetworkFiles:
+    """
+    Raw contents of the network configuration files.
+    """
+
+    populations: dict[str, Any]
+    neurons: dict[str, Any]
+    connectivity: dict[str, Any]
+    inputs: dict[str, Any]
+    scaling: dict[str, Any]
