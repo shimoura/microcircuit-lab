@@ -17,10 +17,8 @@ class Network:
     It intentionally contains no simulator-specific logic.
     """
 
-    def __init__(self, config: NetworkConfig) -> None:
-        self._config = config
-
-    @property
-    def config(self) -> NetworkConfig:
-        """Return the immutable network configuration."""
-        return self._config
+    def __init__(
+        self,
+        config: NetworkConfig,
+    ):
+        self.config = config

@@ -1,0 +1,90 @@
+"""
+Simulation orchestration.
+
+This module coordinates configuration loading,
+parameter derivation, network construction and
+simulation execution.
+
+It intentionally contains no neuroscience
+mathematics and no simulator-specific code.
+"""
+
+from __future__ import annotations
+
+from human_microcircuit.backend.nest.backend import NestBackend
+from human_microcircuit.network.network import Network
+
+from human_microcircuit.builders.config_builder import ConfigBuilder
+from human_microcircuit.builders.parameter_builder import ParameterBuilder
+
+from human_microcircuit.config.simulation import SimulationConfig
+
+from human_microcircuit.utils.io import (
+    read_network_directory,
+    read_yaml,
+)
+
+from pathlib import Path
+
+
+class Simulation:
+    """
+    High-level simulation orchestrator.
+    """
+
+    def __init__(
+        self,
+        network: Network,
+        simulation_config: SimulationConfig,
+    ) -> None:
+
+        self.network = network
+        self.simulation_config = simulation_config
+
+    @classmethod
+    def from_yaml(
+        cls,
+        config_dir: str | Path = "configs",
+    ) -> "Simulation":
+        """
+        Build a Simulation from YAML files.
+        """
+
+        network_files = read_network_directory(Path(config_dir) / "network")
+
+        network_config = ConfigBuilder(
+            network_files,
+        ).build()
+
+        network_config = ParameterBuilder(
+            network_config,
+        ).build()
+
+        network = Network(
+            network_config,
+        )
+
+        simulation_data = read_yaml(Path(config_dir) / "simulation" / "simulation.yaml")
+
+        simulation_config = SimulationConfig.model_validate(simulation_data)
+
+        return cls(
+            network=network,
+            simulation_config=simulation_config,
+        )
+
+    def run(self) -> None:
+        """
+        Run the simulation.
+        """
+
+        backend = NestBackend(
+            network=self.network,
+            simulation_config=self.simulation_config,
+        )
+
+        backend.build()
+
+        backend.simulate()
+
+        backend.print_statistics()
