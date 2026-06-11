@@ -2,6 +2,7 @@ import numpy as np
 
 from human_microcircuit.physiology.pd14 import (
     num_synapses_from_conn_prob,
+    dc_input_compensating_poisson,
 )
 
 
@@ -23,3 +24,14 @@ def test_positive_connection_probability():
     )
 
     assert n > 0
+
+def test_dc_input_compensation():
+
+    dc = dc_input_compensating_poisson(
+        bg_rate=8.0,
+        K_ext=1600,
+        tau_syn=0.5,
+        PSC_ext=87.8,
+    )
+
+    assert dc > 0.0
