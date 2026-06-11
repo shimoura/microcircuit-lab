@@ -5,6 +5,8 @@ Project entry point.
 from human_microcircuit.simulation.simulation import (
     Simulation,
 )
+from human_microcircuit.analysis.raster import plot_raster
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,12 +20,7 @@ def main():
     simulation.run()
 
     events = simulation.get_spike_events("L23_E")
-
-    print(events.keys())
-
-    print(events["senders"][:10])
-
-    print(events["times"][:10])
+    plot_raster(events)
 
 
 if __name__ == "__main__":
