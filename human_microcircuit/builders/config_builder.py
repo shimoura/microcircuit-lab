@@ -50,9 +50,9 @@ class ConfigBuilder:
 
         populations = self._build_populations(neurons)
 
-        connections = self._build_connections()
+        connections = self._build_connections(populations)
 
-        inputs = self._build_inputs()
+        inputs = self._build_inputs(populations)
 
         scaling = ScalingConfig.model_validate(self._scaling_data)
 
@@ -120,14 +120,15 @@ class ConfigBuilder:
             )
 
             if population.name in populations:
-                raise ValueError(
-                    f"Duplicate population name '{population.name}'."
-                )
+                raise ValueError(f"Duplicate population name '{population.name}'.")
             populations[population.name] = population
 
         return populations
 
-    def _build_connections(self) -> list[ConnectionConfig]:
+    def _build_connections(
+        self,
+        populations: dict[str, PopulationConfig],
+    ) -> list[ConnectionConfig]:
         """
         Build all recurrent connections.
         """
@@ -136,23 +137,31 @@ class ConfigBuilder:
 
         for values in self._connectivity_data.get("connections", []):
 
+            source = values["source"]
+            target = values["target"]
+
+            if source not in populations:
+                raise ValueError(f"Unknown source population '{source}'.")
+
+            if target not in populations:
+                raise ValueError(f"Unknown target population '{target}'.")
+
             connections.append(
                 ConnectionConfig(
-                    source=values["source"],
-                    target=values["target"],
+                    source=source,
+                    target=target,
                     n_synapses=values["n_synapses"],
-                    weight=WeightDistribution.model_validate(
-                        values["weight"]
-                    ),
-                    delay=DelayDistribution.model_validate(
-                        values["delay"]
-                    ),
+                    weight=WeightDistribution.model_validate(values["weight"]),
+                    delay=DelayDistribution.model_validate(values["delay"]),
                 )
             )
 
         return connections
 
-    def _build_inputs(self) -> dict[str, PoissonInputConfig]:
+    def _build_inputs(
+        self,
+        populations: dict[str, PopulationConfig],
+    ) -> dict[str, PoissonInputConfig]:
         """
         Build background input definitions.
         """
@@ -163,6 +172,12 @@ class ConfigBuilder:
             "inputs",
             {},
         ).items():
+
+            if population_name not in populations:
+                raise ValueError(
+                    f"Unknown population '{population_name}' "
+                    "referenced in inputs.yaml."
+                )
 
             inputs[population_name] = PoissonInputConfig(
                 rate=values["rate"],
