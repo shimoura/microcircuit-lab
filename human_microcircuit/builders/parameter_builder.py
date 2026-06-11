@@ -15,6 +15,7 @@ from human_microcircuit.config.network import (
 from human_microcircuit.physiology.scaling import (
     scale_neuron_number,
     scale_synapse_number,
+    scale_synaptic_weight,
 )
 from human_microcircuit.physiology.synaptic_parameters import (
     psp_to_psc,
@@ -39,17 +40,6 @@ class ParameterBuilder:
         The returned object is independent from the original one.
         """
 
-        #
-        # For now we simply return a copy.
-        #
-        # Future transformations:
-        #
-        # - neuron scaling
-        # - synapse scaling
-        # - weight scaling
-        # - DC compensation
-        #
-
         network = self._network_config.model_copy(deep=True)
 
         network = self._apply_n_scaling(network)
@@ -57,6 +47,8 @@ class ParameterBuilder:
         network = self._apply_k_scaling(network)
 
         network = self._apply_psp_to_psc(network)
+
+        network = self._apply_weight_scaling(network)
 
         network = self._apply_external_poisson_rates(network)
 
@@ -239,6 +231,73 @@ class ParameterBuilder:
                         C_m=target.neuron.parameters.C_m,
                         tau_m=target.neuron.parameters.tau_m,
                         tau_syn=tau_syn,
+                    )
+                }
+            )
+
+            inputs[pop_name] = input_cfg.model_copy(
+                update={
+                    "weight": weight,
+                }
+            )
+
+        return network.model_copy(
+            update={
+                "connections": connections,
+                "inputs": inputs,
+            }
+        )
+
+    def _apply_weight_scaling(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Apply square root synaptic weight scaling.
+
+        w -> w / sqrt(K_scaling)
+        """
+
+        scaling = network.scaling
+
+        #
+        # recurrent
+        #
+
+        connections = []
+
+        for connection in network.connections:
+
+            weight = connection.weight.model_copy(
+                update={
+                    "mean": scale_synaptic_weight(
+                        connection.weight.mean,
+                        scaling.K_scaling,
+                    )
+                }
+            )
+
+            connections.append(
+                connection.model_copy(
+                    update={
+                        "weight": weight,
+                    }
+                )
+            )
+
+        #
+        # external
+        #
+
+        inputs = {}
+
+        for pop_name, input_cfg in network.inputs.items():
+
+            weight = input_cfg.weight.model_copy(
+                update={
+                    "mean": scale_synaptic_weight(
+                        input_cfg.weight.mean,
+                        scaling.K_scaling,
                     )
                 }
             )

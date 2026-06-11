@@ -1,3 +1,4 @@
+from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
@@ -9,6 +10,7 @@ from human_microcircuit.config.network import (
     NeuronConfig,
     NeuronParams,
 )
+from human_microcircuit.utils.io import read_network_directory
 
 
 def test_n_scaling():
@@ -116,3 +118,19 @@ def test_k_scaling():
     #
 
     assert derived.populations["L23_E"].background_indegree == 50
+
+def test_weight_scaling():
+
+    network_files = read_network_directory(
+        "configs/network/pd14"
+    )
+
+    network_config = ConfigBuilder(
+        network_files
+    ).build()
+
+    derived = ParameterBuilder(
+        network_config
+    ).build()
+
+    print(derived.connections[0].weight.mean)
