@@ -5,7 +5,7 @@ Project entry point.
 from human_microcircuit.simulation.simulation import (
     Simulation,
 )
-from human_microcircuit.analysis.raster import plot_population_raster
+from human_microcircuit.analysis.raster import plot_raster
 
 
 import logging
@@ -18,7 +18,7 @@ def main():
         simulation_name="default",
     )
     simulation.run()
-    plot_population_raster(simulation)
+    plot_raster(simulation)
 
 
 if __name__ == "__main__":
