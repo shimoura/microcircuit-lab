@@ -57,7 +57,6 @@ class ParameterBuilder:
             network = self._apply_weight_scaling(network)
 
         network = self._apply_external_poisson_rates(network)
-        network = self._apply_pd14_synapse_scaling(network)
 
         return network
 
@@ -320,71 +319,4 @@ class ParameterBuilder:
                 "connections": connections,
                 "inputs": inputs,
             }
-        )
-
-    def _apply_pd14_synapse_scaling(
-        self,
-        network: NetworkConfig,
-    ) -> NetworkConfig:
-        """
-        Apply PD14 synapse scaling.
-
-        Currently this is a thin wrapper around the PD14
-        physiology implementation and will gradually replace
-        the existing weight scaling implementation.
-        """
-
-        #
-        # For now:
-        # implementation added in the next step
-        #
-
-        return network
-
-    def _build_pd14_weight_matrix(
-        self,
-        network: NetworkConfig,
-    ) -> tuple[np.ndarray, list[str]]:
-        """
-        Build the recurrent weight matrix in population order.
-
-        Returns
-        -------
-        matrix
-            Mean recurrent PSC matrix.
-
-        pop_names
-            Population ordering used by the matrix.
-        """
-
-        pop_names = list(network.populations.keys())
-
-        name_to_idx = {name: i for i, name in enumerate(pop_names)}
-
-        matrix = np.zeros(
-            (len(pop_names), len(pop_names)),
-            dtype=float,
-        )
-
-        for connection in network.connections:
-
-            i = name_to_idx[connection.target]
-            j = name_to_idx[connection.source]
-
-            matrix[i, j] = connection.weight.mean
-
-        return matrix, pop_names
-
-    def _build_pd14_external_weight_vector(
-        self,
-        network: NetworkConfig,
-        pop_names: list[str],
-    ) -> np.ndarray:
-        """
-        Build the external weight vector in population order.
-        """
-
-        return np.asarray(
-            [network.inputs[name].weight.mean for name in pop_names],
-            dtype=float,
         )
