@@ -226,36 +226,54 @@ class NestBackend:
                 sr.n_events,
             )
 
-    def create_weight_parameter(
-        self,
-        weight,
-    ):
+    def create_weight_parameter(self, weight):
         """
         Create a NEST weight parameter.
-
-        Currently returns a constant value.
-
-        Future:
-            - normal distribution
-            - lognormal distribution
-            - redraw
         """
 
-        return weight.mean
+        if weight.rel_std == 0.0:
+            return weight.mean
 
-    def create_delay_parameter(
-        self,
-        delay,
-    ):
+        std = abs(weight.mean * weight.rel_std)
+
+        if weight.distribution == "normal":
+
+            if weight.mean >= 0:
+                return nest.math.redraw(
+                    nest.random.normal(
+                        mean=weight.mean,
+                        std=std,
+                    ),
+                    min=0.0,
+                    max=float("inf"),
+                )
+
+            return nest.math.redraw(
+                nest.random.normal(
+                    mean=weight.mean,
+                    std=std,
+                ),
+                min=-float("inf"),
+                max=0.0,
+            )
+
+        raise NotImplementedError(f"Unsupported distribution: {weight.distribution}")
+
+    def create_delay_parameter(self, delay):
         """
         Create a NEST delay parameter.
-
-        Currently returns a constant value.
-
-        Future:
-            - normal distribution
-            - lognormal distribution
-            - redraw
         """
 
-        return delay.mean
+        if delay.rel_std == 0.0:
+            return delay.mean
+
+        std = delay.mean * delay.rel_std
+
+        return nest.math.redraw(
+            nest.random.normal(
+                mean=delay.mean,
+                std=std,
+            ),
+            min=nest.resolution - 0.5 * nest.resolution,
+            max=float("inf"),
+        )
