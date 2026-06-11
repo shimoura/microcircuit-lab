@@ -55,6 +55,7 @@ class ParameterBuilder:
             network = self._apply_weight_scaling(network)
 
         network = self._apply_external_poisson_rates(network)
+        network = self._apply_pd14_synapse_scaling(network)
 
         return network
 
@@ -318,3 +319,22 @@ class ParameterBuilder:
                 "inputs": inputs,
             }
         )
+
+    def _apply_pd14_synapse_scaling(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Apply PD14 synapse scaling.
+
+        Currently this is a thin wrapper around the PD14
+        physiology implementation and will gradually replace
+        the existing weight scaling implementation.
+        """
+
+        #
+        # For now:
+        # implementation added in the next step
+        #
+
+        return network
