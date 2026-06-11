@@ -161,3 +161,32 @@ def recurrent_mean_input(
         mean_PSC_matrix * indegree_matrix * mean_rates,
         axis=1,
     )
+
+
+def recurrent_dc_compensation(
+    input_rec: np.ndarray,
+    tau_syn: float,
+    K_scaling: float,
+) -> np.ndarray:
+    """
+    Compute the recurrent DC compensation term from
+    Potjans & Diesmann (2014).
+
+    Parameters
+    ----------
+    input_rec
+        Mean recurrent synaptic input.
+
+    tau_syn
+        Synaptic time constant (ms).
+
+    K_scaling
+        Indegree scaling factor.
+
+    Returns
+    -------
+    np.ndarray
+        DC compensation current.
+    """
+
+    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_rec

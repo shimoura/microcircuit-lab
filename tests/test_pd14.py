@@ -11,6 +11,7 @@ from human_microcircuit.physiology.pd14 import (
     num_synapses_from_conn_prob,
     dc_input_compensating_poisson,
     adjust_weights_and_input_to_synapse_scaling,
+    recurrent_dc_compensation,
     recurrent_mean_input,
 )
 from human_microcircuit.physiology.synaptic_parameters import psp_to_psc
@@ -153,5 +154,25 @@ def test_recurrent_mean_input():
             3 * 30 * 5 + 3 * 40 * 7,
         ]
     )
+
+    assert np.allclose(result, expected)
+
+
+def test_recurrent_dc_compensation():
+
+    input_rec = np.array(
+        [
+            1000.0,
+            2000.0,
+        ]
+    )
+
+    result = recurrent_dc_compensation(
+        input_rec=input_rec,
+        tau_syn=0.5,
+        K_scaling=4.0,
+    )
+
+    expected = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * input_rec
 
     assert np.allclose(result, expected)
