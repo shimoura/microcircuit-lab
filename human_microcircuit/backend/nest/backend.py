@@ -2,26 +2,19 @@
 NEST backend.
 
 This module contains the first implementation of the simulator backend.
-
-For now it is intentionally simple:
-    - initialize kernel
-    - create populations
-    - create spike recorders
-    - create Poisson generators
-    - connect Poisson -> populations
-    - connect populations -> spike recorders
-    - simulate
-
-More advanced functionality (recurrent connectivity, scaling,
-PSC conversion, etc.) will be added incrementally.
 """
 
 from __future__ import annotations
 
 import nest
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from human_microcircuit.network.network import Network
 from human_microcircuit.config.simulation import SimulationConfig
+from human_microcircuit.config.network import PopulationConfig
 
 
 class NestBackend:
@@ -41,6 +34,8 @@ class NestBackend:
         self.populations: dict[str, nest.NodeCollection] = {}
         self.poisson_generators: dict[str, nest.NodeCollection] = {}
         self.spike_recorders: dict[str, nest.NodeCollection] = {}
+        self.multimeters: dict[str, nest.NodeCollection] = {}
+        self.devices: dict[str, nest.NodeCollection] = {}
 
     def initialize(self) -> None:
         """
@@ -49,13 +44,12 @@ class NestBackend:
 
         nest.ResetKernel()
 
-        nest.resolution = self._simulation_config.resolution
-
-        nest.local_num_threads = self._simulation_config.local_num_threads
-
-        nest.rng_seed = self._simulation_config.rng_seed
-
-        nest.print_time = self._simulation_config.print_time
+        nest.set(
+            resolution=self._simulation_config.resolution,
+            local_num_threads=self._simulation_config.local_num_threads,
+            rng_seed=self._simulation_config.rng_seed,
+            print_time=self._simulation_config.print_time,
+        )
 
     def build(self) -> None:
         """
@@ -88,33 +82,47 @@ class NestBackend:
                 pop_cfg.size,
             )
 
-            nodes.set(pop_cfg.neuron.parameters.model_dump())
-
-            #
-            # For now:
-            # initialize all neurons with the same membrane potential.
-            #
-            nodes.V_m = pop_cfg.V0_mean
-
+            self.initialize_population(nodes, pop_cfg)
             self.populations[pop_name] = nodes
+
+    def initialize_population(
+        self, nodes: nest.NodeCollection, pop_cfg: PopulationConfig
+    ) -> None:
+        """
+        Initialize the parameters and state variables of a population.
+
+        This includes neuron model parameters and the initial membrane
+        potential distribution.
+        """
+
+        nodes.set(pop_cfg.neuron.parameters.model_dump())
+
+        nodes.V_m = nest.random.normal(
+            mean=pop_cfg.V0_mean,
+            std=pop_cfg.V0_std,
+        )
 
     def connect_recurrent_connections(self) -> None:
         """
         Connect populations according to the connectivity configuration.
         """
 
-        print("\nCreating recurrent connections:")
+        logger.info("Creating recurrent connections:")
 
         for connection in self._network.config.connections:
 
-            source = self.populations[connection.source]
-            target = self.populations[connection.target]
+            source = self.get_population(connection.source)
+            target = self.get_population(connection.target)
 
-            print(
-                f"  {connection.source} -> {connection.target} "
-                f"(N={connection.n_synapses})"
+            logger.info(
+                "Connecting %s -> %s " "(N=%d, weight=%g, delay=%g)",
+                connection.source,
+                connection.target,
+                connection.n_synapses,
+                connection.weight.mean,
+                connection.delay.mean,
             )
-            
+
             nest.Connect(
                 source,
                 target,
@@ -127,6 +135,16 @@ class NestBackend:
                     "delay": connection.delay.mean,
                 },
             )
+
+    def get_population(
+        self,
+        name: str,
+    ) -> nest.NodeCollection:
+        """
+        Get the NEST node collection corresponding to a population name.
+        """
+
+        return self.populations[name]
 
     def create_spike_recorders(self) -> None:
         """
@@ -147,7 +165,7 @@ class NestBackend:
         for pop_name in self.populations:
 
             nest.Connect(
-                self.populations[pop_name],
+                self.get_population(pop_name),
                 self.spike_recorders[pop_name],
             )
 
@@ -177,7 +195,7 @@ class NestBackend:
             input_cfg = self._network.config.inputs[pop_name]
             nest.Connect(
                 self.poisson_generators[pop_name],
-                self.populations[pop_name],
+                self.get_population(pop_name),
                 syn_spec={
                     "weight": input_cfg.weight.mean,
                     "delay": input_cfg.delay.mean,
@@ -189,23 +207,21 @@ class NestBackend:
         Run the simulation.
         """
 
-        nest.Simulate(
-            self._simulation_config.t_sim
-        )
+        nest.Simulate(self._simulation_config.t_sim)
 
     def print_statistics(self) -> None:
         """
         Print simple statistics.
         """
 
-        print()
-        print("Simulation statistics")
-        print("---------------------")
+        logger.info("Printing simulation statistics:")
+        logger.info("Simulation statistics")
+        logger.info("---------------------")
 
         for pop_name in self.spike_recorders:
-
             sr = self.spike_recorders[pop_name]
-
-            print(f"{pop_name}: " f"{sr.n_events} spikes")
-
-        print()
+            logger.info(
+                "%s: %d spikes",
+                pop_name,
+                sr.n_events,
+            )

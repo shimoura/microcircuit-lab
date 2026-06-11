@@ -1,25 +1,8 @@
 """
-Parameter derivation for the network.
+Parameter derivation.
 
-The ParameterBuilder is responsible for deriving simulation parameters from
-the biological network description.
-
-It must never modify the original NetworkConfig. Instead, it returns a new
-NetworkConfig containing the derived parameters.
-
-Typical responsibilities (to be implemented progressively) include:
-
-- PSP -> PSC conversion
-- N scaling
-- K scaling
-- DC compensation
-- synaptic weight scaling
-- delay scaling
-- receptor-density scaling
-- other biologically-derived parameter transformations
-
-This module is simulator-independent and must not import NEST or any other
-simulation backend.
+This module derives simulator-ready parameters from the biological
+network description.
 """
 
 from __future__ import annotations
@@ -29,35 +12,60 @@ from human_microcircuit.config.network import NetworkConfig
 
 class ParameterBuilder:
     """
-    Build a derived NetworkConfig from an existing NetworkConfig.
-
-    The input configuration is treated as immutable and is never modified.
+    Derive simulator-ready parameters.
     """
 
-    def __init__(self, network_config: NetworkConfig) -> None:
+    def __init__(
+        self,
+        network_config: NetworkConfig,
+    ) -> None:
+
         self._network_config = network_config
 
     def build(self) -> NetworkConfig:
         """
         Build a derived NetworkConfig.
-
-        At the moment this is simply a pass-through and returns the original
-        immutable configuration.
-
-        In future implementations this method will:
-            - convert PSP amplitudes to PSC amplitudes
-            - apply neuron scaling (N_scaling)
-            - apply connectivity scaling (K_scaling)
-            - compute DC compensation
-            - derive scaled synaptic weights
-            - derive scaled delays
-            - apply receptor-density corrections
-            - perform other parameter transformations
-
-        Returns
-        -------
-        NetworkConfig
-            Derived network configuration.
         """
 
-        return self._network_config
+        #
+        # Future:
+        #
+        # - PSP -> PSC
+        # - N scaling
+        # - K scaling
+        # - DC compensation
+        #
+
+        network = self._network_config
+
+        network = self._convert_psp_to_psc(network)
+
+        network = self._apply_scaling(network)
+
+        network = self._apply_dc_compensation(network)
+
+        return network
+
+    def _convert_psp_to_psc(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+
+        #
+        # Placeholder.
+        #
+        return network
+
+    def _apply_scaling(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+
+        return network
+
+    def _apply_dc_compensation(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+
+        return network

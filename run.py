@@ -2,14 +2,15 @@
 Main entry point for the human microcircuit simulation.
 """
 
-from human_microcircuit.backend.nest.backend import NestBackend
+import logging
+logger = logging.getLogger(__name__)
+
 
 from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import ParameterBuilder
-
+from human_microcircuit.network.simulation import Simulation
 from human_microcircuit.config.simulation import SimulationConfig
 
-from human_microcircuit.network.network import Network
 
 from human_microcircuit.utils.io import (
     read_network_directory,
@@ -42,30 +43,21 @@ def main() -> None:
     # ------------------------------------------------------------------
     network_config = ParameterBuilder(network_config).build()
 
-    # ------------------------------------------------------------------
-    # Build simulator-independent network
-    # ------------------------------------------------------------------
-    network = Network(network_config)
-
-    # ------------------------------------------------------------------
-    # Create backend
-    # ------------------------------------------------------------------
-    backend = NestBackend(
-        network=network,
+    simulation = Simulation(
+        network_config=network_config,
         simulation_config=simulation_config,
     )
 
-    # ------------------------------------------------------------------
-    # Build and simulate
-    # ------------------------------------------------------------------
-    backend.build()
-    backend.simulate()
+    simulation.build()
 
-    # ------------------------------------------------------------------
-    # Print statistics
-    # ------------------------------------------------------------------
-    backend.print_statistics()
+    simulation.simulate()
+
+    simulation.print_statistics()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     main()

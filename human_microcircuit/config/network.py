@@ -81,11 +81,28 @@ class PopulationConfig(FrozenConfig):
 # Synaptic distributions
 # -----------------------------------------------------------------------------
 class WeightDistribution(FrozenConfig):
-    """Distribution describing synaptic weights."""
+    """
+    Distribution describing synaptic weights.
+
+    The interpretation of `mean` depends on `unit`.
+
+    ParameterBuilder is responsible for converting the biological
+    representation into simulator-specific quantities.
+    """
 
     mean: float
+
     rel_std: float = Field(ge=0.0)
-    distribution: Literal["normal", "lognormal"] = "normal"
+
+    distribution: Literal[
+        "normal",
+        "lognormal",
+    ] = "normal"
+
+    unit: Literal[
+        "PSC",
+        "PSP",
+    ] = "PSC"
 
 
 class DelayDistribution(FrozenConfig):
