@@ -69,6 +69,7 @@ def read_network_directory(path: str | Path) -> NetworkFiles:
         connectivity=read_yaml(path / "connectivity.yaml"),
         inputs=read_yaml(path / "inputs.yaml"),
         scaling=read_yaml(path / "scaling.yaml"),
+        reference=read_yaml(path / "reference.yaml"),
     )
 
 @dataclass(frozen=True)
@@ -82,3 +83,4 @@ class NetworkFiles:
     connectivity: dict[str, Any]
     inputs: dict[str, Any]
     scaling: dict[str, Any]
+    reference: dict[str, Any]
