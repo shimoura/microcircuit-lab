@@ -1,17 +1,25 @@
 """
 Parameter derivation.
+
+This module derives simulator-ready parameters from the biological
+network description while preserving the original immutable
+configuration.
 """
 
 from __future__ import annotations
 
-from copy import deepcopy
+from human_microcircuit.config.network import (
+    NetworkConfig,
+)
 
-from human_microcircuit.config.network import NetworkConfig
+from human_microcircuit.physiology.scaling import (
+    scale_neuron_number,
+)
 
 
 class ParameterBuilder:
     """
-    Build a simulator-ready NetworkConfig.
+    Build a derived NetworkConfig.
     """
 
     def __init__(
@@ -23,38 +31,44 @@ class ParameterBuilder:
     def build(self) -> NetworkConfig:
         """
         Build a derived configuration.
+
+        Transformation order:
+
+            1. N scaling
+
+        Additional transformations (K scaling, DC compensation, etc.)
+        will be added incrementally.
         """
 
-        network = deepcopy(self._network_config)
-        network = self._apply_scaling(network)
-
-        #
-        # Future:
-        #
-        # network = self._apply_n_scaling(network)
-        # network = self._apply_k_scaling(network)
-        # network = self._apply_dc_compensation(network)
-        #
+        network = self._apply_n_scaling(self._network_config)
 
         return network
 
-    def _apply_scaling(
+    def _apply_n_scaling(
         self,
         network: NetworkConfig,
     ) -> NetworkConfig:
         """
-        Apply network scaling.
-
-        Currently scales:
-            - neuron numbers
-            - synapse numbers
-            - synaptic weights
-
-        DC compensation will be added afterwards.
+        Apply neuron-number scaling.
         """
 
-        #
-        # implemented next commit
-        #
+        scaling = network.scaling
 
-        return network
+        populations = {}
+
+        for name, population in network.populations.items():
+
+            populations[name] = population.model_copy(
+                update={
+                    "size": scale_neuron_number(
+                        population.size,
+                        scaling.N_scaling,
+                    )
+                }
+            )
+
+        return network.model_copy(
+            update={
+                "populations": populations,
+            }
+        )
