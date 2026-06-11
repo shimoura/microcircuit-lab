@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import (
@@ -30,3 +31,8 @@ def test_reference_matrices():
     assert indegrees.shape == (8, 8)
 
     assert np.all(neurons > 0.0)
+
+    assert neurons[0] == pytest.approx(20683, abs=2)
+    assert neurons[1] == pytest.approx(5834, abs=2)
+    assert synapses[0, 0] > 0.0
+    assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
