@@ -72,23 +72,6 @@ class ParameterBuilder:
 
         return network
 
-    def _scale_population_size(
-        self,
-        population,
-        N_scaling: float,
-    ):
-        """
-        Scale the population size.
-        """
-        return population.model_copy(
-            update={
-                "size": scale_neuron_number(
-                    population.size,
-                    N_scaling,
-                )
-            }
-        )
-
     def _apply_n_scaling(
         self,
         network: NetworkConfig,
@@ -102,24 +85,20 @@ class ParameterBuilder:
         populations = {}
 
         for name, population in network.populations.items():
-            populations[name] = self._scale_population_size(
-                population,
-                scaling.N_scaling,
+
+            populations[name] = population.model_copy(
+                update={
+                    "size": scale_neuron_number(
+                        population.size,
+                        scaling.N_scaling,
+                    )
+                }
             )
 
         return network.model_copy(
             update={
                 "populations": populations,
             }
-        )
-
-    def _scale_population_background_indegree(
-        self,
-        population,
-        K_scaling: float,
-    ):
-        return population.model_copy(
-            update={"background_indegree": (population.background_indegree * K_scaling)}
         )
 
     def _apply_k_scaling(
@@ -142,17 +121,25 @@ class ParameterBuilder:
         #
         # populations
         #
+
         populations = {}
+
         for name, population in network.populations.items():
-            populations[name] = self._scale_population_background_indegree(
-                population,
-                scaling.K_scaling,
+
+            populations[name] = population.model_copy(
+                update={
+                    "background_indegree": (
+                        population.background_indegree * scaling.K_scaling
+                    )
+                }
             )
 
         #
         # connections
         #
+
         connections = []
+
         for connection in network.connections:
 
             connections.append(
@@ -204,77 +191,6 @@ class ParameterBuilder:
             }
         )
 
-    def _psp_to_psc(
-        self,
-        psp: float,
-        target_population,
-    ) -> float:
-        """
-        Convert a PSP amplitude to a PSC amplitude for a target population.
-        """
-
-        params = target_population.neuron.parameters
-
-        return psp_to_psc(
-            psp=psp,
-            C_m=params.C_m,
-            tau_m=params.tau_m,
-            tau_syn=params.tau_syn_ex,
-        )
-
-    def _convert_connection_weight_to_psc(
-        self,
-        connection,
-        network: NetworkConfig,
-    ):
-        """
-        Convert the connection weight from biological PSP amplitude to
-        PSC amplitude.
-        """
-        target = network.populations[connection.target]
-
-        weight = connection.weight.model_copy(
-            update={
-                "mean": self._psp_to_psc(
-                    connection.weight.mean,
-                    target,
-                )
-            }
-        )
-
-        return connection.model_copy(
-            update={
-                "weight": weight,
-            }
-        )
-
-    def _convert_input_weight_to_psc(
-        self,
-        pop_name: str,
-        input_cfg,
-        network: NetworkConfig,
-    ):
-        """
-        Convert the external input weight from biological PSP amplitude to
-        PSC amplitude.
-        """
-        target = network.populations[pop_name]
-
-        weight = input_cfg.weight.model_copy(
-            update={
-                "mean": self._psp_to_psc(
-                    input_cfg.weight.mean,
-                    target,
-                )
-            }
-        )
-
-        return input_cfg.model_copy(
-            update={
-                "weight": weight,
-            }
-        )
-
     def _apply_psp_to_psc(
         self,
         network: NetworkConfig,
@@ -289,10 +205,27 @@ class ParameterBuilder:
         connections = []
 
         for connection in network.connections:
+
+            target = network.populations[connection.target]
+
+            tau_syn = target.neuron.parameters.tau_syn_ex
+
+            weight = connection.weight.model_copy(
+                update={
+                    "mean": psp_to_psc(
+                        psp=connection.weight.mean,
+                        C_m=target.neuron.parameters.C_m,
+                        tau_m=target.neuron.parameters.tau_m,
+                        tau_syn=tau_syn,
+                    )
+                }
+            )
+
             connections.append(
-                self._convert_connection_weight_to_psc(
-                    connection,
-                    network,
+                connection.model_copy(
+                    update={
+                        "weight": weight,
+                    }
                 )
             )
 
@@ -300,77 +233,34 @@ class ParameterBuilder:
         # external inputs
         #
         inputs = {}
+
         for pop_name, input_cfg in network.inputs.items():
-            inputs[pop_name] = self._convert_input_weight_to_psc(
-                pop_name,
-                input_cfg,
-                network,
+
+            target = network.populations[pop_name]
+
+            tau_syn = target.neuron.parameters.tau_syn_ex
+
+            weight = input_cfg.weight.model_copy(
+                update={
+                    "mean": psp_to_psc(
+                        psp=input_cfg.weight.mean,
+                        C_m=target.neuron.parameters.C_m,
+                        tau_m=target.neuron.parameters.tau_m,
+                        tau_syn=tau_syn,
+                    )
+                }
+            )
+
+            inputs[pop_name] = input_cfg.model_copy(
+                update={
+                    "weight": weight,
+                }
             )
 
         return network.model_copy(
             update={
                 "connections": connections,
                 "inputs": inputs,
-            }
-        )
-
-    def _scale_weight(
-        self,
-        weight: float,
-        K_scaling: float,
-    ) -> float:
-        """
-        Apply square-root synaptic weight scaling.
-        """
-
-        return scale_weight_sqrt(
-            weight,
-            K_scaling,
-        )
-
-    def _scale_connection_weight(
-        self,
-        connection,
-        K_scaling: float,
-    ):
-        """
-        Scale synaptic weight for a recurrent connection.
-        """
-        weight = connection.weight.model_copy(
-            update={
-                "mean": self._scale_weight(
-                    connection.weight.mean,
-                    K_scaling,
-                )
-            }
-        )
-
-        return connection.model_copy(
-            update={
-                "weight": weight,
-            }
-        )
-
-    def _scale_input_weight(
-        self,
-        input_cfg,
-        K_scaling: float,
-    ):
-        """
-        Scale synaptic weight for an external input.
-        """
-        weight = input_cfg.weight.model_copy(
-            update={
-                "mean": self._scale_weight(
-                    input_cfg.weight.mean,
-                    K_scaling,
-                )
-            }
-        )
-
-        return input_cfg.model_copy(
-            update={
-                "weight": weight,
             }
         )
 
@@ -390,11 +280,23 @@ class ParameterBuilder:
         # recurrent
         #
         connections = []
+
         for connection in network.connections:
+
+            weight = connection.weight.model_copy(
+                update={
+                    "mean": scale_weight_sqrt(
+                        connection.weight.mean,
+                        scaling.K_scaling,
+                    )
+                }
+            )
+
             connections.append(
-                self._scale_connection_weight(
-                    connection,
-                    scaling.K_scaling,
+                connection.model_copy(
+                    update={
+                        "weight": weight,
+                    }
                 )
             )
 
@@ -402,11 +304,24 @@ class ParameterBuilder:
         # external
         #
         inputs = {}
+
         for pop_name, input_cfg in network.inputs.items():
-            inputs[pop_name] = self._scale_input_weight(
-                input_cfg,
-                scaling.K_scaling,
+
+            weight = input_cfg.weight.model_copy(
+                update={
+                    "mean": scale_weight_sqrt(
+                        input_cfg.weight.mean,
+                        scaling.K_scaling,
+                    )
+                }
             )
+
+            inputs[pop_name] = input_cfg.model_copy(
+                update={
+                    "weight": weight,
+                }
+            )
+
         return network.model_copy(
             update={
                 "connections": connections,
