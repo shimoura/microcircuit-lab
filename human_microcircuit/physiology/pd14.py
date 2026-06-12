@@ -206,3 +206,28 @@ def external_dc_compensation(
     """
 
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate
+
+
+def recurrent_dc_from_network(
+    mean_PSC_matrix: np.ndarray,
+    indegree_matrix: np.ndarray,
+    mean_rates: np.ndarray,
+    tau_syn: np.ndarray,
+    K_scaling: float,
+) -> np.ndarray:
+    """
+    Compute the recurrent DC compensation from biological network
+    quantities.
+    """
+
+    input_rec = recurrent_mean_input(
+        mean_PSC_matrix=mean_PSC_matrix,
+        indegree_matrix=indegree_matrix,
+        mean_rates=mean_rates,
+    )
+
+    return recurrent_dc_compensation(
+        input_rec=input_rec,
+        tau_syn=tau_syn,
+        K_scaling=K_scaling,
+    )

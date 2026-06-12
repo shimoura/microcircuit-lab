@@ -35,6 +35,7 @@ from human_microcircuit.physiology.pd14 import (
     recurrent_mean_input,
     recurrent_dc_compensation,
     external_dc_compensation,
+    recurrent_dc_from_network,
 )
 
 
@@ -371,12 +372,6 @@ class ParameterBuilder:
         #
         # Recurrent contribution
         #
-        input_rec = recurrent_mean_input(
-            mean_PSC_matrix=PSC_matrix,
-            indegree_matrix=indegrees,
-            mean_rates=mean_rates,
-        )
-
         tau_syn = np.asarray(
             [
                 original.populations[name].neuron.parameters.tau_syn_ex
@@ -385,8 +380,10 @@ class ParameterBuilder:
             dtype=float,
         )
 
-        dc_rec = recurrent_dc_compensation(
-            input_rec=input_rec,
+        dc_rec = recurrent_dc_from_network(
+            mean_PSC_matrix=PSC_matrix,
+            indegree_matrix=indegrees,
+            mean_rates=mean_rates,
             tau_syn=tau_syn,
             K_scaling=scaling.K_scaling,
         )
