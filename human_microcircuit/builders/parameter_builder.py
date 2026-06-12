@@ -23,7 +23,7 @@ from human_microcircuit.physiology.synaptic_parameters import (
     psp_to_psc,
 )
 
-from human_microcircuit.physiology.reference import (
+from human_microcircuit.physiology.reference_matrices import (
     indegree_matrix,
     full_mean_rates,
     external_indegrees,
