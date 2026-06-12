@@ -80,6 +80,8 @@ class ParameterBuilder:
 
         network = self._apply_external_poisson_rates(network)
 
+        network = self._strategy.derive(network)
+
         return network
 
     def _apply_n_scaling(

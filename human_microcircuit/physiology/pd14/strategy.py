@@ -23,4 +23,11 @@ class PD14Strategy(PhysiologyStrategy):
         self,
         network: NetworkConfig,
     ) -> NetworkConfig:
+        """
+        Apply PD14-specific parameter derivation.
+
+        Currently this is a no-op and serves as the
+        extension point for future PD14-specific logic.
+        """
+
         return network
