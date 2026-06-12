@@ -72,6 +72,23 @@ class ParameterBuilder:
 
         return network
 
+    def _scale_population_size(
+        self,
+        population,
+        N_scaling: float,
+    ):
+        """
+        Scale the population size.
+        """
+        return population.model_copy(
+            update={
+                "size": scale_neuron_number(
+                    population.size,
+                    N_scaling,
+                )
+            }
+        )
+
     def _apply_n_scaling(
         self,
         network: NetworkConfig,
@@ -85,20 +102,24 @@ class ParameterBuilder:
         populations = {}
 
         for name, population in network.populations.items():
-
-            populations[name] = population.model_copy(
-                update={
-                    "size": scale_neuron_number(
-                        population.size,
-                        scaling.N_scaling,
-                    )
-                }
+            populations[name] = self._scale_population_size(
+                population,
+                scaling.N_scaling,
             )
 
         return network.model_copy(
             update={
                 "populations": populations,
             }
+        )
+
+    def _scale_population_background_indegree(
+        self,
+        population,
+        K_scaling: float,
+    ):
+        return population.model_copy(
+            update={"background_indegree": (population.background_indegree * K_scaling)}
         )
 
     def _apply_k_scaling(
@@ -121,25 +142,17 @@ class ParameterBuilder:
         #
         # populations
         #
-
         populations = {}
-
         for name, population in network.populations.items():
-
-            populations[name] = population.model_copy(
-                update={
-                    "background_indegree": (
-                        population.background_indegree * scaling.K_scaling
-                    )
-                }
+            populations[name] = self._scale_population_background_indegree(
+                population,
+                scaling.K_scaling,
             )
 
         #
         # connections
         #
-
         connections = []
-
         for connection in network.connections:
 
             connections.append(
