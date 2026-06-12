@@ -17,7 +17,7 @@ from human_microcircuit.config.network import (
 from human_microcircuit.physiology.scaling import (
     scale_neuron_number,
     scale_synapse_number,
-    scale_synaptic_weight,
+    scale_weight_sqrt,
 )
 from human_microcircuit.physiology.synaptic_parameters import (
     psp_to_psc,
@@ -285,7 +285,7 @@ class ParameterBuilder:
 
             weight = connection.weight.model_copy(
                 update={
-                    "mean": scale_synaptic_weight(
+                    "mean": scale_weight_sqrt(
                         connection.weight.mean,
                         scaling.K_scaling,
                     )
@@ -309,7 +309,7 @@ class ParameterBuilder:
 
             weight = input_cfg.weight.model_copy(
                 update={
-                    "mean": scale_synaptic_weight(
+                    "mean": scale_weight_sqrt(
                         input_cfg.weight.mean,
                         scaling.K_scaling,
                     )

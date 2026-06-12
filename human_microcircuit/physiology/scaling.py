@@ -44,7 +44,7 @@ def scale_weight(
     return value / factor
 
 
-def scale_synaptic_weight(
+def scale_weight_sqrt(
     weight: float,
     K_scaling: float,
 ) -> float:
