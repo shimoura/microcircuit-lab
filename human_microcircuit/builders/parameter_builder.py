@@ -288,6 +288,52 @@ class ParameterBuilder:
             K_scaling,
         )
 
+    def _scale_connection_weight(
+        self,
+        connection,
+        K_scaling: float,
+    ):
+        """
+        Scale synaptic weight for a recurrent connection.
+        """
+        weight = connection.weight.model_copy(
+            update={
+                "mean": self._scale_weight(
+                    connection.weight.mean,
+                    K_scaling,
+                )
+            }
+        )
+
+        return connection.model_copy(
+            update={
+                "weight": weight,
+            }
+        )
+
+    def _scale_input_weight(
+        self,
+        input_cfg,
+        K_scaling: float,
+    ):
+        """
+        Scale synaptic weight for an external input.
+        """
+        weight = input_cfg.weight.model_copy(
+            update={
+                "mean": self._scale_weight(
+                    input_cfg.weight.mean,
+                    K_scaling,
+                )
+            }
+        )
+
+        return input_cfg.model_copy(
+            update={
+                "weight": weight,
+            }
+        )
+
     def _apply_weight_scaling(
         self,
         network: NetworkConfig,
@@ -304,23 +350,11 @@ class ParameterBuilder:
         # recurrent
         #
         connections = []
-
         for connection in network.connections:
-
-            weight = connection.weight.model_copy(
-                update={
-                    "mean": self._scale_weight(
-                        connection.weight.mean,
-                        scaling.K_scaling,
-                    )
-                }
-            )
-
             connections.append(
-                connection.model_copy(
-                    update={
-                        "weight": weight,
-                    }
+                self._scale_connection_weight(
+                    connection,
+                    scaling.K_scaling,
                 )
             )
 
@@ -328,24 +362,11 @@ class ParameterBuilder:
         # external
         #
         inputs = {}
-
         for pop_name, input_cfg in network.inputs.items():
-
-            weight = input_cfg.weight.model_copy(
-                update={
-                    "mean": self._scale_weight(
-                        input_cfg.weight.mean,
-                        scaling.K_scaling,
-                    )
-                }
+            inputs[pop_name] = self._scale_input_weight(
+                input_cfg,
+                scaling.K_scaling,
             )
-
-            inputs[pop_name] = input_cfg.model_copy(
-                update={
-                    "weight": weight,
-                }
-            )
-
         return network.model_copy(
             update={
                 "connections": connections,
