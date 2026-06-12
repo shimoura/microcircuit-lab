@@ -18,7 +18,7 @@ def full_num_neurons(network: NetworkConfig) -> np.ndarray:
     """
 
     return np.asarray(
-        [pop.size / network.scaling.N_scaling for pop in network.populations.values()],
+        [pop.size for pop in network.populations.values()],
         dtype=float,
     )
 
@@ -42,7 +42,7 @@ def full_num_synapses(network: NetworkConfig) -> np.ndarray:
         i = name_to_index[connection.target]
         j = name_to_index[connection.source]
 
-        matrix[i, j] = connection.n_synapses / network.scaling.K_scaling
+        matrix[i, j] = connection.n_synapses
 
     return matrix
 
@@ -56,3 +56,17 @@ def indegree_matrix(network: NetworkConfig) -> np.ndarray:
     synapses = full_num_synapses(network)
 
     return synapses / neurons[:, np.newaxis]
+
+
+def full_mean_rates(
+    network: NetworkConfig,
+) -> np.ndarray:
+    """
+    Return the reference firing rates in
+    population order.
+    """
+
+    return np.asarray(
+        [network.reference.full_mean_rates[name] for name in network.populations],
+        dtype=float,
+    )

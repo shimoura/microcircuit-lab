@@ -9,6 +9,7 @@ from human_microcircuit.physiology.reference import (
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,
+    full_mean_rates,
 )
 from human_microcircuit.utils.io import read_network_directory
 
@@ -17,7 +18,7 @@ def test_reference_matrices():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+    network = ConfigBuilder(network_files).build()
 
     neurons = full_num_neurons(network)
     synapses = full_num_synapses(network)
@@ -32,8 +33,8 @@ def test_reference_matrices():
 
     assert np.all(neurons > 0.0)
 
-    assert neurons[0] == pytest.approx(20683, abs=2)
-    assert neurons[1] == pytest.approx(5834, abs=2)
+    assert neurons[0] == 20683
+    assert neurons[1] == 5834
     assert synapses[0, 0] > 0.0
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
 
@@ -63,3 +64,18 @@ def test_parameter_builder_preserves_original_network():
     assert original.populations["L23_E"].background_indegree == 1600
     assert derived.populations["L23_E"].background_indegree == pytest.approx(1600 * 0.2)
     assert original.populations["L23_E"] is not derived.populations["L23_E"]
+
+
+def test_full_mean_rates():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ConfigBuilder(network_files).build()
+
+    rates = full_mean_rates(network)
+
+    assert rates.shape == (8,)
+
+    assert rates[0] == pytest.approx(0.903)
+    assert rates[1] == pytest.approx(2.965)
+    assert rates[2] == pytest.approx(4.414)
