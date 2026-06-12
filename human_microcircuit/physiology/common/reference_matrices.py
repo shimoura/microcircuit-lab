@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 from human_microcircuit.config.network import NetworkConfig
-from human_microcircuit.physiology.synaptic_parameters import (
+from human_microcircuit.physiology.common.synaptic_parameters import (
     psp_to_psc,
 )
 
@@ -120,7 +120,7 @@ def mean_psc_matrix(
     Return the biological mean PSC matrix.
     """
 
-    from human_microcircuit.physiology.synaptic_parameters import (
+    from human_microcircuit.physiology.common.synaptic_parameters import (
         psp_to_psc,
     )
 

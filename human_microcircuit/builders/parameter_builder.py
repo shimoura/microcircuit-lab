@@ -14,12 +14,12 @@ from human_microcircuit.config.network import (
     NetworkConfig,
 )
 
-from human_microcircuit.physiology.scaling import (
+from human_microcircuit.physiology.common.scaling import (
     scale_neuron_number,
     scale_synapse_number,
 )
 
-from human_microcircuit.physiology.reference_matrices import (
+from human_microcircuit.physiology.common.reference_matrices import (
     indegree_matrix,
     full_mean_rates,
     external_indegrees,
@@ -28,19 +28,16 @@ from human_microcircuit.physiology.reference_matrices import (
     tau_syn_ex,
 )
 
-from human_microcircuit.physiology.pd14 import (
+from human_microcircuit.physiology.pd14.dc_compensation import (
     external_dc_compensation,
     recurrent_dc_from_network,
 )
-
-from human_microcircuit.physiology.strategy import (
-    PhysiologyStrategy,
+from human_microcircuit.physiology.pd14.synapses import (
+    psp_to_psc_network,
 )
-
-from human_microcircuit.physiology.pd14.strategy import (
-    PD14Strategy,
+from human_microcircuit.physiology.pd14.scaling import (
+    scale_weights,
 )
-
 
 class ParameterBuilder:
     """
@@ -50,10 +47,8 @@ class ParameterBuilder:
     def __init__(
         self,
         network_config: NetworkConfig,
-        strategy: PhysiologyStrategy | None = None,
     ) -> None:
         self._network_config = network_config
-        self._strategy = strategy if strategy is not None else PD14Strategy()
 
     def build(self) -> NetworkConfig:
         """
@@ -68,9 +63,9 @@ class ParameterBuilder:
 
         network = self._apply_k_scaling(network)
 
-        network = self._strategy.apply_psp_to_psc(network)
+        network = psp_to_psc_network(network)
 
-        network = self._strategy.apply_weight_scaling(network)
+        network = scale_weights(network)
 
         network = self._apply_dc_compensation(network)
 

@@ -13,7 +13,7 @@ from human_microcircuit.config.network import (
     NeuronParams,
 )
 from human_microcircuit.utils.io import read_network_directory
-from human_microcircuit.physiology.synaptic_parameters import (
+from human_microcircuit.physiology.common.synaptic_parameters import (
     psp_to_psc,
 )
 

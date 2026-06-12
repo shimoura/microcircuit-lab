@@ -4,10 +4,11 @@ which converts biological PSP amplitudes into PSC amplitudes.
 """
 
 from human_microcircuit.config.network import NetworkConfig
-from human_microcircuit.physiology.synaptic_parameters import psp_to_psc
+from human_microcircuit.physiology.common.synaptic_parameters import (
+    psp_to_psc as psp_amplitude_to_current,
+)
 
-
-def apply_psp_to_psc(
+def psp_to_psc_network(
     network: NetworkConfig,
 ) -> NetworkConfig:
     """
@@ -23,7 +24,7 @@ def apply_psp_to_psc(
 
         weight = connection.weight.model_copy(
             update={
-                "mean": psp_to_psc(
+                "mean": psp_amplitude_to_current(
                     psp=connection.weight.mean,
                     C_m=target.neuron.parameters.C_m,
                     tau_m=target.neuron.parameters.tau_m,
@@ -49,7 +50,7 @@ def apply_psp_to_psc(
 
         weight = input_cfg.weight.model_copy(
             update={
-                "mean": psp_to_psc(
+                "mean": psp_amplitude_to_current(
                     psp=input_cfg.weight.mean,
                     C_m=target.neuron.parameters.C_m,
                     tau_m=target.neuron.parameters.tau_m,
