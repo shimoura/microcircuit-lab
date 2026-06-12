@@ -182,7 +182,7 @@ class ReferenceConfig(FrozenConfig):
     published reference implementations.
     """
 
-    full_mean_rates: list[float] = Field(default_factory=list)
+    full_mean_rates: dict[str, float] = Field(default_factory=dict)
 
 
 # -----------------------------------------------------------------------------

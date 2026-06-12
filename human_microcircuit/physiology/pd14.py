@@ -202,3 +202,14 @@ def recurrent_dc_compensation(
     """
 
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_rec
+
+
+def indegree_from_synapses(
+    n_synapses: float,
+    target_population_size: float,
+) -> float:
+    """
+    Compute indegree from total number of synapses.
+    """
+
+    return n_synapses / target_population_size
