@@ -33,8 +33,6 @@ from human_microcircuit.physiology.reference_matrices import (
 )
 
 from human_microcircuit.physiology.pd14 import (
-    recurrent_mean_input,
-    recurrent_dc_compensation,
     external_dc_compensation,
     recurrent_dc_from_network,
 )
@@ -204,7 +202,6 @@ class ParameterBuilder:
         #
         # recurrent connections
         #
-
         connections = []
 
         for connection in network.connections:
@@ -235,7 +232,6 @@ class ParameterBuilder:
         #
         # external inputs
         #
-
         inputs = {}
 
         for pop_name, input_cfg in network.inputs.items():
@@ -283,7 +279,6 @@ class ParameterBuilder:
         #
         # recurrent
         #
-
         connections = []
 
         for connection in network.connections:
@@ -308,7 +303,6 @@ class ParameterBuilder:
         #
         # external
         #
-
         inputs = {}
 
         for pop_name, input_cfg in network.inputs.items():
