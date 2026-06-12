@@ -41,6 +41,10 @@ from human_microcircuit.physiology.strategy import (
     PhysiologyStrategy,
 )
 
+from human_microcircuit.physiology.pd14.strategy import (
+    PD14Strategy,
+)
+
 
 class ParameterBuilder:
     """
@@ -53,7 +57,7 @@ class ParameterBuilder:
         strategy: PhysiologyStrategy | None = None,
     ) -> None:
         self._network_config = network_config
-        self._strategy = strategy
+        self._strategy = strategy if strategy is not None else PD14Strategy()
 
     def build(self) -> NetworkConfig:
         """
