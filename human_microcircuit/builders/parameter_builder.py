@@ -191,7 +191,6 @@ class ParameterBuilder:
             }
         )
 
-
     def _psp_to_psc(
         self,
         psp: float,
@@ -275,6 +274,20 @@ class ParameterBuilder:
             }
         )
 
+    def _scale_weight(
+        self,
+        weight: float,
+        K_scaling: float,
+    ) -> float:
+        """
+        Apply square-root synaptic weight scaling.
+        """
+
+        return scale_weight_sqrt(
+            weight,
+            K_scaling,
+        )
+
     def _apply_weight_scaling(
         self,
         network: NetworkConfig,
@@ -296,7 +309,7 @@ class ParameterBuilder:
 
             weight = connection.weight.model_copy(
                 update={
-                    "mean": scale_weight_sqrt(
+                    "mean": self._scale_weight(
                         connection.weight.mean,
                         scaling.K_scaling,
                     )
@@ -320,7 +333,7 @@ class ParameterBuilder:
 
             weight = input_cfg.weight.model_copy(
                 update={
-                    "mean": scale_weight_sqrt(
+                    "mean": self._scale_weight(
                         input_cfg.weight.mean,
                         scaling.K_scaling,
                     )
