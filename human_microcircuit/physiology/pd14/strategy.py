@@ -1,6 +1,10 @@
 """
 PD14 physiology strategy.
 """
+# NOTE:
+# This strategy is intentionally introduced as a no-op.
+# PD14-specific transformations will be migrated here
+# incrementally without changing external behavior.
 
 from __future__ import annotations
 
@@ -26,8 +30,9 @@ class PD14Strategy(PhysiologyStrategy):
         """
         Apply PD14-specific parameter derivation.
 
-        Currently this is a no-op and serves as the
-        extension point for future PD14-specific logic.
+        Subclasses and future implementations may
+        progressively move PD14-specific transformations
+        into this strategy.
         """
 
         return network
