@@ -192,3 +192,17 @@ def recurrent_dc_compensation(
     """
 
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_rec
+
+
+def external_dc_compensation(
+    PSC_ext: np.ndarray,
+    K_ext: np.ndarray,
+    bg_rate: np.ndarray,
+    tau_syn: np.ndarray,
+    K_scaling: float,
+) -> np.ndarray:
+    """
+    Compute the external DC compensation term from PD14.
+    """
+
+    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate

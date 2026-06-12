@@ -34,6 +34,7 @@ from human_microcircuit.physiology.reference_matrices import (
 from human_microcircuit.physiology.pd14 import (
     recurrent_mean_input,
     recurrent_dc_compensation,
+    external_dc_compensation,
 )
 
 
@@ -397,13 +398,12 @@ class ParameterBuilder:
             [original.inputs[name].rate for name in pop_names],
             dtype=float,
         )
-        dc_ext = (
-            0.001
-            * tau_syn
-            * (1.0 - np.sqrt(scaling.K_scaling))
-            * PSC_ext
-            * K_ext
-            * bg_rates
+        dc_ext = external_dc_compensation(
+            PSC_ext=PSC_ext,
+            K_ext=K_ext,
+            bg_rate=bg_rates,
+            tau_syn=tau_syn,
+            K_scaling=scaling.K_scaling,
         )
 
         #
