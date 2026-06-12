@@ -70,3 +70,17 @@ def full_mean_rates(
         [network.reference.full_mean_rates[name] for name in network.populations],
         dtype=float,
     )
+
+
+def external_indegrees(network: NetworkConfig) -> np.ndarray:
+    return np.asarray(
+        [pop.background_indegree for pop in network.populations.values()],
+        dtype=float,
+    )
+
+
+def external_weights(network: NetworkConfig) -> np.ndarray:
+    return np.asarray(
+        [network.inputs[name].weight.mean for name in network.populations],
+        dtype=float,
+    )

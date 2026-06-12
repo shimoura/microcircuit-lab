@@ -10,6 +10,8 @@ from human_microcircuit.physiology.reference import (
     full_num_synapses,
     indegree_matrix,
     full_mean_rates,
+    external_indegrees,
+    external_weights,
 )
 from human_microcircuit.utils.io import read_network_directory
 
@@ -79,3 +81,47 @@ def test_full_mean_rates():
     assert rates[0] == pytest.approx(0.903)
     assert rates[1] == pytest.approx(2.965)
     assert rates[2] == pytest.approx(4.414)
+    assert rates[3] == pytest.approx(5.876)
+    assert rates[4] == pytest.approx(7.569)
+    assert rates[5] == pytest.approx(8.633)
+    assert rates[6] == pytest.approx(1.105)
+    assert rates[7] == pytest.approx(7.829)
+
+
+def test_external_indegrees():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ConfigBuilder(network_files).build()
+
+    K_ext = external_indegrees(network)
+
+    assert K_ext.shape == (8,)
+
+    assert K_ext[0] == 1600
+    assert K_ext[1] == 1500
+    assert K_ext[2] == 2100
+    assert K_ext[3] == 1900
+    assert K_ext[4] == 2000
+    assert K_ext[5] == 1900
+    assert K_ext[6] == 2900
+    assert K_ext[7] == 2100
+
+
+def test_external_weights():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ConfigBuilder(network_files).build()
+
+    weights = external_weights(network)
+
+    assert weights.shape == (8,)
+
+    #
+    # Before PSP->PSC conversion these are biological PSP amplitudes.
+    #
+    assert np.allclose(
+        weights,
+        0.15,
+    )
