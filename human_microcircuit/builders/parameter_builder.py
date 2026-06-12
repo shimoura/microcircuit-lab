@@ -69,15 +69,13 @@ class ParameterBuilder:
 
         network = self._apply_k_scaling(network)
 
-        network = self._apply_psp_to_psc(network)
+        network = self._strategy.apply_psp_to_psc(network)
 
         network = self._apply_weight_scaling(network)
 
         network = self._apply_dc_compensation(network)
 
         network = self._apply_external_poisson_rates(network)
-
-        network = self._strategy.derive(network)
 
         return network
 
