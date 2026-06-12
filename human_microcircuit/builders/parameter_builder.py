@@ -37,6 +37,10 @@ from human_microcircuit.physiology.pd14 import (
     recurrent_dc_from_network,
 )
 
+from human_microcircuit.physiology.strategy import (
+    PhysiologyStrategy,
+)
+
 
 class ParameterBuilder:
     """
@@ -46,8 +50,10 @@ class ParameterBuilder:
     def __init__(
         self,
         network_config: NetworkConfig,
+        strategy: PhysiologyStrategy | None = None,
     ) -> None:
         self._network_config = network_config
+        self._strategy = strategy
 
     def build(self) -> NetworkConfig:
         """
