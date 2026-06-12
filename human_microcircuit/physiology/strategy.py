@@ -18,11 +18,32 @@ class PhysiologyStrategy(ABC):
     """
 
     @abstractmethod
-    def derive(
+    def apply_psp_to_psc(
         self,
         network: NetworkConfig,
     ) -> NetworkConfig:
-        """
-        Derive simulator-ready parameters from a biological network.
-        """
+        raise NotImplementedError
+
+
+    @abstractmethod
+    def apply_weight_scaling(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        raise NotImplementedError
+
+
+    @abstractmethod
+    def apply_dc_compensation(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        raise NotImplementedError
+
+
+    @abstractmethod
+    def apply_external_poisson_rates(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
         raise NotImplementedError
