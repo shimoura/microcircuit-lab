@@ -17,7 +17,6 @@ from human_microcircuit.config.network import (
 from human_microcircuit.physiology.scaling import (
     scale_neuron_number,
     scale_synapse_number,
-    scale_weight_sqrt,
 )
 
 from human_microcircuit.physiology.reference_matrices import (
@@ -71,7 +70,7 @@ class ParameterBuilder:
 
         network = self._strategy.apply_psp_to_psc(network)
 
-        network = self._apply_weight_scaling(network)
+        network = self._strategy.apply_weight_scaling(network)
 
         network = self._apply_dc_compensation(network)
 
@@ -194,71 +193,6 @@ class ParameterBuilder:
 
         return network.model_copy(
             update={
-                "inputs": inputs,
-            }
-        )
-
-    def _apply_weight_scaling(
-        self,
-        network: NetworkConfig,
-    ) -> NetworkConfig:
-        """
-        Apply square root synaptic weight scaling.
-
-        w -> w / sqrt(K_scaling)
-        """
-
-        scaling = network.scaling
-
-        #
-        # recurrent
-        #
-        connections = []
-
-        for connection in network.connections:
-
-            weight = connection.weight.model_copy(
-                update={
-                    "mean": scale_weight_sqrt(
-                        connection.weight.mean,
-                        scaling.K_scaling,
-                    )
-                }
-            )
-
-            connections.append(
-                connection.model_copy(
-                    update={
-                        "weight": weight,
-                    }
-                )
-            )
-
-        #
-        # external
-        #
-        inputs = {}
-
-        for pop_name, input_cfg in network.inputs.items():
-
-            weight = input_cfg.weight.model_copy(
-                update={
-                    "mean": scale_weight_sqrt(
-                        input_cfg.weight.mean,
-                        scaling.K_scaling,
-                    )
-                }
-            )
-
-            inputs[pop_name] = input_cfg.model_copy(
-                update={
-                    "weight": weight,
-                }
-            )
-
-        return network.model_copy(
-            update={
-                "connections": connections,
                 "inputs": inputs,
             }
         )
