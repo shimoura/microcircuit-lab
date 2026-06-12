@@ -111,3 +111,38 @@ def external_psc_weights(
         ],
         dtype=float,
     )
+
+
+def mean_psc_matrix(
+    network: NetworkConfig,
+) -> np.ndarray:
+    """
+    Return the biological mean PSC matrix.
+    """
+
+    from human_microcircuit.physiology.synaptic_parameters import (
+        psp_to_psc,
+    )
+
+    pop_names = list(network.populations.keys())
+    name_to_index = {name: i for i, name in enumerate(pop_names)}
+
+    n = len(pop_names)
+
+    matrix = np.zeros((n, n), dtype=float)
+
+    for connection in network.connections:
+
+        i = name_to_index[connection.target]
+        j = name_to_index[connection.source]
+
+        target = network.populations[connection.target]
+
+        matrix[i, j] = psp_to_psc(
+            psp=connection.weight.mean,
+            C_m=target.neuron.parameters.C_m,
+            tau_m=target.neuron.parameters.tau_m,
+            tau_syn=target.neuron.parameters.tau_syn_ex,
+        )
+
+    return matrix

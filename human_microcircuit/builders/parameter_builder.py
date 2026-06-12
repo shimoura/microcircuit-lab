@@ -28,6 +28,7 @@ from human_microcircuit.physiology.reference_matrices import (
     full_mean_rates,
     external_indegrees,
     external_psc_weights,
+    mean_psc_matrix,
 )
 
 from human_microcircuit.physiology.pd14 import (
@@ -363,26 +364,8 @@ class ParameterBuilder:
         # because PSP->PSC conversion has not been applied to
         # the original network).
         #
+        PSC_matrix = mean_psc_matrix(original)
         pop_names = list(original.populations.keys())
-        name_to_index = {name: i for i, name in enumerate(pop_names)}
-
-        n = len(pop_names)
-
-        PSC_matrix = np.zeros((n, n), dtype=float)
-
-        for connection in original.connections:
-
-            i = name_to_index[connection.target]
-            j = name_to_index[connection.source]
-
-            target = original.populations[connection.target]
-
-            PSC_matrix[i, j] = psp_to_psc(
-                psp=connection.weight.mean,
-                C_m=target.neuron.parameters.C_m,
-                tau_m=target.neuron.parameters.tau_m,
-                tau_syn=target.neuron.parameters.tau_syn_ex,
-            )
 
         #
         # Recurrent contribution
