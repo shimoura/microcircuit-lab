@@ -52,7 +52,7 @@ class ParameterBuilder:
 
         network = self._apply_weight_scaling(network)
 
-        network = self._apply_dc_compensation(network)
+        # network = self._apply_dc_compensation(network)
 
         network = self._apply_external_poisson_rates(network)
 
