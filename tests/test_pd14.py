@@ -42,26 +42,16 @@ def test_positive_connection_probability():
 
 def test_adjust_weights_and_input_to_synapse_scaling():
 
-    PSC = np.ones((2, 2))
-
     PSC_ext = 100.0
-
     mean_matrix = np.ones((2, 2))
-
-    mean_ext = np.ones(2)
-
     DC = np.zeros(2)
-
     indegree = np.ones((2, 2))
-
     full_mean_rates = np.ones(2)
 
     new_PSC, new_ext, new_DC = adjust_weights_and_input_to_synapse_scaling(
-        PSC_matrix_mean=PSC,
+        mean_PSC_matrix=mean_matrix,
         PSC_ext=PSC_ext,
         K_scaling=4.0,
-        mean_PSC_matrix=mean_matrix,
-        mean_PSC_ext=mean_ext,
         DC_amp=DC,
         bg_input_type="poisson",
         bg_rate=8.0,
@@ -76,24 +66,14 @@ def test_adjust_weights_and_input_to_synapse_scaling():
     assert new_PSC[0, 0] == pytest.approx(1.0 / np.sqrt(4.0))
     assert new_ext == pytest.approx(100.0 / np.sqrt(4.0))
 
-    input_rec = np.array([
-        2.0,
-        2.0,
-    ])
-    expected_rec = (
-        0.001
-        * 0.5
-        * (1.0 - np.sqrt(4.0))
-        * input_rec
+    input_rec = np.array(
+        [
+            2.0,
+            2.0,
+        ]
     )
-    expected_ext = (
-        0.001
-        * 0.5
-        * (1.0 - np.sqrt(4.0))
-        * 100.0
-        * 1.0
-        * 8.0
-    )
+    expected_rec = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * input_rec
+    expected_ext = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * 100.0 * 1.0 * 8.0
     assert np.allclose(
         new_DC,
         expected_rec + expected_ext,

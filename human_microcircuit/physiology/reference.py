@@ -58,13 +58,15 @@ def indegree_matrix(network: NetworkConfig) -> np.ndarray:
     return synapses / neurons[:, np.newaxis]
 
 
-def full_mean_rates(
-    network: NetworkConfig,
-) -> np.ndarray:
+def full_mean_rates(network: NetworkConfig) -> np.ndarray:
     """
-    Return the reference firing rates in
-    population order.
+    Return the full mean firing rates as a vector.
     """
+
+    if network.reference is None:
+        raise ValueError(
+            "NetworkConfig.reference is required to obtain " "reference firing rates."
+        )
 
     return np.asarray(
         [network.reference.full_mean_rates[name] for name in network.populations],

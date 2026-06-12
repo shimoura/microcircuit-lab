@@ -23,6 +23,18 @@ from human_microcircuit.physiology.synaptic_parameters import (
     psp_to_psc,
 )
 
+from human_microcircuit.physiology.reference import (
+    indegree_matrix,
+    full_mean_rates,
+    external_indegrees,
+    external_weights,
+)
+
+from human_microcircuit.physiology.pd14 import (
+    recurrent_mean_input,
+    recurrent_dc_compensation,
+)
+
 
 class ParameterBuilder:
     """
@@ -52,7 +64,7 @@ class ParameterBuilder:
 
         network = self._apply_weight_scaling(network)
 
-        # network = self._apply_dc_compensation(network)
+        network = self._apply_dc_compensation(network)
 
         network = self._apply_external_poisson_rates(network)
 
@@ -316,5 +328,130 @@ class ParameterBuilder:
             update={
                 "connections": connections,
                 "inputs": inputs,
+            }
+        )
+
+    def _apply_dc_compensation(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Apply the Potjans & Diesmann (2014) DC compensation
+        required for indegree scaling.
+        """
+
+        #
+        # Use the biological (unscaled) network as reference.
+        #
+        original = self._network_config
+
+        if original.reference is None:
+            return network
+
+        scaling = original.scaling
+
+        #
+        # Reference quantities
+        #
+        indegrees = indegree_matrix(original)
+        mean_rates = full_mean_rates(original)
+        K_ext = external_indegrees(original)
+        PSC_ext = external_weights(original)
+
+        #
+        # Build recurrent PSC matrix (already biological PSC,
+        # because PSP->PSC conversion has not been applied to
+        # the original network).
+        #
+        pop_names = list(original.populations.keys())
+        name_to_index = {name: i for i, name in enumerate(pop_names)}
+
+        n = len(pop_names)
+
+        PSC_matrix = np.zeros((n, n), dtype=float)
+
+        for connection in original.connections:
+
+            i = name_to_index[connection.target]
+            j = name_to_index[connection.source]
+
+            target = original.populations[connection.target]
+
+            PSC_matrix[i, j] = psp_to_psc(
+                psp=connection.weight.mean,
+                C_m=target.neuron.parameters.C_m,
+                tau_m=target.neuron.parameters.tau_m,
+                tau_syn=target.neuron.parameters.tau_syn_ex,
+            )
+
+        #
+        # Recurrent contribution
+        #
+        input_rec = recurrent_mean_input(
+            mean_PSC_matrix=PSC_matrix,
+            indegree_matrix=indegrees,
+            mean_rates=mean_rates,
+        )
+
+        tau_syn = np.asarray(
+            [
+                original.populations[name].neuron.parameters.tau_syn_ex
+                for name in pop_names
+            ],
+            dtype=float,
+        )
+
+        dc_rec = recurrent_dc_compensation(
+            input_rec=input_rec,
+            tau_syn=tau_syn,
+            K_scaling=scaling.K_scaling,
+        )
+
+        #
+        # External contribution
+        #
+        bg_rates = np.asarray(
+            [original.inputs[name].rate for name in pop_names],
+            dtype=float,
+        )
+        dc_ext = (
+            0.001
+            * tau_syn
+            * (1.0 - np.sqrt(scaling.K_scaling))
+            * PSC_ext
+            * K_ext
+            * bg_rates
+        )
+
+        #
+        # Update derived network
+        #
+        populations = {}
+
+        for i, name in enumerate(pop_names):
+
+            population = network.populations[name]
+
+            params = population.neuron.parameters.model_copy(
+                update={
+                    "I_e": (population.neuron.parameters.I_e + dc_rec[i] + dc_ext[i])
+                }
+            )
+
+            neuron = population.neuron.model_copy(
+                update={
+                    "parameters": params,
+                }
+            )
+
+            populations[name] = population.model_copy(
+                update={
+                    "neuron": neuron,
+                }
+            )
+
+        return network.model_copy(
+            update={
+                "populations": populations,
             }
         )
