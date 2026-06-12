@@ -68,19 +68,15 @@ def adjust_weights_and_input_to_synapse_scaling(
     """
     Adjust synaptic weights and DC compensation according to the
     Potjans & Diesmann (2014) synapse scaling procedure.
-    
+
     Parameters
     ----------
-    PSC_matrix_mean
-        Matrix of mean PSC amplitudes (pA).
     PSC_ext
         External synaptic weight (pA).
     K_scaling
         Indegree scaling factor.
     mean_PSC_matrix
         Matrix of mean PSC amplitudes (pA) before scaling.
-    mean_PSC_ext
-        External synaptic weight (pA) before scaling.
     DC_amp
         DC compensation amplitude (pA) before scaling.
     poisson_input
@@ -127,11 +123,7 @@ def adjust_weights_and_input_to_synapse_scaling(
         input_ext = PSC_ext * K_ext * bg_rate
 
         DC_amp_new = (
-            DC_amp_new
-            + 0.001
-            * tau_syn
-            * (1.0 - np.sqrt(K_scaling))
-            * input_ext
+            DC_amp_new + 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_ext
         )
 
     return (
@@ -200,14 +192,3 @@ def recurrent_dc_compensation(
     """
 
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_rec
-
-
-def indegree_from_synapses(
-    n_synapses: float,
-    target_population_size: float,
-) -> float:
-    """
-    Compute indegree from total number of synapses.
-    """
-
-    return n_synapses / target_population_size
