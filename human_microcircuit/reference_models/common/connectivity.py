@@ -1,5 +1,13 @@
 """
-This module contains functions related to connectivity transformations.
+Utilities related to network connectivity.
+
+This module provides graph-level operations and transformations
+that describe how neuronal populations are connected, independent
+of the underlying synaptic dynamics or a particular reference model.
+
+Typical examples include conversions between connection probabilities
+and numbers of synapses, as well as the construction of indegree or
+connectivity matrices from a network description.
 """
 
 import numpy as np

@@ -1,10 +1,10 @@
 """
-This module contains the implementation of the PD14 physiology strategy,
+This module contains the implementation of the PD14 reference_models strategy,
 which converts biological PSP amplitudes into PSC amplitudes.
 """
 
 from human_microcircuit.config.network import NetworkConfig
-from human_microcircuit.physiology.common.synaptic_parameters import (
+from human_microcircuit.reference_models.common.synapses import (
     psp_to_psc as psp_amplitude_to_current,
 )
 

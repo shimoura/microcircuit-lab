@@ -1,7 +1,12 @@
 """
-Scaling utilities.
+Utilities related to scaling transformations.
 
-Pure mathematical functions used by ParameterBuilder.
+This module provides generic scaling laws and transformations that
+modify network or synaptic quantities while preserving specified
+statistical or dynamical properties.
+
+Typical examples include scaling of neuron numbers, synaptic weights,
+or indegrees according to analytically derived relationships.
 """
 
 from __future__ import annotations

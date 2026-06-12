@@ -1,15 +1,15 @@
 """
-This module contains the implementation of the PD14 physiology strategy,
+This module contains the implementation of the PD14 reference_models strategy,
 which includes scaling transformations specific to the Potjans & Diesmann (2014) model.
 """
 
 import numpy as np
 
 from human_microcircuit.config.network import NetworkConfig
-from human_microcircuit.physiology.common.scaling import (
+from human_microcircuit.reference_models.common.scaling import (
     scale_weight_sqrt,
 )
-from human_microcircuit.physiology.pd14.dc_compensation import (
+from human_microcircuit.reference_models.pd14.dc_compensation import (
     recurrent_mean_input,
     recurrent_dc_compensation,
 )

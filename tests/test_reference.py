@@ -5,7 +5,7 @@ from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
-from human_microcircuit.physiology.common.reference_matrices import (
+from human_microcircuit.reference_models.common.network import (
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,

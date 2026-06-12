@@ -1,6 +1,14 @@
 """
-Utilities for constructing reference matrices from the network
-configuration.
+Utilities operating on complete network descriptions.
+
+This module provides functions that derive matrices or vectors from a
+NetworkConfig representation without modifying its underlying biological
+meaning. These quantities are commonly used by builders and analytical
+routines.
+
+Typical examples include indegree matrices, external indegree vectors,
+mean synaptic weight matrices, and other derived network-level
+representations.
 """
 
 from __future__ import annotations
@@ -8,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 
 from human_microcircuit.config.network import NetworkConfig
-from human_microcircuit.physiology.common.synaptic_parameters import (
+from human_microcircuit.reference_models.common.synapses import (
     psp_to_psc,
 )
 
@@ -120,7 +128,7 @@ def mean_psc_matrix(
     Return the biological mean PSC matrix.
     """
 
-    from human_microcircuit.physiology.common.synaptic_parameters import (
+    from human_microcircuit.reference_models.common.synapses import (
         psp_to_psc,
     )
 

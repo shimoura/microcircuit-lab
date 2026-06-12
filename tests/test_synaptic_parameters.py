@@ -1,6 +1,6 @@
 import numpy as np
 
-from human_microcircuit.physiology.common.synaptic_parameters import (
+from human_microcircuit.reference_models.common.synapses import (
     psc_over_psp,
     psc_to_psp,
     psp_to_psc,

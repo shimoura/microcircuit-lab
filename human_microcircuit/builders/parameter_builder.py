@@ -14,12 +14,12 @@ from human_microcircuit.config.network import (
     NetworkConfig,
 )
 
-from human_microcircuit.physiology.common.scaling import (
+from human_microcircuit.reference_models.common.scaling import (
     scale_neuron_number,
     scale_synapse_number,
 )
 
-from human_microcircuit.physiology.common.reference_matrices import (
+from human_microcircuit.reference_models.common.network import (
     indegree_matrix,
     full_mean_rates,
     external_indegrees,
@@ -28,14 +28,14 @@ from human_microcircuit.physiology.common.reference_matrices import (
     tau_syn_ex,
 )
 
-from human_microcircuit.physiology.pd14.dc_compensation import (
+from human_microcircuit.reference_models.pd14.dc_compensation import (
     external_dc_compensation,
     recurrent_dc_from_network,
 )
-from human_microcircuit.physiology.pd14.synapses import (
+from human_microcircuit.reference_models.pd14.synapses import (
     psp_to_psc_network,
 )
-from human_microcircuit.physiology.pd14.scaling import (
+from human_microcircuit.reference_models.pd14.scaling import (
     scale_weights,
 )
 

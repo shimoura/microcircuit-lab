@@ -7,15 +7,15 @@ from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
 from human_microcircuit.builders.config_builder import ConfigBuilder
-from human_microcircuit.physiology.pd14.dc_compensation import (
+from human_microcircuit.reference_models.pd14.dc_compensation import (
     recurrent_dc_compensation,
     recurrent_mean_input,
 )
-from human_microcircuit.physiology.pd14.scaling import (
+from human_microcircuit.reference_models.pd14.scaling import (
     adjust_weights_and_input_to_synapse_scaling,
 )
-from human_microcircuit.physiology.common.synaptic_parameters import psp_to_psc
-from human_microcircuit.physiology.common.connectivity import num_synapses_from_conn_prob
+from human_microcircuit.reference_models.common.synapses import psp_to_psc
+from human_microcircuit.reference_models.common.connectivity import num_synapses_from_conn_prob
 from human_microcircuit.utils.io import read_network_directory
 
 

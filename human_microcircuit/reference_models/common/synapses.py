@@ -1,5 +1,12 @@
 """
-Functions for working with synaptic parameters.
+Utilities related to synaptic parameters and transformations.
+
+This module provides operations on individual synapses, independent
+of the network topology or a particular reference model.
+
+Typical examples include conversions between postsynaptic potentials
+(PSPs) and postsynaptic currents (PSCs), as well as other synapse-level
+transformations and parameter conversions.
 """
 
 from __future__ import annotations
@@ -42,11 +49,7 @@ def psc_over_psp(
 
     eps = tau_syn / tau_m
 
-    return (
-        C_m
-        * eps ** (-1.0 / (1.0 - eps))
-        / tau_m
-    )
+    return C_m * eps ** (-1.0 / (1.0 - eps)) / tau_m
 
 
 def psp_to_psc(

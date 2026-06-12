@@ -1,4 +1,4 @@
-from human_microcircuit.physiology.common.scaling import (
+from human_microcircuit.reference_models.common.scaling import (
     scale_neuron_number,
     scale_synapse_number,
     scale_weight,
