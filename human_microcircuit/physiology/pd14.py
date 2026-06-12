@@ -54,11 +54,9 @@ def num_synapses_from_conn_prob(
 
 
 def adjust_weights_and_input_to_synapse_scaling(
-    PSC_matrix_mean,
+    mean_PSC_matrix,
     PSC_ext,
     K_scaling,
-    mean_PSC_matrix,
-    mean_PSC_ext,
     DC_amp,
     bg_input_type,
     bg_rate,
