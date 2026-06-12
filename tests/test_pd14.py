@@ -154,14 +154,9 @@ def test_recurrent_mean_input():
 
 def test_recurrent_dc_compensation():
 
-    input_rec = np.array(
-        [
-            1000.0,
-            2000.0,
-        ]
-    )
+    input_rec = np.array([2.0, 4.0])
 
-    result = recurrent_dc_compensation(
+    dc = recurrent_dc_compensation(
         input_rec=input_rec,
         tau_syn=0.5,
         K_scaling=4.0,
@@ -169,4 +164,4 @@ def test_recurrent_dc_compensation():
 
     expected = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * input_rec
 
-    assert np.allclose(result, expected)
+    assert np.allclose(dc, expected)

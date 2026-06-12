@@ -166,3 +166,38 @@ def test_identity_scaling():
     assert derived.populations["L23_E"].size == 20683
 
     assert derived.populations["L23_E"].background_indegree == 1600
+
+
+def test_identity_scaling_has_zero_dc():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ConfigBuilder(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={
+                    "N_scaling": 1.0,
+                    "K_scaling": 1.0,
+                }
+            )
+        }
+    )
+
+    derived = ParameterBuilder(network).build()
+
+    for pop in derived.populations.values():
+
+        assert pop.neuron.parameters.I_e == pytest.approx(0.0)
+
+
+def test_downscaled_network_has_dc_compensation():
+
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ConfigBuilder(network_files).build()
+
+    derived = ParameterBuilder(network).build()
+
+    assert any(pop.neuron.parameters.I_e != 0.0 for pop in derived.populations.values())

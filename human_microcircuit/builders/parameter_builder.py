@@ -27,7 +27,7 @@ from human_microcircuit.physiology.reference import (
     indegree_matrix,
     full_mean_rates,
     external_indegrees,
-    external_weights,
+    external_psc_weights,
 )
 
 from human_microcircuit.physiology.pd14 import (
@@ -356,7 +356,7 @@ class ParameterBuilder:
         indegrees = indegree_matrix(original)
         mean_rates = full_mean_rates(original)
         K_ext = external_indegrees(original)
-        PSC_ext = external_weights(original)
+        PSC_ext = external_psc_weights(original)
 
         #
         # Build recurrent PSC matrix (already biological PSC,
