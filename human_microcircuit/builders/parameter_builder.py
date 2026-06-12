@@ -29,6 +29,7 @@ from human_microcircuit.physiology.reference_matrices import (
     external_indegrees,
     external_psc_weights,
     mean_psc_matrix,
+    tau_syn_ex,
 )
 
 from human_microcircuit.physiology.pd14 import (
@@ -372,13 +373,7 @@ class ParameterBuilder:
         #
         # Recurrent contribution
         #
-        tau_syn = np.asarray(
-            [
-                original.populations[name].neuron.parameters.tau_syn_ex
-                for name in pop_names
-            ],
-            dtype=float,
-        )
+        tau_syn = tau_syn_ex(original)
 
         dc_rec = recurrent_dc_from_network(
             mean_PSC_matrix=PSC_matrix,

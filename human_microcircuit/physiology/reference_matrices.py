@@ -146,3 +146,19 @@ def mean_psc_matrix(
         )
 
     return matrix
+
+
+def tau_syn_ex(
+    network: NetworkConfig,
+) -> np.ndarray:
+    """
+    Return the excitatory synaptic time constant for each population.
+    """
+
+    return np.asarray(
+        [
+            network.populations[name].neuron.parameters.tau_syn_ex
+            for name in network.populations
+        ],
+        dtype=float,
+    )
