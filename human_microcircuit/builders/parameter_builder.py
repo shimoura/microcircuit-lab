@@ -191,6 +191,25 @@ class ParameterBuilder:
             }
         )
 
+
+    def _psp_to_psc(
+        self,
+        psp: float,
+        target_population,
+    ) -> float:
+        """
+        Convert a PSP amplitude to a PSC amplitude for a target population.
+        """
+
+        params = target_population.neuron.parameters
+
+        return psp_to_psc(
+            psp=psp,
+            C_m=params.C_m,
+            tau_m=params.tau_m,
+            tau_syn=params.tau_syn_ex,
+        )
+
     def _apply_psp_to_psc(
         self,
         network: NetworkConfig,
@@ -208,15 +227,11 @@ class ParameterBuilder:
 
             target = network.populations[connection.target]
 
-            tau_syn = target.neuron.parameters.tau_syn_ex
-
             weight = connection.weight.model_copy(
                 update={
-                    "mean": psp_to_psc(
-                        psp=connection.weight.mean,
-                        C_m=target.neuron.parameters.C_m,
-                        tau_m=target.neuron.parameters.tau_m,
-                        tau_syn=tau_syn,
+                    "mean": self._psp_to_psc(
+                        connection.weight.mean,
+                        target,
                     )
                 }
             )
@@ -238,15 +253,11 @@ class ParameterBuilder:
 
             target = network.populations[pop_name]
 
-            tau_syn = target.neuron.parameters.tau_syn_ex
-
             weight = input_cfg.weight.model_copy(
                 update={
-                    "mean": psp_to_psc(
-                        psp=input_cfg.weight.mean,
-                        C_m=target.neuron.parameters.C_m,
-                        tau_m=target.neuron.parameters.tau_m,
-                        tau_syn=tau_syn,
+                    "mean": self._psp_to_psc(
+                        input_cfg.weight.mean,
+                        target,
                     )
                 }
             )
