@@ -209,6 +209,59 @@ class ParameterBuilder:
             tau_syn=params.tau_syn_ex,
         )
 
+    def _convert_connection_weight_to_psc(
+        self,
+        connection,
+        network: NetworkConfig,
+    ):
+        """
+        Convert the connection weight from biological PSP amplitude to
+        PSC amplitude.
+        """
+        target = network.populations[connection.target]
+
+        weight = connection.weight.model_copy(
+            update={
+                "mean": self._psp_to_psc(
+                    connection.weight.mean,
+                    target,
+                )
+            }
+        )
+
+        return connection.model_copy(
+            update={
+                "weight": weight,
+            }
+        )
+
+    def _convert_input_weight_to_psc(
+        self,
+        pop_name: str,
+        input_cfg,
+        network: NetworkConfig,
+    ):
+        """
+        Convert the external input weight from biological PSP amplitude to
+        PSC amplitude.
+        """
+        target = network.populations[pop_name]
+
+        weight = input_cfg.weight.model_copy(
+            update={
+                "mean": self._psp_to_psc(
+                    input_cfg.weight.mean,
+                    target,
+                )
+            }
+        )
+
+        return input_cfg.model_copy(
+            update={
+                "weight": weight,
+            }
+        )
+
     def _apply_psp_to_psc(
         self,
         network: NetworkConfig,
@@ -223,23 +276,10 @@ class ParameterBuilder:
         connections = []
 
         for connection in network.connections:
-
-            target = network.populations[connection.target]
-
-            weight = connection.weight.model_copy(
-                update={
-                    "mean": self._psp_to_psc(
-                        connection.weight.mean,
-                        target,
-                    )
-                }
-            )
-
             connections.append(
-                connection.model_copy(
-                    update={
-                        "weight": weight,
-                    }
+                self._convert_connection_weight_to_psc(
+                    connection,
+                    network,
                 )
             )
 
@@ -247,24 +287,11 @@ class ParameterBuilder:
         # external inputs
         #
         inputs = {}
-
         for pop_name, input_cfg in network.inputs.items():
-
-            target = network.populations[pop_name]
-
-            weight = input_cfg.weight.model_copy(
-                update={
-                    "mean": self._psp_to_psc(
-                        input_cfg.weight.mean,
-                        target,
-                    )
-                }
-            )
-
-            inputs[pop_name] = input_cfg.model_copy(
-                update={
-                    "weight": weight,
-                }
+            inputs[pop_name] = self._convert_input_weight_to_psc(
+                pop_name,
+                input_cfg,
+                network,
             )
 
         return network.model_copy(
