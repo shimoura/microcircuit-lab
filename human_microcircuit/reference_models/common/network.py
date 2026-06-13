@@ -222,11 +222,7 @@ def convert_network_psp_to_psc(
     for pop_name, input_cfg in network.inputs.items():
 
         target = network.populations[pop_name]
-
-        if connection.weight.mean >= 0:
-            tau_syn = target.neuron.parameters.tau_syn_ex
-        else:
-            tau_syn = target.neuron.parameters.tau_syn_in
+        tau_syn = target.neuron.parameters.tau_syn_ex
 
         weight = input_cfg.weight.model_copy(
             update={
