@@ -252,7 +252,7 @@ class NestBackend:
         Create a NEST weight parameter.
         """
 
-        if weight.rel_std == 0.0:
+        if weight.distribution == "fixed":
             return weight.mean
 
         std = abs(weight.mean * weight.rel_std)

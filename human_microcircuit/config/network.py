@@ -99,6 +99,7 @@ class WeightDistribution(FrozenConfig):
     distribution: Literal[
         "normal",
         "lognormal",
+        "fixed",
     ] = "normal"
 
     unit: Literal[
@@ -112,7 +113,7 @@ class DelayDistribution(FrozenConfig):
 
     mean: float = Field(gt=0.0)
     rel_std: float = Field(ge=0.0)
-    distribution: Literal["normal", "lognormal"] = "normal"
+    distribution: Literal["normal", "lognormal", "fixed"] = "normal"
 
 
 # -----------------------------------------------------------------------------

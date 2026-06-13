@@ -5,85 +5,85 @@ inputs:
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L23_I:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L4_E:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L4_I:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L5_E:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L5_I:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L6_E:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
 
   L6_I:
     rate: 8.0
     weight:
       mean: 0.15
       rel_std: 0.0
-      distribution: normal
+      distribution: fixed
     delay:
       mean: 1.5
       rel_std: 0.5
-      distribution: normal
+      distribution: fixed
