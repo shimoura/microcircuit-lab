@@ -67,7 +67,7 @@ def scale_weight_sqrt(
     return weight / math.sqrt(K_scaling)
 
 
-def recurrent_mean_input(
+def network_mean_input(
     mean_PSC_matrix: np.ndarray,
     indegree_matrix: np.ndarray,
     mean_rates: np.ndarray,
@@ -111,20 +111,20 @@ def recurrent_dc_from_network(
     quantities.
     """
 
-    input_rec = recurrent_mean_input(
+    input_rec = network_mean_input(
         mean_PSC_matrix=mean_PSC_matrix,
         indegree_matrix=indegree_matrix,
         mean_rates=mean_rates,
     )
 
-    return recurrent_input_compensation(
+    return network_compensation_current(
         input_rec=input_rec,
         tau_syn=tau_syn,
         K_scaling=K_scaling,
     )
 
 
-def recurrent_input_compensation(
+def network_compensation_current(
     input_rec: np.ndarray,
     tau_syn: float,
     K_scaling: float,
@@ -152,7 +152,7 @@ def recurrent_input_compensation(
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_rec
 
 
-def external_input_compensation(
+def external_compensation_current(
     PSC_ext: np.ndarray,
     K_ext: np.ndarray,
     bg_rate: np.ndarray,
@@ -281,14 +281,14 @@ def adjust_weights_and_input_to_synapse_scaling(
     PSC_ext_new = PSC_ext / np.sqrt(K_scaling)
 
     # 3. Recurrent mean input
-    input_rec = recurrent_mean_input(
+    input_rec = network_mean_input(
         mean_PSC_matrix=mean_PSC_matrix,
         indegree_matrix=indegree_matrix,
         mean_rates=full_mean_rates,
     )
 
     # 4. Recurrent DC compensation
-    DC_amp_new = DC_amp + recurrent_input_compensation(
+    DC_amp_new = DC_amp + network_compensation_current(
         input_rec=input_rec,
         tau_syn=tau_syn,
         K_scaling=K_scaling,

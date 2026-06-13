@@ -18,7 +18,7 @@ from human_microcircuit.reference_models.common.scaling import (
     scale_neuron_number,
     scale_synapse_number,
     scale_weights,
-    external_input_compensation,
+    external_compensation_current,
     recurrent_dc_from_network,
 )
 
@@ -233,7 +233,7 @@ class ParameterBuilder:
             [original.inputs[name].rate for name in pop_names],
             dtype=float,
         )
-        dc_ext = external_input_compensation(
+        dc_ext = external_compensation_current(
             PSC_ext=PSC_ext,
             K_ext=K_ext,
             bg_rate=bg_rates,

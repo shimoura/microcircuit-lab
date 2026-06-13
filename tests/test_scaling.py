@@ -6,8 +6,8 @@ from human_microcircuit.reference_models.common.scaling import (
     scale_synapse_number,
     scale_weight,
     scale_weight_sqrt,
-    recurrent_input_compensation,
-    recurrent_mean_input,
+    network_compensation_current,
+    network_mean_input,
     adjust_weights_and_input_to_synapse_scaling,
 )
 
@@ -38,7 +38,7 @@ def test_scale_weight_sqrt():
     )
 
 
-def test_recurrent_mean_input():
+def test_network_mean_input():
 
     PSC = np.array(
         [
@@ -61,7 +61,7 @@ def test_recurrent_mean_input():
         ]
     )
 
-    result = recurrent_mean_input(
+    result = network_mean_input(
         mean_PSC_matrix=PSC,
         indegree_matrix=indegree,
         mean_rates=rates,
@@ -77,11 +77,11 @@ def test_recurrent_mean_input():
     assert np.allclose(result, expected)
 
 
-def test_recurrent_input_compensation():
+def test_network_compensation_current():
 
     input_rec = np.array([2.0, 4.0])
 
-    dc = recurrent_input_compensation(
+    dc = network_compensation_current(
         input_rec=input_rec,
         tau_syn=0.5,
         K_scaling=4.0,
