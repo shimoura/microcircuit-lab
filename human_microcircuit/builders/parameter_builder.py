@@ -219,10 +219,14 @@ class ParameterBuilder:
         tau_syn = tau_syn_ex(original)
 
         # Compute recurrent contribution to DC compensation from biological network quantities
-        dc_rec = recurrent_dc_from_network(
+        network_input = network_mean_input(
             mean_PSC_matrix=PSC_matrix,
             indegree_matrix=indegrees,
             mean_rates=mean_rates,
+        )
+
+        network_current = network_compensation_current(
+            network_input=network_input,
             tau_syn=tau_syn,
             K_scaling=scaling.K_scaling,
         )
@@ -233,7 +237,7 @@ class ParameterBuilder:
             [original.inputs[name].rate for name in pop_names],
             dtype=float,
         )
-        dc_ext = external_compensation_current(
+        external_current = external_compensation_current(
             PSC_ext=PSC_ext,
             K_ext=K_ext,
             bg_rate=bg_rates,
@@ -247,7 +251,11 @@ class ParameterBuilder:
             population = network.populations[name]
             params = population.neuron.parameters.model_copy(
                 update={
-                    "I_e": (population.neuron.parameters.I_e + dc_rec[i] + dc_ext[i])
+                    "I_e": (
+                        population.neuron.parameters.I_e
+                        + network_current[i]
+                        + external_current[i]
+                    )
                 }
             )
 
