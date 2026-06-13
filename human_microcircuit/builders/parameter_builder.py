@@ -19,7 +19,7 @@ from human_microcircuit.reference_models.common.scaling import (
     scale_synapse_number,
     scale_weights,
     external_compensation_current,
-    recurrent_dc_from_network,
+    network_compensation_current,
 )
 
 from human_microcircuit.reference_models.common.network import (
@@ -30,6 +30,7 @@ from human_microcircuit.reference_models.common.network import (
     mean_psc_matrix,
     tau_syn_ex,
     psp_to_psc_network,
+    network_mean_input,
 )
 
 

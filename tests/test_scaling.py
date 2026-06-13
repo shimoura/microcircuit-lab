@@ -81,15 +81,15 @@ def test_network_mean_input():
 
 def test_network_compensation_current():
 
-    input_rec = np.array([2.0, 4.0])
+    network_input = np.array([2.0, 4.0])
 
     dc = network_compensation_current(
-        input_rec=input_rec,
+        network_input=network_input,
         tau_syn=0.5,
         K_scaling=4.0,
     )
 
-    expected = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * input_rec
+    expected = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * network_input
 
     assert np.allclose(dc, expected)
 
@@ -120,13 +120,13 @@ def test_adjust_weights_and_input_to_synapse_scaling():
     assert new_PSC[0, 0] == pytest.approx(1.0 / np.sqrt(4.0))
     assert new_ext == pytest.approx(100.0 / np.sqrt(4.0))
 
-    input_rec = np.array(
+    network_input = np.array(
         [
             2.0,
             2.0,
         ]
     )
-    expected_rec = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * input_rec
+    expected_rec = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * network_input
     expected_ext = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * 100.0 * 1.0 * 8.0
     assert np.allclose(
         new_DC,

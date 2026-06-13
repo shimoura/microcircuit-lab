@@ -1,6 +1,5 @@
 import math
 
-import numpy as np
 import pytest
 
 from human_microcircuit.builders.parameter_builder import (
