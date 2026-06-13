@@ -1,5 +1,6 @@
 import math
 import pytest
+import numpy as np
 
 from human_microcircuit.builders.config_builder import ConfigBuilder
 from human_microcircuit.builders.parameter_builder import (
@@ -16,7 +17,55 @@ from human_microcircuit.utils.io import read_network_directory
 from human_microcircuit.reference_models.common.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
+from human_microcircuit.reference_models.common.network import (
+    indegree_matrix,
+    full_mean_rates,
+    mean_psc_matrix,
+    network_mean_input,
+    external_indegrees,
+    external_psc_weights,
+)
 
+
+def test_network_mean_input_manual():
+    network_files = read_network_directory("configs/network/pd14")
+
+    network = ConfigBuilder(network_files).build()
+
+    PSC = mean_psc_matrix(network)
+    K = indegree_matrix(network)
+    rates = full_mean_rates(network)
+
+    manual = (PSC[0] * K[0] * rates).sum()
+
+    computed = network_mean_input(
+        mean_PSC_matrix=PSC,
+        indegree_matrix=K,
+        mean_rates=rates,
+    )[0]
+
+    assert manual == pytest.approx(computed)
+
+
+def test_external_input_manual():
+    network_files = read_network_directory("configs/network/pd14")
+    network = ConfigBuilder(network_files).build()
+    PSC_ext = external_psc_weights(network)
+    K_ext = external_indegrees(network)
+    rates = np.asarray(
+        [
+            network.inputs[name].rate
+            for name in network.populations
+        ]
+    )
+
+    manual = PSC_ext * K_ext * rates
+
+    computed = external_psc_weights(network) \
+        * external_indegrees(network) \
+        * rates
+
+    assert np.allclose(manual, computed)
 
 def test_n_scaling():
 

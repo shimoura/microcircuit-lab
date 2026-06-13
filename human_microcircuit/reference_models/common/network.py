@@ -146,11 +146,16 @@ def mean_psc_matrix(
 
         target = network.populations[connection.target]
 
+        if connection.weight.mean >= 0:
+            tau_syn = target.neuron.parameters.tau_syn_ex
+        else:
+            tau_syn = target.neuron.parameters.tau_syn_in
+
         matrix[i, j] = psp_to_psc_iaf_psc_exp(
             psp=connection.weight.mean,
             C_m=target.neuron.parameters.C_m,
             tau_m=target.neuron.parameters.tau_m,
-            tau_syn=target.neuron.parameters.tau_syn_ex,
+            tau_syn=tau_syn,
         )
 
     return matrix
