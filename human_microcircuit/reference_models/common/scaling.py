@@ -140,7 +140,8 @@ def scale_weights(
     network: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Apply square root synaptic weight scaling.
+    Apply square root synaptic weight scaling to all recurrent and external synaptic weights.
+    Scaling preserves input fluctuations by applying:
 
     w -> w / sqrt(K_scaling)
     """

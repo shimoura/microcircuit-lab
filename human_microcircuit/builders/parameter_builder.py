@@ -53,16 +53,13 @@ class ParameterBuilder:
         """
 
         network = self._network_config.model_copy(deep=True)
-
-        network = self._apply_n_scaling(network)
-
-        network = self._apply_k_scaling(network)
-
         network = psp_to_psc_network(network)
 
-        network = scale_weights(network)
-
-        network = self._apply_input_compensation(network)
+        if network.scaling.is_scaled:
+            network = self._apply_n_scaling(network)
+            network = self._apply_k_scaling(network)
+            network = scale_weights(network)
+            network = self._apply_input_compensation(network)
 
         network = self._apply_external_poisson_rates(network)
 
@@ -114,12 +111,8 @@ class ParameterBuilder:
 
         scaling = network.scaling
 
-        #
-        # populations
-        #
-
+        # Scale background indegrees
         populations = {}
-
         for name, population in network.populations.items():
 
             populations[name] = population.model_copy(
@@ -130,12 +123,8 @@ class ParameterBuilder:
                 }
             )
 
-        #
-        # connections
-        #
-
+        # Scale recurrent synapse numbers
         connections = []
-
         for connection in network.connections:
 
             connections.append(
@@ -164,8 +153,8 @@ class ParameterBuilder:
         Convert biological background rates into effective
         Poisson generator rates.
 
-        PD14:
-
+        The effective rate is computed as the product of the background
+        rate and the background indegree, i.e.,
             effective_rate = bg_rate * K_ext
         """
 

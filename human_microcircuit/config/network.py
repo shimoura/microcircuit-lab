@@ -167,6 +167,13 @@ class ScalingConfig(FrozenConfig):
     preserve_mean_input: bool = True
     preserve_variance: bool = True
 
+    @property
+    def is_scaled(self) -> bool:
+        return (
+            self.N_scaling != 1.0
+            or self.K_scaling != 1.0
+        )
+
 
 # -----------------------------------------------------------------------------
 # Reference data
