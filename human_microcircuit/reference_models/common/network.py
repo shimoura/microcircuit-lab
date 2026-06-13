@@ -235,3 +235,35 @@ def psp_to_psc_network(
             "inputs": inputs,
         }
     )
+
+
+def network_mean_input(
+    mean_PSC_matrix: np.ndarray,
+    indegree_matrix: np.ndarray,
+    mean_rates: np.ndarray,
+) -> np.ndarray:
+    """
+    Compute the mean recurrent synaptic input used for DC compensation
+    when scaling synaptic weights.
+
+    Parameters
+    ----------
+    mean_PSC_matrix
+        Matrix of mean PSC amplitudes (pA).
+
+    indegree_matrix
+        Matrix of indegrees.
+
+    mean_rates
+        Mean firing rate of each source population (Hz).
+
+    Returns
+    -------
+    np.ndarray
+        Mean recurrent input for each target population.
+    """
+
+    return np.sum(
+        mean_PSC_matrix * indegree_matrix * mean_rates,
+        axis=1,
+    )

@@ -14,7 +14,9 @@ import math
 import numpy as np
 
 from human_microcircuit.config.network import NetworkConfig
-
+from human_microcircuit.reference_models.common.network import (
+    network_mean_input,
+)
 
 def scale_neuron_number(
     value: int,
@@ -65,38 +67,6 @@ def scale_weight_sqrt(
     """
 
     return weight / math.sqrt(K_scaling)
-
-
-def network_mean_input(
-    mean_PSC_matrix: np.ndarray,
-    indegree_matrix: np.ndarray,
-    mean_rates: np.ndarray,
-) -> np.ndarray:
-    """
-    Compute the mean recurrent synaptic input used for DC compensation 
-    when scaling synaptic weights.
-
-    Parameters
-    ----------
-    mean_PSC_matrix
-        Matrix of mean PSC amplitudes (pA).
-
-    indegree_matrix
-        Matrix of indegrees.
-
-    mean_rates
-        Mean firing rate of each source population (Hz).
-
-    Returns
-    -------
-    np.ndarray
-        Mean recurrent input for each target population.
-    """
-
-    return np.sum(
-        mean_PSC_matrix * indegree_matrix * mean_rates,
-        axis=1,
-    )
 
 
 def recurrent_dc_from_network(

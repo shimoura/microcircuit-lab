@@ -7,8 +7,10 @@ from human_microcircuit.reference_models.common.scaling import (
     scale_weight,
     scale_weight_sqrt,
     network_compensation_current,
-    network_mean_input,
     adjust_weights_and_input_to_synapse_scaling,
+)
+from human_microcircuit.reference_models.common.network import (
+    network_mean_input,
 )
 
 
