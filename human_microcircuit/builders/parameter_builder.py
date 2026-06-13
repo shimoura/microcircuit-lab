@@ -29,7 +29,7 @@ from human_microcircuit.reference_models.common.network import (
     external_psc_weights,
     mean_psc_matrix,
     tau_syn_ex,
-    psp_to_psc_network,
+    convert_network_psp_to_psc,
     network_mean_input,
 )
 
@@ -53,7 +53,7 @@ class ParameterBuilder:
         """
 
         network = self._network_config.model_copy(deep=True)
-        network = psp_to_psc_network(network)
+        network = convert_network_psp_to_psc(network)
 
         if network.scaling.is_scaled:
             network = self._apply_n_scaling(network)

@@ -6,7 +6,7 @@ from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
 from human_microcircuit.builders.config_builder import ConfigBuilder
-from human_microcircuit.reference_models.common.synapses import psp_to_psc
+from human_microcircuit.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
 from human_microcircuit.reference_models.common.connectivity import (
     num_synapses_from_conn_prob,
 )
@@ -59,7 +59,7 @@ def test_pd14_first_weight():
 
     network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
 
-    expected = psp_to_psc(
+    expected = psp_to_psc_iaf_psc_exp(
         psp=0.15,
         C_m=250.0,
         tau_m=10.0,

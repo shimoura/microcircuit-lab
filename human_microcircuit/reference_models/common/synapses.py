@@ -52,14 +52,16 @@ def psc_over_psp(
     return C_m * eps ** (-1.0 / (1.0 - eps)) / tau_m
 
 
-def psp_to_psc(
+def psp_to_psc_iaf_psc_exp(
     psp: float,
     C_m: float,
     tau_m: float,
     tau_syn: float,
 ) -> float:
     """
-    Convert a PSP amplitude (mV) to a PSC amplitude (pA).
+    Convert a PSP amplitude to the equivalent PSC amplitude for
+    current-based LIF neurons with exponential synaptic currents
+    (iaf_psc_exp).
     """
 
     return psp * psc_over_psp(

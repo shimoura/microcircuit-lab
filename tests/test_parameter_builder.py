@@ -14,7 +14,7 @@ from human_microcircuit.config.network import (
 )
 from human_microcircuit.utils.io import read_network_directory
 from human_microcircuit.reference_models.common.synapses import (
-    psp_to_psc,
+    psp_to_psc_iaf_psc_exp,
 )
 
 
@@ -134,7 +134,7 @@ def test_weight_scaling():
 
     derived = ParameterBuilder(network_config).build()
 
-    expected = psp_to_psc(
+    expected = psp_to_psc_iaf_psc_exp(
         psp=0.15,
         C_m=250.0,
         tau_m=10.0,

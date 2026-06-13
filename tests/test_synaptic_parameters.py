@@ -3,7 +3,7 @@ import numpy as np
 from human_microcircuit.reference_models.common.synapses import (
     psc_over_psp,
     psc_to_psp,
-    psp_to_psc,
+    psp_to_psc_iaf_psc_exp,
 )
 
 
@@ -11,7 +11,7 @@ def test_roundtrip():
 
     psp = 0.15
 
-    psc = psp_to_psc(
+    psc = psp_to_psc_iaf_psc_exp(
         psp=psp,
         C_m=250.0,
         tau_m=10.0,
@@ -54,7 +54,7 @@ def test_reference_value():
 
 def test_known_conversion():
 
-    psc = psp_to_psc(
+    psc = psp_to_psc_iaf_psc_exp(
         psp=0.15,
         C_m=250.0,
         tau_m=10.0,

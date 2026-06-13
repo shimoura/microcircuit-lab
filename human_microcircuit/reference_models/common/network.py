@@ -17,7 +17,7 @@ import numpy as np
 
 from human_microcircuit.config.network import NetworkConfig
 from human_microcircuit.reference_models.common.synapses import (
-    psp_to_psc,
+    psp_to_psc_iaf_psc_exp,
 )
 
 
@@ -109,7 +109,7 @@ def external_psc_weights(
 
     return np.asarray(
         [
-            psp_to_psc(
+            psp_to_psc_iaf_psc_exp(
                 psp=network.inputs[name].weight.mean,
                 C_m=network.populations[name].neuron.parameters.C_m,
                 tau_m=network.populations[name].neuron.parameters.tau_m,
@@ -129,7 +129,7 @@ def mean_psc_matrix(
     """
 
     from human_microcircuit.reference_models.common.synapses import (
-        psp_to_psc,
+        psp_to_psc_iaf_psc_exp,
     )
 
     pop_names = list(network.populations.keys())
@@ -146,7 +146,7 @@ def mean_psc_matrix(
 
         target = network.populations[connection.target]
 
-        matrix[i, j] = psp_to_psc(
+        matrix[i, j] = psp_to_psc_iaf_psc_exp(
             psp=connection.weight.mean,
             C_m=target.neuron.parameters.C_m,
             tau_m=target.neuron.parameters.tau_m,
@@ -172,23 +172,36 @@ def tau_syn_ex(
     )
 
 
-def psp_to_psc_network(
+def convert_network_psp_to_psc(
     network: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Convert biological PSP amplitudes into PSC amplitudes.
+    Convert all synaptic weights stored as PSP amplitudes into
+    PSC amplitudes.
+
+    The conversion is performed independently for each target
+    population using its neuron parameters.
+
+    Currently this transformation is only implemented for
+    current-based leaky integrate-and-fire neurons with
+    exponential synaptic currents (`iaf_psc_exp`).
     """
 
     connections = []
     for connection in network.connections:
 
         target = network.populations[connection.target]
+        if target.neuron.model != "iaf_psc_exp":
+            raise NotImplementedError(...)
 
-        tau_syn = target.neuron.parameters.tau_syn_ex
+        if connection.weight.mean >= 0:
+            tau_syn = target.neuron.parameters.tau_syn_ex
+        else:
+            tau_syn = target.neuron.parameters.tau_syn_in
 
         weight = connection.weight.model_copy(
             update={
-                "mean": psp_to_psc(
+                "mean": psp_to_psc_iaf_psc_exp(
                     psp=connection.weight.mean,
                     C_m=target.neuron.parameters.C_m,
                     tau_m=target.neuron.parameters.tau_m,
@@ -210,11 +223,14 @@ def psp_to_psc_network(
 
         target = network.populations[pop_name]
 
-        tau_syn = target.neuron.parameters.tau_syn_ex
+        if connection.weight.mean >= 0:
+            tau_syn = target.neuron.parameters.tau_syn_ex
+        else:
+            tau_syn = target.neuron.parameters.tau_syn_in
 
         weight = input_cfg.weight.model_copy(
             update={
-                "mean": psp_to_psc(
+                "mean": psp_to_psc_iaf_psc_exp(
                     psp=input_cfg.weight.mean,
                     C_m=target.neuron.parameters.C_m,
                     tau_m=target.neuron.parameters.tau_m,
