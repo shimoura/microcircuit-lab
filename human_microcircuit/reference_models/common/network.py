@@ -211,7 +211,8 @@ def convert_network_psp_to_psc(
                     C_m=target.neuron.parameters.C_m,
                     tau_m=target.neuron.parameters.tau_m,
                     tau_syn=tau_syn,
-                )
+                ),
+                "unit": "pA",
             }
         )
 
@@ -236,7 +237,8 @@ def convert_network_psp_to_psc(
                     C_m=target.neuron.parameters.C_m,
                     tau_m=target.neuron.parameters.tau_m,
                     tau_syn=tau_syn,
-                )
+                ),
+                "unit": "pA",
             }
         )
 
