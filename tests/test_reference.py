@@ -47,6 +47,17 @@ def test_parameter_builder_preserves_original_network():
 
     original = ConfigBuilder(network_files).build()
 
+    original = original.model_copy(
+        update={
+            "scaling": original.scaling.model_copy(
+                update={
+                    "N_scaling": 0.2,
+                    "K_scaling": 0.2,
+                }
+            )
+        }
+    )
+
     derived = ParameterBuilder(original).build()
 
     #

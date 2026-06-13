@@ -40,7 +40,20 @@ def test_pd14_parameter_builder():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+    network = ConfigBuilder(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={
+                    "N_scaling": 0.2,
+                    "K_scaling": 0.2,
+                }
+            )
+        }
+    )
+
+    network = ParameterBuilder(network).build()
 
     assert network.populations["L23_E"].size == round(20683 * 0.2)
 
@@ -57,7 +70,20 @@ def test_pd14_first_weight():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ParameterBuilder(ConfigBuilder(network_files).build()).build()
+    network = ConfigBuilder(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={
+                    "N_scaling": 0.2,
+                    "K_scaling": 0.2,
+                }
+            )
+        }
+    )
+
+    network = ParameterBuilder(network).build()
 
     expected = psp_to_psc_iaf_psc_exp(
         psp=0.15,

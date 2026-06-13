@@ -134,12 +134,14 @@ def test_weight_scaling():
 
     derived = ParameterBuilder(network_config).build()
 
+    K_scaling = network_config.scaling.K_scaling
+
     expected = psp_to_psc_iaf_psc_exp(
         psp=0.15,
         C_m=250.0,
         tau_m=10.0,
         tau_syn=0.5,
-    ) / math.sqrt(0.2)
+    ) / math.sqrt(K_scaling)
 
     assert derived.connections[0].weight.mean == pytest.approx(expected)
 
@@ -197,6 +199,17 @@ def test_downscaled_network_has_dc_compensation():
     network_files = read_network_directory("configs/network/pd14")
 
     network = ConfigBuilder(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={
+                    "N_scaling": 0.2,
+                    "K_scaling": 0.2,
+                }
+            )
+        }
+    )
 
     derived = ParameterBuilder(network).build()
 
