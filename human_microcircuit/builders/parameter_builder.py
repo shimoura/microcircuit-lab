@@ -17,6 +17,9 @@ from human_microcircuit.config.network import (
 from human_microcircuit.reference_models.common.scaling import (
     scale_neuron_number,
     scale_synapse_number,
+    scale_weights,
+    external_input_compensation,
+    recurrent_dc_from_network,
 )
 
 from human_microcircuit.reference_models.common.network import (
@@ -26,18 +29,9 @@ from human_microcircuit.reference_models.common.network import (
     external_psc_weights,
     mean_psc_matrix,
     tau_syn_ex,
-)
-
-from human_microcircuit.reference_models.pd14.dc_compensation import (
-    external_dc_compensation,
-    recurrent_dc_from_network,
-)
-from human_microcircuit.reference_models.pd14.synapses import (
     psp_to_psc_network,
 )
-from human_microcircuit.reference_models.pd14.scaling import (
-    scale_weights,
-)
+
 
 class ParameterBuilder:
     """
@@ -67,7 +61,7 @@ class ParameterBuilder:
 
         network = scale_weights(network)
 
-        network = self._apply_dc_compensation(network)
+        network = self._apply_input_compensation(network)
 
         network = self._apply_external_poisson_rates(network)
 
@@ -192,18 +186,16 @@ class ParameterBuilder:
             }
         )
 
-    def _apply_dc_compensation(
+    def _apply_input_compensation(
         self,
         network: NetworkConfig,
     ) -> NetworkConfig:
         """
-        Apply the Potjans & Diesmann (2014) DC compensation
-        required for indegree scaling.
+        Apply constant currrent compensation to account for the change in mean synaptic
+        input due to synapse scaling.
         """
 
-        #
-        # Use the biological (unscaled) network as reference.
-        #
+        # Original network quantities
         original = self._network_config
 
         if original.reference is None:
@@ -211,27 +203,22 @@ class ParameterBuilder:
 
         scaling = original.scaling
 
-        #
-        # Reference quantities
-        #
+        # Connection indegrees for recurrent and external connections
         indegrees = indegree_matrix(original)
-        mean_rates = full_mean_rates(original)
         K_ext = external_indegrees(original)
+
+        # Mean PSC amplitudes (pA) for recurrent and external connections
         PSC_ext = external_psc_weights(original)
-
-        #
-        # Build recurrent PSC matrix (already biological PSC,
-        # because PSP->PSC conversion has not been applied to
-        # the original network).
-        #
         PSC_matrix = mean_psc_matrix(original)
-        pop_names = list(original.populations.keys())
 
-        #
-        # Recurrent contribution
-        #
+        # Mean firing rates (Hz) of reference network populations
+        mean_rates = full_mean_rates(original)
+
+        # Synaptic time constant (ms) for excitatory synapses
+        # (used for both recurrent and external contributions)
         tau_syn = tau_syn_ex(original)
 
+        # Compute recurrent contribution to DC compensation from biological network quantities
         dc_rec = recurrent_dc_from_network(
             mean_PSC_matrix=PSC_matrix,
             indegree_matrix=indegrees,
@@ -240,14 +227,13 @@ class ParameterBuilder:
             K_scaling=scaling.K_scaling,
         )
 
-        #
-        # External contribution
-        #
+        # Compute external contribution to DC compensation from biological network quantities
+        pop_names = list(original.populations.keys())
         bg_rates = np.asarray(
             [original.inputs[name].rate for name in pop_names],
             dtype=float,
         )
-        dc_ext = external_dc_compensation(
+        dc_ext = external_input_compensation(
             PSC_ext=PSC_ext,
             K_ext=K_ext,
             bg_rate=bg_rates,
@@ -255,15 +241,10 @@ class ParameterBuilder:
             K_scaling=scaling.K_scaling,
         )
 
-        #
-        # Update derived network
-        #
+        # Apply the compensation currents to neurons
         populations = {}
-
         for i, name in enumerate(pop_names):
-
             population = network.populations[name]
-
             params = population.neuron.parameters.model_copy(
                 update={
                     "I_e": (population.neuron.parameters.I_e + dc_rec[i] + dc_ext[i])
