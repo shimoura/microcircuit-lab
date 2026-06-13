@@ -59,7 +59,7 @@ class ParameterBuilder:
             network = self._apply_n_scaling(network)
             network = self._apply_k_scaling(network)
             network = scale_weights(network)
-            network = self._apply_input_compensation(network)
+            network = self._apply_scaling_compensation(network)
 
         network = self._apply_external_poisson_rates(network)
 
@@ -176,12 +176,12 @@ class ParameterBuilder:
             }
         )
 
-    def _apply_input_compensation(
+    def _apply_scaling_compensation(
         self,
         network: NetworkConfig,
     ) -> NetworkConfig:
         """
-        Apply constant currrent compensation to account for the change in mean synaptic
+        Apply constant current compensation to account for the change in mean synaptic
         input due to synapse scaling.
         """
 
