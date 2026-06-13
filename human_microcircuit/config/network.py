@@ -104,7 +104,7 @@ class WeightDistribution(FrozenConfig):
     unit: Literal[
         "PSC",
         "PSP",
-    ] = "PSC"
+    ] = "PSP"
 
 
 class DelayDistribution(FrozenConfig):
