@@ -7,7 +7,7 @@ This module contains the first implementation of the simulator backend.
 from __future__ import annotations
 
 import nest
-
+import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
@@ -230,7 +230,6 @@ class NestBackend:
         logger.info("Simulation statistics")
         logger.info("---------------------")
 
-
         for pop_name in self.spike_recorders:
             sr = self.spike_recorders[pop_name]
 
@@ -276,6 +275,18 @@ class NestBackend:
                 ),
                 min=-float("inf"),
                 max=0.0,
+            )
+
+        if weight.distribution == "lognormal":
+
+            variance = (weight.mean * weight.rel_std) ** 2
+            sigma2 = np.log(1.0 + variance / weight.mean**2)
+            sigma = np.sqrt(sigma2)
+            mu = np.log(weight.mean) - sigma2 / 2.0
+
+            return nest.random.lognormal(
+                mean=mu,
+                std=sigma,
             )
 
         raise NotImplementedError(f"Unsupported distribution: {weight.distribution}")
