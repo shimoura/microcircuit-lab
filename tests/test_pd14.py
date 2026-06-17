@@ -5,7 +5,7 @@ import pytest
 from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
-from human_microcircuit.builders.config_builder import ConfigBuilder
+from human_microcircuit.importers.yaml.importer import YamlImporter
 from human_microcircuit.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
 from human_microcircuit.reference_models.common.connectivity import (
     num_synapses_from_conn_prob,
@@ -40,7 +40,7 @@ def test_pd14_parameter_builder():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
 
     network = network.model_copy(
         update={
@@ -70,7 +70,7 @@ def test_pd14_first_weight():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
 
     network = network.model_copy(
         update={

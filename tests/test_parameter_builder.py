@@ -2,7 +2,7 @@ import math
 import pytest
 import numpy as np
 
-from human_microcircuit.builders.config_builder import ConfigBuilder
+from human_microcircuit.importers.yaml.importer import YamlImporter
 from human_microcircuit.builders.parameter_builder import (
     ParameterBuilder,
 )
@@ -30,7 +30,7 @@ from human_microcircuit.reference_models.common.network import (
 def test_network_mean_input_manual():
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
 
     PSC = mean_psc_matrix(network)
     K = indegree_matrix(network)
@@ -49,7 +49,7 @@ def test_network_mean_input_manual():
 
 def test_external_input_manual():
     network_files = read_network_directory("configs/network/pd14")
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
     PSC_ext = external_psc_weights(network)
     K_ext = external_indegrees(network)
     rates = np.asarray(
@@ -179,7 +179,7 @@ def test_weight_scaling():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network_config = ConfigBuilder(network_files).build()
+    network_config = YamlImporter(network_files).build()
 
     derived = ParameterBuilder(network_config).build()
 
@@ -199,7 +199,7 @@ def test_identity_scaling():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
 
     network = network.model_copy(
         update={
@@ -223,7 +223,7 @@ def test_identity_scaling_has_zero_dc():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
 
     network = network.model_copy(
         update={
@@ -247,7 +247,7 @@ def test_downscaled_network_has_dc_compensation():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigBuilder(network_files).build()
+    network = YamlImporter(network_files).build()
 
     network = network.model_copy(
         update={

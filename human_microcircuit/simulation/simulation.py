@@ -14,7 +14,7 @@ from __future__ import annotations
 from human_microcircuit.backend.nest.backend import NestBackend
 from human_microcircuit.network.network import Network
 
-from human_microcircuit.builders.config_builder import ConfigBuilder
+from human_microcircuit.importers.yaml.importer import YamlImporter
 from human_microcircuit.builders.parameter_builder import ParameterBuilder
 
 from human_microcircuit.config.simulation import SimulationConfig
@@ -57,7 +57,7 @@ class Simulation:
             Path(config_dir) / "network" / network_name
         )
 
-        network_config = ConfigBuilder(
+        network_config = YamlImporter(
             network_files,
         ).build()
 

@@ -27,7 +27,7 @@ from human_microcircuit.config.network import (
 from human_microcircuit.utils.io import NetworkFiles
 
 
-class ConfigBuilder:
+class YamlImporter:
     """
     Build a validated NetworkConfig from raw dictionaries.
     """
