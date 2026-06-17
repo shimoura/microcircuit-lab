@@ -1,0 +1,7 @@
+ei_ratio_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/fraction_EI/lichtman.csv
+min_neurons_per_layer: 5000
+remove_smaller_layerI: false
+source: VonEconomoKoskinas
+src_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/voneconomokoskinas/StructuralData_VonEconomoKoskinas_addedvalues.xls
+surface_area: 1
+target: DesikanKilliany

@@ -1,0 +1,11 @@
+FLN: 0.86
+SLN_FB: 0.35
+SLN_FF: 0.65
+Z_i: 0.93
+a0: -0.152
+a1: -1.534
+con_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/hcp_dti/Connectivity_Distances_HCP_DesikanKilliany.mat
+connectivity: HcpDesikanKilliany
+lmbda: 160
+rho_syn: 660000000.0
+vol_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/hcp_dti/DKAtlas_VolumeAndNames.mat

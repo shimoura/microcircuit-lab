@@ -1,0 +1,90 @@
+area_list:
+- bankssts
+- caudalanteriorcingulate
+- caudalmiddlefrontal
+- cuneus
+- entorhinal
+- fusiform
+- inferiorparietal
+- inferiortemporal
+- isthmuscingulate
+- lateraloccipital
+- lateralorbitofrontal
+- lingual
+- medialorbitofrontal
+- middletemporal
+- parahippocampal
+- paracentral
+- parsopercularis
+- parsorbitalis
+- parstriangularis
+- pericalcarine
+- postcentral
+- posteriorcingulate
+- precentral
+- precuneus
+- rostralanteriorcingulate
+- rostralmiddlefrontal
+- superiorfrontal
+- superiorparietal
+- superiortemporal
+- supramarginal
+- frontalpole
+- temporalpole
+- transversetemporal
+- insula
+delay_distribution: lognormal_clipped
+delay_e: 1.5
+delay_e_sd: 0.75
+delay_i: 0.75
+delay_i_sd: 0.375
+eta_ext: 1.1
+layer_list:
+- II/III
+- IV
+- V
+- VI
+neuron_model_E: iaf_psc_exp
+neuron_model_I: iaf_psc_exp
+neuron_param_dist_E:
+  C_m:
+    distribution: lognormal
+    rel_sd: 0.0
+  V_th:
+    distribution: lognormal
+    rel_sd: 0.0
+  tau_m:
+    distribution: lognormal
+    rel_sd: 0.0
+neuron_param_dist_I:
+  C_m:
+    distribution: lognormal
+    rel_sd: 0.0
+  V_th:
+    distribution: lognormal
+    rel_sd: 0.0
+  tau_m:
+    distribution: lognormal
+    rel_sd: 0.0
+neuron_params_E:
+  C_m: 220.0
+  E_L: -70.0
+  V_reset: -70.0
+  V_th: -45.0
+  t_ref: 2.0
+  tau_m: 10.0
+  tau_syn_ex: 2.0
+  tau_syn_in: 2.0
+neuron_params_I:
+  C_m: 100.0
+  E_L: -70.0
+  V_reset: -70.0
+  V_th: -45.0
+  t_ref: 2.0
+  tau_m: 10.0
+  tau_syn_ex: 2.0
+  tau_syn_in: 2.0
+p_transmit: 1.0
+population_list:
+- E
+- I

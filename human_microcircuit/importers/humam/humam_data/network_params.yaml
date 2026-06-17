@@ -1,0 +1,89 @@
+K_scaling: 1.0
+N_scaling: 1.0
+connection_params:
+  PSP_e: 0.1
+  PSP_ext: 0.1
+  PSP_rel: 0.1
+  g: -5.0
+  p_transmit: 1.0
+cytoarchitecture_params:
+  ei_ratio_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/fraction_EI/lichtman.csv
+  min_neurons_per_layer: 5000
+  remove_smaller_layerI: false
+  source: VonEconomoKoskinas
+  src_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/voneconomokoskinas/StructuralData_VonEconomoKoskinas_addedvalues.xls
+  target: DesikanKilliany
+delay_params:
+  delay_e: 1.5
+  delay_i: 0.75
+  delay_rel: 0.5
+  distribution: lognormal_clipped
+  interarea_speed: 3.5
+fullscale_rates: ./simulated_data/base_theory_rates.pkl
+input_params:
+  eta_ext: 1.1
+neuron_model_E: iaf_psc_exp
+neuron_model_I: iaf_psc_exp
+neuron_param_dist_E:
+  C_m:
+    distribution: lognormal
+    rel_sd: 0.0
+  V_th:
+    distribution: lognormal
+    rel_sd: 0.0
+  tau_m:
+    distribution: lognormal
+    rel_sd: 0.0
+neuron_param_dist_I:
+  C_m:
+    distribution: lognormal
+    rel_sd: 0.0
+  V_th:
+    distribution: lognormal
+    rel_sd: 0.0
+  tau_m:
+    distribution: lognormal
+    rel_sd: 0.0
+neuron_params_E:
+  C_m: 220.0
+  E_L: -70.0
+  V_reset: -70.0
+  V_th: -45.0
+  t_ref: 2.0
+  tau_m: 10.0
+  tau_syn_ex: 2.0
+  tau_syn_in: 2.0
+neuron_params_I:
+  C_m: 100.0
+  E_L: -70.0
+  V_reset: -70.0
+  V_th: -45.0
+  t_ref: 2.0
+  tau_m: 10.0
+  tau_syn_ex: 2.0
+  tau_syn_in: 2.0
+outpath: /opt/app-root/src/human-multi-area-model.git/out/downscaled1.0_cc1.0
+predictive_connectomic_params:
+  FLN: 0.86
+  SLN_FB: 0.35
+  SLN_FF: 0.65
+  Z_i: 0.93
+  a0: -0.152
+  a1: -1.534
+  con_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/hcp_dti/Connectivity_Distances_HCP_DesikanKilliany.mat
+  connectivity: HcpDesikanKilliany
+  lmbda: 160
+  rho_syn: 660000000.0
+  vol_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/hcp_dti/DKAtlas_VolumeAndNames.mat
+scaling_factors_external:
+  scaling5E: 1.05
+  scaling6E: 1.15
+scaling_factors_recurrent:
+  cc_scalingEtoE: 1.0
+  cc_scalingEtoI: 2.0
+  local_scaling4Eto23E: 2.0
+  local_scaling5EtoI: 1.0
+  local_scalingEtoI: 1.0
+scaling_type: linear
+single_spike: {}
+surface_area: 1
