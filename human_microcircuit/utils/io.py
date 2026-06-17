@@ -40,8 +40,7 @@ def read_yaml(path: str | Path) -> dict[str, Any]:
 
     if not isinstance(data, dict):
         raise TypeError(
-            f"Expected top-level mapping in '{path}', "
-            f"got {type(data).__name__}."
+            f"Expected top-level mapping in '{path}', " f"got {type(data).__name__}."
         )
 
     return data
@@ -62,15 +61,17 @@ def read_network_directory(path: str | Path) -> NetworkFiles:
         Data class containing the raw contents of all configuration files.
     """
     path = Path(path)
+    manifest = read_yaml(path / "network.yaml")
 
     return NetworkFiles(
-        populations=read_yaml(path / "populations.yaml"),
-        neurons=read_yaml(path / "neurons.yaml"),
-        connectivity=read_yaml(path / "connectivity.yaml"),
-        inputs=read_yaml(path / "inputs.yaml"),
-        scaling=read_yaml(path / "scaling.yaml"),
-        reference=read_yaml(path / "reference.yaml"),
+        populations=read_yaml(path / manifest["populations"]),
+        neurons=read_yaml(path / manifest["neurons"]),
+        connectivity=read_yaml(path / manifest["connectivity"]),
+        inputs=read_yaml(path / manifest["inputs"]),
+        scaling=read_yaml(path / manifest["scaling"]),
+        reference=read_yaml(path / manifest["reference"]),
     )
+
 
 @dataclass(frozen=True)
 class NetworkFiles:
