@@ -10,7 +10,7 @@ from math import log
 
 import numpy as np
 
-from human_microcircuit.importers.pd14.data import (
+from microcircuit_lab.importers.pd14.data import (
     populations,
     full_num_neurons,
     connection_probabilities,

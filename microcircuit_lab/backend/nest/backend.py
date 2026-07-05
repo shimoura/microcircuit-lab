@@ -12,9 +12,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from human_microcircuit.network.network import Network
-from human_microcircuit.config.simulation import SimulationConfig
-from human_microcircuit.config.network import PopulationConfig
+from microcircuit_lab.network.network import Network
+from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.network import PopulationConfig
 
 
 class NestBackend:

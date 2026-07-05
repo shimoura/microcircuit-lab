@@ -1,4 +1,4 @@
 output/*
-human_microcircuit.egg-info/*
+microcircuit_lab.egg-info/*
 **/__pycache__/*
 *.pyc

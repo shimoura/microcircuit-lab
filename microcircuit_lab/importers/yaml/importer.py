@@ -11,7 +11,7 @@ No simulator-specific code belongs here.
 
 from __future__ import annotations
 
-from human_microcircuit.config.network import (
+from microcircuit_lab.config.network import (
     ConnectionConfig,
     DelayDistribution,
     NetworkConfig,
@@ -24,7 +24,7 @@ from human_microcircuit.config.network import (
     ReferenceConfig,
 )
 
-from human_microcircuit.utils.io import NetworkFiles
+from microcircuit_lab.utils.io import NetworkFiles
 
 
 class YamlImporter:

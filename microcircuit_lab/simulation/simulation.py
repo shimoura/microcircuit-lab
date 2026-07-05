@@ -11,15 +11,15 @@ mathematics and no simulator-specific code.
 
 from __future__ import annotations
 
-from human_microcircuit.backend.nest.backend import NestBackend
-from human_microcircuit.network.network import Network
+from microcircuit_lab.backend.nest.backend import NestBackend
+from microcircuit_lab.network.network import Network
 
-from human_microcircuit.importers.yaml.importer import YamlImporter
-from human_microcircuit.builders.parameter_builder import ParameterBuilder
+from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.builders.parameter_builder import ParameterBuilder
 
-from human_microcircuit.config.simulation import SimulationConfig
+from microcircuit_lab.config.simulation import SimulationConfig
 
-from human_microcircuit.utils.io import (
+from microcircuit_lab.utils.io import (
     read_network_directory,
     read_yaml,
 )

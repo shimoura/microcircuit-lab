@@ -2,22 +2,22 @@ import math
 import pytest
 import numpy as np
 
-from human_microcircuit.importers.yaml.importer import YamlImporter
-from human_microcircuit.builders.parameter_builder import (
+from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.builders.parameter_builder import (
     ParameterBuilder,
 )
-from human_microcircuit.config.network import (
+from microcircuit_lab.config.network import (
     NetworkConfig,
     PopulationConfig,
     ScalingConfig,
     NeuronConfig,
     NeuronParams,
 )
-from human_microcircuit.utils.io import read_network_directory
-from human_microcircuit.reference_models.common.synapses import (
+from microcircuit_lab.utils.io import read_network_directory
+from microcircuit_lab.reference_models.common.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
-from human_microcircuit.reference_models.common.network import (
+from microcircuit_lab.reference_models.common.network import (
     indegree_matrix,
     full_mean_rates,
     mean_psc_matrix,

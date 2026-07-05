@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from human_microcircuit.config.network import NetworkConfig
+from microcircuit_lab.config.network import NetworkConfig
 
 
 class NetworkImporter(ABC):

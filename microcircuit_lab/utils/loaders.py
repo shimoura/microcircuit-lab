@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from human_microcircuit.utils.io import read_yaml
+from microcircuit_lab.utils.io import read_yaml
 
 
 def load_data(path: str | Path):

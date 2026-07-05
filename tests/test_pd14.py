@@ -2,15 +2,15 @@ import math
 
 import pytest
 
-from human_microcircuit.builders.parameter_builder import (
+from microcircuit_lab.builders.parameter_builder import (
     ParameterBuilder,
 )
-from human_microcircuit.importers.yaml.importer import YamlImporter
-from human_microcircuit.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
-from human_microcircuit.reference_models.common.connectivity import (
+from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
+from microcircuit_lab.reference_models.common.connectivity import (
     num_synapses_from_conn_prob,
 )
-from human_microcircuit.utils.io import read_network_directory
+from microcircuit_lab.utils.io import read_network_directory
 
 
 def test_zero_connection_probability():

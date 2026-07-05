@@ -4,7 +4,7 @@ Simulator-independent network description.
 
 from __future__ import annotations
 
-from human_microcircuit.config.network import NetworkConfig
+from microcircuit_lab.config.network import NetworkConfig
 
 
 class Network:

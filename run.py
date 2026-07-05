@@ -2,10 +2,10 @@
 Project entry point.
 """
 
-from human_microcircuit.simulation.simulation import (
+from microcircuit_lab.simulation.simulation import (
     Simulation,
 )
-from human_microcircuit.analysis.raster import plot_raster
+from microcircuit_lab.analysis.raster import plot_raster
 
 
 import logging

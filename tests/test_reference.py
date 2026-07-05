@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from human_microcircuit.importers.yaml.importer import YamlImporter
-from human_microcircuit.builders.parameter_builder import (
+from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.builders.parameter_builder import (
     ParameterBuilder,
 )
-from human_microcircuit.reference_models.common.network import (
+from microcircuit_lab.reference_models.common.network import (
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,
@@ -13,7 +13,7 @@ from human_microcircuit.reference_models.common.network import (
     external_indegrees,
     external_weights,
 )
-from human_microcircuit.utils.io import read_network_directory
+from microcircuit_lab.utils.io import read_network_directory
 
 
 def test_reference_matrices():

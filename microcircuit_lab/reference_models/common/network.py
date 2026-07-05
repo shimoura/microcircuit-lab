@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from human_microcircuit.config.network import NetworkConfig
-from human_microcircuit.reference_models.common.synapses import (
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.reference_models.common.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
 
@@ -128,7 +128,7 @@ def mean_psc_matrix(
     Return the biological mean PSC matrix.
     """
 
-    from human_microcircuit.reference_models.common.synapses import (
+    from microcircuit_lab.reference_models.common.synapses import (
         psp_to_psc_iaf_psc_exp,
     )
 
