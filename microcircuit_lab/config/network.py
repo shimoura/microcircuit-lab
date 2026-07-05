@@ -6,7 +6,7 @@ biological network. They are pure data containers and must not contain
 simulation logic or simulator-specific code.
 
 These models are intended to be populated from YAML files and consumed by
-ParameterBuilder to derive all quantities required by the simulator backend.
+NetworkPreprocessor to derive all quantities required by the simulator backend.
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ class WeightDistribution(FrozenConfig):
 
     The interpretation of `mean` depends on `unit`.
 
-    ParameterBuilder is responsible for converting the biological
+    NetworkPreprocessor is responsible for converting the biological
     representation into simulator-specific quantities.
     """
 

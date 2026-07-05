@@ -2,8 +2,8 @@ import math
 
 import pytest
 
-from microcircuit_lab.builders.parameter_builder import (
-    ParameterBuilder,
+from microcircuit_lab.network.preprocessing import (
+    NetworkPreprocessor,
 )
 from microcircuit_lab.importers.yaml.importer import YamlImporter
 from microcircuit_lab.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
@@ -36,7 +36,7 @@ def test_positive_connection_probability():
     assert n > 0
 
 
-def test_pd14_parameter_builder():
+def test_pd14_preprocessing():
 
     network_files = read_network_directory("configs/network/pd14")
 
@@ -53,7 +53,7 @@ def test_pd14_parameter_builder():
         }
     )
 
-    network = ParameterBuilder(network).build()
+    network = NetworkPreprocessor(network).process()
 
     assert network.populations["L23_E"].size == round(20683 * 0.2)
 
@@ -83,7 +83,7 @@ def test_pd14_first_weight():
         }
     )
 
-    network = ParameterBuilder(network).build()
+    network = NetworkPreprocessor(network).process()
 
     expected = psp_to_psc_iaf_psc_exp(
         psp=0.15,

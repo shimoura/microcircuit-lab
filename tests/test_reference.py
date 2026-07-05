@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.importers.yaml.importer import YamlImporter
-from microcircuit_lab.builders.parameter_builder import (
-    ParameterBuilder,
+from microcircuit_lab.network.preprocessing import (
+    NetworkPreprocessor,
 )
 from microcircuit_lab.reference_models.common.network import (
     full_num_neurons,
@@ -41,7 +41,7 @@ def test_reference_matrices():
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
 
 
-def test_parameter_builder_preserves_original_network():
+def test_preprocessing_preserves_original_network():
 
     network_files = read_network_directory("configs/network/pd14")
 
@@ -58,7 +58,7 @@ def test_parameter_builder_preserves_original_network():
         }
     )
 
-    derived = ParameterBuilder(original).build()
+    derived = NetworkPreprocessor(original).process()
 
     #
     # original untouched

@@ -3,8 +3,8 @@ import pytest
 import numpy as np
 
 from microcircuit_lab.importers.yaml.importer import YamlImporter
-from microcircuit_lab.builders.parameter_builder import (
-    ParameterBuilder,
+from microcircuit_lab.network.preprocessing import (
+    NetworkPreprocessor,
 )
 from microcircuit_lab.config.network import (
     NetworkConfig,
@@ -106,7 +106,7 @@ def test_n_scaling():
         ),
     )
 
-    derived = ParameterBuilder(network).build()
+    derived = NetworkPreprocessor(network).process()
 
     #
     # original unchanged
@@ -160,7 +160,7 @@ def test_k_scaling():
         ),
     )
 
-    derived = ParameterBuilder(network).build()
+    derived = NetworkPreprocessor(network).process()
 
     #
     # original unchanged
@@ -181,7 +181,7 @@ def test_weight_scaling():
 
     network_config = YamlImporter(network_files).build()
 
-    derived = ParameterBuilder(network_config).build()
+    derived = NetworkPreprocessor(network_config).process()
 
     K_scaling = network_config.scaling.K_scaling
 
@@ -212,7 +212,7 @@ def test_identity_scaling():
         }
     )
 
-    derived = ParameterBuilder(network).build()
+    derived = NetworkPreprocessor(network).process()
 
     assert derived.populations["L23_E"].size == 20683
 
@@ -236,7 +236,7 @@ def test_identity_scaling_has_zero_dc():
         }
     )
 
-    derived = ParameterBuilder(network).build()
+    derived = NetworkPreprocessor(network).process()
 
     for pop in derived.populations.values():
 
@@ -260,6 +260,6 @@ def test_downscaled_network_has_dc_compensation():
         }
     )
 
-    derived = ParameterBuilder(network).build()
+    derived = NetworkPreprocessor(network).process()
 
     assert any(pop.neuron.parameters.I_e != 0.0 for pop in derived.populations.values())

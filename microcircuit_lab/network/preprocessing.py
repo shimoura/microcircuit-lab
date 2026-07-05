@@ -34,7 +34,7 @@ from microcircuit_lab.reference_models.common.network import (
 )
 
 
-class ParameterBuilder:
+class NetworkPreprocessor:
     """
     Build a derived NetworkConfig.
     """
@@ -45,7 +45,7 @@ class ParameterBuilder:
     ) -> None:
         self._network_config = network_config
 
-    def build(self) -> NetworkConfig:
+    def process(self) -> NetworkConfig:
         """
         Build a derived NetworkConfig.
 

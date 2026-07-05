@@ -15,7 +15,7 @@ from microcircuit_lab.backend.nest.backend import NestBackend
 from microcircuit_lab.network.model import Network
 
 from microcircuit_lab.importers.yaml.importer import YamlImporter
-from microcircuit_lab.builders.parameter_builder import ParameterBuilder
+from microcircuit_lab.network.preprocessing import NetworkPreprocessor
 
 from microcircuit_lab.config.simulation import SimulationConfig
 
@@ -61,9 +61,9 @@ class Simulation:
             network_files,
         ).build()
 
-        network_config = ParameterBuilder(
+        network_config = NetworkPreprocessor(
             network_config,
-        ).build()
+        ).process()
 
         network = Network(
             network_config,
