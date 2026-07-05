@@ -12,7 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from microcircuit_lab.network.network import Network
+from microcircuit_lab.network.model import Network
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.network import PopulationConfig
 

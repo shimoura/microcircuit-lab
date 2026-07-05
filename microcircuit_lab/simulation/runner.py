@@ -12,7 +12,7 @@ mathematics and no simulator-specific code.
 from __future__ import annotations
 
 from microcircuit_lab.backend.nest.backend import NestBackend
-from microcircuit_lab.network.network import Network
+from microcircuit_lab.network.model import Network
 
 from microcircuit_lab.importers.yaml.importer import YamlImporter
 from microcircuit_lab.builders.parameter_builder import ParameterBuilder
