@@ -6,4 +6,4 @@ microcircuit model.
 
 The output of these utilities should be a NetworkConfig or
 a YAML representation that can be imported through
-YamlImporter.
+ConfigImporter.

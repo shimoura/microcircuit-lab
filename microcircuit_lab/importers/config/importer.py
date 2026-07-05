@@ -27,7 +27,7 @@ from microcircuit_lab.config.network import (
 from microcircuit_lab.utils.io import NetworkFiles
 
 
-class YamlImporter:
+class ConfigImporter:
     """
     Build a validated NetworkConfig from raw dictionaries.
     """

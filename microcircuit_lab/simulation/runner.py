@@ -14,7 +14,7 @@ from __future__ import annotations
 from microcircuit_lab.backend.nest.backend import NestBackend
 from microcircuit_lab.network.model import Network
 
-from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.importers.config.importer import ConfigImporter
 from microcircuit_lab.network.preprocessing import NetworkPreprocessor
 
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -57,7 +57,7 @@ class Simulation:
             Path(config_dir) / "network" / network_name
         )
 
-        network_config = YamlImporter(
+        network_config = ConfigImporter(
             network_files,
         ).build()
 

@@ -5,7 +5,7 @@ import pytest
 from microcircuit_lab.network.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.importers.config.importer import ConfigImporter
 from microcircuit_lab.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
 from microcircuit_lab.reference_models.common.connectivity import (
     num_synapses_from_conn_prob,
@@ -40,7 +40,7 @@ def test_pd14_preprocessing():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = YamlImporter(network_files).build()
+    network = ConfigImporter(network_files).build()
 
     network = network.model_copy(
         update={
@@ -70,7 +70,7 @@ def test_pd14_first_weight():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = YamlImporter(network_files).build()
+    network = ConfigImporter(network_files).build()
 
     network = network.model_copy(
         update={

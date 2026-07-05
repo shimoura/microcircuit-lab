@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from microcircuit_lab.importers.yaml.importer import YamlImporter
+from microcircuit_lab.importers.config.importer import ConfigImporter
 from microcircuit_lab.network.preprocessing import (
     NetworkPreprocessor,
 )
@@ -20,7 +20,7 @@ def test_reference_matrices():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = YamlImporter(network_files).build()
+    network = ConfigImporter(network_files).build()
 
     neurons = full_num_neurons(network)
     synapses = full_num_synapses(network)
@@ -45,7 +45,7 @@ def test_preprocessing_preserves_original_network():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    original = YamlImporter(network_files).build()
+    original = ConfigImporter(network_files).build()
 
     original = original.model_copy(
         update={
@@ -83,7 +83,7 @@ def test_full_mean_rates():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = YamlImporter(network_files).build()
+    network = ConfigImporter(network_files).build()
 
     rates = full_mean_rates(network)
 
@@ -103,7 +103,7 @@ def test_external_indegrees():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = YamlImporter(network_files).build()
+    network = ConfigImporter(network_files).build()
 
     K_ext = external_indegrees(network)
 
@@ -123,7 +123,7 @@ def test_external_weights():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = YamlImporter(network_files).build()
+    network = ConfigImporter(network_files).build()
 
     weights = external_weights(network)
 
