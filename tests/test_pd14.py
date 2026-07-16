@@ -2,12 +2,12 @@ import math
 
 import pytest
 
-from microcircuit_lab.network.preprocessing import (
+from microcircuit_lab.core.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.importers.config.importer import ConfigImporter
-from microcircuit_lab.reference_models.common.synapses import psp_to_psc_iaf_psc_exp
-from microcircuit_lab.reference_models.common.connectivity import (
+from microcircuit_lab.io.config import ConfigImporter
+from microcircuit_lab.models.common.synapses import psp_to_psc_iaf_psc_exp
+from microcircuit_lab.models.common.connectivity import (
     num_synapses_from_conn_prob,
 )
 from microcircuit_lab.utils.io import read_network_directory

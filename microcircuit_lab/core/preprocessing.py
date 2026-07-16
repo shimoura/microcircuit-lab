@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.network import (
+from microcircuit_lab.core.config.network import (
     NetworkConfig,
 )
 

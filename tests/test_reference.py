@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from microcircuit_lab.importers.config.importer import ConfigImporter
-from microcircuit_lab.network.preprocessing import (
+from microcircuit_lab.io.config import ConfigImporter
+from microcircuit_lab.core.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.reference_models.common.network import (
+from microcircuit_lab.models.common.network import (
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,

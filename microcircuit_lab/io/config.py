@@ -11,7 +11,7 @@ No simulator-specific code belongs here.
 
 from __future__ import annotations
 
-from microcircuit_lab.config.network import (
+from microcircuit_lab.core.config.network import (
     ConnectionConfig,
     DelayDistribution,
     NetworkConfig,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.core.config.simulation import SimulationConfig
 from microcircuit_lab.core.network import Network
 
 

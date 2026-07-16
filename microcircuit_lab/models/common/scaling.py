@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 import numpy as np
 
-from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.core.config.network import NetworkConfig
 from microcircuit_lab.models.common.network import (
     network_mean_input,
 )

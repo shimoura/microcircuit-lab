@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.core.config.network import NetworkConfig
 from microcircuit_lab.models.common.synapses import (
     psp_to_psc_iaf_psc_exp,
 )

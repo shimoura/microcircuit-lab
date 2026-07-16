@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from microcircuit_lab.reference_models.common.scaling import (
+from microcircuit_lab.models.common.scaling import (
     scale_neuron_number,
     scale_synapse_number,
     scale_weight,
@@ -9,7 +9,7 @@ from microcircuit_lab.reference_models.common.scaling import (
     network_compensation_current,
     adjust_weights_and_input_to_synapse_scaling,
 )
-from microcircuit_lab.reference_models.common.network import (
+from microcircuit_lab.models.common.network import (
     network_mean_input,
 )
 

@@ -17,7 +17,7 @@ from microcircuit_lab.core.network import Network
 from microcircuit_lab.io.config import ConfigImporter
 from microcircuit_lab.core.preprocessing import NetworkPreprocessor
 
-from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.core.config.simulation import SimulationConfig
 
 from microcircuit_lab.utils.io import (
     read_network_directory,

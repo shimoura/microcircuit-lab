@@ -2,11 +2,11 @@ import math
 import pytest
 import numpy as np
 
-from microcircuit_lab.importers.config.importer import ConfigImporter
-from microcircuit_lab.network.preprocessing import (
+from microcircuit_lab.io.config import ConfigImporter
+from microcircuit_lab.core.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.config.network import (
+from microcircuit_lab.core.config.network import (
     NetworkConfig,
     PopulationConfig,
     ScalingConfig,
@@ -14,10 +14,10 @@ from microcircuit_lab.config.network import (
     NeuronParams,
 )
 from microcircuit_lab.utils.io import read_network_directory
-from microcircuit_lab.reference_models.common.synapses import (
+from microcircuit_lab.models.common.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
-from microcircuit_lab.reference_models.common.network import (
+from microcircuit_lab.models.common.network import (
     indegree_matrix,
     full_mean_rates,
     mean_psc_matrix,

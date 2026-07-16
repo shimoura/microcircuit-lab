@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from microcircuit_lab.importers.humam import generate_humam_configs
+from microcircuit_lab.models.humam import generate_humam_configs
 
 
 def test_generate_single_area_configs(tmp_path: Path) -> None:

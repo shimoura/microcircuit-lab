@@ -13,8 +13,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from microcircuit_lab.core.network import Network
-from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.config.network import PopulationConfig
+from microcircuit_lab.core.config.simulation import SimulationConfig
+from microcircuit_lab.core.config.network import PopulationConfig
 
 
 class NestBackend:
