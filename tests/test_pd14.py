@@ -2,15 +2,15 @@ import math
 
 import pytest
 
-from microcircuit_lab.core.preprocessing import (
+from microcircuit_lab.network.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.io.config import ConfigImporter
-from microcircuit_lab.models.common.synapses import psp_to_psc_iaf_psc_exp
-from microcircuit_lab.models.common.connectivity import (
+from microcircuit_lab.io.config import NetworkConfigLoader
+from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
+from microcircuit_lab.network.connectivity import (
     num_synapses_from_conn_prob,
 )
-from microcircuit_lab.utils.io import read_network_directory
+from microcircuit_lab.io.files import read_network_directory
 
 
 def test_zero_connection_probability():
@@ -40,7 +40,7 @@ def test_pd14_preprocessing():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
         update={
@@ -70,7 +70,7 @@ def test_pd14_first_weight():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
         update={

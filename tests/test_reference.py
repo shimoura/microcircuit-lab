@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from microcircuit_lab.io.config import ConfigImporter
-from microcircuit_lab.core.preprocessing import (
+from microcircuit_lab.io.config import NetworkConfigLoader
+from microcircuit_lab.network.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.models.common.network import (
+from microcircuit_lab.network.parameters import (
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,
@@ -13,14 +13,14 @@ from microcircuit_lab.models.common.network import (
     external_indegrees,
     external_weights,
 )
-from microcircuit_lab.utils.io import read_network_directory
+from microcircuit_lab.io.files import read_network_directory
 
 
 def test_reference_matrices():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     neurons = full_num_neurons(network)
     synapses = full_num_synapses(network)
@@ -45,7 +45,7 @@ def test_preprocessing_preserves_original_network():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    original = ConfigImporter(network_files).build()
+    original = NetworkConfigLoader(network_files).build()
 
     original = original.model_copy(
         update={
@@ -83,7 +83,7 @@ def test_full_mean_rates():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     rates = full_mean_rates(network)
 
@@ -103,7 +103,7 @@ def test_external_indegrees():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     K_ext = external_indegrees(network)
 
@@ -123,7 +123,7 @@ def test_external_weights():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     weights = external_weights(network)
 

@@ -3,7 +3,7 @@ Generate the canonical PD14 connectivity.yaml.
 
 This script converts the original PD14 connection probabilities into
 absolute synapse numbers and writes a connectivity YAML in the format
-used by human-microcircuit.
+used by Microcircuit Lab.
 """
 
 from math import log

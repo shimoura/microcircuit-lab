@@ -50,4 +50,4 @@ simulation.run()
 - `generator.py`: HuMAM source-data translation and config generation.
 - `data/`: bundled source data used by the generator.
 
-New HuMAM-specific transformations belong here rather than in `core/` or `backends/`.
+New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.

@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.core.config.network import (
+from microcircuit_lab.config.network import (
     NetworkConfig,
 )
 
-from microcircuit_lab.models.common.scaling import (
+from microcircuit_lab.network.scaling import (
     scale_neuron_number,
     scale_synapse_number,
     scale_weights,
@@ -22,7 +22,7 @@ from microcircuit_lab.models.common.scaling import (
     network_compensation_current,
 )
 
-from microcircuit_lab.models.common.network import (
+from microcircuit_lab.network.parameters import (
     indegree_matrix,
     full_mean_rates,
     external_indegrees,

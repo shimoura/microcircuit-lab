@@ -12,14 +12,14 @@ mathematics and no simulator-specific code.
 from __future__ import annotations
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
-from microcircuit_lab.core.network import Network
+from microcircuit_lab.network import Network
 
-from microcircuit_lab.io.config import ConfigImporter
-from microcircuit_lab.core.preprocessing import NetworkPreprocessor
+from microcircuit_lab.io.config import NetworkConfigLoader
+from microcircuit_lab.network.preprocessing import NetworkPreprocessor
 
-from microcircuit_lab.core.config.simulation import SimulationConfig
+from microcircuit_lab.config.simulation import SimulationConfig
 
-from microcircuit_lab.utils.io import (
+from microcircuit_lab.io.files import (
     read_network_directory,
     read_yaml,
 )
@@ -60,7 +60,7 @@ class Simulation:
             Path(config_dir) / "network" / network_name
         )
 
-        network_config = ConfigImporter(
+        network_config = NetworkConfigLoader(
             network_files,
         ).build()
 

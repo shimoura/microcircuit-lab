@@ -14,7 +14,13 @@ microcircuit_lab/models/       model-specific translation and parameters
 configs/network/<model>/       portable YAML network description
       │
       ▼
-microcircuit_lab/core/         validation, preprocessing, orchestration
+microcircuit_lab/config/       validated configuration schemas
+      │
+      ▼
+microcircuit_lab/network/      network representation and preprocessing
+      │
+      ▼
+microcircuit_lab/simulation/   high-level simulation orchestration
       │
       ▼
 microcircuit_lab/backends/     simulator-specific execution
@@ -23,7 +29,7 @@ microcircuit_lab/backends/     simulator-specific execution
 microcircuit_lab/analysis/     simulator-facing analysis and plots
 ```
 
-The generic core does not depend on HuMAM, PD14, or any other specific reference model. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
+The generic network and simulation layers do not depend on HuMAM, PD14, or any other specific reference model. Model integrations depend on the generic network utilities, never the reverse. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
 
 ## Project structure
 
@@ -32,13 +38,11 @@ microcircuit_lab/
 ├── analysis/       # analysis and visualization
 ├── backends/       # simulator implementations (currently NEST)
 ├── config/         # validated network and simulation schemas
-├── core/           # generic Network, preprocessing, and Simulation
-├── io/             # loading raw configuration into validated objects
+├── io/             # configuration file loading and validation assembly
 ├── models/         # model-specific integrations (HuMAM, PD14, ...)
-└── utils/          # small generic I/O helpers
+├── network/        # generic network model, transformations, and preprocessing
+└── simulation/     # high-level simulation orchestration
 ```
-
-Legacy namespaces such as `network`, `simulation`, `backend`, `importers`, and `reference_models` remain as compatibility wrappers for existing code. New code should use the structure above.
 
 ## Installation
 
@@ -101,7 +105,7 @@ simulation = Simulation.from_yaml(
 simulation.run()
 ```
 
-Do not add model-specific branches to `core/` or a simulator backend unless the feature is genuinely generic.
+Do not add model-specific branches to `network/`, `simulation/`, or a simulator backend unless the feature is genuinely generic.
 
 ## Adding a backend
 

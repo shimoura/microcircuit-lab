@@ -11,8 +11,8 @@ from typing import Any
 
 import yaml
 
-from microcircuit_lab.models.common.synapses import psp_to_psc_iaf_psc_exp
-from microcircuit_lab.utils.io import read_yaml
+from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
+from microcircuit_lab.io.files import read_yaml
 
 
 LAYER_ALIAS = {

@@ -2,22 +2,22 @@ import math
 import pytest
 import numpy as np
 
-from microcircuit_lab.io.config import ConfigImporter
-from microcircuit_lab.core.preprocessing import (
+from microcircuit_lab.io.config import NetworkConfigLoader
+from microcircuit_lab.network.preprocessing import (
     NetworkPreprocessor,
 )
-from microcircuit_lab.core.config.network import (
+from microcircuit_lab.config.network import (
     NetworkConfig,
     PopulationConfig,
     ScalingConfig,
     NeuronConfig,
     NeuronParams,
 )
-from microcircuit_lab.utils.io import read_network_directory
-from microcircuit_lab.models.common.synapses import (
+from microcircuit_lab.io.files import read_network_directory
+from microcircuit_lab.network.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
-from microcircuit_lab.models.common.network import (
+from microcircuit_lab.network.parameters import (
     indegree_matrix,
     full_mean_rates,
     mean_psc_matrix,
@@ -30,7 +30,7 @@ from microcircuit_lab.models.common.network import (
 def test_network_mean_input_manual():
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     PSC = mean_psc_matrix(network)
     K = indegree_matrix(network)
@@ -49,7 +49,7 @@ def test_network_mean_input_manual():
 
 def test_external_input_manual():
     network_files = read_network_directory("configs/network/pd14")
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
     PSC_ext = external_psc_weights(network)
     K_ext = external_indegrees(network)
     rates = np.asarray(
@@ -179,7 +179,7 @@ def test_weight_scaling():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network_config = ConfigImporter(network_files).build()
+    network_config = NetworkConfigLoader(network_files).build()
 
     derived = NetworkPreprocessor(network_config).process()
 
@@ -199,7 +199,7 @@ def test_identity_scaling():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
         update={
@@ -223,7 +223,7 @@ def test_identity_scaling_has_zero_dc():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
         update={
@@ -247,7 +247,7 @@ def test_downscaled_network_has_dc_compensation():
 
     network_files = read_network_directory("configs/network/pd14")
 
-    network = ConfigImporter(network_files).build()
+    network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
         update={

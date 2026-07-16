@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.core.config.network import NetworkConfig
-from microcircuit_lab.models.common.synapses import (
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.network.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
 
@@ -128,7 +128,7 @@ def mean_psc_matrix(
     Return the biological mean PSC matrix.
     """
 
-    from microcircuit_lab.models.common.synapses import (
+    from microcircuit_lab.network.synapses import (
         psp_to_psc_iaf_psc_exp,
     )
 

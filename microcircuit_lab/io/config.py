@@ -11,7 +11,7 @@ No simulator-specific code belongs here.
 
 from __future__ import annotations
 
-from microcircuit_lab.core.config.network import (
+from microcircuit_lab.config.network import (
     ConnectionConfig,
     DelayDistribution,
     NetworkConfig,
@@ -24,10 +24,10 @@ from microcircuit_lab.core.config.network import (
     ReferenceConfig,
 )
 
-from microcircuit_lab.utils.io import NetworkFiles
+from microcircuit_lab.io.files import NetworkFiles
 
 
-class ConfigImporter:
+class NetworkConfigLoader:
     """
     Build a validated NetworkConfig from raw dictionaries.
     """
