@@ -1,192 +1,131 @@
 # Microcircuit Lab
 
-**Microcircuit Lab** is a flexible Python framework for building, configuring, simulating, and analyzing biologically inspired neural microcircuit models.
+Microcircuit Lab is a configuration-driven framework for building, simulating, and analyzing recurrent neural microcircuit models. It separates **model-specific data**, **generic network representation**, and **simulator backends** so published models can share the same simulation infrastructure.
 
-The framework is designed for computational neuroscience research, providing reusable infrastructure for implementing published microcircuit models, exploring parameter spaces, and running simulations using different simulator backends.
-
----
-
-## Features
-
-* Modular architecture for neural microcircuit modeling
-* Configuration-driven simulations using YAML files
-* Pydantic-based configuration validation
-* Flexible network scaling utilities
-* Support for multiple reference models
-* Extensible backend architecture
-* Built-in analysis and visualization tools
-* Designed for reproducible computational neuroscience workflows
-
----
-
-## Project Structure
+## Architecture
 
 ```text
-microcircuit-lab/
-├── microcircuit_lab/
-│   ├── analysis/
-│   ├── backend/
-│   ├── builders/
-│   ├── config/
-│   ├── importers/
-│   ├── network/
-│   ├── reference_models/
-│   ├── simulation/
-│   └── utils/
-├── examples/
-├── tests/
-├── docs/
-└── pyproject.toml
+model source data
+      │
+      ▼
+microcircuit_lab/models/       model-specific translation and parameters
+      │
+      ▼
+configs/network/<model>/       portable YAML network description
+      │
+      ▼
+microcircuit_lab/core/         validation, preprocessing, orchestration
+      │
+      ▼
+microcircuit_lab/backends/     simulator-specific execution
+      │
+      ▼
+microcircuit_lab/analysis/     simulator-facing analysis and plots
 ```
 
----
+The generic core does not depend on HuMAM, PD14, or any other specific reference model. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
+
+## Project structure
+
+```text
+microcircuit_lab/
+├── analysis/       # analysis and visualization
+├── backends/       # simulator implementations (currently NEST)
+├── config/         # validated network and simulation schemas
+├── core/           # generic Network, preprocessing, and Simulation
+├── io/             # loading raw configuration into validated objects
+├── models/         # model-specific integrations (HuMAM, PD14, ...)
+└── utils/          # small generic I/O helpers
+```
+
+Legacy namespaces such as `network`, `simulation`, `backend`, `importers`, and `reference_models` remain as compatibility wrappers for existing code. New code should use the structure above.
 
 ## Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/<username>/microcircuit-lab.git
-cd microcircuit-lab
-```
-
-### Create a Python environment
-
-Create and activate a new environment using Mamba:
 
 ```bash
 mamba create -n microcircuit-lab python=3.12
 mamba activate microcircuit-lab
-```
-
-### Install the package
-
-Install Microcircuit Lab in editable mode:
-
-```bash
-pip install -e .
-```
-
-To install the optional development dependencies:
-
-```bash
 pip install -e ".[dev]"
 ```
 
+NEST must be available in the environment used to run simulations.
 
-## Quick Start
+## Quick start
 
-Run a simulation:
-
-```bash
-python run.py
-```
-
-or from your own scripts:
+Run a pre-generated network configuration:
 
 ```python
-import microcircuit_lab
+from microcircuit_lab import Simulation
+
+simulation = Simulation.from_yaml(
+    network_name="pd14",
+    simulation_name="default",
+)
+simulation.run()
 ```
 
-See the `examples/` directory for complete examples.
-
----
+The repository-level `run.py` is a small editable example that also creates a raster plot.
 
 ## Configuration
 
-Microcircuit Lab uses YAML configuration files validated through Pydantic models.
-
-Typical configuration files include:
+Network and execution settings are deliberately separate:
 
 ```text
-config/
-├── network.yaml
-├── simulation.yaml
-├── populations.yaml
-├── connectivity.yaml
-└── scaling.yaml
+configs/
+├── network/
+│   └── <network_name>/
+│       ├── network.yaml
+│       ├── populations.yaml
+│       ├── neurons.yaml
+│       ├── connectivity.yaml
+│       ├── inputs.yaml
+│       ├── scaling.yaml
+│       └── reference.yaml
+└── simulation/
+    └── <simulation_name>.yaml
 ```
 
-Configurations define:
+A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording.
 
-* neuronal populations
-* neuron models
-* synaptic connectivity
-* external inputs
-* scaling parameters
-* simulation settings
-* output options
+## Adding a new model
 
----
+Create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The model integration should generate or translate data into the existing YAML network schema. Once the generic configuration exists, run it through the same public API:
 
-## Reference Models
+```python
+from microcircuit_lab import Simulation
 
-Reference implementations are located under
-
-```text
-microcircuit_lab/reference_models/
+simulation = Simulation.from_yaml(
+    network_name="my_model",
+    simulation_name="default",
+)
+simulation.run()
 ```
 
-Each reference model contains the biological parameters required to reproduce a published network model while remaining independent of the simulation backend.
+Do not add model-specific branches to `core/` or a simulator backend unless the feature is genuinely generic.
 
----
+## Adding a backend
 
-## Backend Architecture
+Implement the small backend contract in `microcircuit_lab/backends/base.py`, place the implementation under `backends/<name>/`, and register it in `backends.get_backend`. Then select it with:
 
-Simulation backends are separated from model definitions.
+```python
+simulation = Simulation.from_yaml(
+    network_name="my_model",
+    simulation_name="default",
+    backend="nest",
+)
+```
 
-Current backend:
+## Included models
 
-* NEST
+- **PD14**: Potjans & Diesmann cortical microcircuit configuration and connectivity utilities.
+- **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
 
-The architecture is designed to support additional simulators in the future.
-
----
-
-## Analysis
-
-The framework provides tools for analyzing simulation results, including:
-
-* spike activity
-* population statistics
-* raster plots
-* firing rates
-* custom analysis pipelines
-
-Additional analyses can be implemented independently of the simulator backend.
-
----
+Model-specific documentation is located inside each package under `microcircuit_lab/models/`.
 
 ## Testing
-
-Run the test suite with:
 
 ```bash
 pytest
 ```
 
----
-
-## Roadmap
-
-Planned features include:
-
-* Additional published reference models
-* Multiple simulator backends
-* Expanded analysis tools
-* Improved documentation
-* Example notebooks
-
----
-
-## Contributing
-
-Contributions are welcome through pull requests and issue reports.
-
-Please ensure new code includes tests where appropriate and follows the project's coding style.
-
----
-
-## License
-
-See the project's LICENSE file for licensing information.
+The scientific transformation functions and configuration preprocessing are tested independently from simulator execution where possible.

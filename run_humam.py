@@ -1,7 +1,7 @@
 """Repository-level convenience entrypoint for HuMAM runs."""
 
 from microcircuit_lab.analysis import RasterPlotConfig
-from microcircuit_lab.workflows.humam import HumamRunConfig, run_humam
+from microcircuit_lab.models.humam.workflow import HumamRunConfig, run_humam
 
 
 # -----------------------------------------------------------------------------

@@ -1,5 +1,4 @@
-"""High-level workflows combining import, configuration, and simulation."""
+"""Backward-compatible workflow namespace.
 
-from .humam import HumamRunConfig, run_humam
-
-__all__ = ["HumamRunConfig", "run_humam"]
+Model-specific workflows now live with their model integrations.
+"""

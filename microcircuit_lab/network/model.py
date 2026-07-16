@@ -1,24 +1,3 @@
-"""
-Simulator-independent network description.
-"""
-
-from __future__ import annotations
-
-from microcircuit_lab.config.network import NetworkConfig
-
-
-class Network:
-    """
-    High-level network object.
-
-    This class owns the immutable NetworkConfig describing the
-    biological network.
-
-    It intentionally contains no simulator-specific logic.
-    """
-
-    def __init__(
-        self,
-        config: NetworkConfig,
-    ):
-        self.config = config
+"""Deprecated compatibility import. Use ``microcircuit_lab.core.network``."""
+from microcircuit_lab.core.network import Network
+__all__ = ["Network"]

@@ -1,9 +1,3 @@
-# PD14 Import Utilities
+# Compatibility namespace
 
-This package contains utilities used to generate or import
-network descriptions derived from the Potjans & Diesmann (2014)
-microcircuit model.
-
-The output of these utilities should be a NetworkConfig or
-a YAML representation that can be imported through
-ConfigImporter.
+PD14 support moved to `microcircuit_lab/models/pd14/`. Existing imports remain available for backward compatibility. New code should import from `microcircuit_lab.models.pd14`.

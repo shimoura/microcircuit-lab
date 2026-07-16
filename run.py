@@ -1,7 +1,7 @@
 """Run any pre-generated network configuration and optionally plot spikes."""
 
 from microcircuit_lab.analysis import RasterPlotConfig, plot_raster
-from microcircuit_lab.simulation.runner import Simulation
+from microcircuit_lab import Simulation
 
 NETWORK_NAME = "pd14"
 SIMULATION_NAME = "default"
