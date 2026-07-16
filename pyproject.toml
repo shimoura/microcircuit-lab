@@ -16,6 +16,8 @@ authors = [
 dependencies = [
     "pydantic>=2.0",
     "PyYAML>=6.0",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
     "nest-simulator>=3.0",
 ]
 

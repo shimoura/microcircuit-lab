@@ -78,15 +78,18 @@ class NetworkPreprocessor:
         populations = {}
 
         for name, population in network.populations.items():
-
-            populations[name] = population.model_copy(
-                update={
-                    "size": scale_neuron_number(
-                        population.size,
-                        scaling.N_scaling,
-                    )
-                }
+            scaled_size = scale_neuron_number(
+                population.size,
+                scaling.N_scaling,
             )
+            if scaled_size < 1:
+                raise ValueError(
+                    f"N_scaling={scaling.N_scaling} reduces population "
+                    f"'{name}' from {population.size} neurons to zero. "
+                    "Increase N_scaling to keep every configured population non-empty."
+                )
+
+            populations[name] = population.model_copy(update={"size": scaled_size})
 
         return network.model_copy(
             update={
@@ -114,7 +117,6 @@ class NetworkPreprocessor:
         # Scale background indegrees
         populations = {}
         for name, population in network.populations.items():
-
             populations[name] = population.model_copy(
                 update={
                     "background_indegree": (
@@ -126,16 +128,15 @@ class NetworkPreprocessor:
         # Scale recurrent synapse numbers
         connections = []
         for connection in network.connections:
+            scaled_n_synapses = scale_synapse_number(
+                connection.n_synapses,
+                scaling.N_scaling * scaling.K_scaling,
+            )
+            if scaled_n_synapses < 1:
+                continue
 
             connections.append(
-                connection.model_copy(
-                    update={
-                        "n_synapses": scale_synapse_number(
-                            connection.n_synapses,
-                            scaling.K_scaling,
-                        )
-                    }
-                )
+                connection.model_copy(update={"n_synapses": scaled_n_synapses})
             )
 
         return network.model_copy(
@@ -161,7 +162,6 @@ class NetworkPreprocessor:
         inputs = {}
 
         for pop_name, input_cfg in network.inputs.items():
-
             K_ext = network.populations[pop_name].background_indegree
 
             inputs[pop_name] = input_cfg.model_copy(
@@ -201,25 +201,27 @@ class NetworkPreprocessor:
         PSC_ext = external_psc_weights(original)
         PSC_matrix = mean_psc_matrix(original)
 
-        # Mean firing rates (Hz) of reference network populations
-        mean_rates = full_mean_rates(original)
-
         # Synaptic time constant (ms) for excitatory synapses
         # (used for both recurrent and external contributions)
         tau_syn = tau_syn_ex(original)
 
-        # Compute recurrent contribution to DC compensation from biological network quantities
-        network_input = network_mean_input(
-            mean_PSC_matrix=PSC_matrix,
-            indegree_matrix=indegrees,
-            mean_rates=mean_rates,
-        )
+        # Compute recurrent contribution when requested.
+        network_current = np.zeros(len(original.populations))
 
-        network_current = network_compensation_current(
-            network_input=network_input,
-            tau_syn=tau_syn,
-            K_scaling=scaling.K_scaling,
-        )
+        if scaling.compensate_recurrent_input:
+            mean_rates = full_mean_rates(original)
+
+            network_input = network_mean_input(
+                mean_PSC_matrix=PSC_matrix,
+                indegree_matrix=indegrees,
+                mean_rates=mean_rates,
+            )
+
+            network_current = network_compensation_current(
+                network_input=network_input,
+                tau_syn=tau_syn,
+                K_scaling=scaling.K_scaling,
+            )
 
         # Compute external contribution to DC compensation from biological network quantities
         pop_names = list(original.populations.keys())

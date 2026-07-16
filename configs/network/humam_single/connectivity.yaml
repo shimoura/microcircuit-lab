@@ -1,0 +1,661 @@
+connections:
+- source: L23_E
+  target: L23_E
+  n_synapses: 166215805
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L23_I
+  n_synapses: 121647458
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L4_E
+  n_synapses: 5365348
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L4_I
+  n_synapses: 13211610
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L5_E
+  n_synapses: 85694782
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L5_I
+  n_synapses: 12874704
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L6_E
+  n_synapses: 9126399
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_E
+  target: L6_I
+  n_synapses: 3503667
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L23_E
+  n_synapses: 155678399
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L23_I
+  n_synapses: 66813319
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L4_E
+  n_synapses: 2211672
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L4_I
+  n_synapses: 288539
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L5_E
+  n_synapses: 28006786
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L5_I
+  n_synapses: 3354214
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L6_E
+  n_synapses: 2069669
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L23_I
+  target: L6_I
+  n_synapses: 50906
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L23_E
+  n_synapses: 31015444
+  weight:
+    mean: 0.19999999999999998
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L23_I
+  n_synapses: 12001223
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L4_E
+  n_synapses: 15716242
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L4_I
+  n_synapses: 6779897
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L5_E
+  n_synapses: 18641600
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L5_I
+  n_synapses: 2641742
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L6_E
+  n_synapses: 5498068
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_E
+  target: L6_I
+  n_synapses: 142940
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L23_E
+  n_synapses: 15746167
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L23_I
+  n_synapses: 5253087
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L4_E
+  n_synapses: 11885216
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L4_I
+  n_synapses: 3790479
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L5_E
+  n_synapses: 546633
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L5_I
+  n_synapses: 59403
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L6_E
+  n_synapses: 1147190
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L4_I
+  target: L6_I
+  n_synapses: 5580
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L23_E
+  n_synapses: 26592587
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L23_I
+  n_synapses: 34236126
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L4_E
+  n_synapses: 2418364
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L4_I
+  n_synapses: 316091
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L5_E
+  n_synapses: 36417480
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L5_I
+  n_synapses: 7325751
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L6_E
+  n_synapses: 17719306
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_E
+  target: L6_I
+  n_synapses: 1375682
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L5_I
+  target: L4_E
+  n_synapses: 30444
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L5_I
+  target: L5_E
+  n_synapses: 55192406
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L5_I
+  target: L5_I
+  n_synapses: 12673003
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L5_I
+  target: L6_E
+  n_synapses: 1688227
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L5_I
+  target: L6_I
+  n_synapses: 110947
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L23_E
+  n_synapses: 4428272
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L23_I
+  n_synapses: 1315475
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L4_E
+  n_synapses: 11951734
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L4_I
+  n_synapses: 7656051
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L5_E
+  n_synapses: 6200423
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L5_I
+  n_synapses: 732865
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L6_E
+  n_synapses: 8711241
+  weight:
+    mean: 0.09999999999999999
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_E
+  target: L6_I
+  n_synapses: 2388868
+  weight:
+    mean: 0.1
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 1.5
+    rel_std: 0.5
+    distribution: normal
+- source: L6_I
+  target: L6_E
+  n_synapses: 8955013
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal
+- source: L6_I
+  target: L6_I
+  n_synapses: 890360
+  weight:
+    mean: -0.5000000000000001
+    rel_std: 0.1
+    distribution: normal
+    unit: PSP
+  delay:
+    mean: 0.75
+    rel_std: 0.5
+    distribution: normal

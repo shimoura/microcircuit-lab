@@ -1,0 +1,89 @@
+inputs:
+  L23_E:
+    rate: 4.923684308808773
+    weight:
+      mean: 0.09999999999999999
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L23_I:
+    rate: 5.251929898252972
+    weight:
+      mean: 0.1
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L4_E:
+    rate: 3.7513785352042905
+    weight:
+      mean: 0.09999999999999999
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L4_I:
+    rate: 4.1462604017568
+    weight:
+      mean: 0.1
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L5_E:
+    rate: 3.938947427421367
+    weight:
+      mean: 0.105
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L5_I:
+    rate: 4.1462604484505645
+    weight:
+      mean: 0.1
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L6_E:
+    rate: 2.7165154754468106
+    weight:
+      mean: 0.11499999999999998
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+  L6_I:
+    rate: 3.751378626017056
+    weight:
+      mean: 0.1
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal

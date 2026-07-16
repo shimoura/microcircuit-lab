@@ -167,6 +167,7 @@ class ScalingConfig(FrozenConfig):
 
     preserve_mean_input: bool = True
     preserve_variance: bool = True
+    compensate_recurrent_input: bool = True
 
     @property
     def is_scaled(self) -> bool:

@@ -1,0 +1,5 @@
+N_scaling: 0.004
+K_scaling: 0.004
+preserve_mean_input: true
+preserve_variance: true
+compensate_recurrent_input: false

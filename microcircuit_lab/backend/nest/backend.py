@@ -60,9 +60,9 @@ class NestBackend:
 
         self.create_populations()
 
-        self.create_spike_recorders()
-
-        self.connect_spike_recorders()
+        if self._simulation_config.recording.spike_recording:
+            self.create_spike_recorders()
+            self.connect_spike_recorders()
 
         self.create_poisson_generators()
 
@@ -76,7 +76,6 @@ class NestBackend:
         """
 
         for pop_name, pop_cfg in self._network.config.populations.items():
-
             logger.info(
                 "Creating %s (%d neurons)",
                 pop_name,
@@ -116,12 +115,11 @@ class NestBackend:
         logger.info("Creating recurrent connections:")
 
         for connection in self._network.config.connections:
-
             source = self.get_population(connection.source)
             target = self.get_population(connection.target)
 
             logger.info(
-                "Connecting %s -> %s " "(N=%d, weight=%g, delay=%g)",
+                "Connecting %s -> %s (N=%d, weight=%g, delay=%g)",
                 connection.source,
                 connection.target,
                 connection.n_synapses,
@@ -158,7 +156,6 @@ class NestBackend:
         """
 
         for pop_name in self.populations:
-
             sr = nest.Create("spike_recorder")
 
             self.spike_recorders[pop_name] = sr
@@ -169,7 +166,6 @@ class NestBackend:
         """
 
         for pop_name in self.populations:
-
             nest.Connect(
                 self.get_population(pop_name),
                 self.spike_recorders[pop_name],
@@ -183,7 +179,6 @@ class NestBackend:
         logger.info("Creating Poisson generators:")
 
         for pop_name, input_cfg in self._network.config.inputs.items():
-
             logger.info(
                 "Creating Poisson input for %s (rate=%g Hz)",
                 pop_name,
@@ -203,7 +198,6 @@ class NestBackend:
         """
 
         for pop_name in self.poisson_generators:
-
             input_cfg = self._network.config.inputs[pop_name]
             nest.Connect(
                 self.poisson_generators[pop_name],
@@ -257,7 +251,6 @@ class NestBackend:
         std = abs(weight.mean * weight.rel_std)
 
         if weight.distribution == "normal":
-
             if weight.mean >= 0:
                 return nest.math.redraw(
                     nest.random.normal(
@@ -278,7 +271,6 @@ class NestBackend:
             )
 
         if weight.distribution == "lognormal":
-
             variance = (weight.mean * weight.rel_std) ** 2
             sigma2 = np.log(1.0 + variance / weight.mean**2)
             sigma = np.sqrt(sigma2)
@@ -292,21 +284,35 @@ class NestBackend:
         raise NotImplementedError(f"Unsupported distribution: {weight.distribution}")
 
     def create_delay_parameter(self, delay):
-        """
-        Create a NEST delay parameter.
-        """
-
-        if delay.rel_std == 0.0:
+        if delay.distribution == "fixed" or delay.rel_std == 0.0:
             return delay.mean
 
         std = delay.mean * delay.rel_std
+        min_delay = nest.resolution - 0.5 * nest.resolution
 
-        return nest.math.redraw(
-            nest.random.normal(
+        if delay.distribution == "normal":
+            distribution = nest.random.normal(
                 mean=delay.mean,
                 std=std,
-            ),
-            min=nest.resolution - 0.5 * nest.resolution,
+            )
+
+        elif delay.distribution == "lognormal":
+            variance = std**2
+            sigma_squared = np.log1p(variance / delay.mean**2)
+            sigma = np.sqrt(sigma_squared)
+            mu = np.log(delay.mean) - 0.5 * sigma_squared
+
+            distribution = nest.random.lognormal(
+                mean=mu,
+                std=sigma,
+            )
+
+        else:
+            raise ValueError(f"Unsupported delay distribution: {delay.distribution!r}")
+
+        return nest.math.redraw(
+            distribution,
+            min=min_delay,
             max=float("inf"),
         )
 
