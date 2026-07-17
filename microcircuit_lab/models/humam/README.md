@@ -7,18 +7,18 @@ This package translates HuMAM source data into Microcircuit Lab's generic networ
 From the repository root:
 
 ```bash
-python run_humam.py --area bankssts
+python scripts/generate_humam.py --area bankssts
 ```
 
 For the multi-area model:
 
 ```bash
-python run_humam.py --area all
+python scripts/generate_humam.py --area all
 ```
 
 The command generates configurations under `configs/network/` and `configs/simulation/`, then runs them through `microcircuit_lab.Simulation`.
 
-Use `--skip-generate` to reuse existing generated configurations. Run `python run_humam.py --help` for the available scaling, duration, seed, thread, and output options.
+Generation only writes portable configuration files. Run them separately with `scripts/run_simulation.py`. Use `python scripts/generate_humam.py --help` for the available generation options.
 
 ## Python API
 

@@ -513,8 +513,8 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--area", default="bankssts")
     parser.add_argument("--config-dir", default="configs")
-    parser.add_argument("--network-name", default="humam_single")
-    parser.add_argument("--simulation-name", default="humam_single")
+    parser.add_argument("--network-name", default=None)
+    parser.add_argument("--simulation-name", default=None)
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--n-scaling", type=float, default=0.001)
     parser.add_argument("--k-scaling", type=float, default=0.001)
@@ -527,11 +527,16 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
+    
+    default_name = "humam_all" if args.area.lower() == "all" else "humam_single"
+    network_name = args.network_name or default_name
+    simulation_name = args.simulation_name or default_name
+    
     paths = generate_humam_configs(
         area=args.area,
         config_dir=args.config_dir,
-        network_name=args.network_name,
-        simulation_name=args.simulation_name,
+        network_name=network_name,
+        simulation_name=simulation_name,
         data_dir=args.data_dir,
         n_scaling=args.n_scaling,
         k_scaling=args.k_scaling,
@@ -542,6 +547,13 @@ def main() -> None:
     )
     print(f"Generated network config in: {paths['network_dir']}")
     print(f"Generated simulation config: {paths['simulation_path']}")
+    print("\nRun with:")
+    print(
+        "python scripts/run_simulation.py "
+        f"--config-dir {args.config_dir} "
+        f"--network {network_name} "
+        f"--simulation {simulation_name}"
+    )
 
 
 if __name__ == "__main__":

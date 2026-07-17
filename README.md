@@ -68,7 +68,7 @@ simulation = Simulation.from_yaml(
 simulation.run()
 ```
 
-The repository-level `run.py` is a small editable example that also creates a raster plot.
+Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network. It can produce raster and firing-rate diagnostics with one shared plot style.
 
 ## Configuration
 
@@ -125,6 +125,30 @@ simulation = Simulation.from_yaml(
 - **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
 
 Model-specific documentation is located inside each package under `microcircuit_lab/models/`.
+
+## Repository scripts
+
+Model generation and simulation execution are intentionally separate:
+
+```bash
+python scripts/generate_humam.py --area bankssts
+python scripts/run_simulation.py
+```
+
+Edit the constants at the top of `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Generic plotting does not live inside model-specific code.
+
+### Firing-rate distributions
+
+After running a simulation, inspect the distribution of single-neuron firing rates within each population:
+
+```python
+from microcircuit_lab.analysis import plot_firing_rates
+
+plot_firing_rates(simulation, begin=500.0)
+```
+
+For multi-area networks, select one area with `area="V1"`. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
+
 
 ## Testing
 

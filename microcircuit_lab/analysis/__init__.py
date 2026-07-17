@@ -1,6 +1,19 @@
 """Analysis and visualization utilities."""
 
-from .plot_styles import RasterPlotConfig
+from .firing_rates import (
+    compute_neuron_firing_rates,
+    compute_population_firing_rates,
+    plot_firing_rates,
+)
+from .plot_styles import FiringRatePlotConfig, PlotStyle, RasterPlotConfig
 from .raster import plot_raster
 
-__all__ = ["RasterPlotConfig", "plot_raster"]
+__all__ = [
+    "FiringRatePlotConfig",
+    "PlotStyle",
+    "RasterPlotConfig",
+    "compute_neuron_firing_rates",
+    "compute_population_firing_rates",
+    "plot_firing_rates",
+    "plot_raster",
+]
