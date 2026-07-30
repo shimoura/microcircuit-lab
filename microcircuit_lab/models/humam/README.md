@@ -16,7 +16,7 @@ For the multi-area model:
 python scripts/generate_humam.py --area all
 ```
 
-The command generates configurations under `configs/network/` and `configs/simulation/`, then runs them through `microcircuit_lab.Simulation`.
+The command generates configurations under `configs/network/` and `configs/simulation/`.
 
 Generation only writes portable configuration files. Run them separately with `scripts/run_simulation.py`. Use `python scripts/generate_humam.py --help` for the available generation options.
 

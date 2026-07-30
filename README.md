@@ -128,14 +128,22 @@ Model-specific documentation is located inside each package under `microcircuit_
 
 ## Repository scripts
 
-Model generation and simulation execution are intentionally separate:
+Model generation and simulation execution are intentionally separate.
+
+Run the bundled PD14 network (uses the default network/simulation names):
 
 ```bash
-python scripts/generate_humam.py --area bankssts
 python scripts/run_simulation.py
 ```
 
-Edit the constants at the top of `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Generic plotting does not live inside model-specific code.
+Generate a HuMAM network, then run it by name:
+
+```bash
+python scripts/generate_humam.py --area bankssts
+python scripts/run_simulation.py --network humam_single --simulation humam_single
+```
+
+Use `--network`, `--simulation`, `--area`, `--begin`, `--end`, `--reference`, `--no-raster`, and `--no-firing-rates` on `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Plot styling (colors, sizes, figure layout) is set via the `PLOT_STYLE`, `RASTER_CONFIG`, and `FIRING_RATE_CONFIG` constants at the top of the script. Generic plotting does not live inside model-specific code.
 
 ### Firing-rate distributions
 
