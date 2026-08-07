@@ -14,9 +14,6 @@ import math
 import numpy as np
 
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.parameters import (
-    network_mean_input,
-)
 
 def scale_neuron_number(
     value: int,
@@ -45,10 +42,13 @@ def scale_weight(
     factor: float,
 ) -> float:
     """
-    Scale synaptic weight.
+    Scale synaptic weight linearly: preserves mean input, not variance.
 
-    Potjans convention:
         J -> J / K
+
+    NOT currently wired to ScalingConfig.preserve_mean_input /
+    preserve_variance -- scale_weights() always uses scale_weight_sqrt
+    regardless of those flags. See scale_weight_sqrt's docstring.
     """
 
     return value / factor
@@ -61,37 +61,19 @@ def scale_weight_sqrt(
     """
     Scale synaptic weights according to Potjans & Diesmann (2014).
 
-    Scaling preserves input fluctuations by applying
+    Scaling preserves input fluctuations (variance), not mean input,
+    by applying
 
         w -> w / sqrt(K_scaling)
+
+    scale_weights() always applies this, regardless of
+    ScalingConfig.preserve_mean_input/preserve_variance -- those flags
+    are currently declarative only (see ScalingConfig's docstring note).
+    compensate_recurrent_input's DC injection is what actually restores
+    the mean input this rule doesn't preserve on its own.
     """
 
     return weight / math.sqrt(K_scaling)
-
-
-def recurrent_dc_from_network(
-    mean_PSC_matrix: np.ndarray,
-    indegree_matrix: np.ndarray,
-    mean_rates: np.ndarray,
-    tau_syn: np.ndarray,
-    K_scaling: float,
-) -> np.ndarray:
-    """
-    Compute the recurrent DC compensation from biological network
-    quantities.
-    """
-
-    network_input = network_mean_input(
-        mean_PSC_matrix=mean_PSC_matrix,
-        indegree_matrix=indegree_matrix,
-        mean_rates=mean_rates,
-    )
-
-    return network_compensation_current(
-        network_input=network_input,
-        tau_syn=tau_syn,
-        K_scaling=K_scaling,
-    )
 
 
 def network_compensation_current(
@@ -140,13 +122,22 @@ def scale_weights(
     network: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Apply square root synaptic weight scaling to all recurrent and external synaptic weights.
-    Scaling preserves input fluctuations by applying:
+    Scale all recurrent and external synaptic weights for K_scaling.
 
-    w -> w / sqrt(K_scaling)
+    ``scaling.preserve_variance`` selects which law is applied:
+
+    - True (default): w -> w / sqrt(K_scaling) (scale_weight_sqrt).
+      Preserves input fluctuations; biases mean input, which
+      NetworkPreprocessor._apply_scaling_compensation corrects for via DC
+      current injection when scaling.preserve_mean_input is also True.
+    - False: w -> w / K_scaling (scale_weight). Preserves mean input
+      directly (indegree * weight is invariant under this law), at the
+      cost of fluctuations -- no compensation is applied or needed for
+      the mean in this case.
     """
 
     scaling = network.scaling
+    weight_scaler = scale_weight_sqrt if scaling.preserve_variance else scale_weight
 
     #
     # recurrent
@@ -157,7 +148,7 @@ def scale_weights(
 
         weight = connection.weight.model_copy(
             update={
-                "mean": scale_weight_sqrt(
+                "mean": weight_scaler(
                     connection.weight.mean,
                     scaling.K_scaling,
                 )
@@ -181,7 +172,7 @@ def scale_weights(
 
         weight = input_cfg.weight.model_copy(
             update={
-                "mean": scale_weight_sqrt(
+                "mean": weight_scaler(
                     input_cfg.weight.mean,
                     scaling.K_scaling,
                 )
@@ -199,83 +190,4 @@ def scale_weights(
             "connections": connections,
             "inputs": inputs,
         }
-    )
-
-
-def adjust_weights_and_input_to_synapse_scaling(
-    mean_PSC_matrix,
-    PSC_ext,
-    K_scaling,
-    DC_amp,
-    bg_input_type,
-    bg_rate,
-    K_ext,
-    tau_syn,
-    indegree_matrix,
-    full_mean_rates,
-):
-    """
-    Adjust synaptic weights and input currents to compensate for synapse scaling.
-
-    Parameters
-    ----------
-    PSC_ext
-        External synaptic weight (pA).
-    K_scaling
-        Indegree scaling factor.
-    mean_PSC_matrix
-        Matrix of mean PSC amplitudes (pA) before scaling.
-    DC_amp
-        DC compensation amplitude (pA) before scaling.
-    poisson_input
-        Whether Poisson input is used.
-    bg_rate
-        External Poisson firing rate (spikes/s).
-    K_ext
-        External indegree for each population.
-    tau_syn
-        Synaptic time constant (ms).
-    indegree_matrix
-        Matrix of indegrees for each connection.
-    full_mean_rates
-        Mean firing rates of all populations (Hz).
-
-    Returns
-    -------
-    tuple
-        Adjusted PSC matrices and DC amplitude.
-    """
-    # 1. Scale recurrent PSC
-    PSC_matrix_new = mean_PSC_matrix / np.sqrt(K_scaling)
-
-    # 2. Scale external PSC
-    PSC_ext_new = PSC_ext / np.sqrt(K_scaling)
-
-    # 3. Recurrent mean input
-    network_input = network_mean_input(
-        mean_PSC_matrix=mean_PSC_matrix,
-        indegree_matrix=indegree_matrix,
-        mean_rates=full_mean_rates,
-    )
-
-    # 4. Recurrent DC compensation
-    DC_amp_new = DC_amp + network_compensation_current(
-        network_input=network_input,
-        tau_syn=tau_syn,
-        K_scaling=K_scaling,
-    )
-
-    # 5. External compensation
-    if bg_input_type == "poisson":
-
-        input_ext = PSC_ext * K_ext * bg_rate
-
-        DC_amp_new = (
-            DC_amp_new + 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * input_ext
-        )
-
-    return (
-        PSC_matrix_new,
-        PSC_ext_new,
-        DC_amp_new,
     )

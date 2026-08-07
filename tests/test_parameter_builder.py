@@ -263,3 +263,77 @@ def test_downscaled_network_has_dc_compensation():
     derived = NetworkPreprocessor(network).process()
 
     assert any(pop.neuron.parameters.I_e != 0.0 for pop in derived.populations.values())
+
+
+def test_preserve_variance_false_uses_linear_weight_scaling():
+    """scaling.preserve_variance=False selects scale_weight (w -> w/K)
+    instead of the default scale_weight_sqrt (w -> w/sqrt(K))."""
+
+    network_files = read_network_directory("configs/network/pd14")
+    network = NetworkConfigLoader(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={"N_scaling": 0.2, "K_scaling": 0.2, "preserve_variance": False}
+            )
+        }
+    )
+
+    derived = NetworkPreprocessor(network).process()
+
+    expected = psp_to_psc_iaf_psc_exp(
+        psp=0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5,
+    ) / network.scaling.K_scaling  # linear, not sqrt
+
+    assert derived.connections[0].weight.mean == pytest.approx(expected)
+
+
+def test_preserve_variance_false_skips_dc_compensation():
+    """Linear scaling preserves mean input on its own -- no bias to
+    correct for, so DC compensation must not fire even though
+    preserve_mean_input defaults to True."""
+
+    network_files = read_network_directory("configs/network/pd14")
+    network = NetworkConfigLoader(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={"N_scaling": 0.2, "K_scaling": 0.2, "preserve_variance": False}
+            )
+        }
+    )
+
+    derived = NetworkPreprocessor(network).process()
+
+    for pop in derived.populations.values():
+        assert pop.neuron.parameters.I_e == pytest.approx(0.0)
+
+
+def test_preserve_mean_input_false_disables_dc_compensation():
+    """With sqrt (variance-preserving) scaling still selected, turning off
+    preserve_mean_input must disable the DC compensation that would
+    otherwise fire for a downscaled network."""
+
+    network_files = read_network_directory("configs/network/pd14")
+    network = NetworkConfigLoader(network_files).build()
+
+    network = network.model_copy(
+        update={
+            "scaling": network.scaling.model_copy(
+                update={"N_scaling": 0.2, "K_scaling": 0.2, "preserve_mean_input": False}
+            )
+        }
+    )
+
+    derived = NetworkPreprocessor(network).process()
+
+    for pop in derived.populations.values():
+        assert pop.neuron.parameters.I_e == pytest.approx(0.0)
+
+    # weight scaling itself is untouched by preserve_mean_input -- still sqrt
+    expected = psp_to_psc_iaf_psc_exp(
+        psp=0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5,
+    ) / math.sqrt(network.scaling.K_scaling)
+    assert derived.connections[0].weight.mean == pytest.approx(expected)

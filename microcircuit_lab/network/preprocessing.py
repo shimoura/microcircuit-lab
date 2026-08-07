@@ -183,15 +183,24 @@ class NetworkPreprocessor:
         """
         Apply constant current compensation to account for the change in mean synaptic
         input due to synapse scaling.
+
+        Only meaningful when scale_weights() used the variance-preserving
+        (sqrt) law -- the mean-preserving (linear) law introduces no bias
+        to compensate for in the first place. Governed by
+        scaling.preserve_variance and scaling.preserve_mean_input (the
+        master switch for compensation); scaling.compensate_recurrent_input
+        additionally includes/excludes just the recurrent contribution.
         """
 
         # Original network quantities
         original = self._network_config
+        scaling = original.scaling
+
+        if not scaling.preserve_variance or not scaling.preserve_mean_input:
+            return network
 
         if original.reference is None:
             return network
-
-        scaling = original.scaling
 
         # Connection indegrees for recurrent and external connections
         indegrees = indegree_matrix(original)

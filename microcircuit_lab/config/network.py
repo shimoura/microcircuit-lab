@@ -166,11 +166,18 @@ class ScalingConfig(FrozenConfig):
     K_scaling:
         Multiplies the indegree / number of synapses.
 
-    preserve_mean_input:
-        Whether scaling should preserve the mean synaptic input.
-
     preserve_variance:
-        Whether scaling should preserve input variance.
+        Selects the weight-scaling law (see network.scaling.scale_weights).
+        True (default): w -> w / sqrt(K_scaling) -- preserves input
+        fluctuations, biases mean input. False: w -> w / K_scaling --
+        preserves mean input directly, at the cost of fluctuations (no
+        variance compensation is attempted in that case).
+
+    preserve_mean_input:
+        Master switch for whether NetworkPreprocessor applies DC-current
+        compensation for the mean-input bias sqrt scaling introduces.
+        Only meaningful when preserve_variance is True -- under linear
+        scaling there is no bias to compensate for.
     """
 
     # Scaling factors: default to 1.0 (no scaling) and gt(greater than)=0.0

@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from microcircuit_lab.network.scaling import (
     scale_neuron_number,
@@ -7,7 +6,6 @@ from microcircuit_lab.network.scaling import (
     scale_weight,
     scale_weight_sqrt,
     network_compensation_current,
-    adjust_weights_and_input_to_synapse_scaling,
 )
 from microcircuit_lab.network.parameters import (
     network_mean_input,
@@ -92,43 +90,3 @@ def test_network_compensation_current():
     expected = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * network_input
 
     assert np.allclose(dc, expected)
-
-
-def test_adjust_weights_and_input_to_synapse_scaling():
-
-    PSC_ext = 100.0
-    mean_matrix = np.ones((2, 2))
-    DC = np.zeros(2)
-    indegree = np.ones((2, 2))
-    full_mean_rates = np.ones(2)
-
-    new_PSC, new_ext, new_DC = adjust_weights_and_input_to_synapse_scaling(
-        mean_PSC_matrix=mean_matrix,
-        PSC_ext=PSC_ext,
-        K_scaling=4.0,
-        DC_amp=DC,
-        bg_input_type="poisson",
-        bg_rate=8.0,
-        K_ext=np.ones(2),
-        tau_syn=0.5,
-        indegree_matrix=indegree,
-        full_mean_rates=full_mean_rates,
-    )
-
-    assert new_PSC.shape == (2, 2)
-    assert new_DC.shape == (2,)
-    assert new_PSC[0, 0] == pytest.approx(1.0 / np.sqrt(4.0))
-    assert new_ext == pytest.approx(100.0 / np.sqrt(4.0))
-
-    network_input = np.array(
-        [
-            2.0,
-            2.0,
-        ]
-    )
-    expected_rec = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * network_input
-    expected_ext = 0.001 * 0.5 * (1.0 - np.sqrt(4.0)) * 100.0 * 1.0 * 8.0
-    assert np.allclose(
-        new_DC,
-        expected_rec + expected_ext,
-    )
