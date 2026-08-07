@@ -170,7 +170,7 @@ python scripts/generate.py pd14
 
 Every registered model's generation arguments are discoverable with `python scripts/generate.py <model> --help`.
 
-Use `--network`, `--simulation`, `--area`, `--begin`, `--end`, `--reference`, `--no-raster`, and `--no-firing-rates` on `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Plot styling (colors, sizes, figure layout) is set via the `PLOT_STYLE`, `RASTER_CONFIG`, and `FIRING_RATE_CONFIG` constants at the top of the script. Generic plotting does not live inside model-specific code.
+Use `--network`, `--simulation`, `--area`, `--begin`, `--end`, `--reference`, `--no-raster`, and `--no-firing-rates` on `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Plots are saved to `<output_dir>/plots/` but not opened interactively by default; pass `--show` to also pop up the plot windows. Plot styling (colors, sizes, figure layout) is set via the `PLOT_STYLE`, `RASTER_CONFIG`, and `FIRING_RATE_CONFIG` constants at the top of the script. Generic plotting does not live inside model-specific code.
 
 ### Firing-rate distributions
 
@@ -195,7 +195,7 @@ For multi-area networks, select one area with `area="V1"`. Published reference m
 └── metadata.json                  # run identity, per-population spike stats, and an artifact manifest
 ```
 
-`overwrite: true` (the convention used by the bundled models) reuses the same directory every run, convenient while iterating. `overwrite: false` gives each run its own timestamped subdirectory instead, so results are never silently clobbered.
+`overwrite: false` (the default, and the convention used by every bundled model) gives each run its own timestamped subdirectory, so results are never silently clobbered. Set `overwrite: true` to instead reuse the same directory every run -- convenient while iterating, but each run replaces the last one's output.
 
 **Recordings are written by the backend, not re-serialized by microcircuit_lab.** With the NEST backend, `recordings/` is pointed at NEST's own ascii recording backend before the network is built, so NEST writes spikes straight to disk during `simulate()` -- `<population>-<id>-<thread>.dat` (one shard per thread/process, NEST's native naming and tab-separated `sender  time_ms` format). Nothing is buffered in Python memory or written twice. `Simulation`/plotting code still reads spikes back through `backend.get_spike_events(population)`, which transparently merges those shards when needed (e.g. for `metadata.json`'s statistics or `plot_raster`) -- callers never need to know recording happened natively. A backend without native file recording (or the NEST backend used standalone, without `prepare_output()`) falls back to writing one `<population>_spikes.csv` per population from the in-memory events instead.
 
