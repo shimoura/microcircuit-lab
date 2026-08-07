@@ -1,0 +1,23 @@
+inputs:
+
+  E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+
+  I:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed

@@ -56,7 +56,16 @@ NEST must be available in the environment used to run simulations.
 
 ## Quick start
 
-Run a pre-generated network configuration:
+The fastest way to see the framework run is the bundled `toy` network — a minimal two-population (E/I) example under `configs/network/toy/`:
+
+```python
+from microcircuit_lab import Simulation
+
+simulation = Simulation.from_yaml()  # defaults to network_name="toy", simulation_name="toy"
+simulation.run()
+```
+
+Or run a published reference model the same way:
 
 ```python
 from microcircuit_lab import Simulation
@@ -68,7 +77,7 @@ simulation = Simulation.from_yaml(
 simulation.run()
 ```
 
-Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network. It can produce raster and firing-rate diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
+Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network (defaults to `pd14`; pass `--network toy --simulation toy` for the minimal example). It can produce raster and firing-rate diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
 
 ## Configuration
 
@@ -93,11 +102,15 @@ A network configuration describes biology and connectivity. A simulation configu
 
 ## Adding a new model
 
-Create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The model integration should generate or translate data into the existing YAML network schema.
+There are two supported ways to try a new model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never has to change for either one.
 
-If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (see `humam/generator.py` or `pd14/generator.py` for the pattern) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
+**Write YAML directly.** Copy `configs/network/toy/` — the smallest complete example of the schema (two populations, four connections, minimal scaling/reference) — to `configs/network/<my_model>/` and edit the values by hand. Pair it with a `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid). This is the right starting point for exploring a new idea or a model small enough to write out directly.
 
-Once the generic configuration exists, run it through the same public API:
+**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there — the generator's job is to translate that data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
+
+If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (same pattern in both examples above) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
+
+Either way, once the generic configuration exists, run it through the same public API:
 
 ```python
 from microcircuit_lab import Simulation

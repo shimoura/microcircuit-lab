@@ -49,7 +49,7 @@ class Simulation:
         cls,
         config_dir: str | Path = "configs",
         network_name: str = "toy",
-        simulation_name: str = "default",
+        simulation_name: str = "toy",
         backend: BackendName = "nest",
     ) -> "Simulation":
         """

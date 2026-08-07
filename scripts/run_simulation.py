@@ -1,6 +1,7 @@
 """Run any pre-generated network configuration and optional diagnostics."""
 
 import argparse
+import logging
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import (
@@ -52,6 +53,8 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     args = _parse_args()
     simulation = Simulation.from_yaml(
         config_dir=args.config_dir,
