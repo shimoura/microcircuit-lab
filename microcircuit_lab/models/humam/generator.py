@@ -238,6 +238,77 @@ def _build_connections(
     return connections
 
 
+def _compute_missing_area_dc(
+    *,
+    labels: list[tuple[tuple[str, str, str], str]],
+    area_list: list[str],
+    layers: list[str],
+    pops: list[str],
+    selected_areas: list[str],
+    neuron_numbers: Any,
+    synapses_internal: Any,
+    weights: Any,
+    base_theory_rates: Any,
+    excitatory_params: dict[str, float],
+    inhibitory_params: dict[str, float],
+) -> dict[str, float]:
+    """
+    DC current (pA) compensating each population in ``labels`` for the
+    connections it would receive from areas outside ``selected_areas``,
+    if the full multi-area network were simulated.
+
+    Reuses network_compensation_current -- the same function that
+    compensates for K_scaling downscaling -- with K_scaling=0.0. That
+    factor normally expresses "what fraction of a connection's input
+    survived scaling"; 0.0 means none of it survived (the source area
+    isn't simulated at all), so the *entire* contribution is compensated
+    rather than just the fraction lost to scaling.
+    """
+
+    other_areas = [a for a in area_list if a not in selected_areas]
+    if not other_areas:
+        return {}
+
+    from microcircuit_lab.network.scaling import network_compensation_current
+
+    compensation: dict[str, float] = {}
+
+    for tgt_idx, tgt_label in labels:
+        target_is_inhibitory = tgt_idx[2] == "I"
+        target_params = inhibitory_params if target_is_inhibitory else excitatory_params
+        n_target = float(neuron_numbers.loc[tgt_idx])
+
+        network_input = 0.0
+        for src_area in other_areas:
+            for layer in layers:
+                for pop in pops:
+                    src_idx = (src_area, layer, pop)
+                    if src_idx not in neuron_numbers.index:
+                        continue
+                    if src_idx not in base_theory_rates.index:
+                        continue
+
+                    n_synapses = float(synapses_internal.loc[tgt_idx, src_idx])
+                    if n_synapses <= 0.0:
+                        continue
+
+                    mean_psc = float(weights.loc[tgt_idx, src_idx])
+                    rate = float(base_theory_rates.loc[src_idx])
+
+                    indegree = n_synapses / n_target
+                    network_input += mean_psc * indegree * rate
+
+        compensation[tgt_label] = float(
+            network_compensation_current(
+                network_input=network_input,
+                tau_syn=target_params["tau_syn_ex"],
+                K_scaling=0.0,
+            )
+        )
+
+    return compensation
+
+
 def _build_reference_rates(
     *,
     labels: list[tuple[tuple[str, str, str], str]],
@@ -316,11 +387,20 @@ def generate_humam_configs(
     rng_seed: int = 42,
     local_num_threads: int = 8,
     export_json: bool = False,
-) -> dict[str, Path]:
+    compensate_missing_areas: bool = True,
+) -> dict[str, Any]:
     """
     Generate HuMAM network configuration(s) from source data.
 
     If ``area == "all"``, a full multi-area network is generated.
+
+    For a single area, ``compensate_missing_areas`` (default True) adds a
+    per-population DC current compensating for the cortical input that
+    area would normally receive from every other area, which is
+    otherwise silently absent -- see _compute_missing_area_dc. Set to
+    False to simulate the area genuinely isolated, with no such
+    compensation; the returned/printed summary always states which mode
+    was used, since the two are not interchangeable.
 
     Returns a dictionary containing key output paths.
     """
@@ -398,6 +478,22 @@ def generate_humam_configs(
         resolution=0.1
     )
 
+    missing_area_dc: dict[str, float] = {}
+    if not multi_area and compensate_missing_areas:
+        missing_area_dc = _compute_missing_area_dc(
+            labels=labels,
+            area_list=data.net_yaml["area_list"],
+            layers=layers,
+            pops=pops,
+            selected_areas=selected_areas,
+            neuron_numbers=data.neuron_numbers,
+            synapses_internal=data.synapses_internal,
+            weights=data.weights,
+            base_theory_rates=data.base_theory_rates,
+            excitatory_params=excitatory_params,
+            inhibitory_params=inhibitory_params,
+        )
+
     scaling = {
         "N_scaling": n_scaling,
         "K_scaling": k_scaling,
@@ -422,18 +518,42 @@ def generate_humam_configs(
         "reference": "reference.yaml",
     }
 
-    neurons = {
-        "neurons": {
-            "excitatory": {
-                "model": data.net_yaml["neuron_model_E"],
-                "parameters": excitatory_params,
-            },
-            "inhibitory": {
-                "model": data.net_yaml["neuron_model_I"],
-                "parameters": inhibitory_params,
-            },
+    if missing_area_dc:
+        # One neuron definition per population instead of two shared ones,
+        # since each population needs its own compensation current baked
+        # into I_e. Nothing in the schema requires sharing -- populations
+        # already reference their neuron by name.
+        neurons = {
+            "neurons": {
+                label: {
+                    "model": (
+                        data.net_yaml["neuron_model_I"]
+                        if idx[2] == "I"
+                        else data.net_yaml["neuron_model_E"]
+                    ),
+                    "parameters": {
+                        **(inhibitory_params if idx[2] == "I" else excitatory_params),
+                        "I_e": missing_area_dc.get(label, 0.0),
+                    },
+                }
+                for idx, label in labels
+            }
         }
-    }
+        for entry in population_entries:
+            entry["neuron"] = entry["name"]
+    else:
+        neurons = {
+            "neurons": {
+                "excitatory": {
+                    "model": data.net_yaml["neuron_model_E"],
+                    "parameters": excitatory_params,
+                },
+                "inhibitory": {
+                    "model": data.net_yaml["neuron_model_I"],
+                    "parameters": inhibitory_params,
+                },
+            }
+        }
 
     simulation_cfg = {
         "t_sim": t_sim,
@@ -470,6 +590,31 @@ def generate_humam_configs(
         "reference.yaml": reference,
     }
 
+    # State missing-area compensation directly in neurons.yaml -- where it
+    # actually shows up (I_e) -- so it's clear to anyone reading the
+    # generated config later, not just at generation time.
+    other_area_count = len(data.net_yaml["area_list"]) - len(selected_areas)
+    neurons_header: str | None = None
+    if not multi_area and other_area_count > 0:
+        if missing_area_dc:
+            values = list(missing_area_dc.values())
+            neurons_header = (
+                f"Compensated for {other_area_count} area(s) not simulated: each "
+                "population's I_e includes a DC current for the cortical input it "
+                "would otherwise be missing (see humam.generator._compute_missing_area_dc).\n"
+                f"I_e compensation range: {min(values):.3f} to {max(values):.3f} pA.\n"
+                "Regenerate with --no-compensate-missing-areas for a genuinely "
+                "isolated area instead (no compensation)."
+            )
+        else:
+            neurons_header = (
+                f"WARNING: this area is simulated in isolation from the other "
+                f"{other_area_count} area(s) of the full HuMAM model, with NO "
+                "compensation for the cortical input it would normally receive from "
+                "them -- I_e is not adjusted. Regenerate without "
+                "--no-compensate-missing-areas to add that compensation."
+            )
+
     # Large uniform tables (thousands of rows for multi-area networks) are
     # written one-record-per-line instead of full YAML block style.
     flow_style_fields = {
@@ -481,7 +626,8 @@ def generate_humam_configs(
         field = flow_style_fields.get(name)
         if field is not None:
             payload = {**payload, field: flow_records(payload[field])}
-        write_yaml(network_dir / name, payload)
+        header = neurons_header if name == "neurons.yaml" else None
+        write_yaml(network_dir / name, payload, header_comment=header)
 
     write_yaml(simulation_path, simulation_cfg)
 
@@ -496,14 +642,11 @@ def generate_humam_configs(
     return {
         "network_dir": network_dir,
         "simulation_path": simulation_path,
+        "missing_area_compensation_applied": bool(missing_area_dc),
+        "other_area_count": other_area_count,
     }
 
 
-
-def generate_single_area_configs(**kwargs: Any) -> dict[str, Path]:
-    """Backward-compatible alias for :func:`generate_humam_configs`."""
-
-    return generate_humam_configs(**kwargs)
 
 def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--area", default="bankssts")
@@ -517,6 +660,13 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--rng-seed", type=int, default=42)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--export-json", action="store_true")
+    parser.add_argument(
+        "--no-compensate-missing-areas",
+        dest="compensate_missing_areas",
+        action="store_false",
+        help="For a single-area network, do NOT compensate for the cortical input "
+        "the area would normally receive from the rest of HuMAM (default: compensate).",
+    )
 
 
 def add_cli(subparser: argparse.ArgumentParser) -> None:
@@ -555,9 +705,24 @@ def _run(args: argparse.Namespace) -> None:
         rng_seed=args.rng_seed,
         local_num_threads=args.threads,
         export_json=args.export_json,
+        compensate_missing_areas=args.compensate_missing_areas,
     )
     print(f"Generated network config in: {paths['network_dir']}")
     print(f"Generated simulation config: {paths['simulation_path']}")
+
+    if paths.get("other_area_count", 0) > 0:
+        if paths["missing_area_compensation_applied"]:
+            print(
+                f"\nCompensated for {paths['other_area_count']} area(s) not simulated "
+                "(see neurons.yaml). Use --no-compensate-missing-areas to disable."
+            )
+        else:
+            print(
+                f"\nWARNING: area simulated in isolation from {paths['other_area_count']} "
+                "other area(s), with NO compensation for their normal cortical input "
+                "(see neurons.yaml). Omit --no-compensate-missing-areas to enable it."
+            )
+
     print("\nRun with:")
     print(
         "python scripts/run_simulation.py "

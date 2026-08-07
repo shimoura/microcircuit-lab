@@ -111,21 +111,33 @@ def flow_records(records: list | dict) -> list | dict:
     raise TypeError(f"flow_records expects a list or dict, got {type(records).__name__}.")
 
 
-def write_yaml(path: str | Path, data: dict[str, Any]) -> None:
+def write_yaml(
+    path: str | Path,
+    data: dict[str, Any],
+    *,
+    header_comment: str | None = None,
+) -> None:
     """
     Write a mapping as YAML.
 
     Use :func:`flow_records` on specific fields beforehand to keep large
     uniform tables compact; everything else is written in normal block
-    style.
+    style. ``header_comment`` is written as ``#``-prefixed lines above
+    the YAML content -- e.g. to record generation-time provenance
+    (was some non-default option used?) directly in a file that will
+    otherwise be read on its own, long after the generating command's
+    console output is gone.
     """
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        yaml.safe_dump(data, sort_keys=False, default_flow_style=False, width=100_000),
-        encoding="utf-8",
-    )
+
+    text = yaml.safe_dump(data, sort_keys=False, default_flow_style=False, width=100_000)
+    if header_comment:
+        prefixed = "\n".join(f"# {line}" if line else "#" for line in header_comment.splitlines())
+        text = f"{prefixed}\n{text}"
+
+    path.write_text(text, encoding="utf-8")
 
 
 @dataclass(frozen=True)
