@@ -5,10 +5,13 @@ import logging
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import (
+    POWER_SPECTRUM_METHODS,
     FiringRatePlotConfig,
     PlotStyle,
+    PowerSpectrumPlotConfig,
     RasterPlotConfig,
     plot_firing_rates,
+    plot_power_spectrum,
     plot_raster,
 )
 from microcircuit_lab.io.output import register_artifact
@@ -38,6 +41,11 @@ FIRING_RATE_CONFIG = FiringRatePlotConfig(
     show_legend=True,
 )
 
+POWER_SPECTRUM_CONFIG = PowerSpectrumPlotConfig(
+    width_per_column=3.0,
+    height_per_row=1.6,
+)
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a generated network configuration.")
@@ -50,6 +58,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--reference", action="store_true", help="Show reference firing rates.")
     parser.add_argument("--no-raster", action="store_true")
     parser.add_argument("--no-firing-rates", action="store_true")
+    parser.add_argument("--no-power-spectrum", action="store_true")
+    parser.add_argument(
+        "--power-spectrum-method",
+        default="welch",
+        choices=sorted(POWER_SPECTRUM_METHODS),
+        help="Spectral estimator for the power-spectrum plot.",
+    )
     parser.add_argument(
         "--show",
         action="store_true",
@@ -100,6 +115,21 @@ def main() -> None:
             show=args.show,
         )
         register_artifact(simulation.output_dir, "plots", firing_rates_path)
+
+    if not args.no_power_spectrum:
+        power_spectrum_path = plots_dir / "power_spectrum.png"
+        plot_power_spectrum(
+            simulation,
+            begin=args.begin,
+            end=args.end,
+            area=args.area,
+            method=args.power_spectrum_method,
+            style=PLOT_STYLE,
+            config=POWER_SPECTRUM_CONFIG,
+            save_path=power_spectrum_path,
+            show=args.show,
+        )
+        register_artifact(simulation.output_dir, "plots", power_spectrum_path)
 
 
 if __name__ == "__main__":

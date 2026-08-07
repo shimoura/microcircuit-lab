@@ -1,0 +1,89 @@
+"""Tests for population rate power-spectrum analysis."""
+
+import numpy as np
+import pytest
+
+from microcircuit_lab import Simulation
+from microcircuit_lab.analysis import POWER_SPECTRUM_METHODS, compute_power_spectrum, plot_power_spectrum
+from microcircuit_lab.analysis.power_spectrum import _periodogram, _welch
+
+
+@pytest.mark.parametrize("estimator", [_periodogram, _welch])
+def test_estimators_recover_a_known_frequency(estimator):
+    fs = 1000.0  # Hz
+    duration_s = 4.0
+    t = np.arange(0.0, duration_s, 1.0 / fs)
+    signal = np.sin(2 * np.pi * 40.0 * t)  # pure 40 Hz tone
+
+    freqs, power = estimator(signal, fs)
+
+    assert freqs[np.argmax(power)] == pytest.approx(40.0, abs=1.0)
+
+
+def test_compute_power_spectrum_on_toy_simulation():
+    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={"t_sim": 500.0, "print_time": False}
+    )
+    simulation.run()
+
+    spectra = compute_power_spectrum(simulation, bin_size=1.0, method="welch")
+
+    assert set(spectra) == {"E", "I"}
+    for freqs, power in spectra.values():
+        assert len(freqs) == len(power)
+        assert freqs[0] == 0.0
+        assert np.all(np.diff(freqs) > 0)
+        assert np.all(power >= 0.0)
+
+
+def test_compute_power_spectrum_rejects_unknown_method():
+    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={"t_sim": 200.0, "print_time": False}
+    )
+    simulation.run()
+
+    with pytest.raises(ValueError, match="Unknown power spectrum method"):
+        compute_power_spectrum(simulation, method="not-a-real-method")
+
+
+def test_all_registered_methods_are_usable():
+    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={"t_sim": 200.0, "print_time": False}
+    )
+    simulation.run()
+
+    for method in POWER_SPECTRUM_METHODS:
+        spectra = compute_power_spectrum(simulation, method=method)
+        assert set(spectra) == {"E", "I"}
+
+
+def test_plot_power_spectrum_grid_layout():
+    """Toy's E/I populations share no layer, so they land in one row,
+    one column each (see analysis.power_spectrum._grid_layout)."""
+
+    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={"t_sim": 200.0, "print_time": False}
+    )
+    simulation.run()
+
+    fig, axes = plot_power_spectrum(simulation, show=False)
+
+    assert axes.shape == (1, 2)
+    titles = {ax.get_title() for ax in axes.flat}
+    assert titles == {"E", "I"}
+    fig.clf()
+
+
+def test_grid_layout_groups_shared_layer_into_one_row():
+    from microcircuit_lab.analysis.power_spectrum import _grid_layout
+
+    cells = _grid_layout(["L23_E", "L23_I", "L4_E", "L4_I"])
+
+    assert cells[(0, 0)] == ["L23_E"]
+    assert cells[(0, 1)] == ["L23_I"]
+    assert cells[(1, 0)] == ["L4_E"]
+    assert cells[(1, 1)] == ["L4_I"]

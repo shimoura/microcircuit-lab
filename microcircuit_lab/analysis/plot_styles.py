@@ -67,9 +67,25 @@ class FiringRatePlotConfig:
     invert_yaxis: bool = True
 
 
+@dataclass(frozen=True)
+class PowerSpectrumPlotConfig:
+    """Power-spectrum presentation settings (grid: one subplot per population,
+    grouped into rows by layer -- see analysis.power_spectrum._grid_layout)."""
+
+    figsize: tuple[float, float] | None = None
+    width_per_column: float = 3.0
+    height_per_row: float = 1.8
+    min_width: float = 4.5
+    min_height: float = 2.2
+    linewidth: float = 1.2
+    log_power: bool = False
+    xlim: tuple[float, float] | None = None
+
+
 DEFAULT_PLOT_STYLE = PlotStyle()
 DEFAULT_RASTER_CONFIG = RasterPlotConfig()
 DEFAULT_FIRING_RATE_CONFIG = FiringRatePlotConfig()
+DEFAULT_POWER_SPECTRUM_CONFIG = PowerSpectrumPlotConfig()
 
 
 def population_metadata(name: str) -> tuple[str | None, str | None, str | None]:
