@@ -99,38 +99,60 @@ def external_weights(network: NetworkConfig) -> np.ndarray:
     )
 
 
+def _require_iaf_psc_exp(target, population_name: str) -> None:
+    if target.neuron.model != "iaf_psc_exp":
+        raise NotImplementedError(
+            "PSP-to-PSC weight conversion is only implemented for "
+            f"'iaf_psc_exp' neurons, but population {population_name!r} "
+            f"uses {target.neuron.model!r}. Either use iaf_psc_exp, or "
+            "supply this weight with unit: PSC (already a current "
+            "amplitude in pA) or unit: native (used exactly as given, "
+            "e.g. for a conductance-based model) instead."
+        )
+
+
 def external_psc_weights(
     network: NetworkConfig,
 ) -> np.ndarray:
     """
-    Return the external weights converted from
-    biological PSP amplitudes to PSC amplitudes.
+    Return the external weights as PSC amplitudes (pA).
+
+    Only ``unit: PSP`` weights are converted (``iaf_psc_exp`` neurons
+    only); any other unit (``PSC``, ``native``, ...) is returned unchanged.
     """
 
-    return np.asarray(
-        [
+    values = []
+    for name in network.populations:
+        input_cfg = network.inputs[name]
+
+        if input_cfg.weight.unit != "PSP":
+            values.append(input_cfg.weight.mean)
+            continue
+
+        target = network.populations[name]
+        _require_iaf_psc_exp(target, name)
+
+        values.append(
             psp_to_psc_iaf_psc_exp(
-                psp=network.inputs[name].weight.mean,
-                C_m=network.populations[name].neuron.parameters.C_m,
-                tau_m=network.populations[name].neuron.parameters.tau_m,
-                tau_syn=network.populations[name].neuron.parameters.tau_syn_ex,
+                psp=input_cfg.weight.mean,
+                C_m=target.neuron.parameters.C_m,
+                tau_m=target.neuron.parameters.tau_m,
+                tau_syn=target.neuron.parameters.tau_syn_ex,
             )
-            for name in network.populations
-        ],
-        dtype=float,
-    )
+        )
+
+    return np.asarray(values, dtype=float)
 
 
 def mean_psc_matrix(
     network: NetworkConfig,
 ) -> np.ndarray:
     """
-    Return the biological mean PSC matrix.
-    """
+    Return the biological mean PSC matrix (pA).
 
-    from microcircuit_lab.network.synapses import (
-        psp_to_psc_iaf_psc_exp,
-    )
+    Only ``unit: PSP`` connections are converted (``iaf_psc_exp`` neurons
+    only); any other unit (``PSC``, ``native``, ...) is used unchanged.
+    """
 
     pop_names = list(network.populations.keys())
     name_to_index = {name: i for i, name in enumerate(pop_names)}
@@ -144,7 +166,12 @@ def mean_psc_matrix(
         i = name_to_index[connection.target]
         j = name_to_index[connection.source]
 
+        if connection.weight.unit != "PSP":
+            matrix[i, j] = connection.weight.mean
+            continue
+
         target = network.populations[connection.target]
+        _require_iaf_psc_exp(target, connection.target)
 
         if connection.weight.mean >= 0:
             tau_syn = target.neuron.parameters.tau_syn_ex
@@ -181,23 +208,30 @@ def convert_network_psp_to_psc(
     network: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Convert all synaptic weights stored as PSP amplitudes into
-    PSC amplitudes.
+    Convert synaptic weights stored as PSP amplitudes (``unit: PSP``) into
+    PSC amplitudes. Any other unit (``PSC``, ``native``, ...) is left
+    untouched -- it is not reinterpreted as PSP.
 
     The conversion is performed independently for each target
     population using its neuron parameters.
 
     Currently this transformation is only implemented for
     current-based leaky integrate-and-fire neurons with
-    exponential synaptic currents (`iaf_psc_exp`).
+    exponential synaptic currents (`iaf_psc_exp`). A new neuron model
+    should not need a new conversion formula here: give its connections
+    ``unit: native`` (or ``PSC`` if the weights are genuinely already
+    current amplitudes in pA) instead.
     """
 
     connections = []
     for connection in network.connections:
 
+        if connection.weight.unit != "PSP":
+            connections.append(connection)
+            continue
+
         target = network.populations[connection.target]
-        if target.neuron.model != "iaf_psc_exp":
-            raise NotImplementedError(...)
+        _require_iaf_psc_exp(target, connection.target)
 
         if connection.weight.mean >= 0:
             tau_syn = target.neuron.parameters.tau_syn_ex
@@ -227,7 +261,12 @@ def convert_network_psp_to_psc(
     inputs = {}
     for pop_name, input_cfg in network.inputs.items():
 
+        if input_cfg.weight.unit != "PSP":
+            inputs[pop_name] = input_cfg
+            continue
+
         target = network.populations[pop_name]
+        _require_iaf_psc_exp(target, pop_name)
         tau_syn = target.neuron.parameters.tau_syn_ex
 
         weight = input_cfg.weight.model_copy(

@@ -1,3 +1,10 @@
+# Each weight.mean below is a PSP amplitude (mV); weight.unit is
+# required (no default) and gets converted to a simulator quantity
+# assuming iaf_psc_exp neurons. If your neuron model has no PSP
+# conversion formula (e.g. conductance-based), set weight.unit to PSC
+# (already a current amplitude in pA) or native (used exactly as given,
+# no interpretation) instead -- see WeightDistribution in
+# microcircuit_lab/config/network.py.
 connections:
 
   - source: E
@@ -7,6 +14,7 @@ connections:
       mean: 0.15
       rel_std: 0.1
       distribution: normal
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -19,6 +27,7 @@ connections:
       mean: -0.6
       rel_std: 0.1
       distribution: normal
+      unit: PSP
     delay:
       mean: 0.75
       rel_std: 0.5
@@ -31,6 +40,7 @@ connections:
       mean: 0.15
       rel_std: 0.1
       distribution: normal
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -43,6 +53,7 @@ connections:
       mean: -0.6
       rel_std: 0.1
       distribution: normal
+      unit: PSP
     delay:
       mean: 0.75
       rel_std: 0.5

@@ -6,6 +6,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -17,6 +18,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -28,6 +30,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -39,6 +42,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -50,6 +54,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -61,6 +66,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -72,6 +78,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -83,6 +90,7 @@ inputs:
       mean: 0.15
       rel_std: 0.0
       distribution: fixed
+      unit: PSP
     delay:
       mean: 1.5
       rel_std: 0.5

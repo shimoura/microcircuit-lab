@@ -53,6 +53,7 @@ def _build_connectivity() -> dict[str, Any]:
                         "mean": weight_mean,
                         "rel_std": 0.1,
                         "distribution": "normal",
+                        "unit": "PSP",
                     },
                     "delay": {
                         "mean": delay_mean,

@@ -86,10 +86,22 @@ class WeightDistribution(FrozenConfig):
     """
     Distribution describing synaptic weights.
 
-    The interpretation of `mean` depends on `unit`.
+    The interpretation of `mean` depends on `unit`, which is required --
+    deliberately no default, so a config can't silently run with the
+    wrong conversion just because a field was left out:
 
-    NetworkPreprocessor is responsible for converting the biological
-    representation into simulator-specific quantities.
+    - "PSP": biological post-synaptic potential amplitude (mV). Converted
+      to a simulator-specific quantity by NetworkPreprocessor, which
+      requires a formula for the target neuron model (currently only
+      implemented for `iaf_psc_exp`; see network.parameters).
+    - "PSC": post-synaptic current amplitude (pA), already in the form a
+      current-based simulator backend consumes directly. Used as-is, no
+      conversion.
+    - "native": used exactly as given, with no interpretation at all.
+      The right choice for a neuron model with no PSP/PSC conversion
+      formula implemented -- e.g. a conductance-based model (nS weights)
+      or anything else -- so adding a new neuron model never requires
+      adding new conversion code, only picking the right unit.
     """
 
     mean: float
@@ -105,7 +117,8 @@ class WeightDistribution(FrozenConfig):
     unit: Literal[
         "PSC",
         "PSP",
-    ] = "PSP"
+        "native",
+    ]
 
 
 class DelayDistribution(FrozenConfig):

@@ -112,6 +112,8 @@ There are two supported ways to try a new model, and the core package (`network/
 
 If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (same pattern in both examples above) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
 
+**Using a neuron model other than `iaf_psc_exp`?** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out. `PSP` (biological amplitude, mV) is converted to a simulator quantity by `NetworkPreprocessor`, but that conversion formula is currently only implemented for `iaf_psc_exp`. Rather than adding a new formula per neuron model, give your model's connections `unit: PSC` (if the weights are already current amplitudes in pA) or `unit: native` (used exactly as given, no interpretation at all -- the right choice for a conductance-based model, or anything else) instead of `PSP`. Adding a new neuron model should essentially never require touching `network/parameters.py`.
+
 Either way, once the generic configuration exists, run it through the same public API:
 
 ```python
