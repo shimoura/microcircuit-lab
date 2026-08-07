@@ -9,10 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
-from microcircuit_lab.io.files import read_yaml
+from microcircuit_lab.io.files import flow_records, read_yaml, write_yaml
 
 
 LAYER_ALIAS = {
@@ -55,13 +53,6 @@ class HumamData:
 def _load_pickle(path: Path) -> Any:
     with path.open("rb") as f:
         return pickle.load(f)
-
-
-def _write_yaml(path: Path, data: dict[str, Any]) -> None:
-    path.write_text(
-        yaml.safe_dump(data, sort_keys=False),
-        encoding="utf-8",
-    )
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
@@ -479,10 +470,20 @@ def generate_humam_configs(
         "reference.yaml": reference,
     }
 
+    # Large uniform tables (thousands of rows for multi-area networks) are
+    # written one-record-per-line instead of full YAML block style.
+    flow_style_fields = {
+        "populations.yaml": "populations",
+        "connectivity.yaml": "connections",
+        "inputs.yaml": "inputs",
+    }
     for name, payload in yaml_payloads.items():
-        _write_yaml(network_dir / name, payload)
+        field = flow_style_fields.get(name)
+        if field is not None:
+            payload = {**payload, field: flow_records(payload[field])}
+        write_yaml(network_dir / name, payload)
 
-    _write_yaml(simulation_path, simulation_cfg)
+    write_yaml(simulation_path, simulation_cfg)
 
     if export_json:
         for name, payload in yaml_payloads.items():

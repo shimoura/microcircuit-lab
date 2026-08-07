@@ -11,10 +11,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-import yaml
-
 from microcircuit_lab.backends.base import SimulationBackend
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
+from microcircuit_lab.io.files import flow_records, write_yaml
 from microcircuit_lab.network import Network
 
 
@@ -55,14 +54,23 @@ def save_run_config(
     simulation_config: SimulationConfig,
     run_dir: Path,
 ) -> Path:
-    """Save the fully resolved (preprocessed) network and simulation config."""
+    """Save the fully resolved (preprocessed) network and simulation config.
+
+    connections/populations/inputs are written one-record-per-line (see
+    io.files.flow_records) since a full-scale network can have thousands
+    of connection entries.
+    """
+
+    network_payload = network.config.model_dump(mode="json")
+    for field in ("connections", "populations", "inputs"):
+        network_payload[field] = flow_records(network_payload[field])
 
     payload = {
-        "network": network.config.model_dump(mode="json"),
+        "network": network_payload,
         "simulation": simulation_config.model_dump(mode="json"),
     }
     path = run_dir / "config.yaml"
-    path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+    write_yaml(path, payload)
     return path
 
 

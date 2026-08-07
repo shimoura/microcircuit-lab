@@ -1,8 +1,8 @@
 """
-Utilities for reading configuration files.
+Utilities for reading and writing configuration files.
 
 This module intentionally performs no interpretation of the configuration.
-It only reads YAML files and returns plain Python dictionaries.
+It only reads/writes YAML files as plain Python dictionaries.
 
 Construction of validated configuration objects is handled elsewhere.
 """
@@ -70,6 +70,61 @@ def read_network_directory(path: str | Path) -> NetworkFiles:
         inputs=read_yaml(path / manifest["inputs"]),
         scaling=read_yaml(path / manifest["scaling"]),
         reference=read_yaml(path / manifest["reference"]),
+    )
+
+
+class FlowRecord(dict):
+    """Marker: dump this mapping in YAML flow style (one line) via write_yaml."""
+
+
+yaml.SafeDumper.add_representer(
+    FlowRecord,
+    lambda dumper, data: dumper.represent_mapping(
+        "tag:yaml.org,2002:map", data, flow_style=True
+    ),
+)
+
+
+def flow_records(records: list | dict) -> list | dict:
+    """
+    Mark each item of a list, or each value of a dict, to be written in
+    YAML flow style (nested mappings inside each record are marked too).
+
+    Intended for large, uniform, generator-written tables -- e.g. thousands
+    of connectivity rows -- where full YAML block style costs ~10x the
+    lines for no readability gain. Leave hand-edited files (e.g. the toy
+    network template) in normal block style instead. Apply to the specific
+    field(s) that hold the table before calling write_yaml, e.g.:
+
+        write_yaml(path, {"connections": flow_records(connections)})
+    """
+
+    def _wrap(value: Any) -> Any:
+        if isinstance(value, dict):
+            return FlowRecord({key: _wrap(item) for key, item in value.items()})
+        return value
+
+    if isinstance(records, list):
+        return [_wrap(item) for item in records]
+    if isinstance(records, dict):
+        return {key: _wrap(item) for key, item in records.items()}
+    raise TypeError(f"flow_records expects a list or dict, got {type(records).__name__}.")
+
+
+def write_yaml(path: str | Path, data: dict[str, Any]) -> None:
+    """
+    Write a mapping as YAML.
+
+    Use :func:`flow_records` on specific fields beforehand to keep large
+    uniform tables compact; everything else is written in normal block
+    style.
+    """
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        yaml.safe_dump(data, sort_keys=False, default_flow_style=False, width=100_000),
+        encoding="utf-8",
     )
 
 

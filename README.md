@@ -100,6 +100,8 @@ configs/
 
 A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording.
 
+**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; use `microcircuit_lab.io.files.write_yaml`/`flow_records` in a generator to opt a field into the compact style.
+
 ## Adding a new model
 
 There are two supported ways to try a new model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never has to change for either one.

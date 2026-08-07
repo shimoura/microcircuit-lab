@@ -13,14 +13,13 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from microcircuit_lab.models.pd14.data import (
     populations,
     full_num_neurons,
     connection_probabilities,
 )
 from microcircuit_lab.network.connectivity import num_synapses_from_conn_prob
+from microcircuit_lab.io.files import flow_records, write_yaml
 
 
 def _build_connectivity() -> dict[str, Any]:
@@ -74,11 +73,8 @@ def generate_pd14_connectivity(
     """Write ``connectivity.yaml`` for the PD14 network and return its path."""
 
     output_path = Path(config_dir) / "network" / network_name / "connectivity.yaml"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        yaml.safe_dump(_build_connectivity(), sort_keys=False),
-        encoding="utf-8",
-    )
+    connectivity = _build_connectivity()
+    write_yaml(output_path, {"connections": flow_records(connectivity["connections"])})
     return output_path
 
 
