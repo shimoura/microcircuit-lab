@@ -58,13 +58,13 @@ def save_run_config(
 ) -> Path:
     """Save the fully resolved (preprocessed) network and simulation config.
 
-    connections/populations/inputs are written one-record-per-line (see
-    io.files.flow_records) since a full-scale network can have thousands
-    of connection entries.
+    connections/populations/background_inputs are written one-record-per-line
+    (see io.files.flow_records) since a full-scale network can have
+    thousands of connection entries.
     """
 
     network_payload = network.config.model_dump(mode="json")
-    for field in ("connections", "populations", "inputs"):
+    for field in ("connections", "populations", "background_inputs"):
         network_payload[field] = flow_records(network_payload[field])
 
     payload = {

@@ -1,4 +1,4 @@
-inputs:
+background_inputs:
   L23_E: {rate: 2.768776233668332, weight: {mean: 0.09999999999999999, rel_std: 0.1, distribution: normal, unit: PSP}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
   L23_I: {rate: 2.9533613384156756, weight: {mean: 0.1, rel_std: 0.1, distribution: normal, unit: PSP}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
   L5_E: {rate: 2.2150209958692546, weight: {mean: 0.105, rel_std: 0.1, distribution: normal, unit: PSP}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}

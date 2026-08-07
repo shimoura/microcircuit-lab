@@ -104,7 +104,7 @@ def network_compensation_current(
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * network_input
 
 
-def external_compensation_current(
+def background_compensation_current(
     PSC_ext: np.ndarray,
     K_ext: np.ndarray,
     bg_rate: np.ndarray,
@@ -112,7 +112,7 @@ def external_compensation_current(
     K_scaling: float,
 ) -> np.ndarray:
     """
-    Compute the external input compensation due to network scaling.
+    Compute the background input compensation due to network scaling.
     """
 
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate
@@ -164,11 +164,11 @@ def scale_weights(
         )
 
     #
-    # external
+    # background
     #
-    inputs = {}
+    background_inputs = {}
 
-    for pop_name, input_cfg in network.inputs.items():
+    for pop_name, input_cfg in network.background_inputs.items():
 
         weight = input_cfg.weight.model_copy(
             update={
@@ -179,7 +179,7 @@ def scale_weights(
             }
         )
 
-        inputs[pop_name] = input_cfg.model_copy(
+        background_inputs[pop_name] = input_cfg.model_copy(
             update={
                 "weight": weight,
             }
@@ -188,6 +188,6 @@ def scale_weights(
     return network.model_copy(
         update={
             "connections": connections,
-            "inputs": inputs,
+            "background_inputs": background_inputs,
         }
     )

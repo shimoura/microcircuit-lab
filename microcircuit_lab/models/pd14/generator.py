@@ -4,7 +4,7 @@ This converts the original Potjans & Diesmann (2014) connection
 probabilities into absolute synapse numbers and writes a connectivity
 YAML in the format used by Microcircuit Lab. Only ``connectivity.yaml``
 is derived here; the other PD14 network files (populations, neurons,
-inputs, scaling, reference) are static and checked in directly.
+background_inputs, scaling, reference) are static and checked in directly.
 """
 
 from __future__ import annotations
@@ -91,8 +91,8 @@ def _run(args: argparse.Namespace) -> None:
     )
     print(f"Generated connectivity config: {output_path}")
     print(
-        "Other PD14 network files (populations, neurons, inputs, scaling, "
-        "reference) are static and were not regenerated."
+        "Other PD14 network files (populations, neurons, background_inputs, "
+        "scaling, reference) are static and were not regenerated."
     )
 
 

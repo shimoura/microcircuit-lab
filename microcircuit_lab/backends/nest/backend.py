@@ -240,14 +240,14 @@ class NestBackend:
 
     def create_poisson_generators(self) -> None:
         """
-        Create one Poisson generator per configured population.
+        Create one background Poisson generator per configured population.
         """
 
-        logger.info("Creating Poisson generators:")
+        logger.info("Creating background Poisson generators:")
 
-        for pop_name, input_cfg in self._network.config.inputs.items():
+        for pop_name, input_cfg in self._network.config.background_inputs.items():
             logger.info(
-                "Creating Poisson input for %s (rate=%g Hz)",
+                "Creating background Poisson input for %s (rate=%g Hz)",
                 pop_name,
                 input_cfg.rate,
             )
@@ -261,11 +261,11 @@ class NestBackend:
 
     def connect_poisson_generators(self) -> None:
         """
-        Connect Poisson generators to populations.
+        Connect background Poisson generators to populations.
         """
 
         for pop_name in self.poisson_generators:
-            input_cfg = self._network.config.inputs[pop_name]
+            input_cfg = self._network.config.background_inputs[pop_name]
             nest.Connect(
                 self.poisson_generators[pop_name],
                 self.get_population(pop_name),

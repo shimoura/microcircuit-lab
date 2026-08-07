@@ -18,15 +18,15 @@ from microcircuit_lab.network.scaling import (
     scale_neuron_number,
     scale_synapse_number,
     scale_weights,
-    external_compensation_current,
+    background_compensation_current,
     network_compensation_current,
 )
 
 from microcircuit_lab.network.parameters import (
     indegree_matrix,
     full_mean_rates,
-    external_indegrees,
-    external_psc_weights,
+    background_indegrees,
+    background_psc_weights,
     mean_psc_matrix,
     tau_syn_ex,
     convert_network_psp_to_psc,
@@ -61,7 +61,7 @@ class NetworkPreprocessor:
             network = scale_weights(network)
             network = self._apply_scaling_compensation(network)
 
-        network = self._apply_external_poisson_rates(network)
+        network = self._apply_background_poisson_rates(network)
 
         return network
 
@@ -146,7 +146,7 @@ class NetworkPreprocessor:
             }
         )
 
-    def _apply_external_poisson_rates(
+    def _apply_background_poisson_rates(
         self,
         network: NetworkConfig,
     ) -> NetworkConfig:
@@ -159,12 +159,12 @@ class NetworkPreprocessor:
             effective_rate = bg_rate * K_ext
         """
 
-        inputs = {}
+        background_inputs = {}
 
-        for pop_name, input_cfg in network.inputs.items():
+        for pop_name, input_cfg in network.background_inputs.items():
             K_ext = network.populations[pop_name].background_indegree
 
-            inputs[pop_name] = input_cfg.model_copy(
+            background_inputs[pop_name] = input_cfg.model_copy(
                 update={
                     "rate": input_cfg.rate * K_ext,
                 }
@@ -172,7 +172,7 @@ class NetworkPreprocessor:
 
         return network.model_copy(
             update={
-                "inputs": inputs,
+                "background_inputs": background_inputs,
             }
         )
 
@@ -202,12 +202,12 @@ class NetworkPreprocessor:
         if original.reference is None:
             return network
 
-        # Connection indegrees for recurrent and external connections
+        # Connection indegrees for recurrent and background connections
         indegrees = indegree_matrix(original)
-        K_ext = external_indegrees(original)
+        K_ext = background_indegrees(original)
 
-        # Mean PSC amplitudes (pA) for recurrent and external connections
-        PSC_ext = external_psc_weights(original)
+        # Mean PSC amplitudes (pA) for recurrent and background connections
+        PSC_ext = background_psc_weights(original)
         PSC_matrix = mean_psc_matrix(original)
 
         # Synaptic time constant (ms) for excitatory synapses
@@ -232,13 +232,13 @@ class NetworkPreprocessor:
                 K_scaling=scaling.K_scaling,
             )
 
-        # Compute external contribution to DC compensation from biological network quantities
+        # Compute background contribution to DC compensation from biological network quantities
         pop_names = list(original.populations.keys())
         bg_rates = np.asarray(
-            [original.inputs[name].rate for name in pop_names],
+            [original.background_inputs[name].rate for name in pop_names],
             dtype=float,
         )
-        external_current = external_compensation_current(
+        background_current = background_compensation_current(
             PSC_ext=PSC_ext,
             K_ext=K_ext,
             bg_rate=bg_rates,
@@ -255,7 +255,7 @@ class NetworkPreprocessor:
                     "I_e": (
                         population.neuron.parameters.I_e
                         + network_current[i]
-                        + external_current[i]
+                        + background_current[i]
                     )
                 }
             )

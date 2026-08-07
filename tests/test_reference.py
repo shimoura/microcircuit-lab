@@ -10,8 +10,8 @@ from microcircuit_lab.network.parameters import (
     full_num_synapses,
     indegree_matrix,
     full_mean_rates,
-    external_indegrees,
-    external_weights,
+    background_indegrees,
+    background_weights,
 )
 from microcircuit_lab.io.files import read_network_directory
 
@@ -99,13 +99,13 @@ def test_full_mean_rates():
     assert rates[7] == pytest.approx(7.829)
 
 
-def test_external_indegrees():
+def test_background_indegrees():
 
     network_files = read_network_directory("configs/network/pd14")
 
     network = NetworkConfigLoader(network_files).build()
 
-    K_ext = external_indegrees(network)
+    K_ext = background_indegrees(network)
 
     assert K_ext.shape == (8,)
 
@@ -119,13 +119,13 @@ def test_external_indegrees():
     assert K_ext[7] == 2100
 
 
-def test_external_weights():
+def test_background_weights():
 
     network_files = read_network_directory("configs/network/pd14")
 
     network = NetworkConfigLoader(network_files).build()
 
-    weights = external_weights(network)
+    weights = background_weights(network)
 
     assert weights.shape == (8,)
 

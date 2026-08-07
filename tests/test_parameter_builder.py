@@ -22,8 +22,8 @@ from microcircuit_lab.network.parameters import (
     full_mean_rates,
     mean_psc_matrix,
     network_mean_input,
-    external_indegrees,
-    external_psc_weights,
+    background_indegrees,
+    background_psc_weights,
 )
 
 
@@ -47,22 +47,22 @@ def test_network_mean_input_manual():
     assert manual == pytest.approx(computed)
 
 
-def test_external_input_manual():
+def test_background_input_manual():
     network_files = read_network_directory("configs/network/pd14")
     network = NetworkConfigLoader(network_files).build()
-    PSC_ext = external_psc_weights(network)
-    K_ext = external_indegrees(network)
+    PSC_ext = background_psc_weights(network)
+    K_ext = background_indegrees(network)
     rates = np.asarray(
         [
-            network.inputs[name].rate
+            network.background_inputs[name].rate
             for name in network.populations
         ]
     )
 
     manual = PSC_ext * K_ext * rates
 
-    computed = external_psc_weights(network) \
-        * external_indegrees(network) \
+    computed = background_psc_weights(network) \
+        * background_indegrees(network) \
         * rates
 
     assert np.allclose(manual, computed)
@@ -99,7 +99,7 @@ def test_n_scaling():
             "L23_E": population,
         },
         connections=[],
-        inputs={},
+        background_inputs={},
         scaling=ScalingConfig(
             N_scaling=0.5,
             K_scaling=1.0,
@@ -153,7 +153,7 @@ def test_k_scaling():
             "L23_E": population,
         },
         connections=[],
-        inputs={},
+        background_inputs={},
         scaling=ScalingConfig(
             N_scaling=1.0,
             K_scaling=0.5,

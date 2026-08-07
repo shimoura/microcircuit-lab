@@ -12,12 +12,12 @@ No simulator-specific code belongs here.
 from __future__ import annotations
 
 from microcircuit_lab.config.network import (
+    BackgroundInputConfig,
     ConnectionConfig,
     DelayDistribution,
     NetworkConfig,
     NeuronConfig,
     NeuronParams,
-    PoissonInputConfig,
     PopulationConfig,
     ScalingConfig,
     WeightDistribution,
@@ -39,7 +39,7 @@ class NetworkConfigLoader:
         self._populations_data = network_files.populations
         self._neurons_data = network_files.neurons
         self._connectivity_data = network_files.connectivity
-        self._inputs_data = network_files.inputs
+        self._background_inputs_data = network_files.background_inputs
         self._scaling_data = network_files.scaling
         self._reference_data = network_files.reference
 
@@ -54,7 +54,7 @@ class NetworkConfigLoader:
 
         connections = self._build_connections(populations)
 
-        inputs = self._build_inputs(populations)
+        background_inputs = self._build_background_inputs(populations)
 
         scaling = ScalingConfig.model_validate(self._scaling_data)
         reference = ReferenceConfig.model_validate(self._reference_data)
@@ -62,7 +62,7 @@ class NetworkConfigLoader:
         return NetworkConfig(
             populations=populations,
             connections=connections,
-            inputs=inputs,
+            background_inputs=background_inputs,
             scaling=scaling,
             reference=reference
         )
@@ -162,28 +162,28 @@ class NetworkConfigLoader:
 
         return connections
 
-    def _build_inputs(
+    def _build_background_inputs(
         self,
         populations: dict[str, PopulationConfig],
-    ) -> dict[str, PoissonInputConfig]:
+    ) -> dict[str, BackgroundInputConfig]:
         """
         Build background input definitions.
         """
 
-        inputs: dict[str, PoissonInputConfig] = {}
+        background_inputs: dict[str, BackgroundInputConfig] = {}
 
-        for population_name, values in self._inputs_data.get(
-            "inputs",
+        for population_name, values in self._background_inputs_data.get(
+            "background_inputs",
             {},
         ).items():
 
             if population_name not in populations:
                 raise ValueError(
                     f"Unknown population '{population_name}' "
-                    "referenced in inputs.yaml."
+                    "referenced in background_inputs.yaml."
                 )
 
-            inputs[population_name] = PoissonInputConfig(
+            background_inputs[population_name] = BackgroundInputConfig(
                 rate=values["rate"],
                 weight=WeightDistribution.model_validate(
                     values["weight"]
@@ -193,4 +193,4 @@ class NetworkConfigLoader:
                 ),
             )
 
-        return inputs
+        return background_inputs

@@ -20,8 +20,8 @@ def test_toy_network_loads_and_preprocesses():
     assert network.populations["I"].size == 200
 
     # background rate (Hz) * background_indegree, per NetworkPreprocessor
-    assert network.inputs["E"].rate == 8.0 * 1000
-    assert network.inputs["I"].rate == 8.0 * 1000
+    assert network.background_inputs["E"].rate == 8.0 * 1000
+    assert network.background_inputs["I"].rate == 8.0 * 1000
 
 
 def test_simulation_from_yaml_defaults_to_toy():

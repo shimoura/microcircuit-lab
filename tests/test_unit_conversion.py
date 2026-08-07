@@ -3,7 +3,7 @@
 Covers three call sites that each independently need to respect
 weight.unit and reject unsupported neuron models: the main
 convert_network_psp_to_psc pass (runs for every network), and
-mean_psc_matrix/external_psc_weights (used by the scaling-compensation
+mean_psc_matrix/background_psc_weights (used by the scaling-compensation
 DC-current calculation, which runs whenever a network is scaled --
 including PD14's bundled default, N_scaling/K_scaling: 0.05).
 """
@@ -11,12 +11,12 @@ including PD14's bundled default, N_scaling/K_scaling: 0.05).
 import pytest
 
 from microcircuit_lab.config.network import (
+    BackgroundInputConfig,
     ConnectionConfig,
     DelayDistribution,
     NetworkConfig,
     NeuronConfig,
     NeuronParams,
-    PoissonInputConfig,
     PopulationConfig,
     ReferenceConfig,
     ScalingConfig,
@@ -24,7 +24,7 @@ from microcircuit_lab.config.network import (
 )
 from microcircuit_lab.network.parameters import (
     convert_network_psp_to_psc,
-    external_psc_weights,
+    background_psc_weights,
     mean_psc_matrix,
 )
 from microcircuit_lab.network.preprocessing import NetworkPreprocessor
@@ -61,7 +61,7 @@ def _network(
         connections=[
             ConnectionConfig(source="E", target="E", n_synapses=100, weight=weight, delay=delay)
         ],
-        inputs={"E": PoissonInputConfig(rate=8.0, weight=weight, delay=delay)},
+        background_inputs={"E": BackgroundInputConfig(rate=8.0, weight=weight, delay=delay)},
         scaling=scaling or ScalingConfig(),
         reference=ReferenceConfig(full_mean_rates={"E": 5.0}) if with_reference else None,
     )
@@ -74,7 +74,7 @@ def test_psc_unit_weights_are_left_untouched():
 
     assert converted.connections[0].weight.mean == 0.15
     assert converted.connections[0].weight.unit == "PSC"
-    assert converted.inputs["E"].weight.mean == 0.15
+    assert converted.background_inputs["E"].weight.mean == 0.15
 
 
 def test_psp_unit_weights_are_converted():
@@ -105,7 +105,7 @@ def test_psc_unit_skips_unsupported_neuron_model_check():
     assert converted.connections[0].weight.mean == 0.15
 
 
-# mean_psc_matrix / external_psc_weights: used by the scaling-compensation
+# mean_psc_matrix / background_psc_weights: used by the scaling-compensation
 # DC-current calculation (preprocessing.py::_apply_scaling_compensation),
 # which is a *separate* call site from convert_network_psp_to_psc and
 # needs its own unit.PSC / neuron-model guard.
@@ -130,17 +130,17 @@ def test_mean_psc_matrix_rejects_unsupported_model_for_psp_unit():
         mean_psc_matrix(network)
 
 
-def test_external_psc_weights_leaves_psc_unit_untouched():
+def test_background_psc_weights_leaves_psc_unit_untouched():
     network = _network(neuron_model="iaf_psc_exp", weight_unit="PSC")
 
-    assert external_psc_weights(network)[0] == 0.15
+    assert background_psc_weights(network)[0] == 0.15
 
 
-def test_external_psc_weights_rejects_unsupported_model_for_psp_unit():
+def test_background_psc_weights_rejects_unsupported_model_for_psp_unit():
     network = _network(neuron_model="aeif_cond_exp", weight_unit="PSP")
 
     with pytest.raises(NotImplementedError, match="iaf_psc_exp"):
-        external_psc_weights(network)
+        background_psc_weights(network)
 
 
 def test_psc_and_equivalent_psp_unit_networks_process_identically():
@@ -165,9 +165,9 @@ def test_psc_and_equivalent_psp_unit_networks_process_identically():
                 c.model_copy(update={"weight": c.weight.model_copy(update={"mean": psc_value})})
                 for c in network_psc.connections
             ],
-            "inputs": {
+            "background_inputs": {
                 name: cfg.model_copy(update={"weight": cfg.weight.model_copy(update={"mean": psc_value})})
-                for name, cfg in network_psc.inputs.items()
+                for name, cfg in network_psc.background_inputs.items()
             },
         }
     )
@@ -198,7 +198,7 @@ def test_native_unit_is_left_untouched_by_conversion():
 
     assert converted.connections[0].weight.mean == 0.15
     assert converted.connections[0].weight.unit == "native"
-    assert converted.inputs["E"].weight.mean == 0.15
+    assert converted.background_inputs["E"].weight.mean == 0.15
 
 
 def test_native_unit_skips_neuron_model_check_everywhere():
@@ -206,4 +206,4 @@ def test_native_unit_skips_neuron_model_check_everywhere():
 
     assert convert_network_psp_to_psc(network).connections[0].weight.mean == 0.15
     assert mean_psc_matrix(network)[0, 0] == 0.15
-    assert external_psc_weights(network)[0] == 0.15
+    assert background_psc_weights(network)[0] == 0.15

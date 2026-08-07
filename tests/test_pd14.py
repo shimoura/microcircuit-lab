@@ -59,9 +59,9 @@ def test_pd14_preprocessing():
 
     assert network.populations["L23_I"].size == round(5834 * 0.2)
 
-    assert network.inputs["L23_E"].rate == pytest.approx(8.0 * 1600 * 0.2)
+    assert network.background_inputs["L23_E"].rate == pytest.approx(8.0 * 1600 * 0.2)
 
-    assert network.inputs["L23_E"].rate == 8.0 * 1600 * 0.2
+    assert network.background_inputs["L23_E"].rate == 8.0 * 1600 * 0.2
 
     assert network.populations["L23_E"].background_indegree == pytest.approx(1600 * 0.2)
 

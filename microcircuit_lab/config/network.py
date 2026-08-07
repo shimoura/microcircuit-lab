@@ -143,10 +143,10 @@ class ConnectionConfig(FrozenConfig):
 
 
 # -----------------------------------------------------------------------------
-# External input
+# Background input
 # -----------------------------------------------------------------------------
-class PoissonInputConfig(FrozenConfig):
-    """Background Poisson input for a population."""
+class BackgroundInputConfig(FrozenConfig):
+    """Always-on background Poisson input for a population."""
 
     rate: float = Field(ge=0.0)
     weight: WeightDistribution
@@ -228,7 +228,7 @@ class NetworkConfig(FrozenConfig):
     populations: dict[str, PopulationConfig]
     connections: list[ConnectionConfig]
 
-    inputs: dict[str, PoissonInputConfig]
+    background_inputs: dict[str, BackgroundInputConfig]
     scaling: ScalingConfig
 
     reference: ReferenceConfig | None = None

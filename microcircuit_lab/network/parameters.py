@@ -6,7 +6,7 @@ NetworkConfig representation without modifying its underlying biological
 meaning. These quantities are commonly used by builders and analytical
 routines.
 
-Typical examples include indegree matrices, external indegree vectors,
+Typical examples include indegree matrices, background indegree vectors,
 mean synaptic weight matrices, and other derived network-level
 representations.
 """
@@ -85,16 +85,16 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
     )
 
 
-def external_indegrees(network: NetworkConfig) -> np.ndarray:
+def background_indegrees(network: NetworkConfig) -> np.ndarray:
     return np.asarray(
         [pop.background_indegree for pop in network.populations.values()],
         dtype=float,
     )
 
 
-def external_weights(network: NetworkConfig) -> np.ndarray:
+def background_weights(network: NetworkConfig) -> np.ndarray:
     return np.asarray(
-        [network.inputs[name].weight.mean for name in network.populations],
+        [network.background_inputs[name].weight.mean for name in network.populations],
         dtype=float,
     )
 
@@ -111,11 +111,11 @@ def _require_iaf_psc_exp(target, population_name: str) -> None:
         )
 
 
-def external_psc_weights(
+def background_psc_weights(
     network: NetworkConfig,
 ) -> np.ndarray:
     """
-    Return the external weights as PSC amplitudes (pA).
+    Return the background input weights as PSC amplitudes (pA).
 
     Only ``unit: PSP`` weights are converted (``iaf_psc_exp`` neurons
     only); any other unit (``PSC``, ``native``, ...) is returned unchanged.
@@ -123,7 +123,7 @@ def external_psc_weights(
 
     values = []
     for name in network.populations:
-        input_cfg = network.inputs[name]
+        input_cfg = network.background_inputs[name]
 
         if input_cfg.weight.unit != "PSP":
             values.append(input_cfg.weight.mean)
@@ -258,11 +258,11 @@ def convert_network_psp_to_psc(
             )
         )
 
-    inputs = {}
-    for pop_name, input_cfg in network.inputs.items():
+    background_inputs = {}
+    for pop_name, input_cfg in network.background_inputs.items():
 
         if input_cfg.weight.unit != "PSP":
-            inputs[pop_name] = input_cfg
+            background_inputs[pop_name] = input_cfg
             continue
 
         target = network.populations[pop_name]
@@ -281,7 +281,7 @@ def convert_network_psp_to_psc(
             }
         )
 
-        inputs[pop_name] = input_cfg.model_copy(
+        background_inputs[pop_name] = input_cfg.model_copy(
             update={
                 "weight": weight,
             }
@@ -290,7 +290,7 @@ def convert_network_psp_to_psc(
     return network.model_copy(
         update={
             "connections": connections,
-            "inputs": inputs,
+            "background_inputs": background_inputs,
         }
     )
 

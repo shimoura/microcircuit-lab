@@ -328,7 +328,7 @@ def _build_reference_rates(
     }
 
 
-def _build_inputs(
+def _build_background_inputs(
     *,
     labels: list[tuple[tuple[str, str, str], str]],
     rate_ext: Any,
@@ -338,7 +338,7 @@ def _build_inputs(
     inhibitory_params: dict[str, float],
     resolution: float,
 ) -> dict[str, dict[str, Any]]:
-    inputs: dict[str, dict[str, Any]] = {}
+    background_inputs: dict[str, dict[str, Any]] = {}
 
     for idx, label in labels:
         pop = idx[2]
@@ -356,7 +356,7 @@ def _build_inputs(
 
         ext_rel_std = abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0
 
-        inputs[label] = {
+        background_inputs[label] = {
             "rate": float(rate_ext.loc[idx]),
             "weight": {
                 "mean": ext_mean_psp,
@@ -371,7 +371,7 @@ def _build_inputs(
             },
         }
 
-    return inputs
+    return background_inputs
 
 
 def generate_humam_configs(
@@ -468,7 +468,7 @@ def generate_humam_configs(
         delay_i_rel=delay_i_rel,
     )
 
-    inputs = _build_inputs(
+    background_inputs = _build_background_inputs(
         labels=labels,
         rate_ext=data.rate_ext,
         weights_ext=data.weights_ext,
@@ -513,7 +513,7 @@ def generate_humam_configs(
         "populations": "populations.yaml",
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
-        "inputs": "inputs.yaml",
+        "background_inputs": "background_inputs.yaml",
         "scaling": "scaling.yaml",
         "reference": "reference.yaml",
     }
@@ -585,7 +585,7 @@ def generate_humam_configs(
         "populations.yaml": {"populations": population_entries},
         "neurons.yaml": neurons,
         "connectivity.yaml": {"connections": connections},
-        "inputs.yaml": {"inputs": inputs},
+        "background_inputs.yaml": {"background_inputs": background_inputs},
         "scaling.yaml": scaling,
         "reference.yaml": reference,
     }
@@ -620,7 +620,7 @@ def generate_humam_configs(
     flow_style_fields = {
         "populations.yaml": "populations",
         "connectivity.yaml": "connections",
-        "inputs.yaml": "inputs",
+        "background_inputs.yaml": "background_inputs",
     }
     for name, payload in yaml_payloads.items():
         field = flow_style_fields.get(name)

@@ -67,7 +67,7 @@ def read_network_directory(path: str | Path) -> NetworkFiles:
         populations=read_yaml(path / manifest["populations"]),
         neurons=read_yaml(path / manifest["neurons"]),
         connectivity=read_yaml(path / manifest["connectivity"]),
-        inputs=read_yaml(path / manifest["inputs"]),
+        background_inputs=read_yaml(path / manifest["background_inputs"]),
         scaling=read_yaml(path / manifest["scaling"]),
         reference=read_yaml(path / manifest["reference"]),
     )
@@ -149,6 +149,6 @@ class NetworkFiles:
     populations: dict[str, Any]
     neurons: dict[str, Any]
     connectivity: dict[str, Any]
-    inputs: dict[str, Any]
+    background_inputs: dict[str, Any]
     scaling: dict[str, Any]
     reference: dict[str, Any]

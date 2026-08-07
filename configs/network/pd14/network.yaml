@@ -1,6 +1,6 @@
 populations: populations.yaml
 neurons: neurons.yaml
 connectivity: connectivity.yaml
-inputs: inputs.yaml
+background_inputs: background_inputs.yaml
 scaling: scaling.yaml
 reference: reference.yaml
