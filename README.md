@@ -2,6 +2,12 @@
 
 Microcircuit Lab is a configuration-driven framework for building, simulating, and analyzing recurrent neural microcircuit models. It separates **model-specific data**, **generic network representation**, and **simulator backends** so published models can share the same simulation infrastructure.
 
+## Using this as a template for a new project
+
+This repository is meant to be forked as the starting point for a new, independent research project: fork it, add your model under `microcircuit_lab/models/<your_model>/` (see "Adding a new model" below), and add its experiments under `experiments/<your_model>/`. A fork is not expected to track this repository going forward -- treat it as a one-time starting point, not an upstream dependency.
+
+When forking, update `pyproject.toml`'s `name`/`description`/`authors`/`version` and this README's title to your project. The internal Python package name (`microcircuit_lab`) does not need to change -- renaming it means updating every import across the codebase for little practical benefit, since it's an internal detail nobody outside the project sees. Keep the PD14/HuMAM/toy models as working references for the schema and conventions, or delete them once your own model no longer needs the comparison.
+
 ## Architecture
 
 ```text
@@ -148,6 +154,10 @@ simulation = Simulation.from_yaml(
 - **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
 
 Model-specific documentation is located inside each package under `microcircuit_lab/models/`.
+
+## Experiments
+
+An experiment -- a parameter sweep, a comparison across configs, exploratory analysis for a specific model -- is a plain Python script under `experiments/<model_name>/<experiment_name>.py`. There's no dedicated framework for this beyond `Simulation`/`microcircuit_lab.analysis`: build a network config (from YAML, or with fields overridden in-memory as needed), run it, and use the same `compute_*`/`plot_*` functions as everywhere else. See `experiments/toy/background_drive_sweep.py` for a worked example (a small sweep over one population parameter, reproducing how the toy network's own background drive was calibrated).
 
 ## Repository scripts
 
