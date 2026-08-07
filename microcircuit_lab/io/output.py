@@ -8,7 +8,9 @@ contract, never on a specific backend, so it works for any simulator.
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from microcircuit_lab.backends.base import SimulationBackend
@@ -74,6 +76,42 @@ def save_run_config(
     return path
 
 
+def _git_provenance(cwd: Path) -> dict[str, object] | None:
+    """
+    Best-effort git commit/dirty-tree info for whatever repository ``cwd``
+    is in (git searches upward for ``.git`` itself, same as running `git`
+    by hand). Returns None if git isn't available or cwd isn't a repo --
+    this must never fail a run just because provenance can't be determined.
+    """
+
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=cwd, capture_output=True, text=True, timeout=5,
+        )
+        if commit.returncode != 0:
+            return None
+
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=cwd, capture_output=True, text=True, timeout=5,
+        )
+
+        return {
+            "commit": commit.stdout.strip(),
+            "dirty": bool(status.stdout.strip()),
+        }
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def _package_version() -> str | None:
+    try:
+        return version("microcircuit_lab")
+    except PackageNotFoundError:
+        return None
+
+
 def write_run_metadata(
     run_dir: Path,
     *,
@@ -84,26 +122,30 @@ def write_run_metadata(
     simulation_name: str,
     backend_name: str,
 ) -> Path:
-    """Write ``metadata.json``: run identity, per-population spike statistics,
-    and an ``artifacts`` manifest that :func:`register_artifact` appends to."""
+    """Write ``metadata.json``: run identity, per-population spike statistics
+    (if spike_recording was enabled), and an ``artifacts`` manifest that
+    :func:`register_artifact` appends to."""
 
     t_sim_s = simulation_config.t_sim / 1000.0
     populations = {}
 
     for pop_name, pop_cfg in network.config.populations.items():
-        events = backend.get_spike_events(pop_name)
-        n_spikes = len(events["times"])
-        populations[pop_name] = {
-            "size": pop_cfg.size,
-            "n_spikes": n_spikes,
-            "mean_rate_hz": (n_spikes / (pop_cfg.size * t_sim_s)) if pop_cfg.size else 0.0,
-        }
+        stats = {"size": pop_cfg.size}
+
+        if simulation_config.recording.spike_recording:
+            n_spikes = len(backend.get_spike_events(pop_name)["times"])
+            stats["n_spikes"] = n_spikes
+            stats["mean_rate_hz"] = (n_spikes / (pop_cfg.size * t_sim_s)) if pop_cfg.size else 0.0
+
+        populations[pop_name] = stats
 
     metadata = {
         "network_name": network_name,
         "simulation_name": simulation_name,
         "backend": backend_name,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "microcircuit_lab_version": _package_version(),
+        "git": _git_provenance(Path.cwd()),
         "t_sim_ms": simulation_config.t_sim,
         "rng_seed": simulation_config.rng_seed,
         "populations": populations,
@@ -171,7 +213,8 @@ def save_run_outputs(
             backend_name=backend_name,
         )
 
-    if simulation_config.recording.spike_recording:
+    recording = simulation_config.recording
+    if recording.spike_recording or recording.voltage_recording:
         for path in backend.save_recordings(run_dir):
             register_artifact(run_dir, "recordings", path)
 

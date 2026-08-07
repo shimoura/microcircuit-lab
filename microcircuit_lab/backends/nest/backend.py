@@ -6,18 +6,18 @@ This module contains the first implementation of the simulator backend.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import nest
 import numpy as np
 import pandas as pd
-import logging
-
-logger = logging.getLogger(__name__)
 
 from microcircuit_lab.network import Network
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.network import PopulationConfig
+
+logger = logging.getLogger(__name__)
 
 
 class NestBackend:
@@ -39,7 +39,6 @@ class NestBackend:
         self.poisson_generators: dict[str, nest.NodeCollection] = {}
         self.spike_recorders: dict[str, nest.NodeCollection] = {}
         self.multimeters: dict[str, nest.NodeCollection] = {}
-        self.devices: dict[str, nest.NodeCollection] = {}
 
     def prepare_output(self, run_dir: Path) -> None:
         """
@@ -87,6 +86,10 @@ class NestBackend:
         if self._simulation_config.recording.spike_recording:
             self.create_spike_recorders()
             self.connect_spike_recorders()
+
+        if self._simulation_config.recording.voltage_recording:
+            self.create_multimeters()
+            self.connect_multimeters()
 
         self.create_poisson_generators()
 
@@ -202,6 +205,37 @@ class NestBackend:
             nest.Connect(
                 self.get_population(pop_name),
                 self.spike_recorders[pop_name],
+            )
+
+    def create_multimeters(self) -> None:
+        """
+        Create one multimeter per population, recording membrane potential.
+
+        Records straight to ascii files under the directory set in
+        prepare_output(), if any, same as spike recorders; otherwise
+        keeps events in NEST's default in-memory mode (not read back by
+        save_recordings() -- ascii mode is the supported path).
+        """
+
+        for pop_name in self.populations:
+            params = {
+                "record_from": ["V_m"],
+                "interval": self._simulation_config.recording.voltage_interval,
+            }
+            if self._recordings_dir is not None:
+                params.update({"record_to": "ascii", "label": f"{pop_name}_voltage"})
+
+            self.multimeters[pop_name] = nest.Create("multimeter", params=params)
+
+    def connect_multimeters(self) -> None:
+        """
+        Connect multimeters to their populations.
+        """
+
+        for pop_name in self.populations:
+            nest.Connect(
+                self.multimeters[pop_name],
+                self.get_population(pop_name),
             )
 
     def create_poisson_generators(self) -> None:
@@ -392,11 +426,15 @@ class NestBackend:
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
-        Return the spike recording files for this run.
+        Return the spike (and, if enabled, voltage) recording files for
+        this run.
 
         In ascii mode these were already written natively by NEST during
-        simulate(); nothing is re-serialized. In memory mode (no
-        prepare_output() call) a CSV fallback is written here instead.
+        simulate(); nothing is re-serialized. Spike recorders fall back to
+        a CSV written here when in memory mode (no prepare_output() call);
+        multimeters have no such fallback -- voltage traces are large
+        enough that only the native ascii path is supported, so voltage
+        data recorded in memory mode is simply not persisted.
         """
 
         run_dir = Path(run_dir)
@@ -407,6 +445,10 @@ class NestBackend:
                 paths.extend(sorted(self._recordings_dir.glob(f"{pop_name}-*.dat")))
             else:
                 paths.append(self._write_memory_recording_csv(pop_name, run_dir))
+
+        for pop_name, mm in self.multimeters.items():
+            if mm.get("record_to") == "ascii":
+                paths.extend(sorted(self._recordings_dir.glob(f"{pop_name}_voltage-*.dat")))
 
         return paths
 

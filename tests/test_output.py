@@ -102,6 +102,101 @@ def test_memory_mode_fallback_writes_csv_when_no_prepare_output(tmp_path: Path) 
         assert len(rows) > 1
 
 
+def test_voltage_recording_writes_native_ascii_files(tmp_path: Path) -> None:
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {
+            "t_sim": 100.0,
+            "local_num_threads": 2,
+            "print_time": False,
+            "recording": {"spike_recording": True, "voltage_recording": True, "voltage_interval": 1.0},
+        }
+    )
+
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    backend.prepare_output(tmp_path)
+    backend.build()
+    backend.simulate()
+
+    voltage_files = sorted((tmp_path / "recordings").glob("E_voltage-*.dat"))
+    assert voltage_files
+    content = voltage_files[0].read_text()
+    assert "V_m" in content
+
+    saved = backend.save_recordings(tmp_path)
+    assert any("voltage" in str(path) for path in saved)
+
+
+def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> None:
+    """save_run_outputs must persist recordings even when spike_recording
+    is off and only voltage_recording is on."""
+
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {
+            "t_sim": 100.0,
+            "local_num_threads": 2,
+            "print_time": False,
+            "recording": {"spike_recording": False, "voltage_recording": True},
+            "output": {"output_dir": str(tmp_path), "overwrite": True},
+        }
+    )
+
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    backend.prepare_output(tmp_path)
+    backend.build()
+    backend.simulate()
+
+    save_run_outputs(
+        run_dir=tmp_path,
+        network=network,
+        simulation_config=simulation_config,
+        backend=backend,
+        network_name="toy",
+        simulation_name="toy",
+        backend_name="nest",
+    )
+
+    assert sorted((tmp_path / "recordings").glob("E_voltage-*.dat"))
+    metadata = json.loads((tmp_path / "metadata.json").read_text())
+    assert any("voltage" in entry for entry in metadata["artifacts"]["recordings"])
+
+
+def test_metadata_includes_provenance(tmp_path: Path) -> None:
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {
+            "t_sim": 100.0,
+            "local_num_threads": 2,
+            "print_time": False,
+            "output": {"output_dir": str(tmp_path), "overwrite": True},
+        }
+    )
+
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    backend.prepare_output(tmp_path)
+    backend.build()
+    backend.simulate()
+
+    save_run_outputs(
+        run_dir=tmp_path,
+        network=network,
+        simulation_config=simulation_config,
+        backend=backend,
+        network_name="toy",
+        simulation_name="toy",
+        backend_name="nest",
+    )
+
+    metadata = json.loads((tmp_path / "metadata.json").read_text())
+    assert metadata["microcircuit_lab_version"] == "0.1.0"
+    # This test runs inside the microcircuit-lab git repo, so provenance
+    # should resolve to a real commit (not just gracefully return None).
+    assert metadata["git"] is not None
+    assert len(metadata["git"]["commit"]) == 40
+    assert isinstance(metadata["git"]["dirty"], bool)
+
+
 def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
