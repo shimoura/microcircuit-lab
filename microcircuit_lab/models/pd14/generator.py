@@ -1,86 +1,119 @@
+"""Generate the PD14 connectivity configuration from source data.
+
+This converts the original Potjans & Diesmann (2014) connection
+probabilities into absolute synapse numbers and writes a connectivity
+YAML in the format used by Microcircuit Lab. Only ``connectivity.yaml``
+is derived here; the other PD14 network files (populations, neurons,
+inputs, scaling, reference) are static and checked in directly.
 """
-Generate the canonical PD14 connectivity.yaml.
 
-This script converts the original PD14 connection probabilities into
-absolute synapse numbers and writes a connectivity YAML in the format
-used by Microcircuit Lab.
-"""
+from __future__ import annotations
 
-from math import log
+import argparse
+from pathlib import Path
+from typing import Any
 
-import numpy as np
+import yaml
 
 from microcircuit_lab.models.pd14.data import (
     populations,
     full_num_neurons,
     connection_probabilities,
 )
-
-# ---------------------------------------------------------------------
-# Formula from Potjans & Diesmann (2014)
-# ---------------------------------------------------------------------
+from microcircuit_lab.network.connectivity import num_synapses_from_conn_prob
 
 
-def num_synapses_from_conn_prob(
-    conn_prob: float,
-    n_source: int,
-    n_target: int,
-) -> int:
-    if conn_prob <= 0.0:
-        return 0
+def _build_connectivity() -> dict[str, Any]:
+    connections: list[dict[str, Any]] = []
 
-    prod = n_source * n_target
+    for target_index, target in enumerate(populations):
+        for source_index, source in enumerate(populations):
+            n_synapses = num_synapses_from_conn_prob(
+                connection_probabilities[target_index, source_index],
+                full_num_neurons[source_index],
+                full_num_neurons[target_index],
+            )
 
-    return round(log(1.0 - conn_prob) / log((prod - 1.0) / prod))
+            if source.endswith("_E"):
+                weight_mean = 0.15
+                delay_mean = 1.5
+            else:
+                weight_mean = -0.60
+                delay_mean = 0.75
+
+            # PD14 doubles the L4_E -> L23_E PSP relative to other excitatory connections.
+            if source == "L4_E" and target == "L23_E":
+                weight_mean = 0.30
+
+            connections.append(
+                {
+                    "source": source,
+                    "target": target,
+                    "n_synapses": n_synapses,
+                    "weight": {
+                        "mean": weight_mean,
+                        "rel_std": 0.1,
+                        "distribution": "normal",
+                    },
+                    "delay": {
+                        "mean": delay_mean,
+                        "rel_std": 0.5,
+                        "distribution": "normal",
+                    },
+                }
+            )
+
+    return {"connections": connections}
 
 
-# ---------------------------------------------------------------------
-# YAML generation
-# ---------------------------------------------------------------------
+def generate_pd14_connectivity(
+    *,
+    config_dir: str | Path = "configs",
+    network_name: str = "pd14",
+) -> Path:
+    """Write ``connectivity.yaml`` for the PD14 network and return its path."""
 
-print("connections:")
+    output_path = Path(config_dir) / "network" / network_name / "connectivity.yaml"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        yaml.safe_dump(_build_connectivity(), sort_keys=False),
+        encoding="utf-8",
+    )
+    return output_path
 
-for target_index, target in enumerate(populations):
-    for source_index, source in enumerate(populations):
-        n_synapses = num_synapses_from_conn_prob(
-            connection_probabilities[target_index, source_index],
-            full_num_neurons[source_index],
-            full_num_neurons[target_index],
-        )
 
-        # -----------------------------
-        # Excitatory / inhibitory
-        # -----------------------------
+def _add_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config-dir", default="configs")
+    parser.add_argument("--network-name", default="pd14")
 
-        if source.endswith("_E"):
-            weight_mean = 0.15
-            delay_mean = 1.5
-        else:
-            weight_mean = -0.60
-            delay_mean = 0.75
 
-        # -----------------------------
-        # Special PD14 exception:
-        #
-        # L4_E -> L23_E
-        # doubled PSP
-        # -----------------------------
+def _run(args: argparse.Namespace) -> None:
+    output_path = generate_pd14_connectivity(
+        config_dir=args.config_dir,
+        network_name=args.network_name,
+    )
+    print(f"Generated connectivity config: {output_path}")
+    print(
+        "Other PD14 network files (populations, neurons, inputs, scaling, "
+        "reference) are static and were not regenerated."
+    )
 
-        if source == "L4_E" and target == "L23_E":
-            weight_mean = 0.30
 
-        print()
-        print(f"  - source: {source}")
-        print(f"    target: {target}")
-        print()
-        print(f"    n_synapses: {n_synapses}")
-        print()
-        print("    weight:")
-        print(f"      mean: {weight_mean}")
-        print("      rel_std: 0.1")
-        print("      distribution: normal")
-        print()
-        print("    delay:")
-        print(f"      mean: {delay_mean}")
-        print("      rel_std: 0.5")
-        print("      distribution: normal")
+def add_cli(subparser: argparse.ArgumentParser) -> None:
+    """Register PD14 generation arguments on a ``scripts/generate.py`` subparser."""
+
+    _add_arguments(subparser)
+    subparser.set_defaults(func=_run)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate the PD14 connectivity.yaml from connection-probability source data.",
+    )
+    _add_arguments(parser)
+    args = parser.parse_args()
+    _run(args)
+
+
+if __name__ == "__main__":
+    main()

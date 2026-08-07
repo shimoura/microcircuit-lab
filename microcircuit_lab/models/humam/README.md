@@ -7,18 +7,18 @@ This package translates HuMAM source data into Microcircuit Lab's generic networ
 From the repository root:
 
 ```bash
-python scripts/generate_humam.py --area bankssts
+python scripts/generate.py humam --area bankssts
 ```
 
 For the multi-area model:
 
 ```bash
-python scripts/generate_humam.py --area all
+python scripts/generate.py humam --area all
 ```
 
 The command generates configurations under `configs/network/` and `configs/simulation/`.
 
-Generation only writes portable configuration files. Run them separately with `scripts/run_simulation.py`. Use `python scripts/generate_humam.py --help` for the available generation options.
+Generation only writes portable configuration files. Run them separately with `scripts/run_simulation.py`. Use `python scripts/generate.py humam --help` for the available generation options.
 
 ## Python API
 
@@ -47,7 +47,7 @@ simulation.run()
 
 ## Package contents
 
-- `generator.py`: HuMAM source-data translation and config generation.
+- `generator.py`: HuMAM source-data translation and config generation. Exposes `add_cli()`, which registers this model's arguments on the shared `scripts/generate.py` dispatcher (see `microcircuit_lab.models.MODEL_GENERATORS`).
 - `data/`: bundled source data used by the generator.
 
 New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.

@@ -1,49 +1,37 @@
 populations:
 - name: L23_E
-  size: 39130
+  size: 13179
   neuron: excitatory
   V0_mean: -65.0
   V0_std: 5.0
-  background_indegree: 3735.0807308970097
+  background_indegree: 6642.052963047272
 - name: L23_I
-  size: 21070
+  size: 7096
   neuron: inhibitory
   V0_mean: -65.0
   V0_std: 5.0
-  background_indegree: 3501.6382059800662
-- name: L4_E
-  size: 17380
-  neuron: excitatory
-  V0_mean: -65.0
-  V0_std: 5.0
-  background_indegree: 4902.293440736478
-- name: L4_I
-  size: 4620
-  neuron: inhibitory
-  V0_mean: -65.0
-  V0_std: 5.0
-  background_indegree: 4435.408441558441
+  background_indegree: 6226.924605411499
 - name: L5_E
-  size: 20280
+  size: 11954
   neuron: excitatory
   V0_mean: -65.0
   V0_std: 5.0
-  background_indegree: 4668.850936883629
+  background_indegree: 8302.566170319558
 - name: L5_I
-  size: 5720
+  size: 3372
   neuron: inhibitory
   V0_mean: -65.0
   V0_std: 5.0
-  background_indegree: 4435.408391608392
+  background_indegree: 7887.438018979834
 - name: L6_E
-  size: 14534
+  size: 18297
   neuron: excitatory
   V0_mean: -65.0
   V0_std: 5.0
-  background_indegree: 6769.833837897344
+  background_indegree: 12038.720992512433
 - name: L6_I
-  size: 2366
+  size: 2979
   neuron: inhibitory
   V0_mean: -65.0
   V0_std: 5.0
-  background_indegree: 4902.293322062553
+  background_indegree: 8717.694528365224

@@ -19,8 +19,10 @@ Keep PD14-specific constants and translation logic in this package. Generic scal
 ## Package contents
 
 - `data.py`: raw PD14 population sizes and connection probabilities.
-- `generator.py`: derives `connectivity.yaml` from `data.py` using the PD14 connection-probability-to-synapse-count formula. It prints YAML to stdout and is not wired into a CLI script; the checked-in `configs/network/pd14/connectivity.yaml` was produced by running it. Re-run it if `data.py` changes:
+- `generator.py`: derives `connectivity.yaml` from `data.py` using the PD14 connection-probability-to-synapse-count formula (shared with other models via `microcircuit_lab.network.connectivity.num_synapses_from_conn_prob`). Only `connectivity.yaml` is generated; the other PD14 network files (populations, neurons, inputs, scaling, reference) are static and checked in directly. Exposes `add_cli()`, which registers this model's arguments on the shared `scripts/generate.py` dispatcher (see `microcircuit_lab.models.MODEL_GENERATORS`).
+
+The checked-in `configs/network/pd14/connectivity.yaml` was produced by this generator. Re-run it if `data.py` changes:
 
 ```bash
-python -m microcircuit_lab.models.pd14.generator > configs/network/pd14/connectivity.yaml
+python scripts/generate.py pd14
 ```

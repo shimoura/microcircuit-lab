@@ -68,7 +68,7 @@ simulation = Simulation.from_yaml(
 simulation.run()
 ```
 
-Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network. It can produce raster and firing-rate diagnostics with one shared plot style.
+Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network. It can produce raster and firing-rate diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
 
 ## Configuration
 
@@ -93,7 +93,11 @@ A network configuration describes biology and connectivity. A simulation configu
 
 ## Adding a new model
 
-Create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The model integration should generate or translate data into the existing YAML network schema. Once the generic configuration exists, run it through the same public API:
+Create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The model integration should generate or translate data into the existing YAML network schema.
+
+If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (see `humam/generator.py` or `pd14/generator.py` for the pattern) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
+
+Once the generic configuration exists, run it through the same public API:
 
 ```python
 from microcircuit_lab import Simulation
@@ -128,7 +132,7 @@ Model-specific documentation is located inside each package under `microcircuit_
 
 ## Repository scripts
 
-Model generation and simulation execution are intentionally separate.
+Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name. Neither script contains model-specific logic, so both stay unchanged as models are added.
 
 Run the bundled PD14 network (uses the default network/simulation names):
 
@@ -139,9 +143,17 @@ python scripts/run_simulation.py
 Generate a HuMAM network, then run it by name:
 
 ```bash
-python scripts/generate_humam.py --area bankssts
+python scripts/generate.py humam --area bankssts
 python scripts/run_simulation.py --network humam_single --simulation humam_single
 ```
+
+Regenerate PD14's connectivity from source data (its other config files are static):
+
+```bash
+python scripts/generate.py pd14
+```
+
+Every registered model's generation arguments are discoverable with `python scripts/generate.py <model> --help`.
 
 Use `--network`, `--simulation`, `--area`, `--begin`, `--end`, `--reference`, `--no-raster`, and `--no-firing-rates` on `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Plot styling (colors, sizes, figure layout) is set via the `PLOT_STYLE`, `RASTER_CONFIG`, and `FIRING_RATE_CONFIG` constants at the top of the script. Generic plotting does not live inside model-specific code.
 

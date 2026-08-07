@@ -504,13 +504,7 @@ def generate_single_area_configs(**kwargs: Any) -> dict[str, Path]:
 
     return generate_humam_configs(**kwargs)
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Generate HuMAM configs from source data. "
-            "Use --area all for a full multi-area network."
-        ),
-    )
+def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--area", default="bankssts")
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network-name", default=None)
@@ -522,12 +516,28 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--rng-seed", type=int, default=42)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--export-json", action="store_true")
-    return parser.parse_args()
+
+
+def add_cli(subparser: argparse.ArgumentParser) -> None:
+    """Register HuMAM generation arguments on a ``scripts/generate.py`` subparser."""
+
+    _add_arguments(subparser)
+    subparser.set_defaults(func=_run)
 
 
 def main() -> None:
-    args = _parse_args()
-    
+    parser = argparse.ArgumentParser(
+        description=(
+            "Generate HuMAM configs from source data. "
+            "Use --area all for a full multi-area network."
+        ),
+    )
+    _add_arguments(parser)
+    args = parser.parse_args()
+    _run(args)
+
+
+def _run(args: argparse.Namespace) -> None:
     default_name = "humam_all" if args.area.lower() == "all" else "humam_single"
     network_name = args.network_name or default_name
     simulation_name = args.simulation_name or default_name
