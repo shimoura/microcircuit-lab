@@ -1,9 +1,16 @@
 """Analysis and visualization utilities."""
 
 from .firing_rates import (
+    check_reference_rates,
     compute_neuron_firing_rates,
     compute_population_firing_rates,
+    compute_reference_deviation,
     plot_firing_rates,
+)
+from .irregularity import (
+    compute_neuron_isi_cv,
+    compute_population_isi_cv,
+    plot_isi_cv,
 )
 from .plot_styles import (
     FiringRatePlotConfig,
@@ -24,10 +31,15 @@ __all__ = [
     "PlotStyle",
     "PowerSpectrumPlotConfig",
     "RasterPlotConfig",
+    "check_reference_rates",
     "compute_neuron_firing_rates",
+    "compute_neuron_isi_cv",
     "compute_population_firing_rates",
+    "compute_population_isi_cv",
     "compute_power_spectrum",
+    "compute_reference_deviation",
     "plot_firing_rates",
+    "plot_isi_cv",
     "plot_power_spectrum",
     "plot_raster",
 ]

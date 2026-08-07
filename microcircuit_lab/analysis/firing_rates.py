@@ -78,6 +78,76 @@ def compute_population_firing_rates(
     return {name: float(values.mean()) for name, values in neuron_rates.items()}
 
 
+def compute_reference_deviation(
+    simulation,
+    begin: float = 0.0,
+    end: float | None = None,
+    *,
+    populations: Sequence[str] | None = None,
+    area: str | None = None,
+) -> dict[str, float]:
+    """
+    Relative deviation of simulated mean firing rates from published
+    reference rates: ``(simulated - reference) / reference``.
+
+    A programmatic counterpart to ``plot_firing_rates(..., show_reference=True)``
+    -- for scripting a pass/fail check instead of eyeballing a plot.
+    Raises if the network has no ``reference.full_mean_rates``, or a
+    selected population isn't in it.
+    """
+
+    reference = simulation.network.config.reference
+    if reference is None or not reference.full_mean_rates:
+        raise ValueError("This network has no reference.full_mean_rates to validate against.")
+
+    simulated = compute_population_firing_rates(
+        simulation, begin, end, populations=populations, area=area
+    )
+
+    deviations = {}
+    for name, rate in simulated.items():
+        if name not in reference.full_mean_rates:
+            raise ValueError(f"No reference rate for population {name!r}.")
+        ref_rate = reference.full_mean_rates[name]
+        deviations[name] = (rate - ref_rate) / ref_rate if ref_rate else float("inf")
+
+    return deviations
+
+
+def check_reference_rates(
+    simulation,
+    begin: float = 0.0,
+    end: float | None = None,
+    *,
+    populations: Sequence[str] | None = None,
+    area: str | None = None,
+    rtol: float = 0.5,
+) -> dict[str, float]:
+    """
+    Assert every selected population's simulated rate is within ``rtol``
+    relative deviation of its published reference rate.
+
+    Returns the deviations (see compute_reference_deviation) on success;
+    raises AssertionError listing every population that failed otherwise.
+    Reference rates are typically full-scale/unscaled published values,
+    so a loose default tolerance is deliberate -- a scaled-down network
+    isn't expected to match them precisely, only be in the right regime.
+    """
+
+    deviations = compute_reference_deviation(
+        simulation, begin, end, populations=populations, area=area
+    )
+
+    failures = {name: dev for name, dev in deviations.items() if abs(dev) > rtol}
+    if failures:
+        details = ", ".join(f"{name}: {dev:+.1%}" for name, dev in failures.items())
+        raise AssertionError(
+            f"Simulated rates deviate from reference by more than {rtol:.0%} for: {details}"
+        )
+
+    return deviations
+
+
 def plot_firing_rates(
     simulation,
     begin: float = 0.0,

@@ -10,7 +10,9 @@ from microcircuit_lab.analysis import (
     PlotStyle,
     PowerSpectrumPlotConfig,
     RasterPlotConfig,
+    check_reference_rates,
     plot_firing_rates,
+    plot_isi_cv,
     plot_power_spectrum,
     plot_raster,
 )
@@ -59,11 +61,24 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--no-raster", action="store_true")
     parser.add_argument("--no-firing-rates", action="store_true")
     parser.add_argument("--no-power-spectrum", action="store_true")
+    parser.add_argument("--no-isi-cv", action="store_true")
     parser.add_argument(
         "--power-spectrum-method",
         default="welch",
         choices=sorted(POWER_SPECTRUM_METHODS),
         help="Spectral estimator for the power-spectrum plot.",
+    )
+    parser.add_argument(
+        "--validate-reference",
+        action="store_true",
+        help="Check simulated rates against reference.full_mean_rates and print pass/fail "
+        "(non-fatal; does not affect exit code). No-op if the network has no reference.",
+    )
+    parser.add_argument(
+        "--reference-rtol",
+        type=float,
+        default=0.5,
+        help="Relative tolerance for --validate-reference.",
     )
     parser.add_argument(
         "--show",
@@ -130,6 +145,34 @@ def main() -> None:
             show=args.show,
         )
         register_artifact(simulation.output_dir, "plots", power_spectrum_path)
+
+    if not args.no_isi_cv:
+        isi_cv_path = plots_dir / "isi_cv.png"
+        plot_isi_cv(
+            simulation,
+            begin=args.begin,
+            end=args.end,
+            area=args.area,
+            style=PLOT_STYLE,
+            config=FIRING_RATE_CONFIG,
+            save_path=isi_cv_path,
+            show=args.show,
+        )
+        register_artifact(simulation.output_dir, "plots", isi_cv_path)
+
+    if args.validate_reference:
+        try:
+            deviations = check_reference_rates(
+                simulation, begin=args.begin, end=args.end, area=args.area,
+                rtol=args.reference_rtol,
+            )
+            print(f"\nReference check passed (rtol={args.reference_rtol:.0%}):")
+            for name, dev in deviations.items():
+                print(f"  {name:>12}  {dev:+.1%}")
+        except ValueError:
+            print("\nNo reference.full_mean_rates on this network -- skipping --validate-reference.")
+        except AssertionError as exc:
+            print(f"\nReference check FAILED: {exc}")
 
 
 if __name__ == "__main__":
