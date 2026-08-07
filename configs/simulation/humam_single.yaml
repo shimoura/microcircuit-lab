@@ -9,6 +9,6 @@ recording:
   voltage_interval: 1.0
 output:
   output_dir: output/humam_single
-  overwrite: true
+  overwrite: false
   save_metadata: true
   save_config: true

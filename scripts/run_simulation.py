@@ -11,6 +11,7 @@ from microcircuit_lab.analysis import (
     plot_firing_rates,
     plot_raster,
 )
+from microcircuit_lab.io.output import register_artifact
 
 PLOT_STYLE = PlotStyle(
     color_mode="layer",
@@ -49,6 +50,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--reference", action="store_true", help="Show reference firing rates.")
     parser.add_argument("--no-raster", action="store_true")
     parser.add_argument("--no-firing-rates", action="store_true")
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="Open plot windows interactively (plots are always saved to output_dir regardless).",
+    )
     return parser.parse_args()
 
 
@@ -63,7 +69,10 @@ def main() -> None:
     )
     simulation.run()
 
+    plots_dir = simulation.output_dir / "plots"
+
     if not args.no_raster:
+        raster_path = plots_dir / "raster.png"
         plot_raster(
             simulation,
             begin=args.begin,
@@ -72,9 +81,13 @@ def main() -> None:
             max_neurons_per_population=None,
             style=PLOT_STYLE,
             config=RASTER_CONFIG,
+            save_path=raster_path,
+            show=args.show,
         )
+        register_artifact(simulation.output_dir, "plots", raster_path)
 
     if not args.no_firing_rates:
+        firing_rates_path = plots_dir / "firing_rates.png"
         plot_firing_rates(
             simulation,
             begin=args.begin,
@@ -83,7 +96,10 @@ def main() -> None:
             show_reference=args.reference,
             style=PLOT_STYLE,
             config=FIRING_RATE_CONFIG,
+            save_path=firing_rates_path,
+            show=args.show,
         )
+        register_artifact(simulation.output_dir, "plots", firing_rates_path)
 
 
 if __name__ == "__main__":

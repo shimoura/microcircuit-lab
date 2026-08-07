@@ -11,6 +11,6 @@ recording:
 
 output:
   output_dir: "output/toy"
-  overwrite: true
+  overwrite: false
   save_metadata: true
   save_config: true

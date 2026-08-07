@@ -136,6 +136,8 @@ simulation = Simulation.from_yaml(
 )
 ```
 
+`prepare_output(run_dir)` and `save_recordings(run_dir)` are where recording-to-disk should be implemented in whatever way is native and efficient for that simulator (see "Run outputs" below); `get_spike_events()` should transparently read that data back regardless of how it was stored, so callers (analysis, `io/output.py`) never need backend-specific branches.
+
 ## Included models
 
 - **PD14**: Potjans & Diesmann cortical microcircuit configuration and connectivity utilities.
@@ -182,6 +184,24 @@ plot_firing_rates(simulation, begin=500.0)
 
 For multi-area networks, select one area with `area="V1"`. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
 
+## Run outputs
+
+`Simulation.run()` saves its outputs automatically, controlled by `simulation.yaml`'s `output` and `recording` sections (all optional, see `microcircuit_lab/config/simulation.py`):
+
+```text
+<output_dir>/                      # fixed if overwrite: true, else <output_dir>/<timestamp>/
+├── recordings/                    # spike recordings, see below
+├── config.yaml                    # the fully resolved network + simulation config actually used
+└── metadata.json                  # run identity, per-population spike stats, and an artifact manifest
+```
+
+`overwrite: true` (the convention used by the bundled models) reuses the same directory every run, convenient while iterating. `overwrite: false` gives each run its own timestamped subdirectory instead, so results are never silently clobbered.
+
+**Recordings are written by the backend, not re-serialized by microcircuit_lab.** With the NEST backend, `recordings/` is pointed at NEST's own ascii recording backend before the network is built, so NEST writes spikes straight to disk during `simulate()` -- `<population>-<id>-<thread>.dat` (one shard per thread/process, NEST's native naming and tab-separated `sender  time_ms` format). Nothing is buffered in Python memory or written twice. `Simulation`/plotting code still reads spikes back through `backend.get_spike_events(population)`, which transparently merges those shards when needed (e.g. for `metadata.json`'s statistics or `plot_raster`) -- callers never need to know recording happened natively. A backend without native file recording (or the NEST backend used standalone, without `prepare_output()`) falls back to writing one `<population>_spikes.csv` per population from the in-memory events instead.
+
+`metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `scripts/run_simulation.py` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`; any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
+
+The simulation object exposes `simulation.output_dir` (a `Path`, set once `run()` has completed) for building further artifact paths.
 
 ## Testing
 

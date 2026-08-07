@@ -23,6 +23,7 @@ from microcircuit_lab.io.files import (
     read_network_directory,
     read_yaml,
 )
+from microcircuit_lab.io.output import resolve_run_directory, save_run_outputs
 
 from pathlib import Path
 
@@ -37,12 +38,17 @@ class Simulation:
         network: Network,
         simulation_config: SimulationConfig,
         backend: BackendName = "nest",
+        network_name: str = "network",
+        simulation_name: str = "simulation",
     ) -> None:
 
         self.network = network
         self.simulation_config = simulation_config
         self.backend_name = backend
+        self.network_name = network_name
+        self.simulation_name = simulation_name
         self.backend: SimulationBackend | None = None
+        self.output_dir: Path | None = None
 
     @classmethod
     def from_yaml(
@@ -82,11 +88,17 @@ class Simulation:
             network=network,
             simulation_config=simulation_config,
             backend=backend,
+            network_name=network_name,
+            simulation_name=simulation_name,
         )
 
     def run(self) -> None:
         """
-        Run the simulation.
+        Run the simulation and save its outputs.
+
+        Which artifacts are written (recordings, resolved config,
+        metadata) is controlled by ``simulation_config.recording`` and
+        ``simulation_config.output``; see :func:`microcircuit_lab.io.output.save_run_outputs`.
         """
 
         backend_class = get_backend(self.backend_name)
@@ -95,8 +107,25 @@ class Simulation:
             simulation_config=self.simulation_config,
         )
 
+        self.output_dir = resolve_run_directory(
+            self.simulation_config.output,
+            network_name=self.network_name,
+            simulation_name=self.simulation_name,
+        )
+        self.backend.prepare_output(self.output_dir)
+
         self.backend.build()
 
         self.backend.simulate()
 
         self.backend.print_statistics()
+
+        save_run_outputs(
+            run_dir=self.output_dir,
+            network=self.network,
+            simulation_config=self.simulation_config,
+            backend=self.backend,
+            network_name=self.network_name,
+            simulation_name=self.simulation_name,
+            backend_name=self.backend_name,
+        )

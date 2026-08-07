@@ -457,7 +457,7 @@ def generate_humam_configs(
         },
         "output": {
             "output_dir": f"output/{simulation_name}",
-            "overwrite": True,
+            "overwrite": False,
             "save_metadata": True,
             "save_config": True,
         },

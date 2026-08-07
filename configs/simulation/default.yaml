@@ -10,7 +10,7 @@ recording:
   voltage_interval: 1.0
 
 output:
-  output_dir: "output"
-  overwrite: true
+  output_dir: "output/pd14"
+  overwrite: false
   save_metadata: true
   save_config: true

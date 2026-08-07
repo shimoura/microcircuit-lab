@@ -6,8 +6,11 @@ This module contains the first implementation of the simulator backend.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import nest
 import numpy as np
+import pandas as pd
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,12 +33,26 @@ class NestBackend:
 
         self._network = network
         self._simulation_config = simulation_config
+        self._recordings_dir: Path | None = None
 
         self.populations: dict[str, nest.NodeCollection] = {}
         self.poisson_generators: dict[str, nest.NodeCollection] = {}
         self.spike_recorders: dict[str, nest.NodeCollection] = {}
         self.multimeters: dict[str, nest.NodeCollection] = {}
         self.devices: dict[str, nest.NodeCollection] = {}
+
+    def prepare_output(self, run_dir: Path) -> None:
+        """
+        Point NEST's own ascii recording backend at ``run_dir/recordings``.
+
+        NEST then writes spikes straight to disk during simulate() -- it
+        never has to hold the full spike history in Python memory, and we
+        never re-serialize what NEST already wrote. Must be called before
+        build(); without it, spike_recorders fall back to NEST's in-memory
+        mode (used transparently by get_spike_events/save_recordings).
+        """
+
+        self._recordings_dir = Path(run_dir) / "recordings"
 
     def initialize(self) -> None:
         """
@@ -50,6 +67,13 @@ class NestBackend:
             rng_seed=self._simulation_config.rng_seed,
             print_time=self._simulation_config.print_time,
         )
+
+        if self._recordings_dir is not None:
+            self._recordings_dir.mkdir(parents=True, exist_ok=True)
+            nest.set(
+                data_path=str(self._recordings_dir),
+                overwrite_files=True,
+            )
 
     def build(self) -> None:
         """
@@ -153,10 +177,19 @@ class NestBackend:
     def create_spike_recorders(self) -> None:
         """
         Create one spike recorder per population.
+
+        Records straight to ascii files under the directory set in
+        prepare_output(), if any; otherwise keeps events in memory (NEST's
+        default), matching the standalone-backend / no-output-requested case.
         """
 
         for pop_name in self.populations:
-            sr = nest.Create("spike_recorder")
+            params = (
+                {"record_to": "ascii", "label": pop_name}
+                if self._recordings_dir is not None
+                else {}
+            )
+            sr = nest.Create("spike_recorder", params=params)
 
             self.spike_recorders[pop_name] = sr
 
@@ -321,7 +354,77 @@ class NestBackend:
         population: str,
     ) -> dict:
         """
-        Return the native NEST spike events for one population.
+        Return spike events for one population as {"senders": ..., "times": ...}.
+
+        Transparently reads back from ascii files when the recorder is in
+        ascii mode (n_events stays available from NEST regardless of mode,
+        but the events themselves are only kept in memory in memory mode).
         """
 
-        return self.spike_recorders[population].get("events")
+        sr = self.spike_recorders[population]
+
+        if sr.get("record_to") == "ascii":
+            return self._read_ascii_spike_events(population)
+
+        return sr.get("events")
+
+    def _read_ascii_spike_events(self, population: str) -> dict:
+        """
+        Read back the ascii files NEST wrote for one population, merging
+        the per-thread/per-process shards NEST writes under local_num_threads>1.
+        """
+
+        senders: list[np.ndarray] = []
+        times: list[np.ndarray] = []
+
+        for path in sorted(self._recordings_dir.glob(f"{population}-*.dat")):
+            data = pd.read_csv(path, sep="\t", comment="#")
+            senders.append(data["sender"].to_numpy())
+            times.append(data["time_ms"].to_numpy())
+
+        if not senders:
+            return {"senders": np.array([], dtype=int), "times": np.array([], dtype=float)}
+
+        return {
+            "senders": np.concatenate(senders).astype(int),
+            "times": np.concatenate(times).astype(float),
+        }
+
+    def save_recordings(self, run_dir: Path) -> list[Path]:
+        """
+        Return the spike recording files for this run.
+
+        In ascii mode these were already written natively by NEST during
+        simulate(); nothing is re-serialized. In memory mode (no
+        prepare_output() call) a CSV fallback is written here instead.
+        """
+
+        run_dir = Path(run_dir)
+        paths: list[Path] = []
+
+        for pop_name, sr in self.spike_recorders.items():
+            if sr.get("record_to") == "ascii":
+                paths.extend(sorted(self._recordings_dir.glob(f"{pop_name}-*.dat")))
+            else:
+                paths.append(self._write_memory_recording_csv(pop_name, run_dir))
+
+        return paths
+
+    def _write_memory_recording_csv(self, pop_name: str, run_dir: Path) -> Path:
+        events = self.get_spike_events(pop_name)
+        senders = np.asarray(events["senders"], dtype=int)
+        times = np.asarray(events["times"], dtype=float)
+        order = np.argsort(times)
+
+        recordings_dir = run_dir / "recordings"
+        recordings_dir.mkdir(parents=True, exist_ok=True)
+        path = recordings_dir / f"{pop_name}_spikes.csv"
+        np.savetxt(
+            path,
+            np.column_stack([senders[order], times[order]]),
+            delimiter=",",
+            header="sender,time_ms",
+            comments="",
+            fmt=["%d", "%.3f"],
+        )
+        return path
