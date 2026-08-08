@@ -2,7 +2,7 @@
 # (2000): sparse random connectivity, inhibition ~4x stronger than
 # excitation (see connectivity.yaml), driven by strong external Poisson
 # background input (background_indegree * background_inputs.yaml rate). At these
-# values the network spikes at ~20 Hz per population -- tune
+# values the network spikes at ~20 Hz per population; tune
 # background_indegree down for sparser, more fluctuation-driven firing.
 populations:
 
@@ -17,5 +17,24 @@ populations:
     size: 200
     neuron: inhibitory
     V0_mean: -65.0
+    V0_std: 5.0
+    background_indegree: 1000
+
+  # A second E/I circuit using a different neuron model (aeif_cond_exp,
+  # see neurons.yaml) with the same Brunel-like structure as E/I above.
+  # Reciprocally coupled to E/I through their excitatory populations only
+  # (see connectivity.yaml), demonstrating that a network config can mix
+  # neuron models freely, including within the same connection graph.
+  - name: E_adex
+    size: 800
+    neuron: adex_excitatory
+    V0_mean: -70.6
+    V0_std: 5.0
+    background_indegree: 1000
+
+  - name: I_adex
+    size: 200
+    neuron: adex_inhibitory
+    V0_mean: -70.6
     V0_std: 5.0
     background_indegree: 1000

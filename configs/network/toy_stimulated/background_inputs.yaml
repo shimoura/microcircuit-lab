@@ -23,3 +23,34 @@ background_inputs:
       mean: 1.5
       rel_std: 0.0
       distribution: fixed
+
+  # Unlike E/I above, this weight is a synaptic conductance (nS), not a
+  # PSP amplitude: aeif_cond_exp has no PSP-to-PSC conversion, so it must
+  # be given as unit: native. 0.6 nS is sized so background alone (at
+  # this rate * background_indegree) brings the mean membrane potential
+  # to within a few mV of V_th, the same "near-threshold, fluctuation
+  # driven" regime E/I sits in; see connectivity.yaml for how that value
+  # was derived.
+  E_adex:
+    rate: 8.0
+    weight:
+      mean: 1.2
+      rel_std: 0.0
+      distribution: fixed
+      unit: native
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+
+  I_adex:
+    rate: 8.0
+    weight:
+      mean: 1.2
+      rel_std: 0.0
+      distribution: fixed
+      unit: native
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed

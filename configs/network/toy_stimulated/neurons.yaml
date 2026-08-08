@@ -34,3 +34,60 @@ neurons:
       t_ref: 2.0
 
       I_e: 0.0
+
+  # Second neuron model, to exercise NeuronParams' open-ended parameter
+  # set: aeif_cond_exp (adaptive exponential integrate-and-fire,
+  # conductance-based) takes a completely different parameter set from
+  # iaf_psc_exp above, with no PSP-to-PSC conversion available, so its
+  # connections/background_inputs must use weight.unit: native (see
+  # connectivity.yaml, background_inputs.yaml). Parameter values are the
+  # regular-spiking configuration from Brette & Gerstner (2005).
+  adex_excitatory:
+    model: aeif_cond_exp
+
+    parameters:
+      C_m: 281.0
+      g_L: 30.0
+      E_L: -70.6
+      V_reset: -60.0
+      V_th: -50.4
+      V_peak: 0.0
+      Delta_T: 2.0
+      t_ref: 2.0
+
+      a: 4.0
+      b: 80.5
+      tau_w: 144.0
+
+      E_ex: 0.0
+      E_in: -85.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 5.0
+
+      I_e: 0.0
+
+  adex_inhibitory:
+    model: aeif_cond_exp
+
+    parameters:
+      C_m: 281.0
+      g_L: 30.0
+      E_L: -70.6
+      V_reset: -60.0
+      V_th: -50.4
+      V_peak: 0.0
+      Delta_T: 2.0
+      t_ref: 2.0
+
+      # Fast-spiking interneurons are commonly modeled without
+      # spike-triggered adaptation.
+      a: 0.0
+      b: 0.0
+      tau_w: 144.0
+
+      E_ex: 0.0
+      E_in: -85.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 5.0
+
+      I_e: 0.0

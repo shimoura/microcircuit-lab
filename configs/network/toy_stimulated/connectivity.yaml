@@ -3,7 +3,7 @@
 # assuming iaf_psc_exp neurons. If your neuron model has no PSP
 # conversion formula (e.g. conductance-based), set weight.unit to PSC
 # (already a current amplitude in pA) or native (used exactly as given,
-# no interpretation) instead -- see WeightDistribution in
+# no interpretation) instead; see WeightDistribution in
 # microcircuit_lab/config/network.py.
 connections:
 
@@ -56,5 +56,137 @@ connections:
       unit: PSP
     delay:
       mean: 0.75
+      rel_std: 0.5
+      distribution: normal
+
+  # E_adex/I_adex use aeif_cond_exp, a conductance-based model with no
+  # PSP-to-PSC conversion implemented, so their weights are unit: native:
+  # NEST reads them directly as synaptic conductances (nS). The sign
+  # still selects excitatory vs inhibitory (see WeightDistribution in
+  # microcircuit_lab/config/network.py).
+  #
+  # 0.6 nS excitatory / -2.4 nS inhibitory (same 4x ratio as E/I above)
+  # is sized, not guessed: for a Poisson drive at rate R (Hz) with
+  # exponential conductance kernel tau_syn_ex, the time-averaged
+  # conductance is g_mean = R * weight * tau_syn_ex, and the resulting
+  # steady-state membrane potential is
+  #   V_ss = (g_L * E_L + g_mean * E_ex) / (g_L + g_mean).
+  # At the background rate used here (background_indegree * rate =
+  # 8000 Hz), 0.6 nS puts V_ss a few mV below V_th = -50.4, the same
+  # near-threshold, fluctuation-driven regime E/I sits in (a much
+  # smaller weight, e.g. 0.05 nS, leaves V_ss close to E_L and the
+  # population silent).
+  - source: E_adex
+    target: E_adex
+    n_synapses: 64000
+    weight:
+      mean: 0.6
+      rel_std: 0.1
+      distribution: normal
+      unit: native
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+
+  - source: I_adex
+    target: E_adex
+    n_synapses: 16000
+    weight:
+      mean: -2.4
+      rel_std: 0.1
+      distribution: normal
+      unit: native
+    delay:
+      mean: 0.75
+      rel_std: 0.5
+      distribution: normal
+
+  - source: E_adex
+    target: I_adex
+    n_synapses: 16000
+    weight:
+      mean: 0.6
+      rel_std: 0.1
+      distribution: normal
+      unit: native
+    delay:
+      mean: 1.5
+      rel_std: 0.5
+      distribution: normal
+
+  - source: I_adex
+    target: I_adex
+    n_synapses: 4000
+    weight:
+      mean: -2.4
+      rel_std: 0.1
+      distribution: normal
+      unit: native
+    delay:
+      mean: 0.75
+      rel_std: 0.5
+      distribution: normal
+
+  # Reciprocal coupling between the two circuits, through their
+  # excitatory populations only, weaker and sparser than the intra-circuit
+  # connections above (n_synapses=8000 vs. 64000, giving an indegree of
+  # 10 rather than 80) and with a longer delay, as a stand-in for a
+  # long-range projection. Per-synapse weight.mean matches the intra-
+  # circuit excitatory weight for the target's own model (0.6 nS native
+  # into E_adex/I_adex; see the derivation above), so the weakening comes
+  # entirely from the lower indegree, the same convention used
+  # throughout this file. weight.unit follows the target population's
+  # neuron model as always: native for E_adex/I_adex targets, PSP for
+  # E/I targets.
+  - source: E
+    target: E_adex
+    n_synapses: 8000
+    weight:
+      mean: 0.6
+      rel_std: 0.1
+      distribution: normal
+      unit: native
+    delay:
+      mean: 3.0
+      rel_std: 0.5
+      distribution: normal
+
+  - source: E
+    target: I_adex
+    n_synapses: 8000
+    weight:
+      mean: 0.6
+      rel_std: 0.1
+      distribution: normal
+      unit: native
+    delay:
+      mean: 3.0
+      rel_std: 0.5
+      distribution: normal
+
+  - source: E_adex
+    target: E
+    n_synapses: 8000
+    weight:
+      mean: 0.1
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 3.0
+      rel_std: 0.5
+      distribution: normal
+
+  - source: E_adex
+    target: I
+    n_synapses: 8000
+    weight:
+      mean: 0.1
+      rel_std: 0.1
+      distribution: normal
+      unit: PSP
+    delay:
+      mean: 3.0
       rel_std: 0.5
       distribution: normal
