@@ -1,6 +1,6 @@
 import numpy as np
 
-populations  = [
+populations = [
     "L23_E",
     "L23_I",
     "L4_E",
@@ -11,7 +11,7 @@ populations  = [
     "L6_I",
 ]
 
-full_num_neurons  = np.array(
+full_num_neurons = np.array(
     [
         20683,
         5834,
@@ -24,7 +24,7 @@ full_num_neurons  = np.array(
     ]
 )
 
-connection_probabilities  = np.array(
+connection_probabilities = np.array(
     [
         [0.1009, 0.1689, 0.0437, 0.0818, 0.0323, 0.0000, 0.0076, 0.0000],
         [0.1346, 0.1371, 0.0316, 0.0515, 0.0755, 0.0000, 0.0042, 0.0000],

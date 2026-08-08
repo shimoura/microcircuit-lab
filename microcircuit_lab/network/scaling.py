@@ -46,9 +46,10 @@ def scale_weight(
 
         J -> J / K
 
-    NOT currently wired to ScalingConfig.preserve_mean_input /
-    preserve_variance -- scale_weights() always uses scale_weight_sqrt
-    regardless of those flags. See scale_weight_sqrt's docstring.
+    Used by scale_weights() when ScalingConfig.preserve_variance is
+    False. No DC compensation is needed (or applied) in that case,
+    since this law introduces no mean-input bias to correct for. See
+    scale_weight_sqrt's docstring for the alternative (default) law.
     """
 
     return value / factor
@@ -66,11 +67,11 @@ def scale_weight_sqrt(
 
         w -> w / sqrt(K_scaling)
 
-    scale_weights() always applies this, regardless of
-    ScalingConfig.preserve_mean_input/preserve_variance -- those flags
-    are currently declarative only (see ScalingConfig's docstring note).
-    compensate_recurrent_input's DC injection is what actually restores
-    the mean input this rule doesn't preserve on its own.
+    Used by scale_weights() when ScalingConfig.preserve_variance is
+    True (the default). NetworkPreprocessor._apply_scaling_compensation
+    is what actually restores the mean input this rule doesn't preserve
+    on its own, via DC current injection, when preserve_mean_input is
+    also True.
     """
 
     return weight / math.sqrt(K_scaling)

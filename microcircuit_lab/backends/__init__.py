@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from typing import Literal
 
 from .base import SimulationBackend
 
-BackendName: TypeAlias = str
+#: Registered backend names. Adding a backend means adding it here and to
+#: get_backend() below -- see "Adding a backend" in the README.
+BackendName = Literal["nest"]
 
 
 def get_backend(name: BackendName):

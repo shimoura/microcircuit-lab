@@ -647,7 +647,6 @@ def generate_humam_configs(
     }
 
 
-
 def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--area", default="bankssts")
     parser.add_argument("--config-dir", default="configs")
@@ -692,7 +691,7 @@ def _run(args: argparse.Namespace) -> None:
     default_name = "humam_all" if args.area.lower() == "all" else "humam_single"
     network_name = args.network_name or default_name
     simulation_name = args.simulation_name or default_name
-    
+
     paths = generate_humam_configs(
         area=args.area,
         config_dir=args.config_dir,

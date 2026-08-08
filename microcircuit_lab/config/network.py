@@ -13,18 +13,7 @@ from __future__ import annotations
 from typing import Annotated, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
-# -----------------------------------------------------------------------------
-# Base class
-# -----------------------------------------------------------------------------
-class FrozenConfig(BaseModel):
-    """Base class for immutable configuration models."""
-
-    model_config = ConfigDict(
-        frozen=True,
-        extra="forbid",
-    )
-
+from microcircuit_lab.config.base import FrozenConfig
 
 # -----------------------------------------------------------------------------
 # Neuron parameters

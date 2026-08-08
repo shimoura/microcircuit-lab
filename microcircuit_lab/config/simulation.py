@@ -10,20 +10,9 @@ recording options and output locations.
 
 from __future__ import annotations
 from pathlib import Path
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-
-# -----------------------------------------------------------------------------
-# Base class
-# -----------------------------------------------------------------------------
-class FrozenConfig(BaseModel):
-    """Base class for immutable configuration models."""
-
-    model_config = ConfigDict(
-        frozen=True,
-        extra="forbid",
-    )
-
+from microcircuit_lab.config.base import FrozenConfig
 
 # -----------------------------------------------------------------------------
 # Recording

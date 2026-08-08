@@ -1,6 +1,6 @@
-N_scaling: 0.05
+N_scaling: 1.0
 
-K_scaling: 0.05
+K_scaling: 1.0
 
 preserve_mean_input: true
 
