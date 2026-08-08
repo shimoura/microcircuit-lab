@@ -10,7 +10,18 @@ from microcircuit_lab.network import Network
 
 
 class SimulationBackend(Protocol):
-    """Minimal contract required by the simulation orchestrator."""
+    """
+    Minimal contract required by the simulation orchestrator.
+
+    A concrete backend's ``__init__`` may accept additional keyword-only
+    arguments beyond the two declared here, for whatever that backend
+    alone needs (e.g. NestBackend's ``extension_modules``, for loading
+    compiled NEST/NESTML extensions). Simulation.run() forwards its
+    ``backend_options`` dict as ``**kwargs`` without interpreting it, so
+    those arguments are entirely between the caller and the chosen
+    backend; this Protocol, and the rest of microcircuit_lab, never
+    needs to know about them.
+    """
 
     def __init__(self, network: Network, simulation_config: SimulationConfig) -> None: ...
 

@@ -2,6 +2,23 @@
 
 Microcircuit Lab is a configuration-driven framework for building, simulating, and analyzing recurrent neural microcircuit models. It separates **model-specific data**, **generic network representation**, and **simulator backends** so published models can share the same simulation infrastructure.
 
+## Contents
+
+- [Using this as a template for a new project](#using-this-as-a-template-for-a-new-project)
+- [Architecture](#architecture)
+- [Project structure](#project-structure)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Adding a new model](#adding-a-new-model)
+- [Adding a backend](#adding-a-backend)
+- [Using a NESTML model](#using-a-nestml-model)
+- [Included models](#included-models)
+- [Experiments](#experiments)
+- [Repository scripts](#repository-scripts)
+- [Run outputs](#run-outputs)
+- [Testing](#testing)
+
 ## Using this as a template for a new project
 
 This repository is meant to be forked as the starting point for a new, independent research project: fork it, add your model under `microcircuit_lab/models/<your_model>/` (see "Adding a new model" below), and add its experiments under `experiments/<your_model>/`. A fork is not expected to track this repository going forward -- treat it as a one-time starting point, not an upstream dependency.
@@ -132,26 +149,14 @@ A runnable version of this lives in `configs/network/toy_stimulated/` (the toy n
 python scripts/run_simulation.py --network toy_stimulated --simulation toy_stimulated
 ```
 
-**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; use `microcircuit_lab.io.files.write_yaml`/`flow_records` in a generator to opt a field into the compact style.
+**Weight units.** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out. `PSP` (biological amplitude, mV) is converted to a current amplitude by `NetworkPreprocessor`, and that conversion (`network/synapses.py`) only depends on the target neuron having `C_m`, `tau_m`, `tau_syn_ex` and `tau_syn_in` parameters, not on the model's name; it applies to any current-based LIF neuron with single-exponential synaptic currents, `iaf_psc_exp` is just the model most people know it from. This module has no notion of "simulator" or "backend", so it can't check the model's actual dynamics for you: giving `unit: PSP` to a neuron that happens to have those four parameter names without actually having this dynamics will silently produce the wrong weight, so that's on whoever writes the config, the same way `unit: PSC`/`unit: native` already are explicit choices. For a genuinely different model (a conductance-based one, an adaptive-exponential one, or anything else), give its connections `unit: PSC` (if the weights are already current amplitudes in pA) or `unit: native` (used exactly as given, no interpretation at all) instead of `PSP`. Adding a new neuron model should essentially never require touching `network/parameters.py`.
 
-## Adding a new model
-
-There are two supported ways to try a new model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never has to change for either one.
-
-**Write YAML directly.** Copy `configs/network/toy/` (the smallest complete example of the schema: two populations, four connections, minimal scaling/reference) to `configs/network/<my_model>/` and edit the values by hand. Pair it with a `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid). This is the right starting point for exploring a new idea or a model small enough to write out directly.
-
-**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The generator's job is to translate that data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
-
-If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (same pattern in both examples above) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
-
-**Using a neuron model other than `iaf_psc_exp`?** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out. `PSP` (biological amplitude, mV) is converted to a current amplitude by `NetworkPreprocessor`, and that conversion (`network/synapses.py`) only depends on the target neuron having `C_m`, `tau_m`, `tau_syn_ex` and `tau_syn_in` parameters, not on the model's name; it applies to any current-based LIF neuron with single-exponential synaptic currents, `iaf_psc_exp` is just the model most people know it from. This module has no notion of "simulator" or "backend", so it can't check the model's actual dynamics for you: giving `unit: PSP` to a neuron that happens to have those four parameter names without actually having this dynamics will silently produce the wrong weight, so that's on whoever writes the config, the same way `unit: PSC`/`unit: native` already are explicit choices. For a genuinely different model (a conductance-based one, an adaptive-exponential one, or anything else), give its connections `unit: PSC` (if the weights are already current amplitudes in pA) or `unit: native` (used exactly as given, no interpretation at all) instead of `PSP`. Adding a new neuron model should essentially never require touching `network/parameters.py`.
-
-If your model has this dynamics but names its parameters differently, e.g. a NESTML model compiled with its own naming convention, set `psp_conversion_aliases` on its `neurons.yaml` entry instead of renaming anything (the parameter names in `parameters:` have to stay whatever your compiled model actually accepts):
+If your model has this dynamics but names its parameters differently, set `psp_conversion_aliases` on its `neurons.yaml` entry instead of renaming anything (the parameter names in `parameters:` have to stay whatever your model actually accepts):
 
 ```yaml
 neurons:
-  my_nestml_lif:
-    model: my_nestml_lif_exp_nestml__with_stdp_synapse_nestml
+  my_model:
+    model: some_custom_model_name
     parameters:
       Cm: 250.0
       tau_membrane: 10.0
@@ -165,7 +170,19 @@ neurons:
       tau_syn_in: tau_inh
 ```
 
-Only list the names that actually differ; an omitted key falls back to the canonical name unchanged.
+Only list the names that actually differ; an omitted key falls back to the canonical name unchanged. A compiled NESTML model is the most common case this solves; see [Using a NESTML model](#using-a-nestml-model).
+
+**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; use `microcircuit_lab.io.files.write_yaml`/`flow_records` in a generator to opt a field into the compact style.
+
+## Adding a new model
+
+There are two supported ways to try a new model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never has to change for either one.
+
+**Write YAML directly.** Copy `configs/network/toy/` (the smallest complete example of the schema: two populations, four connections, minimal scaling/reference) to `configs/network/<my_model>/` and edit the values by hand. Pair it with a `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid). This is the right starting point for exploring a new idea or a model small enough to write out directly.
+
+**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The generator's job is to translate that data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
+
+If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (same pattern in both examples above) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
 
 Either way, once the generic configuration exists, run it through the same public API:
 
@@ -194,6 +211,53 @@ simulation = Simulation.from_yaml(
 ```
 
 `prepare_output(run_dir)` and `save_recordings(run_dir)` are where recording-to-disk should be implemented in whatever way is native and efficient for that simulator (see "Run outputs" below); `get_spike_events()` should transparently read that data back regardless of how it was stored, so callers (analysis, `io/output.py`) never need backend-specific branches.
+
+A backend's constructor isn't limited to `(network, simulation_config)`: it can accept additional keyword-only arguments for whatever it alone needs, passed through `Simulation.from_yaml(..., backend_options={...})` without `Simulation`/`config`/`network` ever inspecting them (see `SimulationBackend` in `backends/base.py`). `NestBackend`'s `extension_modules` is the current example; see [Using a NESTML model](#using-a-nestml-model) for it in context.
+
+## Using a NESTML model
+
+NESTML compiles a custom neuron model into a NEST extension module, loaded at runtime with `nest.Install(module_name)` before any node using that model can be created. This is entirely a capability of `NestBackend` (its `extension_modules` constructor argument, see "Adding a backend" above); nothing elsewhere in the package has any notion of NESTML.
+
+**Where files go.** Keep `.nestml` source under a top-level `nestml/` directory (parallel to `configs/`, not inside `microcircuit_lab/models/`: nothing reads a `.nestml` file at runtime, NESTML's own compiler does, and a compiled module is platform/NEST-version-specific, not something to ship as package data). A model reusable across networks can sit flat; one written specifically for a given model follows the same `<model_name>/` subdirectory convention already used by `configs/network/<model>/` and `experiments/<model>/`. Compiled output is gitignored, like `output/`:
+
+```text
+nestml/
+├── generic_lif.nestml           # reusable across networks
+└── humam/
+    └── humam_lif.nestml         # written specifically for the HuMAM reproduction
+```
+
+Compile it with NESTML's own tooling, once, ahead of time (same idea for a model-specific one under `nestml/<model_name>/`, just with that path instead):
+
+```python
+from pynestml.frontend.pynestml_frontend import generate_nest_target
+
+generate_nest_target(
+    input_path="nestml/generic_lif.nestml",
+    target_path="nestml/build/my_module",
+    module_name="my_module",
+)
+```
+
+This registers the model under whatever name your `.nestml` file (or NESTML's default suffixing) gives it, e.g. `generic_lif_nestml`. From there it's just another neuron model as far as `neurons.yaml` is concerned: use that name as `model`, its own parameters as `parameters`, and `psp_conversion_aliases` if you're using `unit: PSP` and it names things differently (see [Configuration](#configuration)).
+
+Test a NESTML neuron against a network you already trust by copying it rather than editing in place, e.g. `configs/network/toy/` to `configs/network/toy_nestml/`, the same way `toy_stimulated` was kept separate from `toy`.
+
+The only NEST-specific step is telling `NestBackend` to load the compiled module before building the network:
+
+```python
+from microcircuit_lab import Simulation
+
+simulation = Simulation.from_yaml(
+    network_name="toy_nestml",
+    simulation_name="toy_nestml",
+    backend="nest",
+    backend_options={"extension_modules": ["my_module"]},
+)
+simulation.run()
+```
+
+`extension_modules` is loaded fresh on every `run()`, in `NestBackend.initialize()`, before populations are created.
 
 ## Included models
 
