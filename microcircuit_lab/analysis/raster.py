@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 
-from ._utils import select_populations
+from ._utils import UNSET, select_populations
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
     DEFAULT_RASTER_CONFIG,
@@ -17,6 +17,7 @@ from .plot_styles import (
     population_color,
     population_label,
 )
+from .registry import register_plot
 
 
 def plot_raster(
@@ -26,7 +27,7 @@ def plot_raster(
     *,
     populations: Sequence[str] | None = None,
     area: str | None = None,
-    max_neurons_per_population: int | None = None,
+    max_neurons_per_population: int | None = UNSET,
     style: PlotStyle | None = None,
     config: RasterPlotConfig | None = None,
     save_path: str | Path | None = None,
@@ -37,6 +38,9 @@ def plot_raster(
     Population selection is independent of presentation. ``area`` supports the
     generic ``<group>__<population>`` naming convention used by multi-area
     configurations; ``style`` controls colors and figure appearance.
+    ``max_neurons_per_population`` defaults to ``config.neuron_fraction``
+    (if set, takes precedence) or ``config.max_neurons_per_population``;
+    pass an explicit value (or ``None`` for no cap) to override the config.
     """
     if simulation.backend is None:
         raise RuntimeError("Simulation has not been run yet.")
@@ -58,13 +62,18 @@ def plot_raster(
     yticks, ylabels, legend_handles = [], [], []
     offset = 0
 
+    if max_neurons_per_population is UNSET:
+        neuron_fraction = config.neuron_fraction
+        fixed_cap = config.max_neurons_per_population
+    else:
+        neuron_fraction = None
+        fixed_cap = max_neurons_per_population
+
     for index, pop_name in enumerate(selected):
         nodes = np.asarray(simulation.backend.get_population(pop_name).tolist())
-        if (
-            max_neurons_per_population is not None
-            and len(nodes) > max_neurons_per_population
-        ):
-            keep = np.linspace(0, len(nodes) - 1, max_neurons_per_population, dtype=int)
+        cap = max(1, round(neuron_fraction * len(nodes))) if neuron_fraction is not None else fixed_cap
+        if cap is not None and len(nodes) > cap:
+            keep = np.linspace(0, len(nodes) - 1, cap, dtype=int)
             nodes = nodes[keep]
 
         row_by_gid = {int(gid): offset + row for row, gid in enumerate(nodes)}
@@ -128,3 +137,6 @@ def plot_raster(
     if show:
         plt.show()
     return fig, ax
+
+
+register_plot("raster", config_cls=RasterPlotConfig, plot_fn=plot_raster, filename="raster.png")

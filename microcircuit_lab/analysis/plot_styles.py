@@ -2,90 +2,40 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal
-
 import matplotlib.colors as mcolors
 import numpy as np
 
-ColorMode = Literal["layer", "cell_type", "population", "custom"]
+from microcircuit_lab.config.analysis import (
+    ColorMode,
+    FiringRatePlotConfig,
+    IsiCvPlotConfig,
+    PlotStyle,
+    PowerSpectrumPlotConfig,
+    RasterPlotConfig,
+)
 
-
-@dataclass(frozen=True)
-class PlotStyle:
-    """Shared visual settings used across analysis plots."""
-
-    color_mode: ColorMode = "layer"
-    layer_colors: dict[str, str] = field(default_factory=lambda: {
-        "L23": "tab:blue", "L4": "tab:orange", "L5": "tab:green", "L6": "tab:red",
-    })
-    cell_type_colors: dict[str, str] = field(default_factory=lambda: {"E": "tab:blue", "I": "tab:red"})
-    custom_colors: dict[str, str] = field(default_factory=dict)
-    excitatory_tone: float = 0.25
-    inhibitory_tone: float = 0.65
-    population_labels: dict[str, str] = field(default_factory=dict)
-    tick_label_size: float = 8.0
-    axis_label_size: float = 9.0
-    title_size: float = 10.0
-    legend_size: float = 8.0
-    dpi: int = 300
-
-
-@dataclass(frozen=True)
-class RasterPlotConfig:
-    """Raster-specific presentation settings."""
-
-    marker_size: float = 1.0
-    alpha: float = 0.8
-    figsize: tuple[float, float] | None = None
-    width: float = 10.0
-    height_per_population: float = 0.55
-    min_height: float = 4.0
-    separator_lines: bool = True
-    separator_alpha: float = 0.25
-    show_legend: bool = True
-    invert_yaxis: bool = True
-
-
-@dataclass(frozen=True)
-class FiringRatePlotConfig:
-    """Firing-rate distribution presentation settings."""
-
-    figsize: tuple[float, float] | None = None
-    width: float = 8.0
-    height_per_population: float = 0.55
-    min_height: float = 3.5
-    violin_alpha: float = 0.35
-    box_width: float = 0.18
-    show_points: bool = False
-    max_points_per_population: int = 500
-    point_size: float = 8.0
-    point_alpha: float = 0.2
-    show_mean: bool = True
-    mean_marker_size: float = 28.0
-    show_legend: bool = True
-    invert_yaxis: bool = True
-
-
-@dataclass(frozen=True)
-class PowerSpectrumPlotConfig:
-    """Power-spectrum presentation settings (grid: one subplot per population,
-    grouped into rows by layer -- see analysis.power_spectrum._grid_layout)."""
-
-    figsize: tuple[float, float] | None = None
-    width_per_column: float = 3.0
-    height_per_row: float = 1.8
-    min_width: float = 4.5
-    min_height: float = 2.2
-    linewidth: float = 1.2
-    log_power: bool = False
-    xlim: tuple[float, float] | None = None
-
+__all__ = [
+    "ColorMode",
+    "FiringRatePlotConfig",
+    "IsiCvPlotConfig",
+    "PlotStyle",
+    "PowerSpectrumPlotConfig",
+    "RasterPlotConfig",
+    "DEFAULT_PLOT_STYLE",
+    "DEFAULT_RASTER_CONFIG",
+    "DEFAULT_FIRING_RATE_CONFIG",
+    "DEFAULT_POWER_SPECTRUM_CONFIG",
+    "DEFAULT_ISI_CV_CONFIG",
+    "population_metadata",
+    "population_color",
+    "population_label",
+]
 
 DEFAULT_PLOT_STYLE = PlotStyle()
 DEFAULT_RASTER_CONFIG = RasterPlotConfig()
 DEFAULT_FIRING_RATE_CONFIG = FiringRatePlotConfig()
 DEFAULT_POWER_SPECTRUM_CONFIG = PowerSpectrumPlotConfig()
+DEFAULT_ISI_CV_CONFIG = IsiCvPlotConfig()
 
 
 def population_metadata(name: str) -> tuple[str | None, str | None, str | None]:

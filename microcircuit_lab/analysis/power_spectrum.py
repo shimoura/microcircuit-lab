@@ -16,7 +16,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ._utils import select_populations
+from ._utils import UNSET, select_populations
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
     DEFAULT_POWER_SPECTRUM_CONFIG,
@@ -26,12 +26,9 @@ from .plot_styles import (
     population_label,
     population_metadata,
 )
+from .registry import register_plot
 
 PowerSpectrumEstimator = Callable[..., tuple[np.ndarray, np.ndarray]]
-
-#: Sentinel distinguishing "xlim not passed" (use config.xlim) from an
-#: explicit xlim=None (show the full frequency range).
-_XLIM_UNSET = object()
 
 
 def _periodogram(signal: np.ndarray, fs: float) -> tuple[np.ndarray, np.ndarray]:
@@ -192,9 +189,9 @@ def plot_power_spectrum(
     populations: Sequence[str] | None = None,
     area: str | None = None,
     bin_size: float = 1.0,
-    method: str = "welch",
+    method: str = UNSET,
     method_kwargs: dict | None = None,
-    xlim: tuple[float, float] | None = _XLIM_UNSET,
+    xlim: tuple[float, float] | None = UNSET,
     style: PlotStyle | None = None,
     config: PowerSpectrumPlotConfig | None = None,
     save_path: str | Path | None = None,
@@ -208,13 +205,15 @@ def plot_power_spectrum(
     The zero-frequency (DC) bin is never plotted -- after mean-detrending
     it carries no information. ``xlim`` defaults to ``config.xlim`` (the
     full frequency range); pass an explicit range, e.g. ``xlim=(0, 150)``,
-    to zoom in.
+    to zoom in. ``method`` defaults to ``config.method``.
     """
 
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_POWER_SPECTRUM_CONFIG
-    if xlim is _XLIM_UNSET:
+    if xlim is UNSET:
         xlim = config.xlim
+    if method is UNSET:
+        method = config.method
     spectra = compute_power_spectrum(
         simulation,
         begin,
@@ -287,3 +286,9 @@ def plot_power_spectrum(
     if show:
         plt.show()
     return fig, axes
+
+
+register_plot(
+    "power_spectrum", config_cls=PowerSpectrumPlotConfig, plot_fn=plot_power_spectrum,
+    filename="power_spectrum.png",
+)

@@ -8,6 +8,8 @@ monkeypatching the `nest` name inside microcircuit_lab.backends.nest.backend
 (a plain module, not the real nest package) instead of the real nest module.
 """
 
+import numpy as np
+
 import microcircuit_lab.backends.nest.backend as nest_backend_module
 import microcircuit_lab.simulation.runner as runner_module
 from microcircuit_lab import Simulation
@@ -35,7 +37,9 @@ class _FakeBackend:
         pass
 
     def get_population(self, name):
-        raise NotImplementedError
+        # write_run_metadata() reads first_gid off this unconditionally;
+        # the actual node IDs are irrelevant to what these tests check.
+        return np.array([1])
 
     def get_spike_events(self, population):
         return {"senders": [], "times": []}

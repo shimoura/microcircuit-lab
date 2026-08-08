@@ -97,11 +97,11 @@ simulation = Simulation.from_yaml(network_name="pd14")
 simulation.run()
 ```
 
-Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network (defaults to `pd14`; pass `--network toy` for the minimal example -- `--simulation` defaults to whatever `--network` is set to, see [Configuration](#configuration)). It can produce raster and firing-rate diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
+Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network (defaults to `pd14`; pass `--network toy` for the minimal example -- `--simulation`/`--analysis` default to whatever `--network` is set to, see [Configuration](#configuration)). It can produce raster, firing-rate, power-spectrum, and ISI-CV diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
 
 ## Configuration
 
-Network and execution settings are deliberately separate:
+Network, execution, and analysis/plot settings are deliberately separate:
 
 ```text
 configs/
@@ -115,11 +115,17 @@ configs/
 │       ├── stimuli.yaml   # optional
 │       ├── scaling.yaml
 │       └── reference.yaml
-└── simulation/
-    └── <simulation_name>.yaml
+├── simulation/
+│   └── <simulation_name>.yaml
+└── analysis/
+    └── <analysis_name>.yaml   # optional
 ```
 
-A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording. They're kept as two independent trees so one network can be paired with more than one execution profile (e.g. a short one for a quick check, a long one for a real run) -- but in the common case where a network only ever has one, `Simulation.from_yaml(network_name=...)` alone is enough: `simulation_name` defaults to whatever `network_name` is, so `configs/network/toy/` pairs automatically with `configs/simulation/toy.yaml`. Pass `simulation_name` explicitly only when you actually want a different, decoupled profile.
+A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording. An analysis configuration (`AnalysisConfig`, `microcircuit_lab/config/analysis.py`) describes presentation only -- which diagnostic plots run, the time window/area to analyze, and their styling (colors, figure sizes, raster neuron subsampling, ...); it has no effect on the simulation itself. These are three independent trees, matched by name, so one network can be paired with more than one execution profile or presentation (e.g. a short simulation for a quick check vs. a long one for a real run; a quick raster-only look vs. a full styled figure set for a paper) -- but in the common case where a network only ever has one of each, `Simulation.from_yaml(network_name=...)` and `AnalysisConfig.from_yaml(network_name=...)` alone are enough: `simulation_name`/`analysis_name` both default to whatever `network_name` is, so `configs/network/toy/` pairs automatically with `configs/simulation/toy.yaml` and `configs/analysis/toy.yaml`. Pass `simulation_name`/`analysis_name` explicitly only when you actually want a different, decoupled profile.
+
+Unlike network/simulation configs, an analysis config is optional: if `configs/analysis/<name>.yaml` doesn't exist, `AnalysisConfig.from_yaml` falls back to built-in defaults rather than raising, so adding a new network never requires an analysis file. And because `AnalysisConfig`/`PlotStyle`/`RasterPlotConfig`/etc. are just pydantic models, a one-off tweak for a specific script or notebook doesn't need a YAML file at all -- override in memory instead, e.g. `plot_raster(sim, config=RasterPlotConfig(neuron_fraction=0.05))`. Save a variant to YAML only once it's a default you want to keep reusing; see [Experiments](#experiments) for where a one-off analysis script belongs instead.
+
+Beyond `begin`/`end`/`area`/`show_reference`/`style`, `AnalysisConfig` doesn't pre-declare a field per plot -- `raster:`/`firing_rates:`/`power_spectrum:`/`isi_cv:` are just the top-level sections the four bundled diagnostics happen to be registered under (see [Adding a new diagnostic](#adding-a-new-diagnostic)). A section name that isn't registered raises a clear error rather than being silently ignored.
 
 **Background input vs. stimulation.** `background_inputs.yaml` is the always-on background Poisson drive tied to `background_indegree`; it scales with `K_scaling` and is what the DC-compensation math in `network/scaling.py` accounts for. `stimuli.yaml` (optional -- omit both the file and the `stimuli:` entry in `network.yaml` if unused) describes targeted, time-limited devices for experiments instead: a constant-current pulse (`type: dc`), a Poisson train active for part of the run (`type: poisson`), or a piecewise-constant Poisson rate profile (`type: inhomogeneous_poisson`). Stimuli are not touched by scaling or compensation -- they're applied exactly as configured. See `StimulusConfig` in `microcircuit_lab/config/network.py` for the full field reference, e.g.:
 
@@ -267,7 +273,7 @@ An experiment -- a parameter sweep, a comparison across configs, exploratory ana
 
 ## Repository scripts
 
-Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name. Neither script contains model-specific logic, so both stay unchanged as models are added.
+Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name -- or re-plots an existing run's recordings without re-simulating, via `--run-dir` (see below). Neither script contains model-specific logic, so both stay unchanged as models are added.
 
 Run the bundled PD14 network (uses the default network/simulation names):
 
@@ -290,7 +296,35 @@ python scripts/generate.py pd14
 
 Every registered model's generation arguments are discoverable with `python scripts/generate.py <model> --help`.
 
-Use `--network`, `--simulation`, `--area`, `--begin`, `--end`, `--reference`, `--no-raster`, and `--no-firing-rates` on `scripts/run_simulation.py` to select the network, simulation, analysis window, area, and diagnostics. Plots are saved to `<output_dir>/plots/` but not opened interactively by default; pass `--show` to also pop up the plot windows. Plot styling (colors, sizes, figure layout) is set via the `PLOT_STYLE`, `RASTER_CONFIG`, and `FIRING_RATE_CONFIG` constants at the top of the script. Generic plotting does not live inside model-specific code.
+Use `--network` (or `--run-dir`, see below), `--simulation`, `--analysis`, `--area`, `--begin`, `--end`, `--reference`/`--no-reference`, and one `--<plot-name>`/`--no-<plot-name>` pair per entry in `microcircuit_lab.analysis.PLOT_REGISTRY` (`--raster`/`--no-raster`, `--firing-rates`/`--no-firing-rates`, `--power-spectrum`/`--no-power-spectrum`, `--isi-cv`/`--no-isi-cv` for the four bundled diagnostics -- see [Adding a new diagnostic](#adding-a-new-diagnostic) below for how a 5th one gets its own flag automatically) on `scripts/run_simulation.py` to select the network, simulation, analysis profile, analysis window, area, and which diagnostics run. Every one of these (except `--network`/`--run-dir`/`--simulation`/`--analysis` themselves) is an *optional override*: if omitted, the value comes from `configs/analysis/<analysis_name>.yaml` (see [Configuration](#configuration)) instead. Plots are saved to `<output_dir>/plots/` but not opened interactively by default; pass `--show` to also pop up the plot windows. Plot styling (colors, sizes, figure layout, raster neuron subsampling, spectral estimator, ...) is set entirely via that same analysis YAML, not hardcoded in the script.
+
+### Re-plotting without re-simulating
+
+A run already saves everything a plot needs (`config.yaml`, `recordings/`), so trying a different `--begin`/`--end`/`--area`/analysis profile on a run you already have doesn't require re-simulating it. Pass `--run-dir` instead of `--network`/`--simulation`; every other flag above works the same:
+
+```bash
+python scripts/run_simulation.py --network toy   # note the run_dir it prints
+python scripts/run_simulation.py --run-dir output/toy/<timestamp> --begin 200 --end 400
+```
+
+Plots are written back into that same run's own `plots/` directory. Programmatically, this is `Simulation.from_run_dir(run_dir)` -- it returns a `Simulation` with a working `.backend` (reading spikes back from `recordings/` instead of a live NEST process, via `PostHocBackend`) without ever calling `.run()`, so `microcircuit_lab.analysis`'s `plot_*`/`compute_*` functions work on it exactly as they do on a freshly-run one. Only runs saved after this feature was added carry the `first_gid` metadata field it needs; an older run raises a clear error instead of silently reconstructing the wrong neuron IDs -- just re-run it once to pick up the new field.
+
+### Adding a new diagnostic
+
+Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model generators (`models.MODEL_GENERATORS`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
+
+```python
+from microcircuit_lab.analysis import register_plot
+
+register_plot(
+    "spectrogram",
+    config_cls=SpectrogramPlotConfig,
+    plot_fn=plot_spectrogram,
+    filename="spectrogram.png",
+)
+```
+
+That's the entire wiring: `scripts/run_simulation.py` gets a `--spectrogram`/`--no-spectrogram` flag automatically (it builds its CLI by looping over `microcircuit_lab.analysis.PLOT_REGISTRY`), and `configs/analysis/*.yaml` files don't need to change shape at all -- a `spectrogram:` top-level section works exactly like `raster:`/`firing_rates:` already do (an unregistered section name raises a clear error instead of being silently ignored, via `check_unknown_plot_sections`). This works from your own code too, e.g. a module under `experiments/<model>/` -- calling `register_plot` there plugs a project-specific diagnostic into the same CLI/YAML dispatch without editing this package at all.
 
 ### Firing-rate distributions
 

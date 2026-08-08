@@ -15,15 +15,16 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ._utils import select_populations
+from ._utils import UNSET, select_populations
 from .plot_styles import (
-    DEFAULT_FIRING_RATE_CONFIG,
+    DEFAULT_ISI_CV_CONFIG,
     DEFAULT_PLOT_STYLE,
-    FiringRatePlotConfig,
+    IsiCvPlotConfig,
     PlotStyle,
     population_color,
     population_label,
 )
+from .registry import register_plot
 
 
 def compute_neuron_isi_cv(
@@ -121,9 +122,9 @@ def plot_isi_cv(
     *,
     populations: Sequence[str] | None = None,
     area: str | None = None,
-    min_spikes: int = 3,
+    min_spikes: int = UNSET,
     style: PlotStyle | None = None,
-    config: FiringRatePlotConfig | None = None,
+    config: IsiCvPlotConfig | None = None,
     save_path: str | Path | None = None,
     show: bool = True,
 ):
@@ -131,10 +132,13 @@ def plot_isi_cv(
 
     A dashed reference line at CV=1 marks the Poisson-like "asynchronous
     irregular" regime cortical models are usually compared against.
+    ``min_spikes`` defaults to ``config.min_spikes``.
     """
 
     style = style or DEFAULT_PLOT_STYLE
-    config = config or DEFAULT_FIRING_RATE_CONFIG
+    config = config or DEFAULT_ISI_CV_CONFIG
+    if min_spikes is UNSET:
+        min_spikes = config.min_spikes
     cv = compute_neuron_isi_cv(
         simulation, begin, end, populations=populations, area=area, min_spikes=min_spikes,
     )
@@ -201,3 +205,6 @@ def plot_isi_cv(
     if show:
         plt.show()
     return fig, ax
+
+
+register_plot("isi_cv", config_cls=IsiCvPlotConfig, plot_fn=plot_isi_cv, filename="isi_cv.png")

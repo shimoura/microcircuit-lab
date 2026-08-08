@@ -11,14 +11,17 @@ mathematics and no simulator-specific code.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
+from microcircuit_lab.backends.post_hoc import PostHocBackend
 from microcircuit_lab.network import Network
 
 from microcircuit_lab.io.config import NetworkConfigLoader
 from microcircuit_lab.network.preprocessing import NetworkPreprocessor
 
+from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 
 from microcircuit_lab.io.files import (
@@ -112,6 +115,62 @@ class Simulation:
             network_name=network_name,
             simulation_name=simulation_name,
         )
+
+    @classmethod
+    def from_run_dir(cls, run_dir: str | Path) -> "Simulation":
+        """
+        Reconstruct a Simulation from a directory a previous run wrote
+        (see save_run_outputs), for re-analyzing/re-plotting its spikes
+        without re-simulating.
+
+        Reads ``config.yaml`` directly into NetworkConfig/SimulationConfig
+        -- it's already the fully *resolved* (preprocessed, scaled)
+        config save_run_config wrote, so NetworkConfigLoader/
+        NetworkPreprocessor are skipped on purpose; running them again
+        would double-apply scaling/DC-compensation. The returned
+        Simulation's ``backend`` is a PostHocBackend reading spikes back
+        from ``run_dir/recordings`` -- ``.run()`` is never called, so
+        nothing is re-simulated, and ``.output_dir`` is already ``run_dir``
+        (so e.g. ``scripts/run_simulation.py --run-dir ...``'s plots land
+        back in that run's own ``plots/`` directory).
+
+        Raises if ``run_dir`` has no ``config.yaml`` (``output.save_config
+        =False``) or no ``metadata.json`` with per-population ``first_gid``
+        (predates PostHocBackend support -- see PostHocBackend).
+        """
+
+        run_dir = Path(run_dir)
+        config_path = run_dir / "config.yaml"
+        if not config_path.exists():
+            raise ValueError(
+                f"No config.yaml in {run_dir} -- was this run saved with "
+                "output.save_config=False? Simulation.from_run_dir needs it."
+            )
+
+        resolved = read_yaml(config_path)
+        network_config = NetworkConfig.model_validate(resolved["network"])
+        simulation_config = SimulationConfig.model_validate(resolved["simulation"])
+        network = Network(network_config)
+        backend = PostHocBackend(run_dir)
+
+        network_name, simulation_name, backend_name = run_dir.name, run_dir.name, "nest"
+        metadata_path = run_dir / "metadata.json"
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text())
+            network_name = metadata.get("network_name", network_name)
+            simulation_name = metadata.get("simulation_name", simulation_name)
+            backend_name = metadata.get("backend", backend_name)
+
+        simulation = cls(
+            network=network,
+            simulation_config=simulation_config,
+            backend=backend_name,
+            network_name=network_name,
+            simulation_name=simulation_name,
+        )
+        simulation.backend = backend
+        simulation.output_dir = run_dir
+        return simulation
 
     def run(self) -> None:
         """

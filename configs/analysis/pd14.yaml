@@ -1,0 +1,35 @@
+style:
+  color_mode: cell_type
+  cell_type_colors:
+    E: "#595289"
+    I: "#af143c"
+  population_labels:
+    L23_E: "L2/3_E"
+    L23_I: "L2/3_I"
+  tick_label_size: 5.0
+  axis_label_size: 8.0
+  legend_size: 6.0
+  dpi: 300
+
+raster:
+  marker_size: 1.0
+  alpha: 1.0
+  figsize: [4, 3]
+  separator_lines: true
+  show_legend: false
+
+firing_rates:
+  figsize: [5, 3.5]
+  show_points: false
+  show_mean: true
+  show_legend: true
+
+power_spectrum:
+  width_per_column: 3.0
+  height_per_row: 1.6
+
+isi_cv:
+  figsize: [5, 3.5]
+  show_points: false
+  show_mean: true
+  show_legend: true

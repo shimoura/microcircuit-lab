@@ -124,13 +124,23 @@ def write_run_metadata(
 ) -> Path:
     """Write ``metadata.json``: run identity, per-population spike statistics
     (if spike_recording was enabled), and an ``artifacts`` manifest that
-    :func:`register_artifact` appends to."""
+    :func:`register_artifact` appends to.
+
+    ``first_gid`` anchors each population's node-ID range (the backend
+    creates each population's neurons as one contiguous block, so
+    ``first_gid`` + ``size`` fully recovers it) -- this is what lets
+    :class:`~microcircuit_lab.backends.post_hoc.PostHocBackend` reconstruct
+    ``get_population`` from a saved run without re-simulating.
+    """
 
     t_sim_s = simulation_config.t_sim / 1000.0
     populations = {}
 
     for pop_name, pop_cfg in network.config.populations.items():
-        stats = {"size": pop_cfg.size}
+        stats = {
+            "size": pop_cfg.size,
+            "first_gid": int(backend.get_population(pop_name).tolist()[0]),
+        }
 
         if simulation_config.recording.spike_recording:
             n_spikes = len(backend.get_spike_events(pop_name)["times"])

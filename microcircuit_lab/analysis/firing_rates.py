@@ -8,7 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ._utils import select_populations
+from ._utils import UNSET, select_populations
 from .plot_styles import (
     DEFAULT_FIRING_RATE_CONFIG,
     DEFAULT_PLOT_STYLE,
@@ -17,6 +17,7 @@ from .plot_styles import (
     population_color,
     population_label,
 )
+from .registry import register_plot
 
 
 def compute_neuron_firing_rates(
@@ -155,16 +156,19 @@ def plot_firing_rates(
     *,
     populations: Sequence[str] | None = None,
     area: str | None = None,
-    show_reference: bool = False,
+    show_reference: bool = UNSET,
     style: PlotStyle | None = None,
     config: FiringRatePlotConfig | None = None,
     save_path: str | Path | None = None,
     show: bool = True,
     rng_seed: int = 0,
 ):
-    """Plot per-neuron firing-rate distributions for selected populations."""
+    """Plot per-neuron firing-rate distributions for selected populations.
+    ``show_reference`` defaults to ``config.show_reference``."""
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_FIRING_RATE_CONFIG
+    if show_reference is UNSET:
+        show_reference = config.show_reference
     rates = compute_neuron_firing_rates(
         simulation, begin, end, populations=populations, area=area
     )
@@ -250,3 +254,9 @@ def plot_firing_rates(
     if show:
         plt.show()
     return fig, ax
+
+
+register_plot(
+    "firing_rates", config_cls=FiringRatePlotConfig, plot_fn=plot_firing_rates,
+    filename="firing_rates.png",
+)
