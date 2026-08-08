@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.network import DcStimulusConfig, NetworkConfig
 from microcircuit_lab.network.synapses import (
     psp_to_psc_iaf_psc_exp,
 )
@@ -326,7 +326,7 @@ def convert_network_psp_to_psc(
     stimuli = []
     for stimulus in network.stimuli:
 
-        if stimulus.weight is None or stimulus.weight.unit != "PSP":
+        if isinstance(stimulus, DcStimulusConfig) or stimulus.weight.unit != "PSP":
             stimuli.append(stimulus)
             continue
 

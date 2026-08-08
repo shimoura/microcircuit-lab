@@ -15,7 +15,12 @@ import pandas as pd
 
 from microcircuit_lab.network import Network
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.config.network import PopulationConfig
+from microcircuit_lab.config.network import (
+    DcStimulusConfig,
+    InhomogeneousPoissonStimulusConfig,
+    PopulationConfig,
+    PoissonStimulusConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -282,9 +287,11 @@ class NestBackend:
 
     def create_stimulus_devices(self) -> None:
         """
-        Create one device per configured stimulus, dispatching on
-        `StimulusConfig.type` the same way create_weight_spec/
-        create_delay_parameter dispatch on `distribution`.
+        Create one device per configured stimulus, dispatching on the
+        stimulus's concrete type the same way create_weight_spec/
+        create_delay_parameter dispatch on `distribution`. Each branch
+        narrows to one StimulusConfig subtype, so only the fields that
+        subtype actually declares are touched.
         """
 
         logger.info("Creating stimulus devices:")
@@ -302,18 +309,18 @@ class NestBackend:
             if stimulus.stop is not None:
                 params["stop"] = stimulus.stop
 
-            if stimulus.type == "dc":
+            if isinstance(stimulus, DcStimulusConfig):
                 model = "dc_generator"
                 params["amplitude"] = stimulus.amplitude
-            elif stimulus.type == "poisson":
+            elif isinstance(stimulus, PoissonStimulusConfig):
                 model = "poisson_generator"
                 params["rate"] = stimulus.rate
-            elif stimulus.type == "inhomogeneous_poisson":
+            elif isinstance(stimulus, InhomogeneousPoissonStimulusConfig):
                 model = "inhomogeneous_poisson_generator"
                 params["rate_times"] = stimulus.rate_times
                 params["rate_values"] = stimulus.rate_values
             else:
-                raise ValueError(f"Unsupported stimulus type: {stimulus.type!r}")
+                raise ValueError(f"Unsupported stimulus type: {type(stimulus).__name__!r}")
 
             device = nest.Create(model, params=params)
             self.stimulus_devices.append((stimulus, device))
@@ -329,7 +336,7 @@ class NestBackend:
 
         for stimulus, device in self.stimulus_devices:
             syn_spec = None
-            if stimulus.type != "dc":
+            if not isinstance(stimulus, DcStimulusConfig):
                 syn_spec = {
                     "weight": self.create_weight_spec(stimulus.weight),
                     "delay": self.create_delay_parameter(stimulus.delay),

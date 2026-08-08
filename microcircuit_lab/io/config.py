@@ -11,6 +11,8 @@ No simulator-specific code belongs here.
 
 from __future__ import annotations
 
+from pydantic import TypeAdapter
+
 from microcircuit_lab.config.network import (
     BackgroundInputConfig,
     ConnectionConfig,
@@ -26,6 +28,8 @@ from microcircuit_lab.config.network import (
 )
 
 from microcircuit_lab.io.files import NetworkFiles
+
+_stimulus_adapter = TypeAdapter(StimulusConfig)
 
 
 class NetworkConfigLoader:
@@ -205,34 +209,14 @@ class NetworkConfigLoader:
     ) -> list[StimulusConfig]:
         """
         Build targeted stimulation devices.
+
+        Each entry's `type` selects which stimulus subtype (dc / poisson /
+        inhomogeneous_poisson) it is validated against, so required fields
+        are enforced by the type itself. Target-population existence is
+        checked once, by NetworkConfig, after all stimuli are assembled.
         """
 
-        stimuli: list[StimulusConfig] = []
-
-        for values in self._stimuli_data.get("stimuli", []):
-
-            unknown = [t for t in values["targets"] if t not in populations]
-            if unknown:
-                raise ValueError(
-                    f"Unknown population(s) {unknown} referenced in stimuli.yaml."
-                )
-
-            weight = values.get("weight")
-            delay = values.get("delay")
-
-            stimuli.append(
-                StimulusConfig(
-                    type=values["type"],
-                    targets=values["targets"],
-                    start=values.get("start", 0.0),
-                    stop=values.get("stop"),
-                    amplitude=values.get("amplitude"),
-                    rate=values.get("rate"),
-                    rate_times=values.get("rate_times"),
-                    rate_values=values.get("rate_values"),
-                    weight=WeightDistribution.model_validate(weight) if weight else None,
-                    delay=DelayDistribution.model_validate(delay) if delay else None,
-                )
-            )
-
-        return stimuli
+        return [
+            _stimulus_adapter.validate_python(values)
+            for values in self._stimuli_data.get("stimuli", [])
+        ]

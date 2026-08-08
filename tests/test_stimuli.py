@@ -8,10 +8,13 @@ from pydantic import ValidationError
 
 from microcircuit_lab.backends.nest import NestBackend
 from microcircuit_lab.config.network import (
+    DcStimulusConfig,
     DelayDistribution,
+    InhomogeneousPoissonStimulusConfig,
     NetworkConfig,
     NeuronConfig,
     NeuronParams,
+    PoissonStimulusConfig,
     PopulationConfig,
     ScalingConfig,
     StimulusConfig,
@@ -64,23 +67,22 @@ def _delay(mean: float = 1.0) -> DelayDistribution:
 # -----------------------------------------------------------------------------
 def test_dc_without_amplitude_raises():
     with pytest.raises(ValidationError, match="amplitude"):
-        StimulusConfig(type="dc", targets=["E"])
+        DcStimulusConfig(targets=["E"])
 
 
 def test_poisson_without_rate_raises():
     with pytest.raises(ValidationError, match="rate"):
-        StimulusConfig(type="poisson", targets=["E"], weight=_weight(), delay=_delay())
+        PoissonStimulusConfig(targets=["E"], weight=_weight(), delay=_delay())
 
 
 def test_poisson_without_weight_or_delay_raises():
     with pytest.raises(ValidationError, match="weight"):
-        StimulusConfig(type="poisson", targets=["E"], rate=10.0)
+        PoissonStimulusConfig(targets=["E"], rate=10.0)
 
 
 def test_inhomogeneous_poisson_requires_rate_times_and_values():
     with pytest.raises(ValidationError, match="rate_times"):
-        StimulusConfig(
-            type="inhomogeneous_poisson",
+        InhomogeneousPoissonStimulusConfig(
             targets=["E"],
             weight=_weight(),
             delay=_delay(),
@@ -89,8 +91,7 @@ def test_inhomogeneous_poisson_requires_rate_times_and_values():
 
 def test_inhomogeneous_poisson_rate_times_must_match_length():
     with pytest.raises(ValidationError, match="same length"):
-        StimulusConfig(
-            type="inhomogeneous_poisson",
+        InhomogeneousPoissonStimulusConfig(
             targets=["E"],
             rate_times=[10.0, 20.0],
             rate_values=[5.0],
@@ -101,8 +102,7 @@ def test_inhomogeneous_poisson_rate_times_must_match_length():
 
 def test_inhomogeneous_poisson_rate_times_must_be_increasing():
     with pytest.raises(ValidationError, match="increasing"):
-        StimulusConfig(
-            type="inhomogeneous_poisson",
+        InhomogeneousPoissonStimulusConfig(
             targets=["E"],
             rate_times=[20.0, 10.0],
             rate_values=[5.0, 8.0],
@@ -113,13 +113,13 @@ def test_inhomogeneous_poisson_rate_times_must_be_increasing():
 
 def test_stop_must_be_after_start():
     with pytest.raises(ValidationError, match="stop"):
-        StimulusConfig(type="dc", targets=["E"], amplitude=100.0, start=50.0, stop=10.0)
+        DcStimulusConfig(targets=["E"], amplitude=100.0, start=50.0, stop=10.0)
 
 
 def test_dc_stimulus_needs_no_weight_or_delay():
-    stimulus = StimulusConfig(type="dc", targets=["E"], amplitude=100.0)
-    assert stimulus.weight is None
-    assert stimulus.delay is None
+    stimulus = DcStimulusConfig(targets=["E"], amplitude=100.0)
+    assert not hasattr(stimulus, "weight")
+    assert not hasattr(stimulus, "delay")
 
 
 # -----------------------------------------------------------------------------
@@ -133,7 +133,7 @@ def test_stimulus_targeting_unknown_population_raises():
             populations={"E": population},
             connections=[],
             background_inputs={},
-            stimuli=[StimulusConfig(type="dc", targets=["nonexistent"], amplitude=100.0)],
+            stimuli=[DcStimulusConfig(targets=["nonexistent"], amplitude=100.0)],
             scaling=ScalingConfig(),
         )
 
@@ -197,7 +197,7 @@ def test_loader_rejects_stimulus_targeting_unknown_population(tmp_path: Path) ->
     )
 
     network_files = read_network_directory(network_dir)
-    with pytest.raises(ValueError, match="Unknown population"):
+    with pytest.raises(ValueError, match="unknown population"):
         NetworkConfigLoader(network_files).build()
 
 
@@ -216,8 +216,7 @@ def test_stimulus_psp_weight_is_converted_like_connections():
     network_files = read_network_directory("configs/network/toy")
     config = NetworkConfigLoader(network_files).build()
 
-    stimulus = StimulusConfig(
-        type="poisson",
+    stimulus = PoissonStimulusConfig(
         targets=["E", "I"],
         rate=10.0,
         weight=WeightDistribution(mean=0.15, rel_std=0.0, distribution="fixed", unit="PSP"),
@@ -243,8 +242,7 @@ def test_stimulus_psp_weight_raises_when_targets_have_different_neuron_params():
     fast = _population("fast", _neuron(tau_syn_ex=0.5))
     slow = _population("slow", _neuron(tau_syn_ex=2.0))
 
-    stimulus = StimulusConfig(
-        type="poisson",
+    stimulus = PoissonStimulusConfig(
         targets=["fast", "slow"],
         rate=10.0,
         weight=WeightDistribution(mean=0.15, rel_std=0.0, distribution="fixed", unit="PSP"),
@@ -265,7 +263,7 @@ def test_stimulus_psp_weight_raises_when_targets_have_different_neuron_params():
 
 def test_dc_stimulus_has_no_weight_to_convert():
     population = _population("E", _neuron())
-    stimulus = StimulusConfig(type="dc", targets=["E"], amplitude=200.0)
+    stimulus = DcStimulusConfig(targets=["E"], amplitude=200.0)
 
     network = NetworkConfig(
         populations={"E": population},
@@ -276,7 +274,8 @@ def test_dc_stimulus_has_no_weight_to_convert():
     )
 
     processed = NetworkPreprocessor(network).process()
-    assert processed.stimuli[0].weight is None
+    assert isinstance(processed.stimuli[0], DcStimulusConfig)
+    assert processed.stimuli[0].amplitude == 200.0
 
 
 # -----------------------------------------------------------------------------
@@ -299,13 +298,12 @@ def _isolated_network(stimuli: list[StimulusConfig]) -> Network:
 
 def test_create_stimulus_devices_builds_correct_nest_models():
     stimuli = [
-        StimulusConfig(type="dc", targets=["E"], amplitude=500.0, start=10.0, stop=20.0),
-        StimulusConfig(
-            type="poisson", targets=["E"], rate=50.0, weight=_weight(), delay=_delay(),
+        DcStimulusConfig(targets=["E"], amplitude=500.0, start=10.0, stop=20.0),
+        PoissonStimulusConfig(
+            targets=["E"], rate=50.0, weight=_weight(), delay=_delay(),
             start=0.0, stop=30.0,
         ),
-        StimulusConfig(
-            type="inhomogeneous_poisson",
+        InhomogeneousPoissonStimulusConfig(
             targets=["E"],
             rate_times=[10.0, 20.0],
             rate_values=[50.0, 100.0],
@@ -342,7 +340,7 @@ def test_dc_stimulus_drives_spiking_only_after_start():
     population spike, and only once the pulse starts."""
 
     stimuli = [
-        StimulusConfig(type="dc", targets=["E"], amplitude=2000.0, start=50.0, stop=150.0)
+        DcStimulusConfig(targets=["E"], amplitude=2000.0, start=50.0, stop=150.0)
     ]
     network = _isolated_network(stimuli)
     simulation_config = SimulationConfig.model_validate(
