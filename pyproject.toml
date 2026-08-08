@@ -33,3 +33,12 @@ dev = [
     "pytest",
     "ruff",
 ]
+
+[tool.ruff.lint]
+# Pinned explicitly so a ruff upgrade can't silently pull in a new default
+# rule category (isort, pyupgrade, pylint-style, ...) and break CI without
+# a deliberate decision to adopt it. This is pyflakes (F) plus the
+# pycodestyle error subset (E4/E7/E9) -- ruff's own long-standing default
+# selection before ruff 0.16 broadened what an unconfigured `ruff check`
+# enables by default.
+select = ["E4", "E7", "E9", "F"]
