@@ -1,0 +1,16 @@
+t_sim: 11000.0
+resolution: 0.1
+rng_seed: 42
+local_num_threads: 16
+print_time: true
+
+recording:
+  spike_recording: true
+  voltage_recording: false
+  voltage_interval: 1.0
+
+output:
+  output_dir: "output/pd14_dc"
+  overwrite: false
+  save_metadata: true
+  save_config: true

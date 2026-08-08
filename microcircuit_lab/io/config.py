@@ -61,6 +61,7 @@ class NetworkConfigLoader:
         connections = self._build_connections(populations)
 
         background_inputs = self._build_background_inputs(populations)
+        background_mode = self._background_inputs_data.get("background_mode", "poisson")
         stimuli = self._build_stimuli(populations)
 
         scaling = ScalingConfig.model_validate(self._scaling_data)
@@ -70,6 +71,7 @@ class NetworkConfigLoader:
             populations=populations,
             connections=connections,
             background_inputs=background_inputs,
+            background_mode=background_mode,
             stimuli=stimuli,
             scaling=scaling,
             reference=reference

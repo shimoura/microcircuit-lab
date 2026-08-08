@@ -119,6 +119,29 @@ def background_compensation_current(
     return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate
 
 
+def background_dc_current(
+    PSC_ext: np.ndarray,
+    K_ext: np.ndarray,
+    bg_rate: np.ndarray,
+    tau_syn: np.ndarray,
+) -> np.ndarray:
+    """
+    Compute the constant current equivalent to the mean of a full-strength
+    background Poisson drive (bg_rate spikes/s onto K_ext synapses of
+    amplitude PSC_ext, pA, with synaptic time constant tau_syn, ms).
+
+    Used to replace the background Poisson generator entirely with DC
+    input, per Potjans & Diesmann (2014)'s comparison of the two drive
+    types (their Fig. 5) -- see
+    NetworkPreprocessor._apply_background_dc_current. Always computed
+    from the original (unscaled) network, independent of K_scaling,
+    since the target mean is the full biological background input
+    regardless of any N/K scaling applied to the recurrent network.
+    """
+
+    return 0.001 * tau_syn * PSC_ext * K_ext * bg_rate
+
+
 def scale_weights(
     network: NetworkConfig,
 ) -> NetworkConfig:

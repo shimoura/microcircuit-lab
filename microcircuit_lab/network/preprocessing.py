@@ -19,6 +19,7 @@ from microcircuit_lab.network.scaling import (
     scale_synapse_number,
     scale_weights,
     background_compensation_current,
+    background_dc_current,
     network_compensation_current,
 )
 
@@ -62,6 +63,7 @@ class NetworkPreprocessor:
             network = self._apply_scaling_compensation(network)
 
         network = self._apply_background_poisson_rates(network)
+        network = self._apply_background_dc_current(network)
 
         return network
 
@@ -190,6 +192,12 @@ class NetworkPreprocessor:
         scaling.preserve_variance and scaling.preserve_mean_input (the
         master switch for compensation); scaling.compensate_recurrent_input
         additionally includes/excludes just the recurrent contribution.
+
+        The background contribution is skipped when background_mode is
+        "dc": _apply_background_dc_current replaces the background
+        Poisson drive entirely with a DC current sized for the full
+        (unscaled) biological input, so no separate scaling-bias
+        correction for it is needed -- adding both would double-count.
         """
 
         # Original network quantities
@@ -234,17 +242,20 @@ class NetworkPreprocessor:
 
         # Compute background contribution to DC compensation from biological network quantities
         pop_names = list(original.populations.keys())
-        bg_rates = np.asarray(
-            [original.background_inputs[name].rate for name in pop_names],
-            dtype=float,
-        )
-        background_current = background_compensation_current(
-            PSC_ext=PSC_ext,
-            K_ext=K_ext,
-            bg_rate=bg_rates,
-            tau_syn=tau_syn,
-            K_scaling=scaling.K_scaling,
-        )
+        background_current = np.zeros(len(original.populations))
+
+        if original.background_mode != "dc":
+            bg_rates = np.asarray(
+                [original.background_inputs[name].rate for name in pop_names],
+                dtype=float,
+            )
+            background_current = background_compensation_current(
+                PSC_ext=PSC_ext,
+                K_ext=K_ext,
+                bg_rate=bg_rates,
+                tau_syn=tau_syn,
+                K_scaling=scaling.K_scaling,
+            )
 
         # Apply the compensation currents to neurons
         populations = {}
@@ -275,5 +286,80 @@ class NetworkPreprocessor:
         return network.model_copy(
             update={
                 "populations": populations,
+            }
+        )
+
+    def _apply_background_dc_current(
+        self,
+        network: NetworkConfig,
+    ) -> NetworkConfig:
+        """
+        Replace the background Poisson drive with an equivalent constant
+        current, per Potjans & Diesmann (2014)'s comparison of Poisson vs.
+        DC background input (their Fig. 5). No-op unless background_mode
+        is "dc".
+
+        The DC amplitude is the mean current a full-strength (unscaled)
+        background Poisson process would deliver on average -- computed
+        from the original biological network, exactly like the
+        compensation currents in _apply_scaling_compensation, so the
+        result is independent of any N/K scaling applied to the recurrent
+        network. Background rates are zeroed out afterwards so no Poisson
+        generator ends up created for them (see NestBackend).
+        """
+
+        if network.background_mode != "dc":
+            return network
+
+        original = self._network_config
+
+        K_ext = background_indegrees(original)
+        PSC_ext = background_psc_weights(original)
+        tau_syn = tau_syn_ex(original)
+
+        pop_names = list(original.populations.keys())
+        bg_rates = np.asarray(
+            [original.background_inputs[name].rate for name in pop_names],
+            dtype=float,
+        )
+
+        dc_current = background_dc_current(
+            PSC_ext=PSC_ext,
+            K_ext=K_ext,
+            bg_rate=bg_rates,
+            tau_syn=tau_syn,
+        )
+
+        populations = {}
+        background_inputs = {}
+
+        for i, name in enumerate(pop_names):
+            population = network.populations[name]
+            params = population.neuron.parameters.model_copy(
+                update={
+                    "I_e": population.neuron.parameters.I_e + dc_current[i],
+                }
+            )
+
+            neuron = population.neuron.model_copy(
+                update={
+                    "parameters": params,
+                }
+            )
+
+            populations[name] = population.model_copy(
+                update={
+                    "neuron": neuron,
+                }
+            )
+
+            background_inputs[name] = network.background_inputs[name].model_copy(
+                update={"rate": 0.0}
+            )
+
+        return network.model_copy(
+            update={
+                "populations": populations,
+                "background_inputs": background_inputs,
             }
         )

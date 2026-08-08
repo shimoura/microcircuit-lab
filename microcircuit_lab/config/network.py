@@ -353,12 +353,24 @@ class NetworkConfig(FrozenConfig):
 
     This object is the single source of truth describing the network model.
     It is assembled from the YAML files under configs/network/.
+
+    background_mode:
+        "poisson" (default): each population's background_inputs entry
+        drives it through an independent Poisson generator, as usual.
+        "dc": replaces that Poisson drive network-wide with a constant
+        current of the same mean, per Potjans & Diesmann (2014)'s
+        comparison of Poisson vs. DC background input (their Fig. 5).
+        The `background_inputs` rate/weight/delay are still the source
+        of truth for computing that mean (see
+        NetworkPreprocessor._apply_background_dc_current); no Poisson
+        generator is created in this mode.
     """
 
     populations: dict[str, PopulationConfig]
     connections: list[ConnectionConfig]
 
     background_inputs: dict[str, BackgroundInputConfig]
+    background_mode: Literal["poisson", "dc"] = "poisson"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     scaling: ScalingConfig
 

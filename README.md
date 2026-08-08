@@ -123,6 +123,8 @@ A network configuration describes biology and connectivity. A simulation configu
 
 **Background input vs. stimulation.** `background_inputs.yaml` is the always-on background Poisson drive tied to `background_indegree`; it scales with `K_scaling` and is what the DC-compensation math in `network/scaling.py` accounts for. `stimuli.yaml` (optional -- omit both the file and the `stimuli:` entry in `network.yaml` if unused) describes targeted, time-limited devices for experiments instead: a constant-current pulse (`type: dc`), a Poisson train active for part of the run (`type: poisson`), or a piecewise-constant Poisson rate profile (`type: inhomogeneous_poisson`). Stimuli are not touched by scaling or compensation -- they're applied exactly as configured. See `StimulusConfig` in `microcircuit_lab/config/network.py` for the full field reference, e.g.:
 
+**Poisson vs. DC background.** Add a top-level `background_mode: dc` to `background_inputs.yaml` (default is `poisson`) to replace the background Poisson generator network-wide with a constant current of equal mean, reproducing Potjans & Diesmann (2014)'s comparison of the two drive types (their Fig. 5) -- see `configs/network/pd14_dc/` for a ready-to-run example (`--network pd14_dc`, pairs with `configs/simulation/pd14_dc.yaml`) and `NetworkConfig.background_mode` / `NetworkPreprocessor._apply_background_dc_current` for the implementation.
+
 ```yaml
 stimuli:
   - type: dc

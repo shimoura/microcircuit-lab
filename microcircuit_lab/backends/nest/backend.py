@@ -268,7 +268,19 @@ class NestBackend:
     def create_poisson_generators(self) -> None:
         """
         Create one background Poisson generator per configured population.
+
+        No-op when background_mode is "dc": the background drive was
+        already injected as constant current onto each neuron's I_e by
+        NetworkPreprocessor, so no generator is created at all (see
+        NetworkConfig.background_mode).
         """
+
+        if self._network.config.background_mode == "dc":
+            logger.info(
+                "background_mode='dc': background drive is constant current "
+                "(I_e), skipping Poisson generators."
+            )
+            return
 
         logger.info("Creating background Poisson generators:")
 
