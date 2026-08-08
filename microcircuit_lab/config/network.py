@@ -11,7 +11,7 @@ NetworkPreprocessor to derive all quantities required by the simulator backend.
 
 from __future__ import annotations
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # -----------------------------------------------------------------------------
@@ -146,11 +146,102 @@ class ConnectionConfig(FrozenConfig):
 # Background input
 # -----------------------------------------------------------------------------
 class BackgroundInputConfig(FrozenConfig):
-    """Always-on background Poisson input for a population."""
+    """
+    Always-on background Poisson input for a population.
+
+    Distinct from `StimulusConfig`: this is the standing drive tied to
+    `background_indegree`, subject to K-scaling and DC compensation
+    (see network/scaling.py). `StimulusConfig` is for targeted,
+    time-limited experimental perturbations instead.
+    """
 
     rate: float = Field(ge=0.0)
     weight: WeightDistribution
     delay: DelayDistribution
+
+
+# -----------------------------------------------------------------------------
+# Stimulation
+# -----------------------------------------------------------------------------
+class StimulusConfig(FrozenConfig):
+    """
+    A targeted, time-limited stimulation device.
+
+    Distinct from `background_inputs` (the always-on background drive tied
+    to `background_indegree`, subject to K-scaling and DC compensation):
+    stimuli are not touched by network scaling and are applied exactly
+    as configured, on top of whatever background drive and recurrent
+    activity is already there. Intended for experimental perturbations
+    (a current pulse, a burst of input for part of a run, ...).
+
+    type:
+        "dc": constant-current pulse. Requires `amplitude` (pA). No
+        `weight`/`delay` -- current is injected directly.
+
+        "poisson": homogeneous Poisson spike train, active for
+        [start, stop). Requires `rate` (spikes/s), `weight`, `delay`.
+
+        "inhomogeneous_poisson": Poisson spike train with a
+        piecewise-constant rate profile. Requires `rate_times` (ms,
+        strictly increasing) and `rate_values` (spikes/s, same length),
+        plus `weight`, `delay`.
+
+    targets:
+        Population names this device is connected to (all-to-all, one
+        device shared by all targets).
+
+    start / stop:
+        Window during which the device is active, in ms. `stop=None`
+        means "until the end of the simulation".
+    """
+
+    type: Literal["dc", "poisson", "inhomogeneous_poisson"]
+    targets: list[str] = Field(min_length=1)
+
+    start: float = Field(default=0.0, ge=0.0)
+    stop: float | None = Field(default=None, gt=0.0)
+
+    amplitude: float | None = None
+
+    rate: float | None = Field(default=None, ge=0.0)
+
+    rate_times: list[float] | None = None
+    rate_values: list[float] | None = None
+
+    weight: WeightDistribution | None = None
+    delay: DelayDistribution | None = None
+
+    @model_validator(mode="after")
+    def _check_fields_for_type(self) -> "StimulusConfig":
+        if self.stop is not None and self.stop <= self.start:
+            raise ValueError(f"stop ({self.stop}) must be greater than start ({self.start}).")
+
+        if self.type == "dc":
+            if self.amplitude is None:
+                raise ValueError("stimulus type 'dc' requires 'amplitude'.")
+
+        elif self.type == "poisson":
+            if self.rate is None:
+                raise ValueError("stimulus type 'poisson' requires 'rate'.")
+            if self.weight is None or self.delay is None:
+                raise ValueError("stimulus type 'poisson' requires 'weight' and 'delay'.")
+
+        elif self.type == "inhomogeneous_poisson":
+            if not self.rate_times or not self.rate_values:
+                raise ValueError(
+                    "stimulus type 'inhomogeneous_poisson' requires "
+                    "'rate_times' and 'rate_values'."
+                )
+            if len(self.rate_times) != len(self.rate_values):
+                raise ValueError("'rate_times' and 'rate_values' must be the same length.")
+            if any(a >= b for a, b in zip(self.rate_times, self.rate_times[1:])):
+                raise ValueError("'rate_times' must be strictly increasing.")
+            if self.weight is None or self.delay is None:
+                raise ValueError(
+                    "stimulus type 'inhomogeneous_poisson' requires 'weight' and 'delay'."
+                )
+
+        return self
 
 
 # -----------------------------------------------------------------------------
@@ -229,6 +320,18 @@ class NetworkConfig(FrozenConfig):
     connections: list[ConnectionConfig]
 
     background_inputs: dict[str, BackgroundInputConfig]
+    stimuli: list[StimulusConfig] = Field(default_factory=list)
     scaling: ScalingConfig
 
     reference: ReferenceConfig | None = None
+
+    @model_validator(mode="after")
+    def _check_stimulus_targets_exist(self) -> "NetworkConfig":
+        for stimulus in self.stimuli:
+            unknown = [t for t in stimulus.targets if t not in self.populations]
+            if unknown:
+                raise ValueError(
+                    f"Stimulus of type {stimulus.type!r} targets unknown "
+                    f"population(s): {unknown}."
+                )
+        return self

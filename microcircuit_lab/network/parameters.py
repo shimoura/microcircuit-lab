@@ -99,6 +99,42 @@ def background_weights(network: NetworkConfig) -> np.ndarray:
     )
 
 
+def _stimulus_conversion_params(
+    network: NetworkConfig,
+    targets: list[str],
+) -> tuple[str, float, float, float, float]:
+    """
+    Return the (model, C_m, tau_m, tau_syn_ex, tau_syn_in) shared by every
+    target population of a stimulus, raising if they don't actually agree.
+
+    A stimulus has one weight shared across all its targets, so a PSP
+    amplitude only maps onto a single PSC amplitude if every target would
+    convert it the same way.
+    """
+
+    params = {
+        (
+            network.populations[t].neuron.model,
+            network.populations[t].neuron.parameters.C_m,
+            network.populations[t].neuron.parameters.tau_m,
+            network.populations[t].neuron.parameters.tau_syn_ex,
+            network.populations[t].neuron.parameters.tau_syn_in,
+        )
+        for t in targets
+    }
+
+    if len(params) > 1:
+        raise ValueError(
+            f"Cannot convert a unit: PSP stimulus weight shared across targets "
+            f"{targets!r}: those populations don't all use the same neuron "
+            "model/parameters, so one PSP amplitude wouldn't map to one PSC "
+            "amplitude for all of them. Split into separate stimuli (one per "
+            "distinct neuron type), or give the weight as unit: PSC/native instead."
+        )
+
+    return next(iter(params))
+
+
 def _require_iaf_psc_exp(target, population_name: str) -> None:
     if target.neuron.model != "iaf_psc_exp":
         raise NotImplementedError(
@@ -287,10 +323,45 @@ def convert_network_psp_to_psc(
             }
         )
 
+    stimuli = []
+    for stimulus in network.stimuli:
+
+        if stimulus.weight is None or stimulus.weight.unit != "PSP":
+            stimuli.append(stimulus)
+            continue
+
+        _, C_m, tau_m, tau_syn_ex, tau_syn_in = _stimulus_conversion_params(
+            network, stimulus.targets
+        )
+        _require_iaf_psc_exp(network.populations[stimulus.targets[0]], stimulus.targets[0])
+
+        tau_syn = tau_syn_ex if stimulus.weight.mean >= 0 else tau_syn_in
+
+        weight = stimulus.weight.model_copy(
+            update={
+                "mean": psp_to_psc_iaf_psc_exp(
+                    psp=stimulus.weight.mean,
+                    C_m=C_m,
+                    tau_m=tau_m,
+                    tau_syn=tau_syn,
+                ),
+                "unit": "PSC",
+            }
+        )
+
+        stimuli.append(
+            stimulus.model_copy(
+                update={
+                    "weight": weight,
+                }
+            )
+        )
+
     return network.model_copy(
         update={
             "connections": connections,
             "background_inputs": background_inputs,
+            "stimuli": stimuli,
         }
     )
 

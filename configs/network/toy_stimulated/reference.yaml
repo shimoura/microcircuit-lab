@@ -1,0 +1,5 @@
+# Optional published/target firing rates, one entry per population name.
+# Only needed if you enable N_scaling/K_scaling in scaling.yaml or want to
+# overlay reference rates with plot_firing_rates(..., show_reference=True).
+# Left empty here since this toy network has no published reference.
+full_mean_rates: {}

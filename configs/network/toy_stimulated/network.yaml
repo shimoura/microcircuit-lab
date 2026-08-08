@@ -1,0 +1,7 @@
+populations: populations.yaml
+neurons: neurons.yaml
+connectivity: connectivity.yaml
+background_inputs: background_inputs.yaml
+stimuli: stimuli.yaml
+scaling: scaling.yaml
+reference: reference.yaml

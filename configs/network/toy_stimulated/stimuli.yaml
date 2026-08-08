@@ -1,0 +1,17 @@
+# Worked example of StimulusConfig, layered on top of the toy network
+# (see configs/network/toy/ for the unperturbed baseline). A constant
+# current pulse on E, and a strong time-limited Poisson burst on I.
+stimuli:
+  - type: dc
+    targets: [E]
+    amplitude: 200.0   # pA
+    start: 500.0        # ms
+    stop: 600.0          # ms
+
+  - type: poisson
+    targets: [I]
+    rate: 1000.0           # spikes/s
+    start: 200.0
+    stop: 400.0
+    weight: {mean: 0.15, rel_std: 0.0, distribution: fixed, unit: PSP}
+    delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}

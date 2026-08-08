@@ -98,6 +98,7 @@ configs/
 │       ├── neurons.yaml
 │       ├── connectivity.yaml
 │       ├── background_inputs.yaml
+│       ├── stimuli.yaml   # optional
 │       ├── scaling.yaml
 │       └── reference.yaml
 └── simulation/
@@ -105,6 +106,31 @@ configs/
 ```
 
 A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording.
+
+**Background input vs. stimulation.** `background_inputs.yaml` is the always-on background Poisson drive tied to `background_indegree`; it scales with `K_scaling` and is what the DC-compensation math in `network/scaling.py` accounts for. `stimuli.yaml` (optional -- omit both the file and the `stimuli:` entry in `network.yaml` if unused) describes targeted, time-limited devices for experiments instead: a constant-current pulse (`type: dc`), a Poisson train active for part of the run (`type: poisson`), or a piecewise-constant Poisson rate profile (`type: inhomogeneous_poisson`). Stimuli are not touched by scaling or compensation -- they're applied exactly as configured. See `StimulusConfig` in `microcircuit_lab/config/network.py` for the full field reference, e.g.:
+
+```yaml
+stimuli:
+  - type: dc
+    targets: [E]
+    amplitude: 200.0   # pA
+    start: 500.0        # ms
+    stop: 600.0          # ms
+
+  - type: poisson
+    targets: [E, I]
+    rate: 50.0           # spikes/s
+    start: 200.0
+    stop: 400.0
+    weight: {mean: 0.15, rel_std: 0.0, distribution: fixed, unit: PSP}
+    delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
+```
+
+A runnable version of this lives in `configs/network/toy_stimulated/` (the toy network plus a `stimuli.yaml`), kept separate from `configs/network/toy/` so the bundled baseline network -- used as a calibrated, unperturbed reference by several tests -- stays quiet:
+
+```bash
+python scripts/run_simulation.py --network toy_stimulated --simulation toy_stimulated
+```
 
 **Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; use `microcircuit_lab.io.files.write_yaml`/`flow_records` in a generator to opt a field into the compact style.
 

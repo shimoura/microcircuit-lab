@@ -39,6 +39,7 @@ class NestBackend:
         self.poisson_generators: dict[str, nest.NodeCollection] = {}
         self.spike_recorders: dict[str, nest.NodeCollection] = {}
         self.multimeters: dict[str, nest.NodeCollection] = {}
+        self.stimulus_devices: list[tuple] = []
 
     def prepare_output(self, run_dir: Path) -> None:
         """
@@ -94,6 +95,10 @@ class NestBackend:
         self.create_poisson_generators()
 
         self.connect_poisson_generators()
+
+        if self._network.config.stimuli:
+            self.create_stimulus_devices()
+            self.connect_stimulus_devices()
 
         self.connect_recurrent_connections()
 
@@ -274,6 +279,64 @@ class NestBackend:
                     "delay": self.create_delay_parameter(input_cfg.delay),
                 },
             )
+
+    def create_stimulus_devices(self) -> None:
+        """
+        Create one device per configured stimulus, dispatching on
+        `StimulusConfig.type` the same way create_weight_spec/
+        create_delay_parameter dispatch on `distribution`.
+        """
+
+        logger.info("Creating stimulus devices:")
+
+        for stimulus in self._network.config.stimuli:
+            logger.info(
+                "Creating %s stimulus for %s (start=%g, stop=%s)",
+                stimulus.type,
+                stimulus.targets,
+                stimulus.start,
+                stimulus.stop,
+            )
+
+            params: dict = {"start": stimulus.start}
+            if stimulus.stop is not None:
+                params["stop"] = stimulus.stop
+
+            if stimulus.type == "dc":
+                model = "dc_generator"
+                params["amplitude"] = stimulus.amplitude
+            elif stimulus.type == "poisson":
+                model = "poisson_generator"
+                params["rate"] = stimulus.rate
+            elif stimulus.type == "inhomogeneous_poisson":
+                model = "inhomogeneous_poisson_generator"
+                params["rate_times"] = stimulus.rate_times
+                params["rate_values"] = stimulus.rate_values
+            else:
+                raise ValueError(f"Unsupported stimulus type: {stimulus.type!r}")
+
+            device = nest.Create(model, params=params)
+            self.stimulus_devices.append((stimulus, device))
+
+    def connect_stimulus_devices(self) -> None:
+        """
+        Connect each stimulus device to its target populations.
+
+        `dc` devices are connected with the default synapse (weight 1.0
+        per pA of amplitude); `poisson`/`inhomogeneous_poisson` devices
+        use the configured weight/delay, same as background input.
+        """
+
+        for stimulus, device in self.stimulus_devices:
+            syn_spec = None
+            if stimulus.type != "dc":
+                syn_spec = {
+                    "weight": self.create_weight_spec(stimulus.weight),
+                    "delay": self.create_delay_parameter(stimulus.delay),
+                }
+
+            for target in stimulus.targets:
+                nest.Connect(device, self.get_population(target), syn_spec=syn_spec)
 
     def simulate(self) -> None:
         """

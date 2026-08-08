@@ -20,6 +20,7 @@ from microcircuit_lab.config.network import (
     NeuronParams,
     PopulationConfig,
     ScalingConfig,
+    StimulusConfig,
     WeightDistribution,
     ReferenceConfig,
 )
@@ -42,6 +43,7 @@ class NetworkConfigLoader:
         self._background_inputs_data = network_files.background_inputs
         self._scaling_data = network_files.scaling
         self._reference_data = network_files.reference
+        self._stimuli_data = network_files.stimuli
 
     def build(self) -> NetworkConfig:
         """
@@ -55,6 +57,7 @@ class NetworkConfigLoader:
         connections = self._build_connections(populations)
 
         background_inputs = self._build_background_inputs(populations)
+        stimuli = self._build_stimuli(populations)
 
         scaling = ScalingConfig.model_validate(self._scaling_data)
         reference = ReferenceConfig.model_validate(self._reference_data)
@@ -63,6 +66,7 @@ class NetworkConfigLoader:
             populations=populations,
             connections=connections,
             background_inputs=background_inputs,
+            stimuli=stimuli,
             scaling=scaling,
             reference=reference
         )
@@ -194,3 +198,41 @@ class NetworkConfigLoader:
             )
 
         return background_inputs
+
+    def _build_stimuli(
+        self,
+        populations: dict[str, PopulationConfig],
+    ) -> list[StimulusConfig]:
+        """
+        Build targeted stimulation devices.
+        """
+
+        stimuli: list[StimulusConfig] = []
+
+        for values in self._stimuli_data.get("stimuli", []):
+
+            unknown = [t for t in values["targets"] if t not in populations]
+            if unknown:
+                raise ValueError(
+                    f"Unknown population(s) {unknown} referenced in stimuli.yaml."
+                )
+
+            weight = values.get("weight")
+            delay = values.get("delay")
+
+            stimuli.append(
+                StimulusConfig(
+                    type=values["type"],
+                    targets=values["targets"],
+                    start=values.get("start", 0.0),
+                    stop=values.get("stop"),
+                    amplitude=values.get("amplitude"),
+                    rate=values.get("rate"),
+                    rate_times=values.get("rate_times"),
+                    rate_values=values.get("rate_values"),
+                    weight=WeightDistribution.model_validate(weight) if weight else None,
+                    delay=DelayDistribution.model_validate(delay) if delay else None,
+                )
+            )
+
+        return stimuli
