@@ -95,6 +95,7 @@ class NetworkConfigLoader:
                 name=name,
                 model=values["model"],
                 parameters=params,
+                psp_conversion_aliases=values.get("psp_conversion_aliases", {}),
             )
 
         return neuron_configs

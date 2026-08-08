@@ -87,11 +87,22 @@ class NeuronConfig(FrozenConfig):
     """
     Configuration for a neuron model.
     This is a pure data container for the parameters of a neuron model.
+
+    psp_conversion_aliases:
+        Only relevant to connections that use ``unit: PSP``. Maps a
+        canonical name the conversion needs ("C_m", "tau_m",
+        "tau_syn_ex", "tau_syn_in") to whatever `parameters` actually
+        calls it, for a model that names them differently (e.g. a
+        NESTML model with its own naming convention). Empty by default,
+        meaning `parameters` already uses those names directly (NEST's
+        iaf_psc_exp and its usual variants). See
+        network.synapses.convert_psp_to_psc.
     """
 
     name: str
     model: str
     parameters: NeuronParams
+    psp_conversion_aliases: dict[str, str] = Field(default_factory=dict)
 
 
 # -----------------------------------------------------------------------------
@@ -122,9 +133,11 @@ class WeightDistribution(FrozenConfig):
     wrong conversion just because a field was left out:
 
     - "PSP": biological post-synaptic potential amplitude (mV). Converted
-      to a simulator-specific quantity by NetworkPreprocessor, which
-      requires a conversion registered for the target neuron model; see
-      network.synapses.convert_psp_to_psc for which models have one.
+      by NetworkPreprocessor to a current amplitude, which only makes
+      sense for a current-based LIF neuron with single-exponential
+      synaptic currents; see network.synapses.convert_psp_to_psc for
+      exactly what that requires from the target population's neuron
+      parameters.
     - "PSC": post-synaptic current amplitude (pA), already in the form a
       current-based simulator backend consumes directly. Used as-is, no
       conversion.

@@ -106,9 +106,14 @@ def _convert_psp_weight(population: PopulationConfig, psp: float) -> float:
     """
 
     try:
-        return convert_psp_to_psc(population.neuron.model, psp, population.neuron.parameters)
-    except (NotImplementedError, ValueError) as exc:
-        raise type(exc)(f"Population {population.name!r}: {exc}") from exc
+        return convert_psp_to_psc(
+            population.neuron.model,
+            psp,
+            population.neuron.parameters,
+            aliases=population.neuron.psp_conversion_aliases,
+        )
+    except ValueError as exc:
+        raise ValueError(f"Population {population.name!r}: {exc}") from exc
 
 
 def background_psc_weights(
@@ -117,9 +122,9 @@ def background_psc_weights(
     """
     Return the background input weights as PSC amplitudes (pA).
 
-    Only ``unit: PSP`` weights are converted (for neuron models with a
-    conversion registered in network.synapses); any other unit (``PSC``,
-    ``native``, ...) is returned unchanged.
+    Only ``unit: PSP`` weights are converted, and only for a population
+    whose neuron parameters support it (see network.synapses.convert_psp_to_psc);
+    any other unit (``PSC``, ``native``, ...) is returned unchanged.
     """
 
     values = []
@@ -142,8 +147,9 @@ def mean_psc_matrix(
     """
     Return the biological mean PSC matrix (pA).
 
-    Only ``unit: PSP`` connections are converted (for neuron models with a
-    conversion registered in network.synapses); any other unit (``PSC``,
+    Only ``unit: PSP`` connections are converted, and only for a target
+    population whose neuron parameters support it (see
+    network.synapses.convert_psp_to_psc); any other unit (``PSC``,
     ``native``, ...) is used unchanged.
     """
 
@@ -201,12 +207,11 @@ def convert_network_psp_to_psc(
     untouched; it is not reinterpreted as PSP.
 
     The conversion is performed independently for each target population
-    using its neuron model and parameters, dispatched through
-    network.synapses.convert_psp_to_psc. See that module for which
-    neuron models have a conversion available. A neuron model with none
-    raises NotImplementedError; give its connections ``unit: native``
-    (or ``PSC`` if the weights are genuinely already current amplitudes
-    in pA) instead.
+    using its neuron parameters, via network.synapses.convert_psp_to_psc;
+    see that function for what it requires. A population whose neuron
+    parameters don't support it raises ValueError; give its connections
+    ``unit: native`` (or ``PSC`` if the weights are genuinely already
+    current amplitudes in pA) instead.
     """
 
     connections = []

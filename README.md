@@ -62,7 +62,7 @@ NEST must be available in the environment used to run simulations.
 
 ## Quick start
 
-The fastest way to see the framework run is the bundled `toy` network — a minimal two-population (E/I) example under `configs/network/toy/`:
+The fastest way to see the framework run is the bundled `toy` network, a minimal two-population (E/I) example under `configs/network/toy/`:
 
 ```python
 from microcircuit_lab import Simulation
@@ -138,13 +138,34 @@ python scripts/run_simulation.py --network toy_stimulated --simulation toy_stimu
 
 There are two supported ways to try a new model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never has to change for either one.
 
-**Write YAML directly.** Copy `configs/network/toy/` — the smallest complete example of the schema (two populations, four connections, minimal scaling/reference) — to `configs/network/<my_model>/` and edit the values by hand. Pair it with a `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid). This is the right starting point for exploring a new idea or a model small enough to write out directly.
+**Write YAML directly.** Copy `configs/network/toy/` (the smallest complete example of the schema: two populations, four connections, minimal scaling/reference) to `configs/network/<my_model>/` and edit the values by hand. Pair it with a `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid). This is the right starting point for exploring a new idea or a model small enough to write out directly.
 
-**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there — the generator's job is to translate that data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
+**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The generator's job is to translate that data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
 
 If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (same pattern in both examples above) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
 
-**Using a neuron model other than `iaf_psc_exp`?** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out. `PSP` (biological amplitude, mV) is converted to a simulator quantity by `NetworkPreprocessor`, but that conversion formula is currently only implemented for `iaf_psc_exp`. Rather than adding a new formula per neuron model, give your model's connections `unit: PSC` (if the weights are already current amplitudes in pA) or `unit: native` (used exactly as given, no interpretation at all -- the right choice for a conductance-based model, or anything else) instead of `PSP`. Adding a new neuron model should essentially never require touching `network/parameters.py`.
+**Using a neuron model other than `iaf_psc_exp`?** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out. `PSP` (biological amplitude, mV) is converted to a current amplitude by `NetworkPreprocessor`, and that conversion (`network/synapses.py`) only depends on the target neuron having `C_m`, `tau_m`, `tau_syn_ex` and `tau_syn_in` parameters, not on the model's name; it applies to any current-based LIF neuron with single-exponential synaptic currents, `iaf_psc_exp` is just the model most people know it from. This module has no notion of "simulator" or "backend", so it can't check the model's actual dynamics for you: giving `unit: PSP` to a neuron that happens to have those four parameter names without actually having this dynamics will silently produce the wrong weight, so that's on whoever writes the config, the same way `unit: PSC`/`unit: native` already are explicit choices. For a genuinely different model (a conductance-based one, an adaptive-exponential one, or anything else), give its connections `unit: PSC` (if the weights are already current amplitudes in pA) or `unit: native` (used exactly as given, no interpretation at all) instead of `PSP`. Adding a new neuron model should essentially never require touching `network/parameters.py`.
+
+If your model has this dynamics but names its parameters differently, e.g. a NESTML model compiled with its own naming convention, set `psp_conversion_aliases` on its `neurons.yaml` entry instead of renaming anything (the parameter names in `parameters:` have to stay whatever your compiled model actually accepts):
+
+```yaml
+neurons:
+  my_nestml_lif:
+    model: my_nestml_lif_exp_nestml__with_stdp_synapse_nestml
+    parameters:
+      Cm: 250.0
+      tau_membrane: 10.0
+      tau_exc: 2.0
+      tau_inh: 2.0
+      # ... whatever else your model needs
+    psp_conversion_aliases:
+      C_m: Cm
+      tau_m: tau_membrane
+      tau_syn_ex: tau_exc
+      tau_syn_in: tau_inh
+```
+
+Only list the names that actually differ; an omitted key falls back to the canonical name unchanged.
 
 Either way, once the generic configuration exists, run it through the same public API:
 
