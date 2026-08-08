@@ -19,7 +19,7 @@ from microcircuit_lab.analysis import (
 from microcircuit_lab.io.output import register_artifact
 
 PLOT_STYLE = PlotStyle(
-    color_mode="layer",
+    color_mode="cell_type",
     cell_type_colors={"E": "#595289", "I": "#af143c"},
     population_labels={"L23_E": "L2/3_E", "L23_I": "L2/3_I"},
     tick_label_size=5.0,
@@ -27,6 +27,28 @@ PLOT_STYLE = PlotStyle(
     legend_size=6.0,
     dpi=300,
 )
+
+# toy_stimulated has two independent E/I circuits (iaf_psc_exp and
+# aeif_cond_exp); color_mode="cell_type" would give E/E_adex (both cell
+# type "E") and I/I_adex (both "I") the same color, so this picks an
+# explicit color per population instead.
+TOY_STIMULATED_PLOT_STYLE = PlotStyle(
+    color_mode="custom",
+    custom_colors={
+        "E": "#595289",
+        "I": "#af143c",
+        "E_adex": "#2a9d8f",
+        "I_adex": "#e76f51",
+    },
+    tick_label_size=5.0,
+    axis_label_size=8.0,
+    legend_size=6.0,
+    dpi=300,
+)
+
+NETWORK_PLOT_STYLES: dict[str, PlotStyle] = {
+    "toy_stimulated": TOY_STIMULATED_PLOT_STYLE,
+}
 
 RASTER_CONFIG = RasterPlotConfig(
     marker_size=1.0,
@@ -99,6 +121,7 @@ def main() -> None:
     )
     simulation.run()
 
+    plot_style = NETWORK_PLOT_STYLES.get(args.network, PLOT_STYLE)
     plots_dir = simulation.output_dir / "plots"
 
     if not args.no_raster:
@@ -109,7 +132,7 @@ def main() -> None:
             end=args.end,
             area=args.area,
             max_neurons_per_population=None,
-            style=PLOT_STYLE,
+            style=plot_style,
             config=RASTER_CONFIG,
             save_path=raster_path,
             show=args.show,
@@ -124,7 +147,7 @@ def main() -> None:
             end=args.end,
             area=args.area,
             show_reference=args.reference,
-            style=PLOT_STYLE,
+            style=plot_style,
             config=FIRING_RATE_CONFIG,
             save_path=firing_rates_path,
             show=args.show,
@@ -139,7 +162,7 @@ def main() -> None:
             end=args.end,
             area=args.area,
             method=args.power_spectrum_method,
-            style=PLOT_STYLE,
+            style=plot_style,
             config=POWER_SPECTRUM_CONFIG,
             save_path=power_spectrum_path,
             show=args.show,
@@ -153,7 +176,7 @@ def main() -> None:
             begin=args.begin,
             end=args.end,
             area=args.area,
-            style=PLOT_STYLE,
+            style=plot_style,
             config=FIRING_RATE_CONFIG,
             save_path=isi_cv_path,
             show=args.show,
