@@ -75,7 +75,11 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a generated network configuration.")
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network", default="pd14", help="Network config directory name.")
-    parser.add_argument("--simulation", default="default", help="Simulation config name.")
+    parser.add_argument(
+        "--simulation",
+        default=None,
+        help="Simulation config name. Defaults to --network's value (see Simulation.from_yaml).",
+    )
     parser.add_argument("--area", default=None, help="Area to plot for multi-area networks.")
     parser.add_argument("--begin", type=float, default=0.0, help="Analysis start time in ms.")
     parser.add_argument("--end", type=float, default=None, help="Analysis end time in ms.")

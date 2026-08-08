@@ -59,12 +59,19 @@ class Simulation:
         cls,
         config_dir: str | Path = "configs",
         network_name: str = "toy",
-        simulation_name: str = "toy",
+        simulation_name: str | None = None,
         backend: BackendName = "nest",
         backend_options: dict[str, Any] | None = None,
     ) -> "Simulation":
         """
         Build a Simulation from YAML files.
+
+        ``simulation_name`` defaults to ``network_name`` when omitted --
+        every bundled network's own execution profile is named after it
+        (``configs/simulation/<network_name>.yaml``), so this is the
+        common case. Pass it explicitly to use a different, decoupled
+        simulation profile instead (e.g. one "quick_test" profile shared
+        across several networks).
 
         ``backend_options`` is forwarded unchanged to the chosen
         backend's constructor as extra keyword arguments (see
@@ -72,6 +79,8 @@ class Simulation:
         needs beyond ``network``/``simulation_config``, e.g. NestBackend's
         ``extension_modules`` for loading compiled NEST/NESTML models.
         """
+
+        simulation_name = network_name if simulation_name is None else simulation_name
 
         network_files = read_network_directory(
             Path(config_dir) / "network" / network_name

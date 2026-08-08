@@ -93,14 +93,11 @@ Or run a published reference model the same way:
 ```python
 from microcircuit_lab import Simulation
 
-simulation = Simulation.from_yaml(
-    network_name="pd14",
-    simulation_name="default",
-)
+simulation = Simulation.from_yaml(network_name="pd14")
 simulation.run()
 ```
 
-Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network (defaults to `pd14`; pass `--network toy --simulation toy` for the minimal example). It can produce raster and firing-rate diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
+Use `scripts/run_simulation.py` as the editable generic runner for any pre-generated network (defaults to `pd14`; pass `--network toy` for the minimal example -- `--simulation` defaults to whatever `--network` is set to, see [Configuration](#configuration)). It can produce raster and firing-rate diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
 
 ## Configuration
 
@@ -122,7 +119,7 @@ configs/
     └── <simulation_name>.yaml
 ```
 
-A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording.
+A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording. They're kept as two independent trees so one network can be paired with more than one execution profile (e.g. a short one for a quick check, a long one for a real run) -- but in the common case where a network only ever has one, `Simulation.from_yaml(network_name=...)` alone is enough: `simulation_name` defaults to whatever `network_name` is, so `configs/network/toy/` pairs automatically with `configs/simulation/toy.yaml`. Pass `simulation_name` explicitly only when you actually want a different, decoupled profile.
 
 **Background input vs. stimulation.** `background_inputs.yaml` is the always-on background Poisson drive tied to `background_indegree`; it scales with `K_scaling` and is what the DC-compensation math in `network/scaling.py` accounts for. `stimuli.yaml` (optional -- omit both the file and the `stimuli:` entry in `network.yaml` if unused) describes targeted, time-limited devices for experiments instead: a constant-current pulse (`type: dc`), a Poisson train active for part of the run (`type: poisson`), or a piecewise-constant Poisson rate profile (`type: inhomogeneous_poisson`). Stimuli are not touched by scaling or compensation -- they're applied exactly as configured. See `StimulusConfig` in `microcircuit_lab/config/network.py` for the full field reference, e.g.:
 
@@ -189,10 +186,7 @@ Either way, once the generic configuration exists, run it through the same publi
 ```python
 from microcircuit_lab import Simulation
 
-simulation = Simulation.from_yaml(
-    network_name="my_model",
-    simulation_name="default",
-)
+simulation = Simulation.from_yaml(network_name="my_model")
 simulation.run()
 ```
 
@@ -205,7 +199,6 @@ Implement the small backend contract in `microcircuit_lab/backends/base.py`, pla
 ```python
 simulation = Simulation.from_yaml(
     network_name="my_model",
-    simulation_name="default",
     backend="nest",
 )
 ```
