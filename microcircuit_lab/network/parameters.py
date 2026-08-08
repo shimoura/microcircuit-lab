@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.network import DcStimulusConfig, NetworkConfig
-from microcircuit_lab.network.synapses import (
-    psp_to_psc_iaf_psc_exp,
-)
+from microcircuit_lab.config.network import DcStimulusConfig, NetworkConfig, PopulationConfig
+from microcircuit_lab.network.synapses import convert_psp_to_psc
 
 
 def full_num_neurons(network: NetworkConfig) -> np.ndarray:
@@ -99,52 +97,18 @@ def background_weights(network: NetworkConfig) -> np.ndarray:
     )
 
 
-def _stimulus_conversion_params(
-    network: NetworkConfig,
-    targets: list[str],
-) -> tuple[str, float, float, float, float]:
+def _convert_psp_weight(population: PopulationConfig, psp: float) -> float:
     """
-    Return the (model, C_m, tau_m, tau_syn_ex, tau_syn_in) shared by every
-    target population of a stimulus, raising if they don't actually agree.
+    Convert one PSP-unit weight (mV) to PSC (pA) for `population`.
 
-    A stimulus has one weight shared across all its targets, so a PSP
-    amplitude only maps onto a single PSC amplitude if every target would
-    convert it the same way.
+    Any error from convert_psp_to_psc() is re-raised with the population
+    name added, so a failure points at which population caused it.
     """
 
-    params = {
-        (
-            network.populations[t].neuron.model,
-            network.populations[t].neuron.parameters.C_m,
-            network.populations[t].neuron.parameters.tau_m,
-            network.populations[t].neuron.parameters.tau_syn_ex,
-            network.populations[t].neuron.parameters.tau_syn_in,
-        )
-        for t in targets
-    }
-
-    if len(params) > 1:
-        raise ValueError(
-            f"Cannot convert a unit: PSP stimulus weight shared across targets "
-            f"{targets!r}: those populations don't all use the same neuron "
-            "model/parameters, so one PSP amplitude wouldn't map to one PSC "
-            "amplitude for all of them. Split into separate stimuli (one per "
-            "distinct neuron type), or give the weight as unit: PSC/native instead."
-        )
-
-    return next(iter(params))
-
-
-def _require_iaf_psc_exp(target, population_name: str) -> None:
-    if target.neuron.model != "iaf_psc_exp":
-        raise NotImplementedError(
-            "PSP-to-PSC weight conversion is only implemented for "
-            f"'iaf_psc_exp' neurons, but population {population_name!r} "
-            f"uses {target.neuron.model!r}. Either use iaf_psc_exp, or "
-            "supply this weight with unit: PSC (already a current "
-            "amplitude in pA) or unit: native (used exactly as given, "
-            "e.g. for a conductance-based model) instead."
-        )
+    try:
+        return convert_psp_to_psc(population.neuron.model, psp, population.neuron.parameters)
+    except (NotImplementedError, ValueError) as exc:
+        raise type(exc)(f"Population {population.name!r}: {exc}") from exc
 
 
 def background_psc_weights(
@@ -153,8 +117,9 @@ def background_psc_weights(
     """
     Return the background input weights as PSC amplitudes (pA).
 
-    Only ``unit: PSP`` weights are converted (``iaf_psc_exp`` neurons
-    only); any other unit (``PSC``, ``native``, ...) is returned unchanged.
+    Only ``unit: PSP`` weights are converted (for neuron models with a
+    conversion registered in network.synapses); any other unit (``PSC``,
+    ``native``, ...) is returned unchanged.
     """
 
     values = []
@@ -166,16 +131,7 @@ def background_psc_weights(
             continue
 
         target = network.populations[name]
-        _require_iaf_psc_exp(target, name)
-
-        values.append(
-            psp_to_psc_iaf_psc_exp(
-                psp=input_cfg.weight.mean,
-                C_m=target.neuron.parameters.C_m,
-                tau_m=target.neuron.parameters.tau_m,
-                tau_syn=target.neuron.parameters.tau_syn_ex,
-            )
-        )
+        values.append(_convert_psp_weight(target, input_cfg.weight.mean))
 
     return np.asarray(values, dtype=float)
 
@@ -186,8 +142,9 @@ def mean_psc_matrix(
     """
     Return the biological mean PSC matrix (pA).
 
-    Only ``unit: PSP`` connections are converted (``iaf_psc_exp`` neurons
-    only); any other unit (``PSC``, ``native``, ...) is used unchanged.
+    Only ``unit: PSP`` connections are converted (for neuron models with a
+    conversion registered in network.synapses); any other unit (``PSC``,
+    ``native``, ...) is used unchanged.
     """
 
     pop_names = list(network.populations.keys())
@@ -207,19 +164,7 @@ def mean_psc_matrix(
             continue
 
         target = network.populations[connection.target]
-        _require_iaf_psc_exp(target, connection.target)
-
-        if connection.weight.mean >= 0:
-            tau_syn = target.neuron.parameters.tau_syn_ex
-        else:
-            tau_syn = target.neuron.parameters.tau_syn_in
-
-        matrix[i, j] = psp_to_psc_iaf_psc_exp(
-            psp=connection.weight.mean,
-            C_m=target.neuron.parameters.C_m,
-            tau_m=target.neuron.parameters.tau_m,
-            tau_syn=tau_syn,
-        )
+        matrix[i, j] = _convert_psp_weight(target, connection.weight.mean)
 
     return matrix
 
@@ -229,15 +174,22 @@ def tau_syn_ex(
 ) -> np.ndarray:
     """
     Return the excitatory synaptic time constant for each population.
+
+    Used by DC-current scaling compensation, which shares the same
+    current-based-synapse assumption as the PSP-to-PSC conversion; see
+    _convert_psp_weight. A population whose neuron parameters don't
+    include tau_syn_ex raises a clear error naming that population,
+    instead of a bare AttributeError.
     """
 
-    return np.asarray(
-        [
-            network.populations[name].neuron.parameters.tau_syn_ex
-            for name in network.populations
-        ],
-        dtype=float,
-    )
+    values = []
+    for name, population in network.populations.items():
+        try:
+            values.append(population.neuron.parameters.require("tau_syn_ex")["tau_syn_ex"])
+        except KeyError as exc:
+            raise ValueError(f"Population {name!r}: {exc.args[0]}") from exc
+
+    return np.asarray(values, dtype=float)
 
 
 def convert_network_psp_to_psc(
@@ -246,17 +198,15 @@ def convert_network_psp_to_psc(
     """
     Convert synaptic weights stored as PSP amplitudes (``unit: PSP``) into
     PSC amplitudes. Any other unit (``PSC``, ``native``, ...) is left
-    untouched -- it is not reinterpreted as PSP.
+    untouched; it is not reinterpreted as PSP.
 
-    The conversion is performed independently for each target
-    population using its neuron parameters.
-
-    Currently this transformation is only implemented for
-    current-based leaky integrate-and-fire neurons with
-    exponential synaptic currents (`iaf_psc_exp`). A new neuron model
-    should not need a new conversion formula here: give its connections
-    ``unit: native`` (or ``PSC`` if the weights are genuinely already
-    current amplitudes in pA) instead.
+    The conversion is performed independently for each target population
+    using its neuron model and parameters, dispatched through
+    network.synapses.convert_psp_to_psc. See that module for which
+    neuron models have a conversion available. A neuron model with none
+    raises NotImplementedError; give its connections ``unit: native``
+    (or ``PSC`` if the weights are genuinely already current amplitudes
+    in pA) instead.
     """
 
     connections = []
@@ -267,21 +217,10 @@ def convert_network_psp_to_psc(
             continue
 
         target = network.populations[connection.target]
-        _require_iaf_psc_exp(target, connection.target)
-
-        if connection.weight.mean >= 0:
-            tau_syn = target.neuron.parameters.tau_syn_ex
-        else:
-            tau_syn = target.neuron.parameters.tau_syn_in
 
         weight = connection.weight.model_copy(
             update={
-                "mean": psp_to_psc_iaf_psc_exp(
-                    psp=connection.weight.mean,
-                    C_m=target.neuron.parameters.C_m,
-                    tau_m=target.neuron.parameters.tau_m,
-                    tau_syn=tau_syn,
-                ),
+                "mean": _convert_psp_weight(target, connection.weight.mean),
                 "unit": "PSC",
             }
         )
@@ -302,17 +241,10 @@ def convert_network_psp_to_psc(
             continue
 
         target = network.populations[pop_name]
-        _require_iaf_psc_exp(target, pop_name)
-        tau_syn = target.neuron.parameters.tau_syn_ex
 
         weight = input_cfg.weight.model_copy(
             update={
-                "mean": psp_to_psc_iaf_psc_exp(
-                    psp=input_cfg.weight.mean,
-                    C_m=target.neuron.parameters.C_m,
-                    tau_m=target.neuron.parameters.tau_m,
-                    tau_syn=tau_syn,
-                ),
+                "mean": _convert_psp_weight(target, input_cfg.weight.mean),
                 "unit": "PSC",
             }
         )
@@ -330,21 +262,27 @@ def convert_network_psp_to_psc(
             stimuli.append(stimulus)
             continue
 
-        _, C_m, tau_m, tau_syn_ex, tau_syn_in = _stimulus_conversion_params(
-            network, stimulus.targets
-        )
-        _require_iaf_psc_exp(network.populations[stimulus.targets[0]], stimulus.targets[0])
-
-        tau_syn = tau_syn_ex if stimulus.weight.mean >= 0 else tau_syn_in
+        # A stimulus has one weight shared across all its targets, so a PSP
+        # amplitude only maps onto a single PSC amplitude if every target
+        # converts it the same way. This is checked by converting for each
+        # target and comparing the results, rather than by comparing which
+        # neuron parameters happen to be involved.
+        converted = {
+            _convert_psp_weight(network.populations[t], stimulus.weight.mean)
+            for t in stimulus.targets
+        }
+        if len(converted) > 1:
+            raise ValueError(
+                f"Cannot convert a unit: PSP stimulus weight shared across "
+                f"targets {stimulus.targets!r}: those populations don't "
+                "convert it to the same PSC amplitude. Split into separate "
+                "stimuli (one per distinct neuron type), or give the weight "
+                "as unit: PSC/native instead."
+            )
 
         weight = stimulus.weight.model_copy(
             update={
-                "mean": psp_to_psc_iaf_psc_exp(
-                    psp=stimulus.weight.mean,
-                    C_m=C_m,
-                    tau_m=tau_m,
-                    tau_syn=tau_syn,
-                ),
+                "mean": converted.pop(),
                 "unit": "PSC",
             }
         )

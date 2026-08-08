@@ -257,7 +257,7 @@ def test_stimulus_psp_weight_raises_when_targets_have_different_neuron_params():
         scaling=ScalingConfig(),
     )
 
-    with pytest.raises(ValueError, match="don't all use the same"):
+    with pytest.raises(ValueError, match="don't convert it to the same"):
         NetworkPreprocessor(network).process()
 
 
