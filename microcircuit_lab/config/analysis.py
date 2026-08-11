@@ -66,6 +66,8 @@ class RasterPlotConfig(FrozenConfig):
     invert_yaxis: bool = True
     max_neurons_per_population: int | None = Field(default=None, gt=0)
     neuron_fraction: float | None = Field(default=None, gt=0.0, le=1.0)
+    begin: float | None = Field(default=None, ge=0.0)
+    end: float | None = Field(default=None, ge=0.0)
 
 
 class FiringRatePlotConfig(FrozenConfig):

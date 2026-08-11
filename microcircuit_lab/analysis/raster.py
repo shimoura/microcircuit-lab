@@ -41,6 +41,8 @@ def plot_raster(
     ``max_neurons_per_population`` defaults to ``config.neuron_fraction``
     (if set, takes precedence) or ``config.max_neurons_per_population``;
     pass an explicit value (or ``None`` for no cap) to override the config.
+    ``config.begin``/``config.end``, if set, override the ``begin``/``end``
+    arguments for this plot only.
     """
     if simulation.backend is None:
         raise RuntimeError("Simulation has not been run yet.")
@@ -50,6 +52,10 @@ def plot_raster(
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_RASTER_CONFIG
     end = simulation.simulation_config.t_sim if end is None else end
+    if config.begin is not None:
+        begin = config.begin
+    if config.end is not None:
+        end = config.end
     selected = select_populations(simulation, populations, area)
     figsize = config.figsize or (
         config.width,
