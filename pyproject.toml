@@ -33,6 +33,9 @@ dev = [
     "pytest",
     "ruff",
 ]
+nestml = [
+    "nestml",
+]
 
 [tool.ruff.lint]
 # Pinned explicitly so a ruff upgrade can't silently pull in a new default
