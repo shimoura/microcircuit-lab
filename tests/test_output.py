@@ -199,6 +199,7 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
 
 def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
     network = _toy_network()
+    expected_size = network.config.populations["E"].size
     simulation_config = SimulationConfig.model_validate(
         {
             "t_sim": 200.0,
@@ -231,13 +232,13 @@ def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
     saved_config = yaml.safe_load(config_path.read_text())
     assert "network" in saved_config
     assert "simulation" in saved_config
-    assert saved_config["network"]["populations"]["E"]["size"] == 800
+    assert saved_config["network"]["populations"]["E"]["size"] == expected_size
 
     metadata_path = tmp_path / "metadata.json"
     assert metadata_path.exists()
     metadata = json.loads(metadata_path.read_text())
     assert metadata["network_name"] == "toy"
-    assert metadata["populations"]["E"]["size"] == 800
+    assert metadata["populations"]["E"]["size"] == expected_size
     assert metadata["populations"]["E"]["n_spikes"] > 0
     assert metadata["artifacts"]["recordings"]
     assert all(

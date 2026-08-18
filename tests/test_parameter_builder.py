@@ -27,10 +27,40 @@ from microcircuit_lab.network.parameters import (
 )
 
 
-def test_network_mean_input_manual():
-    network_files = read_network_directory("configs/network/pd14")
-
+def _load_toy():
+    network_files = read_network_directory("configs/network/toy")
     network = NetworkConfigLoader(network_files).build()
+    # toy's own reference.yaml has no published rates; the manual-vs-computed
+    # tests below only need *some* rates to compare against themselves.
+    return network.model_copy(
+        update={
+            "reference": network.reference.model_copy(
+                update={"full_mean_rates": {name: 5.0 for name in network.populations}}
+            )
+        }
+    )
+
+
+def _expected_first_weight_psc(network: NetworkConfig, *, linear: bool) -> float:
+    """The PSC a network's own neuron parameters and first connection's
+    PSP amplitude convert to, scaled the same way NetworkPreprocessor
+    would (linear w -> w/K, or sqrt-preserving w -> w/sqrt(K))."""
+
+    first = network.connections[0]
+    target_params = network.populations[first.target].neuron.parameters
+
+    psc = psp_to_psc_iaf_psc_exp(
+        psp=first.weight.mean,
+        C_m=target_params.C_m,
+        tau_m=target_params.tau_m,
+        tau_syn=target_params.tau_syn_ex,
+    )
+    K_scaling = network.scaling.K_scaling
+    return psc / K_scaling if linear else psc / math.sqrt(K_scaling)
+
+
+def test_network_mean_input_manual():
+    network = _load_toy()
 
     PSC = mean_psc_matrix(network)
     K = indegree_matrix(network)
@@ -48,8 +78,7 @@ def test_network_mean_input_manual():
 
 
 def test_background_input_manual():
-    network_files = read_network_directory("configs/network/pd14")
-    network = NetworkConfigLoader(network_files).build()
+    network = _load_toy()
     PSC_ext = background_psc_weights(network)
     K_ext = background_indegrees(network)
     rates = np.asarray(
@@ -86,7 +115,7 @@ def test_n_scaling():
     )
 
     population = PopulationConfig(
-        name="L23_E",
+        name="E",
         size=100,
         neuron=neuron,
         V0_mean=-58.0,
@@ -96,7 +125,7 @@ def test_n_scaling():
 
     network = NetworkConfig(
         populations={
-            "L23_E": population,
+            "E": population,
         },
         connections=[],
         background_inputs={},
@@ -112,13 +141,13 @@ def test_n_scaling():
     # original unchanged
     #
 
-    assert network.populations["L23_E"].size == 100
+    assert network.populations["E"].size == 100
 
     #
     # derived scaled
     #
 
-    assert derived.populations["L23_E"].size == 50
+    assert derived.populations["E"].size == 50
 
 
 def test_k_scaling():
@@ -140,7 +169,7 @@ def test_k_scaling():
     )
 
     population = PopulationConfig(
-        name="L23_E",
+        name="E",
         size=100,
         neuron=neuron,
         V0_mean=-58.0,
@@ -150,7 +179,7 @@ def test_k_scaling():
 
     network = NetworkConfig(
         populations={
-            "L23_E": population,
+            "E": population,
         },
         connections=[],
         background_inputs={},
@@ -166,40 +195,34 @@ def test_k_scaling():
     # original unchanged
     #
 
-    assert network.populations["L23_E"].background_indegree == 100
+    assert network.populations["E"].background_indegree == 100
 
     #
     # derived scaled
     #
 
-    assert derived.populations["L23_E"].background_indegree == 50
+    assert derived.populations["E"].background_indegree == 50
 
 
 def test_weight_scaling():
 
-    network_files = read_network_directory("configs/network/pd14")
-
-    network_config = NetworkConfigLoader(network_files).build()
+    network_config = _load_toy()
 
     derived = NetworkPreprocessor(network_config).process()
 
-    K_scaling = network_config.scaling.K_scaling
-
-    expected = psp_to_psc_iaf_psc_exp(
-        psp=0.15,
-        C_m=250.0,
-        tau_m=10.0,
-        tau_syn=0.5,
-    ) / math.sqrt(K_scaling)
+    expected = _expected_first_weight_psc(network_config, linear=False)
 
     assert derived.connections[0].weight.mean == pytest.approx(expected)
 
 
 def test_identity_scaling():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
+
+    original_size = network.populations["E"].size
+    original_indegree = network.populations["E"].background_indegree
 
     network = network.model_copy(
         update={
@@ -214,14 +237,14 @@ def test_identity_scaling():
 
     derived = NetworkPreprocessor(network).process()
 
-    assert derived.populations["L23_E"].size == 20683
+    assert derived.populations["E"].size == original_size
 
-    assert derived.populations["L23_E"].background_indegree == 1600
+    assert derived.populations["E"].background_indegree == original_indegree
 
 
 def test_identity_scaling_has_zero_dc():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
 
@@ -245,18 +268,23 @@ def test_identity_scaling_has_zero_dc():
 
 def test_downscaled_network_has_dc_compensation():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
         update={
+            # Recurrent-input compensation needs reference rates to compute
+            # against; toy's own reference.yaml has none.
+            "reference": network.reference.model_copy(
+                update={"full_mean_rates": {name: 5.0 for name in network.populations}}
+            ),
             "scaling": network.scaling.model_copy(
                 update={
                     "N_scaling": 0.2,
                     "K_scaling": 0.2,
                 }
-            )
+            ),
         }
     )
 
@@ -269,7 +297,7 @@ def test_preserve_variance_false_uses_linear_weight_scaling():
     """scaling.preserve_variance=False selects scale_weight (w -> w/K)
     instead of the default scale_weight_sqrt (w -> w/sqrt(K))."""
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
     network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
@@ -282,9 +310,7 @@ def test_preserve_variance_false_uses_linear_weight_scaling():
 
     derived = NetworkPreprocessor(network).process()
 
-    expected = psp_to_psc_iaf_psc_exp(
-        psp=0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5,
-    ) / network.scaling.K_scaling  # linear, not sqrt
+    expected = _expected_first_weight_psc(network, linear=True)  # linear, not sqrt
 
     assert derived.connections[0].weight.mean == pytest.approx(expected)
 
@@ -294,7 +320,7 @@ def test_preserve_variance_false_skips_dc_compensation():
     correct for, so DC compensation must not fire even though
     preserve_mean_input defaults to True."""
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
     network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
@@ -316,7 +342,7 @@ def test_preserve_mean_input_false_disables_dc_compensation():
     preserve_mean_input must disable the DC compensation that would
     otherwise fire for a downscaled network."""
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
     network = NetworkConfigLoader(network_files).build()
 
     network = network.model_copy(
@@ -333,7 +359,5 @@ def test_preserve_mean_input_false_disables_dc_compensation():
         assert pop.neuron.parameters.I_e == pytest.approx(0.0)
 
     # weight scaling itself is untouched by preserve_mean_input -- still sqrt
-    expected = psp_to_psc_iaf_psc_exp(
-        psp=0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5,
-    ) / math.sqrt(network.scaling.K_scaling)
+    expected = _expected_first_weight_psc(network, linear=False)
     assert derived.connections[0].weight.mean == pytest.approx(expected)

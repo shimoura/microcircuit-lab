@@ -5,8 +5,11 @@ constant-current background drive (their Fig. 5): the background Poisson
 generator is replaced network-wide by a constant current of equal mean.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
+import yaml
 
 from microcircuit_lab.backends.nest import NestBackend
 from microcircuit_lab.config.network import (
@@ -199,34 +202,40 @@ def test_dc_mode_network_still_spikes():
 # -----------------------------------------------------------------------------
 # YAML loading: background_mode is read from background_inputs.yaml
 # -----------------------------------------------------------------------------
-def test_loader_reads_background_mode_from_yaml():
-    network_files = read_network_directory("configs/network/pd14_dc")
+def test_loader_reads_background_mode_from_yaml(tmp_path: Path) -> None:
+    import shutil
+
+    network_dir = tmp_path / "network"
+    shutil.copytree("configs/network/toy", network_dir)
+
+    background_path = network_dir / "background_inputs.yaml"
+    data = yaml.safe_load(background_path.read_text())
+    data["background_mode"] = "dc"
+    background_path.write_text(yaml.safe_dump(data))
+
+    network_files = read_network_directory(network_dir)
     network = NetworkConfigLoader(network_files).build()
 
     assert network.background_mode == "dc"
 
 
-def test_pd14_dc_preprocessing_matches_pd14_mean_input():
-    """The DC-replaced background current in pd14_dc should equal the mean
-    input the Poisson-driven pd14 background would deliver on average,
-    since both start from the same biological rate/weight/indegree."""
+def test_dc_matches_poisson_mean_input():
+    """The DC-replaced background current should equal the mean input the
+    Poisson-driven background would deliver on average, since both start
+    from the same rate/weight/indegree."""
 
-    pd14_files = read_network_directory("configs/network/pd14")
-    pd14_bio = NetworkConfigLoader(pd14_files).build()
-
-    pd14_dc_files = read_network_directory("configs/network/pd14_dc")
-    pd14_dc = NetworkConfigLoader(pd14_dc_files).build()
-    pd14_dc = NetworkPreprocessor(pd14_dc).process()
+    bio = _network("poisson")
+    dc = NetworkPreprocessor(_network("dc")).process()
 
     expected = background_dc_current(
-        PSC_ext=background_psc_weights(pd14_bio),
-        K_ext=background_indegrees(pd14_bio),
+        PSC_ext=background_psc_weights(bio),
+        K_ext=background_indegrees(bio),
         bg_rate=np.asarray(
-            [pd14_bio.background_inputs[name].rate for name in pd14_bio.populations]
+            [bio.background_inputs[name].rate for name in bio.populations]
         ),
-        tau_syn=tau_syn_ex(pd14_bio),
+        tau_syn=tau_syn_ex(bio),
     )
 
-    for i, name in enumerate(pd14_bio.populations):
-        assert pd14_dc.populations[name].neuron.parameters.I_e == pytest.approx(expected[i])
-        assert pd14_dc.background_inputs[name].rate == 0.0
+    for i, name in enumerate(bio.populations):
+        assert dc.populations[name].neuron.parameters.I_e == pytest.approx(expected[i])
+        assert dc.background_inputs[name].rate == 0.0

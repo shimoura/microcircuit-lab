@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.io.config import NetworkConfigLoader
+from microcircuit_lab.config.network import ReferenceConfig
 from microcircuit_lab.network.preprocessing import (
     NetworkPreprocessor,
 )
@@ -18,7 +19,7 @@ from microcircuit_lab.io.files import read_network_directory
 
 def test_reference_matrices():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
 
@@ -26,35 +27,43 @@ def test_reference_matrices():
     synapses = full_num_synapses(network)
     indegrees = indegree_matrix(network)
 
+    n_pop = len(network.populations)
+
     assert neurons.ndim == 1
     assert synapses.ndim == 2
     assert indegrees.ndim == 2
 
-    assert synapses.shape == (8, 8)
-    assert indegrees.shape == (8, 8)
+    assert synapses.shape == (n_pop, n_pop)
+    assert indegrees.shape == (n_pop, n_pop)
 
     assert np.all(neurons > 0.0)
 
-    assert neurons[0] == 20683
-    assert neurons[1] == 5834
+    expected_sizes = [pop.size for pop in network.populations.values()]
+    assert list(neurons) == expected_sizes
     assert synapses[0, 0] > 0.0
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
 
 
 def test_preprocessing_preserves_original_network():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     original = NetworkConfigLoader(network_files).build()
 
+    original_size = original.populations["E"].size
+    original_indegree = original.populations["E"].background_indegree
+
     original = original.model_copy(
         update={
+            # No published reference rates to compensate against here --
+            # this test is only about N/K scaling arithmetic.
+            "reference": None,
             "scaling": original.scaling.model_copy(
                 update={
                     "N_scaling": 0.2,
                     "K_scaling": 0.2,
                 }
-            )
+            ),
         }
     )
 
@@ -63,76 +72,69 @@ def test_preprocessing_preserves_original_network():
     #
     # original untouched
     #
-    assert original.populations["L23_E"].size == 20683
+    assert original.populations["E"].size == original_size
 
     #
     # derived scaled
     #
-    assert derived.populations["L23_E"].size == round(20683 * 0.2)
+    assert derived.populations["E"].size == round(original_size * 0.2)
 
     #
     # they are different objects
     #
     assert original is not derived
-    assert original.populations["L23_E"].background_indegree == 1600
-    assert derived.populations["L23_E"].background_indegree == pytest.approx(1600 * 0.2)
-    assert original.populations["L23_E"] is not derived.populations["L23_E"]
+    assert original.populations["E"].background_indegree == original_indegree
+    assert derived.populations["E"].background_indegree == pytest.approx(original_indegree * 0.2)
+    assert original.populations["E"] is not derived.populations["E"]
 
 
 def test_full_mean_rates():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
 
+    #
+    # toy's own reference.yaml has no published rates -- set some
+    # directly here, since this test is only about full_mean_rates()
+    # correctly reading whatever reference.full_mean_rates holds.
+    #
+    rates_by_population = {"E": 5.5, "I": 12.3}
+    network = network.model_copy(
+        update={"reference": ReferenceConfig(full_mean_rates=rates_by_population)}
+    )
+
     rates = full_mean_rates(network)
 
-    assert rates.shape == (8,)
-
-    assert rates[0] == pytest.approx(0.903)
-    assert rates[1] == pytest.approx(2.965)
-    assert rates[2] == pytest.approx(4.414)
-    assert rates[3] == pytest.approx(5.876)
-    assert rates[4] == pytest.approx(7.569)
-    assert rates[5] == pytest.approx(8.633)
-    assert rates[6] == pytest.approx(1.105)
-    assert rates[7] == pytest.approx(7.829)
+    assert rates.shape == (len(network.populations),)
+    assert list(rates) == [rates_by_population[name] for name in network.populations]
 
 
 def test_background_indegrees():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
 
     K_ext = background_indegrees(network)
 
-    assert K_ext.shape == (8,)
-
-    assert K_ext[0] == 1600
-    assert K_ext[1] == 1500
-    assert K_ext[2] == 2100
-    assert K_ext[3] == 1900
-    assert K_ext[4] == 2000
-    assert K_ext[5] == 1900
-    assert K_ext[6] == 2900
-    assert K_ext[7] == 2100
+    assert K_ext.shape == (len(network.populations),)
+    expected = [pop.background_indegree for pop in network.populations.values()]
+    assert list(K_ext) == expected
 
 
 def test_background_weights():
 
-    network_files = read_network_directory("configs/network/pd14")
+    network_files = read_network_directory("configs/network/toy")
 
     network = NetworkConfigLoader(network_files).build()
 
     weights = background_weights(network)
 
-    assert weights.shape == (8,)
+    assert weights.shape == (len(network.populations),)
 
     #
     # Before PSP->PSC conversion these are biological PSP amplitudes.
     #
-    assert np.allclose(
-        weights,
-        0.15,
-    )
+    expected = [network.background_inputs[name].weight.mean for name in network.populations]
+    assert np.allclose(weights, expected)
