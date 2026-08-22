@@ -16,6 +16,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from microcircuit_lab.io.measures import load_or_compute
+
 from ._utils import UNSET, select_populations
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
@@ -187,6 +189,53 @@ def compute_power_spectrum(
         spectra[pop_name] = estimator(signal, fs, **method_kwargs)
 
     return spectra
+
+
+def cached_power_spectrum(
+    simulation,
+    begin: float = 0.0,
+    end: float | None = None,
+    *,
+    populations: Sequence[str] | None = None,
+    area: str | None = None,
+    bin_size: float = 1.0,
+    method: str = "welch",
+    method_kwargs: dict | None = None,
+    recompute: bool = False,
+    save: bool = True,
+) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """compute_power_spectrum, reusing a previous run's saved result (see
+    microcircuit_lab.io.measures) under simulation.output_dir when present,
+    instead of recomputing from spikes -- e.g. useful when iterating on how
+    a comparison across several runs is plotted.
+
+    Not derived from begin/end/populations/area/bin_size/method/
+    method_kwargs -- pass recompute=True after changing any of those,
+    since a stale cache won't reflect that.
+    """
+
+    if simulation.output_dir is None:
+        raise RuntimeError(
+            "Simulation has no output_dir -- run() or from_run_dir() it "
+            "before requesting its cached power spectrum."
+        )
+
+    return load_or_compute(
+        simulation.output_dir,
+        "power_spectrum",
+        lambda: compute_power_spectrum(
+            simulation,
+            begin,
+            end,
+            populations=populations,
+            area=area,
+            bin_size=bin_size,
+            method=method,
+            method_kwargs=method_kwargs,
+        ),
+        recompute=recompute,
+        save=save,
+    )
 
 
 def _grid_layout(names: list[str]) -> dict[tuple[int, int], list[str]]:

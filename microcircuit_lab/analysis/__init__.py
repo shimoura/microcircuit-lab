@@ -1,6 +1,7 @@
 """Analysis and visualization utilities."""
 
 from .firing_rates import (
+    cached_population_firing_rates,
     check_reference_rates,
     compute_neuron_firing_rates,
     compute_population_firing_rates,
@@ -21,6 +22,7 @@ from .plot_styles import (
 )
 from .power_spectrum import (
     POWER_SPECTRUM_METHODS,
+    cached_power_spectrum,
     compute_power_spectrum,
     plot_power_spectrum,
 )
@@ -40,6 +42,8 @@ __all__ = [
     "PlotStyle",
     "PowerSpectrumPlotConfig",
     "RasterPlotConfig",
+    "cached_population_firing_rates",
+    "cached_power_spectrum",
     "check_reference_rates",
     "check_unknown_plot_sections",
     "compute_neuron_firing_rates",
