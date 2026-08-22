@@ -8,6 +8,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from microcircuit_lab.io.measures import load_or_compute
+
 from ._utils import UNSET, select_populations
 from .plot_styles import (
     DEFAULT_FIRING_RATE_CONFIG,
@@ -77,6 +79,42 @@ def compute_population_firing_rates(
         area=area,
     )
     return {name: float(values.mean()) for name, values in neuron_rates.items()}
+
+
+def cached_population_firing_rates(
+    simulation,
+    begin: float = 0.0,
+    end: float | None = None,
+    *,
+    populations: Sequence[str] | None = None,
+    area: str | None = None,
+    recompute: bool = False,
+    save: bool = True,
+) -> dict[str, float]:
+    """compute_population_firing_rates, reusing a previous run's saved
+    result (see microcircuit_lab.io.measures) under simulation.output_dir
+    when present, instead of recomputing from spikes -- e.g. useful when
+    iterating on how a comparison across several runs is plotted.
+
+    Not derived from begin/end/populations/area -- pass recompute=True
+    after changing any of those, since a stale cache won't reflect that.
+    """
+
+    if simulation.output_dir is None:
+        raise RuntimeError(
+            "Simulation has no output_dir -- run() or from_run_dir() it "
+            "before requesting its cached firing rates."
+        )
+
+    return load_or_compute(
+        simulation.output_dir,
+        "firing_rates",
+        lambda: compute_population_firing_rates(
+            simulation, begin, end, populations=populations, area=area
+        ),
+        recompute=recompute,
+        save=save,
+    )
 
 
 def compute_reference_deviation(

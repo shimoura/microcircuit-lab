@@ -103,10 +103,16 @@ class IsiCvPlotConfig(FiringRatePlotConfig):
 
 class PowerSpectrumPlotConfig(FrozenConfig):
     """Power-spectrum presentation settings (grid: one subplot per population,
-    grouped into rows by layer -- see analysis.power_spectrum._grid_layout)."""
+    grouped into rows by layer -- see analysis.power_spectrum._grid_layout).
+
+    method_kwargs are forwarded to the chosen estimator (see
+    analysis.power_spectrum.POWER_SPECTRUM_METHODS), e.g. {"bandwidth": 4.0}
+    for method="multitaper".
+    """
 
     enabled: bool = True
     method: str = "welch"
+    method_kwargs: dict = Field(default_factory=dict)
     figsize: tuple[float, float] | None = None
     width_per_column: float = 3.0
     height_per_row: float = 1.8
@@ -114,6 +120,7 @@ class PowerSpectrumPlotConfig(FrozenConfig):
     min_height: float = 2.2
     linewidth: float = 1.2
     log_power: bool = False
+    log_freq: bool = False
     xlim: tuple[float, float] | None = None
 
 
