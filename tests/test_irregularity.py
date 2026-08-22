@@ -81,10 +81,16 @@ def test_compute_neuron_isi_cv_rejects_min_spikes_below_two():
         compute_neuron_isi_cv(sim, populations=["E"], min_spikes=1)
 
 
-def test_toy_network_isi_cv_end_to_end():
+def test_toy_network_isi_cv_end_to_end(tmp_path):
     simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
     simulation.simulation_config = simulation.simulation_config.model_copy(
-        update={"t_sim": 1000.0, "print_time": False}
+        update={
+            "t_sim": 1000.0,
+            "print_time": False,
+            "output": simulation.simulation_config.output.model_copy(
+                update={"output_dir": tmp_path, "overwrite": True}
+            ),
+        }
     )
     simulation.run()
 
