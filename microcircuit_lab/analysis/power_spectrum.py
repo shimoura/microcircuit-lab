@@ -79,12 +79,50 @@ def _welch(
     return freqs, power
 
 
+def _multitaper(
+    signal: np.ndarray,
+    fs: float,
+    *,
+    bandwidth: float | None = None,
+    adaptive: bool = False,
+    low_bias: bool = True,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Multitaper method (DPSS/Slepian tapers), via mne.time_frequency.psd_array_multitaper.
+
+    Lower variance than a single periodogram or Welch's method, without
+    cutting the signal into shorter segments. `bandwidth` (Hz) trades
+    frequency resolution for variance -- wider means more, lower-variance
+    tapers at the cost of a wider smoothing kernel; defaults to MNE's own
+    ``8 * fs / n_samples``. `adaptive` uses adaptive taper weighting
+    instead of a plain average (slower, generally more accurate).
+    """
+
+    try:
+        from mne.time_frequency import psd_array_multitaper
+    except ImportError as exc:
+        raise ImportError(
+            "method='multitaper' requires mne. Install it with e.g. `pip install mne`."
+        ) from exc
+
+    power, freqs = psd_array_multitaper(
+        signal,
+        sfreq=fs,
+        bandwidth=bandwidth,
+        adaptive=adaptive,
+        low_bias=low_bias,
+        normalization="full",
+        verbose=False,
+    )
+    return freqs, power
+
+
 #: Registered spectral estimators, keyed by method name. Each takes
 #: (signal, fs, **method_kwargs) and returns (freqs, power). Register a
-#: new one (e.g. a multitaper estimator) by adding an entry here.
+#: new one by adding an entry here.
 POWER_SPECTRUM_METHODS: dict[str, PowerSpectrumEstimator] = {
     "welch": _welch,
     "periodogram": _periodogram,
+    "multitaper": _multitaper,
 }
 
 
@@ -190,7 +228,7 @@ def plot_power_spectrum(
     area: str | None = None,
     bin_size: float = 1.0,
     method: str = UNSET,
-    method_kwargs: dict | None = None,
+    method_kwargs: dict | None = UNSET,
     xlim: tuple[float, float] | None = UNSET,
     style: PlotStyle | None = None,
     config: PowerSpectrumPlotConfig | None = None,
@@ -203,9 +241,14 @@ def plot_power_spectrum(
     next to each other while ``L4_E``/``L4_I`` form the row below.
 
     The zero-frequency (DC) bin is never plotted -- after mean-detrending
-    it carries no information. ``xlim`` defaults to ``config.xlim`` (the
-    full frequency range); pass an explicit range, e.g. ``xlim=(0, 150)``,
-    to zoom in. ``method`` defaults to ``config.method``.
+    it carries no information, and it would break a log-scaled frequency
+    axis (``config.log_freq``) anyway. ``xlim`` defaults to ``config.xlim``
+    (the full frequency range, so keep it out of ``(0, ...)`` if
+    ``log_freq`` is on); pass an explicit range, e.g. ``xlim=(1, 150)``, to
+    zoom in. ``method``/``method_kwargs`` default to ``config.method``/
+    ``config.method_kwargs`` (e.g. ``{"bandwidth": 4.0}`` for
+    ``method="multitaper"``). Set ``config.log_power``/``config.log_freq``
+    for a log or log-log plot.
     """
 
     style = style or DEFAULT_PLOT_STYLE
@@ -214,6 +257,8 @@ def plot_power_spectrum(
         xlim = config.xlim
     if method is UNSET:
         method = config.method
+    if method_kwargs is UNSET:
+        method_kwargs = config.method_kwargs
     spectra = compute_power_spectrum(
         simulation,
         begin,
@@ -252,6 +297,8 @@ def plot_power_spectrum(
 
         if config.log_power:
             ax.set_yscale("log")
+        if config.log_freq:
+            ax.set_xscale("log")
         if xlim is not None:
             ax.set_xlim(xlim)
 

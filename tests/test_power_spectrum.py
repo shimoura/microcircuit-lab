@@ -4,11 +4,16 @@ import numpy as np
 import pytest
 
 from microcircuit_lab import Simulation
-from microcircuit_lab.analysis import POWER_SPECTRUM_METHODS, compute_power_spectrum, plot_power_spectrum
-from microcircuit_lab.analysis.power_spectrum import _periodogram, _welch
+from microcircuit_lab.analysis import (
+    POWER_SPECTRUM_METHODS,
+    PowerSpectrumPlotConfig,
+    compute_power_spectrum,
+    plot_power_spectrum,
+)
+from microcircuit_lab.analysis.power_spectrum import _multitaper, _periodogram, _welch
 
 
-@pytest.mark.parametrize("estimator", [_periodogram, _welch])
+@pytest.mark.parametrize("estimator", [_periodogram, _welch, _multitaper])
 def test_estimators_recover_a_known_frequency(estimator):
     fs = 1000.0  # Hz
     duration_s = 4.0
@@ -75,6 +80,22 @@ def test_plot_power_spectrum_grid_layout():
     assert axes.shape == (1, 2)
     titles = {ax.get_title() for ax in axes.flat}
     assert titles == {"E", "I"}
+    fig.clf()
+
+
+def test_power_spectrum_method_kwargs_from_config():
+    """PowerSpectrumPlotConfig.method_kwargs (e.g. multitaper's `bandwidth`)
+    reaches the estimator when plot_power_spectrum's own method_kwargs
+    argument is left unset."""
+
+    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={"t_sim": 500.0, "print_time": False}
+    )
+    simulation.run()
+
+    config = PowerSpectrumPlotConfig(method="multitaper", method_kwargs={"bandwidth": 8.0})
+    fig, axes = plot_power_spectrum(simulation, config=config, show=False)
     fig.clf()
 
 
