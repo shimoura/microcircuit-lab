@@ -3,19 +3,13 @@ Saving/loading computed analysis results tied to a run directory, so a
 later process (a re-plot, a comparison across runs) can reuse them
 instead of recomputing from spikes.
 
-Saved as .npz, not text: these are numeric arrays, not relational event
-data -- unlike the spike recordings in microcircuit_lab.backends.post_hoc,
-which are genuinely tabular and use CSV because that's NEST's own native
-recording format. .npz is the standard numpy idiom for caching a handful
-of named arrays, with no new dependency.
+Saved as .npz -- these are numeric arrays, not the relational spike-event
+data microcircuit_lab.backends.post_hoc uses CSV for.
 
-Generic over shape rather than tied to one analysis function: each value
-in the dict passed to save_measures is either a scalar (one population's
-mean firing rate, as compute_population_firing_rates returns) or a
-(freqs, power) array pair (as compute_power_spectrum returns). The freqs
-side of that pair is assumed identical across populations, since one
-compute_power_spectrum call already computes every population's spectrum
-over the same frequency grid.
+Generic over shape: each value in `measures` is either a scalar (e.g.
+compute_population_firing_rates's per-population rate) or a (freqs, power)
+array pair (e.g. compute_power_spectrum's), with freqs assumed identical
+across populations.
 """
 
 from __future__ import annotations
