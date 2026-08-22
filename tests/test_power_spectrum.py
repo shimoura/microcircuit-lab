@@ -8,6 +8,24 @@ from microcircuit_lab.analysis import POWER_SPECTRUM_METHODS, compute_power_spec
 from microcircuit_lab.analysis.power_spectrum import _periodogram, _welch
 
 
+def _run_toy_simulation(tmp_path, t_sim=500.0):
+    """A short toy run, writing to pytest's tmp_path instead of the
+    project's real output/ directory."""
+
+    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={
+            "t_sim": t_sim,
+            "print_time": False,
+            "output": simulation.simulation_config.output.model_copy(
+                update={"output_dir": tmp_path, "overwrite": True}
+            ),
+        }
+    )
+    simulation.run()
+    return simulation
+
+
 @pytest.mark.parametrize("estimator", [_periodogram, _welch])
 def test_estimators_recover_a_known_frequency(estimator):
     fs = 1000.0  # Hz
@@ -20,12 +38,8 @@ def test_estimators_recover_a_known_frequency(estimator):
     assert freqs[np.argmax(power)] == pytest.approx(40.0, abs=1.0)
 
 
-def test_compute_power_spectrum_on_toy_simulation():
-    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
-    simulation.simulation_config = simulation.simulation_config.model_copy(
-        update={"t_sim": 500.0, "print_time": False}
-    )
-    simulation.run()
+def test_compute_power_spectrum_on_toy_simulation(tmp_path):
+    simulation = _run_toy_simulation(tmp_path)
 
     spectra = compute_power_spectrum(simulation, bin_size=1.0, method="welch")
 
@@ -37,38 +51,26 @@ def test_compute_power_spectrum_on_toy_simulation():
         assert np.all(power >= 0.0)
 
 
-def test_compute_power_spectrum_rejects_unknown_method():
-    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
-    simulation.simulation_config = simulation.simulation_config.model_copy(
-        update={"t_sim": 200.0, "print_time": False}
-    )
-    simulation.run()
+def test_compute_power_spectrum_rejects_unknown_method(tmp_path):
+    simulation = _run_toy_simulation(tmp_path, t_sim=200.0)
 
     with pytest.raises(ValueError, match="Unknown power spectrum method"):
         compute_power_spectrum(simulation, method="not-a-real-method")
 
 
-def test_all_registered_methods_are_usable():
-    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
-    simulation.simulation_config = simulation.simulation_config.model_copy(
-        update={"t_sim": 200.0, "print_time": False}
-    )
-    simulation.run()
+def test_all_registered_methods_are_usable(tmp_path):
+    simulation = _run_toy_simulation(tmp_path, t_sim=200.0)
 
     for method in POWER_SPECTRUM_METHODS:
         spectra = compute_power_spectrum(simulation, method=method)
         assert set(spectra) == {"E", "I"}
 
 
-def test_plot_power_spectrum_grid_layout():
+def test_plot_power_spectrum_grid_layout(tmp_path):
     """Toy's E/I populations share no layer, so they land in one row,
     one column each (see analysis.power_spectrum._grid_layout)."""
 
-    simulation = Simulation.from_yaml(network_name="toy", simulation_name="toy")
-    simulation.simulation_config = simulation.simulation_config.model_copy(
-        update={"t_sim": 200.0, "print_time": False}
-    )
-    simulation.run()
+    simulation = _run_toy_simulation(tmp_path, t_sim=200.0)
 
     fig, axes = plot_power_spectrum(simulation, show=False)
 

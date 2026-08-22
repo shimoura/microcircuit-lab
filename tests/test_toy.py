@@ -31,7 +31,7 @@ def test_simulation_from_yaml_defaults_to_toy():
     assert simulation.simulation_config.t_sim == 1000.0
 
 
-def test_toy_network_actually_spikes():
+def test_toy_network_actually_spikes(tmp_path):
     """Regression test: a plausible-looking config can still fail to spike
     if the background drive is too weak. Run briefly and check for output."""
 
@@ -40,7 +40,13 @@ def test_toy_network_actually_spikes():
         simulation_name="toy",
     )
     simulation.simulation_config = simulation.simulation_config.model_copy(
-        update={"t_sim": 200.0, "print_time": False}
+        update={
+            "t_sim": 200.0,
+            "print_time": False,
+            "output": simulation.simulation_config.output.model_copy(
+                update={"output_dir": tmp_path, "overwrite": True}
+            ),
+        }
     )
     simulation.run()
 
