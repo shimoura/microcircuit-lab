@@ -21,7 +21,7 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 
 ## Using this as a template for a new project
 
-This repository is meant to be forked as the starting point for a new, independent research project: fork it, add your model under `microcircuit_lab/models/<your_model>/` (see "Adding a new model" below), and add its experiments under `experiments/<your_model>/`. A fork is not expected to track this repository going forward -- treat it as a one-time starting point, not an upstream dependency.
+This repository is meant to be forked as the starting point for a new, independent research project: fork it, add your model under `microcircuit_lab/generators/<your_model>/` (see "Adding a new model" below), and add its experiments under `experiments/<your_model>/`. A fork is not expected to track this repository going forward -- treat it as a one-time starting point, not an upstream dependency.
 
 When forking, update `pyproject.toml`'s `name`/`description`/`authors`/`version` and this README's title to your project. The internal Python package name (`microcircuit_lab`) does not need to change -- renaming it means updating every import across the codebase for little practical benefit, since it's an internal detail nobody outside the project sees. Keep the PD14/HuMAM/toy models as working references for the schema and conventions, or delete them once your own model no longer needs the comparison.
 
@@ -31,7 +31,7 @@ When forking, update `pyproject.toml`'s `name`/`description`/`authors`/`version`
 model source data
       │
       ▼
-microcircuit_lab/models/       model-specific translation and parameters
+microcircuit_lab/generators/   model-specific translation and parameters
       │
       ▼
 configs/network/<model>/       portable YAML network description
@@ -52,7 +52,7 @@ microcircuit_lab/backends/     simulator-specific execution
 microcircuit_lab/analysis/     simulator-facing analysis and plots
 ```
 
-The generic network and simulation layers do not depend on HuMAM, PD14, or any other specific reference model. Model integrations depend on the generic network utilities, never the reverse. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
+The generic network and simulation layers do not depend on HuMAM, PD14, or any other specific reference model. Generators depend on the generic network utilities, never the reverse. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
 
 ## Project structure
 
@@ -62,7 +62,7 @@ microcircuit_lab/
 ├── backends/       # simulator implementations (currently NEST)
 ├── config/         # validated network and simulation schemas
 ├── io/             # configuration file loading and validation assembly
-├── models/         # model-specific integrations (HuMAM, PD14, ...)
+├── generators/     # model-specific integrations (HuMAM, PD14, ...)
 ├── network/        # generic network model, transformations, and preprocessing
 └── simulation/     # high-level simulation orchestration
 ```
@@ -185,9 +185,9 @@ There are two supported ways to try a new model, and the core package (`network/
 
 **Write YAML directly.** Copy `configs/network/toy/` (the smallest complete example of the schema: two populations, four connections, minimal scaling/reference) to `configs/network/<my_model>/` and edit the values by hand. Pair it with a `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid). This is the right starting point for exploring a new idea or a model small enough to write out directly.
 
-**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), create `microcircuit_lab/models/<model_name>/` and keep all source-format assumptions there. The generator's job is to translate that data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
+**Add a generator.** For models whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.), run `python scripts/new_generator.py <model_name>` to scaffold `microcircuit_lab/generators/<model_name>/` with the standard shape (`generator.py`, `__init__.py`, `README.md`, and a matching test stub under `tests/`), then fill in the `# TODO`s. The generator's job is to translate source data into the same YAML schema used above and write it under `configs/network/<model_name>/`. Follow `humam/generator.py` (full translation pipeline from bundled source data) or `pd14/generator.py` (a single derived file, rest static) depending on how much of the config is actually derived versus fixed.
 
-If generation should be runnable from the command line, add an `add_cli(subparser)` function to the model's `generator.py` (same pattern in both examples above) and register it in `microcircuit_lab/models/__init__.py`'s `MODEL_GENERATORS`. It then becomes available as `python scripts/generate.py <model_name>` without any changes to `scripts/generate.py` itself.
+An `add_cli(subparser)` function in the model's `generator.py` (already stubbed in by the scaffold) is what makes it runnable from the command line. It's picked up automatically as `python scripts/generate.py <model_name>` -- `microcircuit_lab.generators.GENERATOR_REGISTRY` discovers every subpackage under `generators/` that exposes one, so there's no registry to edit and no change needed to `scripts/generate.py` itself.
 
 Either way, once the generic configuration exists, run it through the same public API:
 
@@ -219,7 +219,7 @@ A backend's constructor isn't limited to `(network, simulation_config)`: it can 
 
 NESTML compiles a custom neuron model into a NEST extension module, loaded at runtime with `nest.Install(module_name)` before any node using that model can be created. This is entirely a capability of `NestBackend` (its `extension_modules` constructor argument, see "Adding a backend" above); nothing elsewhere in the package has any notion of NESTML.
 
-**Where files go.** Keep `.nestml` source under a top-level `nestml/` directory (parallel to `configs/`, not inside `microcircuit_lab/models/`: nothing reads a `.nestml` file at runtime, NESTML's own compiler does, and a compiled module is platform/NEST-version-specific, not something to ship as package data). A model reusable across networks can sit flat; one written specifically for a given model follows the same `<model_name>/` subdirectory convention already used by `configs/network/<model>/` and `experiments/<model>/`. Compiled output is gitignored, like `output/`:
+**Where files go.** Keep `.nestml` source under a top-level `nestml/` directory (parallel to `configs/`, not inside `microcircuit_lab/generators/`: nothing reads a `.nestml` file at runtime, NESTML's own compiler does, and a compiled module is platform/NEST-version-specific, not something to ship as package data). A model reusable across networks can sit flat; one written specifically for a given model follows the same `<model_name>/` subdirectory convention already used by `configs/network/<model>/` and `experiments/<model>/`. Compiled output is gitignored, like `output/`:
 
 ```text
 nestml/
@@ -265,7 +265,7 @@ simulation.run()
 - **PD14**: Potjans & Diesmann cortical microcircuit configuration and connectivity utilities.
 - **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
 
-Model-specific documentation is located inside each package under `microcircuit_lab/models/`.
+Model-specific documentation is located inside each package under `microcircuit_lab/generators/`.
 
 ## Experiments
 
@@ -311,7 +311,7 @@ Plots are written back into that same run's own `plots/` directory. Programmatic
 
 ### Adding a new diagnostic
 
-Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model generators (`models.MODEL_GENERATORS`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
+Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model generators (`generators.GENERATOR_REGISTRY`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
 
 ```python
 from microcircuit_lab.analysis import register_plot

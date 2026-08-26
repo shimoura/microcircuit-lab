@@ -23,7 +23,7 @@ Generation only writes portable configuration files. Run them separately with `s
 ## Python API
 
 ```python
-from microcircuit_lab.models.humam import generate_humam_configs
+from microcircuit_lab.generators.humam import generate_humam_configs
 
 paths = generate_humam_configs(
     area="bankssts",
@@ -47,7 +47,7 @@ simulation.run()
 
 ## Package contents
 
-- `generator.py`: HuMAM source-data translation and config generation. Exposes `add_cli()`, which registers this model's arguments on the shared `scripts/generate.py` dispatcher (see `microcircuit_lab.models.MODEL_GENERATORS`).
+- `generator.py`: HuMAM source-data translation and config generation. Exposes `add_cli()`, which registers this model's arguments on the shared `scripts/generate.py` dispatcher (see `microcircuit_lab.generators.GENERATOR_REGISTRY`).
 - `data/`: bundled source data used by the generator.
 
 New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.
