@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from microcircuit_lab.models.humam import generate_humam_configs
+from microcircuit_lab.generators.humam import generate_humam_configs
 
 
 def test_generate_single_area_uses_bare_population_names(tmp_path: Path) -> None:

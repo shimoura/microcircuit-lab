@@ -2,12 +2,12 @@
 
 Each model owns its own arguments; run `python scripts/generate.py <model>
 --help` to see them. Adding a new model only requires registering it in
-`microcircuit_lab.models.MODEL_GENERATORS` -- this script never changes.
+`microcircuit_lab.generators.MODEL_GENERATORS` -- this script never changes.
 """
 
 import argparse
 
-from microcircuit_lab.models import MODEL_GENERATORS
+from microcircuit_lab.generators import MODEL_GENERATORS
 
 
 def _parse_args() -> argparse.Namespace:

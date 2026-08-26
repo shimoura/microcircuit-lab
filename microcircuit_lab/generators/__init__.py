@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Callable
 import argparse
 
-from microcircuit_lab.models.humam.generator import add_cli as _add_humam_cli
-from microcircuit_lab.models.pd14.generator import add_cli as _add_pd14_cli
+from microcircuit_lab.generators.humam.generator import add_cli as _add_humam_cli
+from microcircuit_lab.generators.pd14.generator import add_cli as _add_pd14_cli
 
 #: Registered config-generation CLIs, keyed by model name. Each value adds
 #: that model's arguments to a ``scripts/generate.py`` subparser. Add new
