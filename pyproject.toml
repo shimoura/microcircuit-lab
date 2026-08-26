@@ -19,7 +19,6 @@ dependencies = [
     "PyYAML>=6.0",
     "pandas>=2.0",
     "matplotlib>=3.8",
-    "nest-simulator>=3.0",
     "mne",
 ]
 
@@ -33,6 +32,9 @@ include = ["microcircuit_lab*"]
 dev = [
     "pytest",
     "ruff",
+]
+nest = [
+    "nest-simulator>=3.0",
 ]
 nestml = [
     "nestml",

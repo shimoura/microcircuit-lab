@@ -83,7 +83,7 @@ mamba activate microcircuit-lab
 pip install -e ".[dev]"
 ```
 
-NEST must be available in the environment used to run simulations.
+**NEST.** This package doesn't pin NEST as a hard dependency, since how you get it depends heavily on where you run: install the PyPI package with `pip install -e ".[dev,nest]"`, get it from conda-forge (`mamba install -c conda-forge nest-simulator`), or build it from source (common on clusters, e.g. for MPI or a site-specific compiler toolchain). Whichever route you use, all that matters is that `import nest` works in the environment you run simulations in -- see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) for the source-build instructions.
 
 ## Quick start
 

@@ -9,10 +9,10 @@ Full documentation lives in [`microcircuit_lab/README.md`](microcircuit_lab/READ
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,nest]"
 ```
 
-NEST must be available in the environment used to run simulations (see [`microcircuit_lab/README.md`](microcircuit_lab/README.md#installation) for a mamba/conda alternative). Then run the bundled `toy` network, a minimal two-population (E/I) example:
+NEST isn't pinned as a hard dependency, since how you get it depends heavily on where you run (PyPI, conda-forge, or building from source on a cluster) -- see [`microcircuit_lab/README.md`](microcircuit_lab/README.md#installation) for the alternatives. All that matters is `import nest` works in the environment you run simulations in. Then run the bundled `toy` network, a minimal two-population (E/I) example:
 
 ```bash
 python scripts/run_simulation.py --network toy
