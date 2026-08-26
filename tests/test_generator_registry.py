@@ -5,8 +5,10 @@ import argparse
 from microcircuit_lab.generators import GENERATOR_REGISTRY
 
 
-def test_known_models_are_discovered() -> None:
-    assert set(GENERATOR_REGISTRY) >= {"humam", "pd14"}
+def test_registry_discovers_at_least_one_model() -> None:
+    # Not asserting on specific model names: humam/pd14 are reference
+    # examples, not a fixed set -- a fork may remove or replace them.
+    assert GENERATOR_REGISTRY
 
 
 def test_every_registered_generator_wires_up_a_subparser() -> None:

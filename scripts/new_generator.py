@@ -1,8 +1,7 @@
 """Scaffold a new model generator package.
 
-Creates `microcircuit_lab/generators/<name>/` with the skeleton every
-existing generator (humam, pd14) already follows -- `generator.py` with
-`add_cli`, so it's picked up automatically by
+Creates `microcircuit_lab/generators/<name>/` with the standard generator
+skeleton -- `generator.py` with `add_cli`, so it's picked up automatically by
 `microcircuit_lab.generators.GENERATOR_REGISTRY`, plus a matching test
 stub under `tests/`. Fill in the `# TODO` markers in the generated
 `generator.py` with the actual data-translation logic for the new model.
@@ -57,9 +56,10 @@ def generate_{name}_configs(
 ) -> Path:
     """Write the {title} network config and return its path.
 
-    # TODO: adjust which file(s) this writes -- a single YAML like PD14's
-    # connectivity-only generator, or the full network config tree like
-    # HuMAM's, depending on how much of this model is derived vs. static.
+    # TODO: adjust which file(s) this writes -- a single derived YAML file,
+    # or the full network config tree, depending on how much of this
+    # model's config is actually derived versus static. See other
+    # generators under microcircuit_lab/generators/ for examples of both.
     """
 
     output_path = Path(config_dir) / "network" / network_name / "connectivity.yaml"
