@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.models.pd14.data import (
+from microcircuit_lab.generators.pd14.data import (
     populations,
     full_num_neurons,
     connection_probabilities,
