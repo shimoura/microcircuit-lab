@@ -47,7 +47,7 @@ simulation.run()
 
 ## Package contents
 
-- `generator.py`: HuMAM source-data translation and config generation. Exposes `add_cli()`, which registers this model's arguments on the shared `scripts/generate.py` dispatcher (see `microcircuit_lab.generators.GENERATOR_REGISTRY`).
+- `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `scripts/generate.py humam` discovers and forwards to. Ends by calling `validate_network_config` on its output.
 - `data/`: bundled source data used by the generator.
 
 New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.

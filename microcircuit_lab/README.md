@@ -135,7 +135,11 @@ configs/
     └── <analysis_name>.yaml   # optional
 ```
 
+`microcircuit_lab/config/files.py` is the field reference: one short model per file, listing every field with its type and constraints. A field with no default is required; one with `Field(default=...)` is optional and shows its default. `configs/network/toy/` is that same schema as a small working network to copy.
+
 A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording. An analysis configuration (`AnalysisConfig`, `microcircuit_lab/config/analysis.py`) describes presentation only -- which diagnostic plots run, the time window/area to analyze, and their styling (colors, figure sizes, raster neuron subsampling, ...); it has no effect on the simulation itself.
+
+Each network file has a schema in `microcircuit_lab/config/files.py` (one model per file), and `read_network_directory` validates against it on every load -- so a missing, misspelled, or wrong-typed field fails with the file and field named, the moment a config is loaded (to run it) or written (by a generator), not later as a `KeyError`. Cross-file references (a population's neuron, a connection's populations) and the preprocessing step are checked the same way. The one open spot is a neuron's `parameters:` block -- neuron models differ in what they accept, so the simulator backend, not the schema, is the authority on those names. `microcircuit_lab.io.validate_network_config(dir)` runs the whole check on its own if you want it without a run.
 
 These are three independent trees, matched by name, so one network can be paired with more than one execution profile or presentation (e.g. a short simulation for a quick check vs. a long one for a real run; a quick raster-only look vs. a full styled figure set for a paper). In the common case where a network only ever has one of each, `Simulation.from_yaml(network_name=...)` and `AnalysisConfig.from_yaml(network_name=...)` alone are enough: `simulation_name`/`analysis_name` both default to whatever `network_name` is, so `configs/network/toy/` pairs automatically with `configs/simulation/toy.yaml` and `configs/analysis/toy.yaml`. Pass `simulation_name`/`analysis_name` explicitly only when you want a different, decoupled profile.
 
@@ -209,24 +213,24 @@ Only list the names that actually differ; an omitted key falls back to the canon
 
 ## Adding a new model
 
-There are two supported ways to try a new model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never has to change for either one.
+There are two ways to add a model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never changes for either one. Both produce the same thing: a `configs/network/<model>/` directory matching the schema in `microcircuit_lab/config/files.py`. That directory is validated automatically whenever it is loaded -- so a mistake surfaces the first time you run the network (or generate it), with the file and field named.
 
 ### Option A: write YAML directly
 
 Best for exploring a new idea or a model small enough to write out by hand.
 
-1. Copy `configs/network/toy/` to `configs/network/<my_model>/` -- it's the smallest complete example of the schema (two populations, four connections, minimal scaling/reference).
+1. Copy `configs/network/toy/` to `configs/network/<my_model>/` -- a small working example, one comment per file. `microcircuit_lab/config/files.py` is the full field list (types, defaults, which are required).
 2. Edit the values in `configs/network/<my_model>/*.yaml` by hand.
 3. Create `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid).
+4. `python scripts/run_simulation.py --network <my_model>` -- loading the config validates every file; fix anything it reports.
 
 ### Option B: add a generator
 
-Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.).
+Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A generator is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. The only thing the shared `python scripts/generate.py <model>` CLI needs is a `microcircuit_lab/generators/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit.
 
-1. Run `python scripts/new_generator.py <model_name>`. This scaffolds `microcircuit_lab/generators/<model_name>/` with `generator.py`, `__init__.py`, `README.md`, and a matching test stub under `tests/test_<model_name>.py` -- and prints the same next steps below.
-2. Fill in the `# TODO`s in `microcircuit_lab/generators/<model_name>/generator.py` -- the generator's job is to translate source data into the same YAML schema as Option A and write it under `configs/network/<model_name>/`. Follow `microcircuit_lab/generators/humam/generator.py` (full translation pipeline from bundled source data) or `microcircuit_lab/generators/pd14/generator.py` (a single derived file, rest static), whichever matches how much of your config is actually derived versus fixed.
-3. Fill in `microcircuit_lab/generators/<model_name>/README.md` (what the model represents, where its source data comes from, any citation) and update `tests/test_<model_name>.py` to match what `generate_<model_name>_configs` actually does.
-4. Run `python scripts/generate.py <model_name>` to write the config files. This works with no further wiring: the scaffold already stubs in `add_cli(subparser)`, and `microcircuit_lab.generators.GENERATOR_REGISTRY` auto-discovers every subpackage under `generators/` that exposes one -- there's no registry to edit and nothing to change in `scripts/generate.py` itself.
+1. `python scripts/new_generator.py <model_name>` creates `microcircuit_lab/generators/<model_name>/__init__.py` with a `main()` stub -- just enough to be discovered. Add a `README.md` and `tests/test_<model_name>.py` yourself.
+2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), write the files under `configs/network/<model_name>/` -- `microcircuit_lab/config/files.py` is the field list, and `microcircuit_lab/generators/humam/` (full config tree) or `microcircuit_lab/generators/pd14/` (one derived file, the rest static and checked in) show two shapes. Finish `main` with `microcircuit_lab.io.validate_network_config("configs/network/<model_name>")` so a mistake is a clear error now, not a puzzle later.
+3. `python scripts/generate.py <model_name>` -- or `python scripts/generate.py` with no arguments to confirm it was discovered.
 
 ### Run it
 
@@ -320,7 +324,7 @@ An experiment -- a parameter sweep, a comparison across configs, exploratory ana
 
 ## Repository scripts
 
-Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name -- or re-plots an existing run's recordings without re-simulating, via `--run-dir` (see below). Neither script contains model-specific logic, so both stay unchanged as models are added.
+Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces (and validates) a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name -- or re-plots an existing run's recordings without re-simulating, via `--run-dir` (see below). Neither script contains model-specific logic; `scripts/generate.py` just discovers each `microcircuit_lab/generators/<model>/` package that exposes a `main` and forwards to it, so both stay unchanged as models are added.
 
 Run the bundled PD14 network (uses the default network/simulation names):
 
@@ -341,7 +345,7 @@ Regenerate PD14's connectivity from source data (its other config files are stat
 python scripts/generate.py pd14
 ```
 
-Every registered model's generation arguments are discoverable with `python scripts/generate.py <model> --help`.
+`python scripts/generate.py` with no arguments lists the discovered models; `python scripts/generate.py <model> --help` shows one model's options. Generation validates its own output, and every config is validated again whenever it is loaded to run.
 
 `scripts/run_simulation.py` accepts:
 
@@ -364,7 +368,7 @@ Plots are written back into that same run's own `plots/` directory. Programmatic
 
 ### Adding a new diagnostic
 
-Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model generators (`generators.GENERATOR_REGISTRY`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
+Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model generators (`generators.GENERATORS`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
 
 ```python
 from microcircuit_lab.analysis import register_plot
