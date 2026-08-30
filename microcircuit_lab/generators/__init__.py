@@ -6,6 +6,6 @@ configuration consumed by :mod:`microcircuit_lab.network` and :mod:`microcircuit
 
 from __future__ import annotations
 
-from microcircuit_lab.generators.registry import GENERATOR_REGISTRY
+from microcircuit_lab.generators.registry import GENERATORS, discover_generators
 
-__all__ = ["GENERATOR_REGISTRY"]
+__all__ = ["GENERATORS", "discover_generators"]

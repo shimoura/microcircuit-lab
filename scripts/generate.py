@@ -1,31 +1,36 @@
-"""Generate network/simulation configs for a registered model.
+"""Generate a model's config files.
 
-Each model owns its own arguments; run `python scripts/generate.py <model>
---help` to see them. Adding a new model requires no changes here -- drop a
-new subpackage under `microcircuit_lab/generators/` with a `generator.py`
-that exposes `add_cli`, and it's picked up automatically via
-`microcircuit_lab.generators.GENERATOR_REGISTRY`.
+    python scripts/generate.py                 # list available models
+    python scripts/generate.py <model> --help  # that model's options
+    python scripts/generate.py <model> [opts]  # generate
+
+Any subpackage under ``microcircuit_lab/generators/`` that exposes a
+callable ``main(argv=None)`` is discovered automatically -- there is
+nothing to register and nothing to change in this file when a model is
+added. This dispatcher just forwards the remaining arguments to that
+``main``; each generator owns its own argument parsing.
 """
 
-import argparse
+import sys
 
-from microcircuit_lab.generators import GENERATOR_REGISTRY
-
-
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate configs for a Microcircuit Lab model.")
-    subparsers = parser.add_subparsers(dest="model", required=True)
-
-    for name, add_cli in GENERATOR_REGISTRY.items():
-        subparser = subparsers.add_parser(name)
-        add_cli(subparser)
-
-    return parser.parse_args()
+from microcircuit_lab.generators import GENERATORS
 
 
 def main() -> None:
-    args = _parse_args()
-    args.func(args)
+    argv = sys.argv[1:]
+    names = sorted(GENERATORS)
+
+    if not argv or argv[0] in ("-h", "--help"):
+        listing = "\n".join(f"  {name}" for name in names) or "  (none found)"
+        print(f"Available models:\n{listing}")
+        print("\nRun `python scripts/generate.py <model> --help` for a model's options.")
+        return
+
+    name, rest = argv[0], argv[1:]
+    if name not in GENERATORS:
+        sys.exit(f"Unknown model {name!r}. Available: {', '.join(names) or '(none)'}")
+
+    GENERATORS[name].main(rest)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from microcircuit_lab.generators.pd14.data import (
 )
 from microcircuit_lab.network.connectivity import num_synapses_from_conn_prob
 from microcircuit_lab.io.files import flow_records, write_yaml
+from microcircuit_lab.io.network_validation import validate_network_config
 
 
 def _build_connectivity() -> dict[str, Any]:
@@ -95,21 +96,28 @@ def _run(args: argparse.Namespace) -> None:
         "scaling, reference) are static and were not regenerated."
     )
 
+    network_dir = Path(args.config_dir) / "network" / args.network_name
+    if (network_dir / "network.yaml").exists():
+        validate_network_config(network_dir)
+        print("Validated: config is a usable input to the simulation pipeline.")
+    else:
+        print(
+            f"Skipped validation -- {network_dir} has no network.yaml. Copy the static "
+            "PD14 files there (from configs/network/pd14/) before running this network."
+        )
 
-def add_cli(subparser: argparse.ArgumentParser) -> None:
-    """Register PD14 generation arguments on a ``scripts/generate.py`` subparser."""
 
-    _add_arguments(subparser)
-    subparser.set_defaults(func=_run)
-
-
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    """Entry point. ``scripts/generate.py`` discovers this function (via
+    ``microcircuit_lab.generators.pd14.main``) and forwards it the
+    arguments after the model name.
+    """
     parser = argparse.ArgumentParser(
+        prog="generate.py pd14",
         description="Generate the PD14 connectivity.yaml from connection-probability source data.",
     )
     _add_arguments(parser)
-    args = parser.parse_args()
-    _run(args)
+    _run(parser.parse_args(argv))
 
 
 if __name__ == "__main__":

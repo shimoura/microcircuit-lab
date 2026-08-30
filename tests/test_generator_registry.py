@@ -1,22 +1,34 @@
-"""Tests for automatic discovery of model generators."""
+"""Automatic discovery of model generators."""
 
-import argparse
+from types import ModuleType
 
-from microcircuit_lab.generators import GENERATOR_REGISTRY
+import pytest
 
-
-def test_registry_discovers_at_least_one_model() -> None:
-    # Not asserting on specific model names: humam/pd14 are reference
-    # examples, not a fixed set -- a fork may remove or replace them.
-    assert GENERATOR_REGISTRY
+from microcircuit_lab.generators import GENERATORS, discover_generators
 
 
-def test_every_registered_generator_wires_up_a_subparser() -> None:
-    for name, add_cli in GENERATOR_REGISTRY.items():
-        assert callable(add_cli)
+def test_discovery_finds_at_least_one_model() -> None:
+    # Not asserting on specific names: humam/pd14 are reference examples,
+    # not a fixed set -- a fork may remove or replace them.
+    assert GENERATORS
 
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers(dest="model")
-        subparser = subparsers.add_parser(name)
 
-        add_cli(subparser)
+def test_every_discovered_generator_is_a_package_exposing_main() -> None:
+    for name, module in GENERATORS.items():
+        assert isinstance(module, ModuleType)
+        assert callable(getattr(module, "main", None)), f"generators.{name} has no main()"
+
+
+def test_discovery_needs_no_hardcoded_list() -> None:
+    # discover_generators() rescans the package directory on each call;
+    # dropping a package in is all it takes to register a model.
+    assert set(discover_generators()) == set(GENERATORS)
+
+
+def test_generator_main_takes_an_argv_list() -> None:
+    # The one hook scripts/generate.py relies on: main(argv). --help must
+    # build the parser and exit cleanly without running generation.
+    for name, module in GENERATORS.items():
+        with pytest.raises(SystemExit) as exit_info:
+            module.main(["--help"])
+        assert exit_info.value.code == 0, f"{name}.main(['--help']) exited non-zero"
