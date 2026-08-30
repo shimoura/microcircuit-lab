@@ -1,142 +1,88 @@
 """
-Build validated NetworkConfig objects from raw configuration dictionaries.
+Assemble a validated :class:`NetworkConfig` from a :class:`NetworkDirectory`.
 
-This builder resolves references between the different YAML configuration
-files (e.g. populations -> neurons) and constructs the immutable
-NetworkConfig used by the rest of the project.
+The directory has already been schema-checked file by file (see
+:mod:`microcircuit_lab.config.files`). What is left is resolving the
+references *between* files -- a population names its neuron, a connection
+names its populations -- and handing back the immutable
+:class:`NetworkConfig` the rest of the framework consumes.
 
-No numerical parameter derivation is performed here.
-No simulator-specific code belongs here.
+No numerical parameter derivation happens here (that is
+:class:`~microcircuit_lab.network.preprocessing.NetworkPreprocessor`), and
+no simulator-specific code belongs here.
 """
 
 from __future__ import annotations
 
-from pydantic import TypeAdapter
-
+from microcircuit_lab.config.files import NetworkDirectory
 from microcircuit_lab.config.network import (
     BackgroundInputConfig,
     ConnectionConfig,
-    DelayDistribution,
     NetworkConfig,
     NeuronConfig,
-    NeuronParams,
     PopulationConfig,
-    ScalingConfig,
-    StimulusConfig,
-    WeightDistribution,
-    ReferenceConfig,
 )
-
-from microcircuit_lab.io.files import NetworkFiles
-
-_stimulus_adapter = TypeAdapter(StimulusConfig)
 
 
 class NetworkConfigLoader:
-    """
-    Build a validated NetworkConfig from raw dictionaries.
-    """
+    """Resolve cross-file references and build the immutable NetworkConfig."""
 
-    def __init__(
-        self,
-        network_files: NetworkFiles,
-    ) -> None:
-        self._populations_data = network_files.populations
-        self._neurons_data = network_files.neurons
-        self._connectivity_data = network_files.connectivity
-        self._background_inputs_data = network_files.background_inputs
-        self._scaling_data = network_files.scaling
-        self._reference_data = network_files.reference
-        self._stimuli_data = network_files.stimuli
+    def __init__(self, directory: NetworkDirectory) -> None:
+        self._directory = directory
 
     def build(self) -> NetworkConfig:
-        """
-        Construct the immutable NetworkConfig.
-        """
-
         neurons = self._build_neurons()
-
         populations = self._build_populations(neurons)
-
         connections = self._build_connections(populations)
-
         background_inputs = self._build_background_inputs(populations)
-        background_mode = self._background_inputs_data.get("background_mode", "poisson")
-        stimuli = self._build_stimuli(populations)
-
-        scaling = ScalingConfig.model_validate(self._scaling_data)
-        reference = ReferenceConfig.model_validate(self._reference_data)
 
         return NetworkConfig(
             populations=populations,
             connections=connections,
             background_inputs=background_inputs,
-            background_mode=background_mode,
-            stimuli=stimuli,
-            scaling=scaling,
-            reference=reference
+            background_mode=self._directory.background_inputs.background_mode,
+            stimuli=self._directory.stimuli.stimuli,
+            scaling=self._directory.scaling,
+            reference=self._directory.reference,
         )
 
     # ------------------------------------------------------------------
     # private helpers
     # ------------------------------------------------------------------
     def _build_neurons(self) -> dict[str, NeuronConfig]:
-        """
-        Build all neuron definitions.
-        """
-
-        neuron_configs: dict[str, NeuronConfig] = {}
-
-        neuron_dict = self._neurons_data.get("neurons", {})
-
-        for name, values in neuron_dict.items():
-
-            params = NeuronParams.model_validate(values["parameters"])
-
-            neuron_configs[name] = NeuronConfig(
+        return {
+            name: NeuronConfig(
                 name=name,
-                model=values["model"],
-                parameters=params,
-                psp_conversion_aliases=values.get("psp_conversion_aliases", {}),
+                model=entry.model,
+                parameters=entry.parameters,
+                psp_conversion_aliases=entry.psp_conversion_aliases,
             )
-
-        return neuron_configs
+            for name, entry in self._directory.neurons.neurons.items()
+        }
 
     def _build_populations(
         self,
         neurons: dict[str, NeuronConfig],
     ) -> dict[str, PopulationConfig]:
-        """
-        Build all populations and resolve neuron references.
-        """
-
         populations: dict[str, PopulationConfig] = {}
 
-        for values in self._populations_data.get("populations", []):
-
-            neuron_name = values["neuron"]
-
-            if neuron_name not in neurons:
+        for entry in self._directory.populations.populations:
+            if entry.neuron not in neurons:
                 raise ValueError(
-                    f"Unknown neuron definition '{neuron_name}' "
-                    f"referenced by population '{values['name']}'."
+                    f"Population '{entry.name}' references neuron '{entry.neuron}', "
+                    "which is not defined in neurons.yaml."
                 )
+            if entry.name in populations:
+                raise ValueError(f"Duplicate population name '{entry.name}'.")
 
-            population = PopulationConfig(
-                name=values["name"],
-                size=values["size"],
-                neuron=neurons[neuron_name],
-                V0_mean=values["V0_mean"],
-                V0_std=values["V0_std"],
-                background_indegree=values.get(
-                    "background_indegree",
-                    0.0,
-                ),
+            populations[entry.name] = PopulationConfig(
+                name=entry.name,
+                size=entry.size,
+                neuron=neurons[entry.neuron],
+                V0_mean=entry.V0_mean,
+                V0_std=entry.V0_std,
+                background_indegree=entry.background_indegree,
             )
-
-            if population.name in populations:
-                raise ValueError(f"Duplicate population name '{population.name}'.")
-            populations[population.name] = population
 
         return populations
 
@@ -144,82 +90,28 @@ class NetworkConfigLoader:
         self,
         populations: dict[str, PopulationConfig],
     ) -> list[ConnectionConfig]:
-        """
-        Build all recurrent connections.
-        """
+        for connection in self._directory.connectivity.connections:
+            for role, name in (
+                ("source", connection.source),
+                ("target", connection.target),
+            ):
+                if name not in populations:
+                    raise ValueError(
+                        f"Connection {role} population '{name}' is not defined "
+                        "in populations.yaml."
+                    )
 
-        connections: list[ConnectionConfig] = []
-
-        for values in self._connectivity_data.get("connections", []):
-
-            source = values["source"]
-            target = values["target"]
-
-            if source not in populations:
-                raise ValueError(f"Unknown source population '{source}'.")
-
-            if target not in populations:
-                raise ValueError(f"Unknown target population '{target}'.")
-
-            connections.append(
-                ConnectionConfig(
-                    source=source,
-                    target=target,
-                    n_synapses=values["n_synapses"],
-                    weight=WeightDistribution.model_validate(values["weight"]),
-                    delay=DelayDistribution.model_validate(values["delay"]),
-                )
-            )
-
-        return connections
+        return list(self._directory.connectivity.connections)
 
     def _build_background_inputs(
         self,
         populations: dict[str, PopulationConfig],
     ) -> dict[str, BackgroundInputConfig]:
-        """
-        Build background input definitions.
-        """
-
-        background_inputs: dict[str, BackgroundInputConfig] = {}
-
-        for population_name, values in self._background_inputs_data.get(
-            "background_inputs",
-            {},
-        ).items():
-
+        for population_name in self._directory.background_inputs.background_inputs:
             if population_name not in populations:
                 raise ValueError(
-                    f"Unknown population '{population_name}' "
-                    "referenced in background_inputs.yaml."
+                    f"background_inputs.yaml references population '{population_name}', "
+                    "which is not defined in populations.yaml."
                 )
 
-            background_inputs[population_name] = BackgroundInputConfig(
-                rate=values["rate"],
-                weight=WeightDistribution.model_validate(
-                    values["weight"]
-                ),
-                delay=DelayDistribution.model_validate(
-                    values["delay"]
-                ),
-            )
-
-        return background_inputs
-
-    def _build_stimuli(
-        self,
-        populations: dict[str, PopulationConfig],
-    ) -> list[StimulusConfig]:
-        """
-        Build targeted stimulation devices.
-
-        Each entry's `type` selects which stimulus subtype (dc / poisson /
-        inhomogeneous_poisson) it is validated against, so required fields
-        are enforced by the type itself. Target-population existence is
-        checked once, by NetworkConfig, after all stimuli are assembled.
-        """
-
-        return [
-            _stimulus_adapter.validate_python(values)
-            for values in self._stimuli_data.get("stimuli", [])
-        ]
+        return dict(self._directory.background_inputs.background_inputs)

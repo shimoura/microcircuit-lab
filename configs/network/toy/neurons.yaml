@@ -1,3 +1,15 @@
+# Named neuron definitions; populations.yaml refers to one of these by key.
+# `model` is the simulator's neuron model name. `parameters` is passed to
+# that model as-is -- the keys here are iaf_psc_exp's; a different model
+# takes different ones, and the backend (not this framework) is what
+# rejects an unknown parameter name. `I_e` (constant bias current, pA) is
+# the one parameter the framework reads back, since network scaling adds
+# DC compensation to it; it defaults to 0.0 if omitted.
+#
+# `psp_conversion_aliases` (optional, default: {}) is omitted here -- it is
+# only needed for `unit: PSP` connections on a model that names C_m/tau_m/
+# tau_syn_ex/tau_syn_in differently. Fields: NeuronEntry in
+# microcircuit_lab/config/files.py.
 neurons:
   excitatory:
     model: iaf_psc_exp

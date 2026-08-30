@@ -1,19 +1,22 @@
 """
 Utilities for reading and writing configuration files.
 
-This module intentionally performs no interpretation of the configuration.
-It only reads/writes YAML files as plain Python dictionaries.
-
-Construction of validated configuration objects is handled elsewhere.
+:func:`read_yaml` / :func:`write_yaml` do no interpretation -- they move
+plain dictionaries to and from disk. :func:`read_network_directory` is the
+one exception: it reads a whole ``configs/network/<name>/`` directory and
+validates it against the schema in :mod:`microcircuit_lab.config.files`,
+so a malformed file fails here with a clear message rather than deeper in
+the pipeline.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass
 
 import yaml
+
+from microcircuit_lab.config.files import NetworkDirectory, NetworkManifest
 
 
 def read_yaml(path: str | Path) -> dict[str, Any]:
@@ -46,32 +49,34 @@ def read_yaml(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def read_network_directory(path: str | Path) -> NetworkFiles:
+def read_network_directory(path: str | Path) -> NetworkDirectory:
     """
-    Read all YAML files from a network configuration directory.
+    Read and validate a ``configs/network/<name>/`` directory.
 
-    Parameters
-    ----------
-    path
-        Path to configs/network/.
-
-    Returns
-    -------
-    NetworkFiles
-        Data class containing the raw contents of all configuration files.
+    ``network.yaml`` names the other files; each is read and checked
+    against its model in :mod:`microcircuit_lab.config.files`. An unknown
+    or missing field raises here, with the file and field in the message
+    (e.g. ``populations.populations.0.size``). Cross-file references (a
+    population's neuron, a connection's populations) are resolved later,
+    when :class:`~microcircuit_lab.io.config.NetworkConfigLoader` assembles
+    the network.
     """
     path = Path(path)
-    manifest = read_yaml(path / "network.yaml")
+    manifest = NetworkManifest.model_validate(read_yaml(path / "network.yaml"))
 
-    return NetworkFiles(
-        populations=read_yaml(path / manifest["populations"]),
-        neurons=read_yaml(path / manifest["neurons"]),
-        connectivity=read_yaml(path / manifest["connectivity"]),
-        background_inputs=read_yaml(path / manifest["background_inputs"]),
-        scaling=read_yaml(path / manifest["scaling"]),
-        reference=read_yaml(path / manifest["reference"]),
-        stimuli=read_yaml(path / manifest["stimuli"]) if "stimuli" in manifest else {},
-    )
+    parts: dict[str, Any] = {
+        "manifest": manifest,
+        "populations": read_yaml(path / manifest.populations),
+        "neurons": read_yaml(path / manifest.neurons),
+        "connectivity": read_yaml(path / manifest.connectivity),
+        "background_inputs": read_yaml(path / manifest.background_inputs),
+        "scaling": read_yaml(path / manifest.scaling),
+        "reference": read_yaml(path / manifest.reference),
+    }
+    if manifest.stimuli is not None:
+        parts["stimuli"] = read_yaml(path / manifest.stimuli)
+
+    return NetworkDirectory.model_validate(parts)
 
 
 class FlowRecord(dict):
@@ -139,18 +144,3 @@ def write_yaml(
         text = f"{prefixed}\n{text}"
 
     path.write_text(text, encoding="utf-8")
-
-
-@dataclass(frozen=True)
-class NetworkFiles:
-    """
-    Raw contents of the network configuration files.
-    """
-
-    populations: dict[str, Any]
-    neurons: dict[str, Any]
-    connectivity: dict[str, Any]
-    background_inputs: dict[str, Any]
-    scaling: dict[str, Any]
-    reference: dict[str, Any]
-    stimuli: dict[str, Any]

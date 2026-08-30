@@ -1,3 +1,8 @@
+# Always-on background drive, one entry per population (keyed by the name
+# from populations.yaml). Each population's total background rate is this
+# `rate` times its `background_indegree`. `weight.unit` works exactly as in
+# connectivity.yaml. Add `background_mode: dc` at the top level to replace
+# the Poisson drive network-wide with a constant current of the same mean.
 background_inputs:
 
   E:

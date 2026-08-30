@@ -4,14 +4,16 @@
 # background input (background_indegree * background_inputs.yaml rate). At these
 # values the network spikes at ~20 Hz per population -- tune
 # background_indegree down for sparser, more fluctuation-driven firing.
+#
+# Fields: PopulationEntry in microcircuit_lab/config/files.py.
 populations:
 
   - name: E
     size: 800
-    neuron: excitatory
+    neuron: excitatory          # a key in neurons.yaml
     V0_mean: -65.0
     V0_std: 5.0
-    background_indegree: 1000
+    background_indegree: 1000   # optional (default: 0.0)
 
   - name: I
     size: 200
