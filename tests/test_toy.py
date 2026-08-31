@@ -31,6 +31,19 @@ def test_simulation_from_yaml_defaults_to_toy():
     assert simulation.simulation_config.t_sim == 1000.0
 
 
+def test_simulation_from_yaml_without_a_simulation_file_uses_defaults():
+    """A network with no configs/simulation/<name>.yaml still loads -- the
+    execution profile falls back to SimulationConfig() defaults, the same way
+    a missing configs/analysis/<name>.yaml does."""
+    from microcircuit_lab.config.simulation import SimulationConfig
+
+    simulation = Simulation.from_yaml(
+        network_name="toy", simulation_name="no_such_profile"
+    )
+
+    assert simulation.simulation_config == SimulationConfig()
+
+
 def test_toy_network_actually_spikes(tmp_path):
     """Regression test: a plausible-looking config can still fail to spike
     if the background drive is too weak. Run briefly and check for output."""

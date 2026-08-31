@@ -74,7 +74,10 @@ class Simulation:
         (``configs/simulation/<network_name>.yaml``), so this is the
         common case. Pass it explicitly to use a different, decoupled
         simulation profile instead (e.g. one "quick_test" profile shared
-        across several networks).
+        across several networks). If no such file exists, an all-defaults
+        ``SimulationConfig()`` is used instead of raising -- same graceful
+        degradation as ``AnalysisConfig.from_yaml`` -- so a new network
+        runs before you've written an execution profile for it.
 
         ``backend_options`` is forwarded unchanged to the chosen
         backend's constructor as extra keyword arguments (see
@@ -101,11 +104,12 @@ class Simulation:
             network_config,
         )
 
-        simulation_data = read_yaml(
-            Path(config_dir) / "simulation" / f"{simulation_name}.yaml"
+        simulation_path = Path(config_dir) / "simulation" / f"{simulation_name}.yaml"
+        simulation_config = (
+            SimulationConfig.model_validate(read_yaml(simulation_path))
+            if simulation_path.exists()
+            else SimulationConfig()
         )
-
-        simulation_config = SimulationConfig.model_validate(simulation_data)
 
         return cls(
             network=network,
