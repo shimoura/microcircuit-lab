@@ -1,12 +1,11 @@
-"""Create microcircuit_lab/generators/<name>/ with a main() stub, plus a
-default configs/simulation/<name>.yaml so the model runs the moment its
-network directory exists.
+"""Create microcircuit_lab/generators/<name>/ with a runnable main() example.
 
 A generator is any code whose output is a directory under
 configs/network/<name>/ that passes microcircuit_lab.io.validate_network_config.
-This just makes the package that `python scripts/generate.py` discovers --
-implement main() however you like (see microcircuit_lab/generators/pd14/
-for a minimal example, .../humam/ for a full one).
+This makes the package that `python scripts/generate.py` discovers, with a
+main() that already builds and writes a small example network -- edit the
+payload values to match your model (see microcircuit_lab/generators/pd14/
+for a minimal real one, .../humam/ for a full one).
 
 Usage: python scripts/new_generator.py <name>
 """
@@ -17,51 +16,92 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GENERATORS_DIR = REPO_ROOT / "microcircuit_lab" / "generators"
-SIMULATION_DIR = REPO_ROOT / "configs" / "simulation"
 
-STUB = '''"""{title} model -- turns source data into configs/network/{name}/."""
+STUB = '''\
+"""{title} model -- writes configs/network/{name}/ from this model's parameters.
+
+main() below builds a small example network to edit. When it outgrows one
+file, move the logic into a build.py and keep this __init__.py a one-line
+re-export, like generators/pd14 and .../humam.
+"""
 
 from __future__ import annotations
+
+import argparse
+
+from microcircuit_lab.generators.helpers import delay, weight
+from microcircuit_lab.io import write_network_directory
 
 
 def main(argv: list[str] | None = None) -> None:
     """Entry point for `python scripts/generate.py {name}`.
 
-    Write configs/network/{name}/ from this model's source data -- the
-    fields (with types, defaults, and which are required) are in
-    microcircuit_lab/config/files.py; configs/network/toy/ is a small one
-    to copy; microcircuit_lab/generators/pd14 (minimal) / .../humam (full)
-    are worked generators. Then finish with:
-
-        from microcircuit_lab.io import validate_network_config
-        validate_network_config("configs/network/{name}")
+    The four payloads below are the configs/network/{name}/ files with their
+    top-level wrapper key removed (write_network_directory adds it back) --
+    replace the example values with this model's numbers. Full field list,
+    types and which are required: microcircuit_lab/config/files.py.
     """
-    raise NotImplementedError("Implement {name} config generation here.")
+    argparse.ArgumentParser(
+        prog="generate.py {name}", description="Generate the {name} network config."
+    ).parse_args(argv)
+
+    # populations.yaml: one dict per population.
+    populations = [
+        {"name": "E", "size": 800, "neuron": "lif",
+         "V0_mean": -65.0, "V0_std": 5.0,      # initial Vm mean / std, mV
+         "background_indegree": 1000},          # optional (default 0.0)
+        {"name": "I", "size": 200, "neuron": "lif",
+         "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
+    ]
+
+    # neurons.yaml: neuron name -> simulator model + its parameters. The
+    # parameter keys are the backend's (iaf_psc_exp's here); this layer
+    # does not check them. populations refer to a neuron by its name.
+    neurons = {
+        "lif": {
+            "model": "iaf_psc_exp",
+            "parameters": {
+                "C_m": 250.0, "tau_m": 10.0, "E_L": -65.0,
+                "V_th": -50.0, "V_reset": -65.0, "t_ref": 2.0,
+                "tau_syn_ex": 0.5, "tau_syn_in": 0.5, "I_e": 0.0,
+            },
+        },
+    }
+
+    # connectivity.yaml: one dict per projection. n_synapses is the
+    # projection total (indegree * target size). weight unit is "PSP" (mV,
+    # converted), "PSC" (pA) or "native"; delay is in ms. Both infer a
+    # fixed vs normal spread from rel_std -- pass distribution= for others.
+    connections = [
+        {"source": "E", "target": "E", "n_synapses": 64000,
+         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+        {"source": "E", "target": "I", "n_synapses": 16000,
+         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+        {"source": "I", "target": "E", "n_synapses": 16000,
+         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+        {"source": "I", "target": "I", "n_synapses": 4000,
+         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+    ]
+
+    # background_inputs.yaml: population name -> always-on external drive.
+    background_inputs = {
+        "E": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
+        "I": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
+    }
+
+    write_network_directory(
+        "configs/network/{name}",
+        populations=populations,
+        neurons=neurons,
+        connections=connections,
+        background_inputs=background_inputs,
+    )
 '''
 
-# Kept short and generic on purpose: execution settings (simulated time,
-# threads, what to record) are not model-specific, so a new model starts
-# from the same defaults and edits only what it needs.
-SIMULATION_YAML = '''\
-# Execution profile for `python scripts/run_simulation.py --network {name}`.
-# Written from a default when the generator was scaffolded -- edit freely.
-t_sim: 1000.0
-resolution: 0.1
-rng_seed: 42
-local_num_threads: 4
-print_time: true
 
-recording:
-  spike_recording: true
-  voltage_recording: false
-  voltage_interval: 1.0
-
-output:
-  output_dir: "output/{name}"
-  overwrite: false
-  save_metadata: true
-  save_config: true
-'''
+def render_stub(name: str) -> str:
+    """The ``__init__.py`` contents for a new generator named ``name``."""
+    return STUB.replace("{title}", name.replace("_", " ").title()).replace("{name}", name)
 
 
 def main() -> None:
@@ -77,21 +117,12 @@ def main() -> None:
         sys.exit(f"{package} already exists.")
 
     package.mkdir(parents=True)
-    (package / "__init__.py").write_text(
-        STUB.format(name=name, title=name.replace("_", " ").title())
-    )
+    (package / "__init__.py").write_text(render_stub(name))
     print(f"Created {package / '__init__.py'}")
-
-    simulation_yaml = SIMULATION_DIR / f"{name}.yaml"
-    if simulation_yaml.exists():
-        print(f"Kept existing {simulation_yaml}")
-    else:
-        simulation_yaml.write_text(SIMULATION_YAML.format(name=name))
-        print(f"Created {simulation_yaml}")
-
     print(
-        f"Next: implement main(), then `python scripts/generate.py {name}`. "
-        f"Add a README.md and tests/test_{name}.py once the generator settles."
+        f"It writes an example network as-is; edit the payloads in main() to match "
+        f"your model, then `python scripts/generate.py {name}`. Add a README.md and "
+        f"tests/test_{name}.py once the generator settles."
     )
 
 
