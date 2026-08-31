@@ -19,6 +19,7 @@ from microcircuit_lab.generators.pd14.data import (
     connection_probabilities,
 )
 from microcircuit_lab.network.connectivity import num_synapses_from_conn_prob
+from microcircuit_lab.generators.helpers import delay, weight
 from microcircuit_lab.io.files import flow_records, write_yaml
 from microcircuit_lab.io.network_validation import validate_network_config
 
@@ -50,17 +51,8 @@ def _build_connectivity() -> dict[str, Any]:
                     "source": source,
                     "target": target,
                     "n_synapses": n_synapses,
-                    "weight": {
-                        "mean": weight_mean,
-                        "rel_std": 0.1,
-                        "distribution": "normal",
-                        "unit": "PSP",
-                    },
-                    "delay": {
-                        "mean": delay_mean,
-                        "rel_std": 0.5,
-                        "distribution": "normal",
-                    },
+                    "weight": weight(weight_mean, unit="PSP", rel_std=0.1),
+                    "delay": delay(delay_mean, rel_std=0.5),
                 }
             )
 

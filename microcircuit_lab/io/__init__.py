@@ -10,6 +10,7 @@ from .files import (
 from .measures import load_measures, load_or_compute, save_measures
 from .output import register_artifact, resolve_run_directory, save_run_outputs
 from .network_validation import validate_network_config
+from .network_directory import write_network_directory
 
 __all__ = [
     "NetworkConfigLoader",
@@ -23,5 +24,6 @@ __all__ = [
     "save_measures",
     "save_run_outputs",
     "validate_network_config",
+    "write_network_directory",
     "write_yaml",
 ]

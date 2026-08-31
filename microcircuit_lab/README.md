@@ -209,7 +209,7 @@ neurons:
 
 Only list the names that actually differ; an omitted key falls back to the canonical name unchanged. A compiled NESTML model is the most common case this solves; see [Using a NESTML model](#using-a-nestml-model).
 
-**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; use `microcircuit_lab.io.files.write_yaml`/`flow_records` in a generator to opt a field into the compact style.
+**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; `microcircuit_lab.io.write_network_directory` applies the compact style to `populations`, `connectivity`, and `background_inputs` automatically, or use `microcircuit_lab.io.files.write_yaml`/`flow_records` directly to opt a field in.
 
 ## Adding a new model
 
@@ -221,15 +221,15 @@ Best for exploring a new idea or a model small enough to write out by hand.
 
 1. Copy `configs/network/toy/` to `configs/network/<my_model>/` -- a small working example, one comment per file. `microcircuit_lab/config/files.py` is the full field list (types, defaults, which are required).
 2. Edit the values in `configs/network/<my_model>/*.yaml` by hand.
-3. Create `configs/simulation/<my_model>.yaml` (every field has a default, so an empty file is valid).
+3. Optionally add `configs/simulation/<my_model>.yaml` to change execution settings (simulated time, threads, what to record -- `microcircuit_lab/config/simulation.py` is the field list). Leave it out and the built-in `SimulationConfig` defaults are used, same as a missing `configs/analysis/<my_model>.yaml`.
 4. `python scripts/run_simulation.py --network <my_model>` -- loading the config validates every file; fix anything it reports.
 
 ### Option B: add a generator
 
 Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A generator is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. The only thing the shared `python scripts/generate.py <model>` CLI needs is a `microcircuit_lab/generators/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit.
 
-1. `python scripts/new_generator.py <model_name>` creates `microcircuit_lab/generators/<model_name>/__init__.py` with a `main()` stub -- just enough to be discovered -- and a default `configs/simulation/<model_name>.yaml` (execution settings aren't model-specific, so it starts from the same defaults as `toy`). Add a `README.md` and `tests/test_<model_name>.py` yourself.
-2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), write the files under `configs/network/<model_name>/` -- `microcircuit_lab/config/files.py` is the field list, and `microcircuit_lab/generators/humam/` (full config tree) or `microcircuit_lab/generators/pd14/` (one derived file, the rest static and checked in) show two shapes. Finish `main` with `microcircuit_lab.io.validate_network_config("configs/network/<model_name>")` so a mistake is a clear error now, not a puzzle later.
+1. `python scripts/new_generator.py <model_name>` creates `microcircuit_lab/generators/<model_name>/__init__.py` with a `main()` stub -- just enough to be discovered. Add a `README.md` and `tests/test_<model_name>.py` yourself.
+2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory("configs/network/<model_name>", populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/files.py` is the field list; `microcircuit_lab/generators/helpers.py` has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `microcircuit_lab/generators/pd14/` and `.../humam/` are worked generators.
 3. `python scripts/generate.py <model_name>` -- or `python scripts/generate.py` with no arguments to confirm it was discovered.
 
 ### Run it
