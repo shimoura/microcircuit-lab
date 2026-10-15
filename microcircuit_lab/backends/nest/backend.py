@@ -55,9 +55,24 @@ class NestBackend:
 
         self.populations: dict[str, nest.NodeCollection] = {}
         self.poisson_generators: dict[str, nest.NodeCollection] = {}
-        self.spike_recorders: dict[str, nest.NodeCollection] = {}
-        self.multimeters: dict[str, nest.NodeCollection] = {}
+        self.spike_recorder: nest.NodeCollection | None = None
+        self.multimeter: nest.NodeCollection | None = None
         self.stimulus_devices: list[tuple] = []
+        self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
+
+    @property
+    def spike_recorders(self) -> dict[str, nest.NodeCollection]:
+        """Backward-compatible mapping of population name to spike recorder."""
+        if self.spike_recorder is None:
+            return {}
+        return {pop: self.spike_recorder for pop in self.populations}
+
+    @property
+    def multimeters(self) -> dict[str, nest.NodeCollection]:
+        """Backward-compatible mapping of population name to multimeter."""
+        if self.multimeter is None:
+            return {}
+        return {pop: self.multimeter for pop in self.populations}
 
     def prepare_output(self, run_dir: Path) -> None:
         """
@@ -206,63 +221,63 @@ class NestBackend:
 
     def create_spike_recorders(self) -> None:
         """
-        Create one spike recorder per population.
+        Create one shared spike recorder for all populations.
 
         Records straight to ascii files under the directory set in
         prepare_output(), if any; otherwise keeps events in memory (NEST's
         default), matching the standalone-backend / no-output-requested case.
         """
 
-        for pop_name in self.populations:
-            params = (
-                {"record_to": "ascii", "label": pop_name}
-                if self._recordings_dir is not None
-                else {}
-            )
-            sr = nest.Create("spike_recorder", params=params)
-
-            self.spike_recorders[pop_name] = sr
+        params = (
+            {"record_to": "ascii", "label": "spikes"}
+            if self._recordings_dir is not None
+            else {}
+        )
+        self.spike_recorder = nest.Create("spike_recorder", params=params)
 
     def connect_spike_recorders(self) -> None:
         """
-        Connect populations to their spike recorders.
+        Connect populations to the shared spike recorder.
         """
 
         for pop_name in self.populations:
             nest.Connect(
                 self.get_population(pop_name),
-                self.spike_recorders[pop_name],
+                self.spike_recorder,
             )
 
     def create_multimeters(self) -> None:
         """
-        Create one multimeter per population, recording membrane potential.
+        Create one shared multimeter recording membrane potential.
 
         Records straight to ascii files under the directory set in
         prepare_output(), if any, same as spike recorders; otherwise
-        keeps events in NEST's default in-memory mode (not read back by
-        save_recordings() -- ascii mode is the supported path).
+        keeps events in NEST's default in-memory mode.
         """
 
-        for pop_name in self.populations:
-            params = {
-                "record_from": ["V_m"],
-                "interval": self._simulation_config.recording.voltage_interval,
-            }
-            if self._recordings_dir is not None:
-                params.update({"record_to": "ascii", "label": f"{pop_name}_voltage"})
+        params = {
+            "record_from": ["V_m"],
+            "interval": self._simulation_config.recording.voltage_interval,
+        }
+        if self._recordings_dir is not None:
+            params.update({"record_to": "ascii", "label": "voltage"})
 
-            self.multimeters[pop_name] = nest.Create("multimeter", params=params)
+        self.multimeter = nest.Create("multimeter", params=params)
 
     def connect_multimeters(self) -> None:
         """
-        Connect multimeters to their populations.
+        Connect the shared multimeter to populations (with optional subsampling).
         """
 
+        sample_size = self._simulation_config.recording.voltage_sample_size
+
         for pop_name in self.populations:
+            nodes = self.get_population(pop_name)
+            if sample_size is not None and sample_size < len(nodes):
+                nodes = nodes[:sample_size]
             nest.Connect(
-                self.multimeters[pop_name],
-                self.get_population(pop_name),
+                self.multimeter,
+                nodes,
             )
 
     def create_poisson_generators(self) -> None:
@@ -390,13 +405,16 @@ class NestBackend:
         logger.info("Simulation statistics")
         logger.info("---------------------")
 
-        for pop_name in self.spike_recorders:
-            sr = self.spike_recorders[pop_name]
+        if self.spike_recorder is None:
+            return
 
-            n_spikes = sr.n_events
+        t_sim_s = self._simulation_config.t_sim / 1000.0
+
+        for pop_name in self.populations:
+            events = self.get_spike_events(pop_name)
+            n_spikes = len(events["times"])
             n_neurons = self._network.config.populations[pop_name].size
-            t_sim_s = self._simulation_config.t_sim / 1000.0
-            mean_rate = n_spikes / (n_neurons * t_sim_s)
+            mean_rate = (n_spikes / (n_neurons * t_sim_s)) if (n_neurons and t_sim_s > 0) else 0.0
 
             logger.info(
                 "%-6s  N=%5d  spikes=%7d  rate=%8.3f Hz",
@@ -482,6 +500,47 @@ class NestBackend:
             max=float("inf"),
         )
 
+    def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Load all spike events from disk (ascii mode) or NEST memory (memory mode),
+        returning (sorted_senders, sorted_times) sorted by sender GID.
+        Cached on self._cached_spikes.
+        """
+        if self._cached_spikes is not None:
+            return self._cached_spikes
+
+        if self.spike_recorder is None:
+            self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))
+            return self._cached_spikes
+
+        if self.spike_recorder.get("record_to") == "ascii":
+            senders_list: list[np.ndarray] = []
+            times_list: list[np.ndarray] = []
+
+            for path in sorted(self._recordings_dir.glob("spikes-*.dat")):
+                data = pd.read_csv(path, sep="\t", comment="#")
+                senders_list.append(data["sender"].to_numpy())
+                times_list.append(data["time_ms"].to_numpy())
+
+            if not senders_list:
+                senders = np.array([], dtype=int)
+                times = np.array([], dtype=float)
+            else:
+                senders = np.concatenate(senders_list).astype(int)
+                times = np.concatenate(times_list).astype(float)
+        else:
+            events = self.spike_recorder.get("events")
+            senders = np.asarray(events["senders"], dtype=int)
+            times = np.asarray(events["times"], dtype=float)
+
+        if len(senders) > 0:
+            order = np.argsort(senders)
+            self._cached_spikes = (senders[order], times[order])
+        else:
+            self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))
+
+        return self._cached_spikes
+
     def get_spike_events(
         self,
         population: str,
@@ -489,38 +548,24 @@ class NestBackend:
         """
         Return spike events for one population as {"senders": ..., "times": ...}.
 
-        Transparently reads back from ascii files when the recorder is in
-        ascii mode (n_events stays available from NEST regardless of mode,
-        but the events themselves are only kept in memory in memory mode).
+        Filters the shared spike events by sender GID against this population's
+        node collection.
         """
-
-        sr = self.spike_recorders[population]
-
-        if sr.get("record_to") == "ascii":
-            return self._read_ascii_spike_events(population)
-
-        return sr.get("events")
-
-    def _read_ascii_spike_events(self, population: str) -> dict:
-        """
-        Read back the ascii files NEST wrote for one population, merging
-        the per-thread/per-process shards NEST writes under local_num_threads>1.
-        """
-
-        senders: list[np.ndarray] = []
-        times: list[np.ndarray] = []
-
-        for path in sorted(self._recordings_dir.glob(f"{population}-*.dat")):
-            data = pd.read_csv(path, sep="\t", comment="#")
-            senders.append(data["sender"].to_numpy())
-            times.append(data["time_ms"].to_numpy())
-
-        if not senders:
+        sorted_senders, sorted_times = self._load_spikes()
+        if len(sorted_senders) == 0:
             return {"senders": np.array([], dtype=int), "times": np.array([], dtype=float)}
 
+        nodes = self.get_population(population)
+        node_ids = nodes.tolist()
+        min_gid = int(node_ids[0])
+        max_gid = int(node_ids[-1])
+
+        left = np.searchsorted(sorted_senders, min_gid, side="left")
+        right = np.searchsorted(sorted_senders, max_gid + 1, side="left")
+
         return {
-            "senders": np.concatenate(senders).astype(int),
-            "times": np.concatenate(times).astype(float),
+            "senders": sorted_senders[left:right],
+            "times": sorted_times[left:right],
         }
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
@@ -539,27 +584,39 @@ class NestBackend:
         run_dir = Path(run_dir)
         paths: list[Path] = []
 
-        for pop_name, sr in self.spike_recorders.items():
-            if sr.get("record_to") == "ascii":
-                paths.extend(sorted(self._recordings_dir.glob(f"{pop_name}-*.dat")))
+        if self.spike_recorder is not None:
+            if self.spike_recorder.get("record_to") == "ascii":
+                paths.extend(sorted(self._recordings_dir.glob("spikes-*.dat")))
             else:
-                paths.append(self._write_memory_recording_csv(pop_name, run_dir))
+                paths.append(self._write_memory_recording_csv(run_dir))
 
-        for pop_name, mm in self.multimeters.items():
-            if mm.get("record_to") == "ascii":
-                paths.extend(sorted(self._recordings_dir.glob(f"{pop_name}_voltage-*.dat")))
+        if self.multimeter is not None:
+            if self.multimeter.get("record_to") == "ascii":
+                paths.extend(sorted(self._recordings_dir.glob("voltage-*.dat")))
 
         return paths
 
-    def _write_memory_recording_csv(self, pop_name: str, run_dir: Path) -> Path:
-        events = self.get_spike_events(pop_name)
+    def _write_memory_recording_csv(self, run_dir: Path) -> Path:
+        recordings_dir = run_dir / "recordings"
+        recordings_dir.mkdir(parents=True, exist_ok=True)
+        path = recordings_dir / "spikes.csv"
+
+        if self.spike_recorder is None:
+            np.savetxt(
+                path,
+                np.empty((0, 2)),
+                delimiter=",",
+                header="sender,time_ms",
+                comments="",
+                fmt=["%d", "%.3f"],
+            )
+            return path
+
+        events = self.spike_recorder.get("events")
         senders = np.asarray(events["senders"], dtype=int)
         times = np.asarray(events["times"], dtype=float)
         order = np.argsort(times)
 
-        recordings_dir = run_dir / "recordings"
-        recordings_dir.mkdir(parents=True, exist_ok=True)
-        path = recordings_dir / f"{pop_name}_spikes.csv"
         np.savetxt(
             path,
             np.column_stack([senders[order], times[order]]),

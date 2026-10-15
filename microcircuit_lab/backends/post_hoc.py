@@ -50,6 +50,7 @@ class PostHocBackend:
                 "PostHocBackend support. Re-run the simulation once to pick up "
                 "the new metadata field, then re-analysis will work."
             )
+        self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
     def get_population(self, name: str) -> np.ndarray:
         """Return this population's node IDs as a contiguous range, anchored
@@ -59,38 +60,67 @@ class PostHocBackend:
         first_gid = stats["first_gid"]
         return np.arange(first_gid, first_gid + stats["size"])
 
-    def get_spike_events(self, population: str) -> dict:
-        """Return {"senders": ..., "times": ...} read back from whatever
-        this run wrote for `population` -- ascii shards (NestBackend's
-        native recording path) if present, else the in-memory-mode CSV
-        fallback (NestBackend._write_memory_recording_csv)."""
+    def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
+        if self._cached_spikes is not None:
+            return self._cached_spikes
 
-        ascii_paths = sorted(self._recordings_dir.glob(f"{population}-*.dat"))
+        # 1. Consolidated ascii files written natively by NEST (spikes-*.dat)
+        ascii_paths = sorted(self._recordings_dir.glob("spikes-*.dat"))
         if ascii_paths:
-            senders: list[np.ndarray] = []
-            times: list[np.ndarray] = []
+            senders_list: list[np.ndarray] = []
+            times_list: list[np.ndarray] = []
             for path in ascii_paths:
                 data = pd.read_csv(path, sep="\t", comment="#")
-                senders.append(data["sender"].to_numpy())
-                times.append(data["time_ms"].to_numpy())
-            return {
-                "senders": np.concatenate(senders).astype(int),
-                "times": np.concatenate(times).astype(float),
-            }
+                senders_list.append(data["sender"].to_numpy())
+                times_list.append(data["time_ms"].to_numpy())
+            senders = np.concatenate(senders_list).astype(int) if senders_list else np.array([], dtype=int)
+            times = np.concatenate(times_list).astype(float) if times_list else np.array([], dtype=float)
 
-        csv_path = self._recordings_dir / f"{population}_spikes.csv"
-        if csv_path.exists():
-            data = pd.read_csv(csv_path)
-            return {
-                "senders": data["sender"].to_numpy(dtype=int),
-                "times": data["time_ms"].to_numpy(dtype=float),
-            }
+        # 2. Consolidated CSV written by memory-mode fallback (spikes.csv)
+        elif (self._recordings_dir / "spikes.csv").exists():
+            data = pd.read_csv(self._recordings_dir / "spikes.csv")
+            senders = data["sender"].to_numpy(dtype=int)
+            times = data["time_ms"].to_numpy(dtype=float)
 
-        raise ValueError(
-            f"No recordings found for population {population!r} under "
-            f"{self._recordings_dir} (expected '{population}-*.dat' or "
-            f"'{population}_spikes.csv')."
-        )
+        else:
+            raise ValueError(
+                f"No recordings found under {self._recordings_dir} "
+                f"(expected 'spikes-*.dat' or 'spikes.csv'). "
+                "This run predates recorder consolidation -- re-run the "
+                "simulation once to produce consolidated recordings, then "
+                "re-analysis will work."
+            )
+
+        if len(senders) > 0:
+            order = np.argsort(senders)
+            self._cached_spikes = (senders[order], times[order])
+        else:
+            self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))
+
+        return self._cached_spikes
+
+    def get_spike_events(self, population: str) -> dict:
+        """Return {"senders": ..., "times": ...} read back from whatever
+        this run wrote for `population`."""
+
+        sorted_senders, sorted_times = self._load_spikes()
+        if len(sorted_senders) == 0:
+            return {"senders": np.array([], dtype=int), "times": np.array([], dtype=float)}
+
+        if population not in self._metadata.get("populations", {}):
+            raise ValueError(f"Unknown population {population!r} in metadata.")
+
+        stats = self._metadata["populations"][population]
+        first_gid = stats["first_gid"]
+        last_gid = first_gid + stats["size"] - 1
+
+        left = np.searchsorted(sorted_senders, first_gid, side="left")
+        right = np.searchsorted(sorted_senders, last_gid + 1, side="left")
+
+        return {
+            "senders": sorted_senders[left:right],
+            "times": sorted_times[left:right],
+        }
 
     def prepare_output(self, run_dir: Path) -> None:
         raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
