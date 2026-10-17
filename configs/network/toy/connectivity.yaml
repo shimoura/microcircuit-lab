@@ -3,8 +3,10 @@
 # assuming iaf_psc_exp neurons. If your neuron model has no PSP
 # conversion formula (e.g. conductance-based), set weight.unit to PSC
 # (already a current amplitude in pA) or native (used exactly as given,
-# no interpretation) instead -- see WeightDistribution in
-# microcircuit_lab/config/network.py.
+# no interpretation) instead. A distribution is optional (default: normal).
+#
+# Fields: ConnectionConfig / WeightDistribution / DelayDistribution in
+# microcircuit_lab/config/{schema,network}.py.
 connections:
 
   - source: E

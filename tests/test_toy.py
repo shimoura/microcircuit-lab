@@ -5,6 +5,10 @@ This is the smallest complete example of the generic YAML network schema
 without writing any generator code.
 """
 
+import shutil
+
+import pytest
+
 from microcircuit_lab import Simulation
 from microcircuit_lab.io.config import NetworkConfigLoader
 from microcircuit_lab.io.files import read_network_directory
@@ -29,6 +33,26 @@ def test_simulation_from_yaml_defaults_to_toy():
 
     assert simulation.network.config.populations["E"].size == 800
     assert simulation.simulation_config.t_sim == 1000.0
+
+
+def test_simulation_from_yaml_without_a_simulation_file_uses_defaults(tmp_path):
+    """A network with no configs/simulation/<name>.yaml still loads -- the
+    execution profile falls back to SimulationConfig() defaults, the same way
+    a missing configs/analysis/<name>.yaml does."""
+    from microcircuit_lab.config.simulation import SimulationConfig
+
+    shutil.copytree("configs/network/toy", tmp_path / "network" / "toy")
+
+    simulation = Simulation.from_yaml(config_dir=tmp_path, network_name="toy")
+
+    assert simulation.simulation_config == SimulationConfig()
+
+
+def test_simulation_from_yaml_rejects_a_missing_named_profile():
+    """A profile named explicitly must exist: a misspelled name must not
+    silently run with the defaults."""
+    with pytest.raises(FileNotFoundError, match="no_such_profile"):
+        Simulation.from_yaml(network_name="toy", simulation_name="no_such_profile")
 
 
 def test_toy_network_actually_spikes(tmp_path):

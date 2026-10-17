@@ -4,7 +4,7 @@ Registry of bundled analysis diagnostics (raster, firing rates, ...).
 Same registry pattern already used elsewhere in this package for
 "pluggable, named thing" problems -- simulator backends
 (microcircuit_lab.backends.get_backend), model generators
-(microcircuit_lab.generators.GENERATOR_REGISTRY), spectral estimators
+(microcircuit_lab.generators.discover_generators), spectral estimators
 (power_spectrum.POWER_SPECTRUM_METHODS). Applied to plots: adding a new
 bundled diagnostic means writing its plot function + config class (the
 actual work, same as today) plus one register_plot(...) call -- no

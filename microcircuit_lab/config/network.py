@@ -148,29 +148,31 @@ class WeightDistribution(FrozenConfig):
       adding new conversion code, only picking the right unit.
     """
 
-    mean: float
+    mean: float = Field(description="amplitude; its meaning is set by `unit`")
 
-    rel_std: float = Field(ge=0.0)
+    rel_std: float = Field(ge=0.0, description="standard deviation / |mean|")
 
     distribution: Literal[
         "normal",
         "lognormal",
         "fixed",
-    ] = "normal"
+    ] = Field(default="normal", description="normal | lognormal | fixed")
 
     unit: Literal[
         "PSC",
         "PSP",
         "native",
-    ]
+    ] = Field(description="PSP (mV, converted) | PSC (pA, as-is) | native (as-is)")
 
 
 class DelayDistribution(FrozenConfig):
     """Distribution describing synaptic delays."""
 
-    mean: float = Field(gt=0.0)
-    rel_std: float = Field(ge=0.0)
-    distribution: Literal["normal", "lognormal", "fixed"] = "normal"
+    mean: float = Field(gt=0.0, description="mean delay (ms)")
+    rel_std: float = Field(ge=0.0, description="standard deviation / mean")
+    distribution: Literal["normal", "lognormal", "fixed"] = Field(
+        default="normal", description="normal | lognormal | fixed"
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -179,9 +181,9 @@ class DelayDistribution(FrozenConfig):
 class ConnectionConfig(FrozenConfig):
     """Description of one projection between two populations."""
 
-    source: str
-    target: str
-    n_synapses: int = Field(ge=0)
+    source: str = Field(description="source population name")
+    target: str = Field(description="target population name")
+    n_synapses: int = Field(ge=0, description="total number of synapses in the projection")
     weight: WeightDistribution
     delay: DelayDistribution
 
@@ -199,7 +201,7 @@ class BackgroundInputConfig(FrozenConfig):
     time-limited experimental perturbations instead.
     """
 
-    rate: float = Field(ge=0.0)
+    rate: float = Field(ge=0.0, description="background Poisson rate per connection (spikes/s)")
     weight: WeightDistribution
     delay: DelayDistribution
 

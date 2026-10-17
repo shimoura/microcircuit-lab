@@ -34,7 +34,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--simulation",
         default=None,
-        help="Simulation config name. Defaults to --network's value (see Simulation.from_yaml).",
+        help="Simulation config name (configs/simulation/<name>.yaml). Defaults to "
+        "--network's value; if no such file exists, built-in defaults are used "
+        "(see Simulation.from_yaml).",
     )
     parser.add_argument(
         "--run-dir",

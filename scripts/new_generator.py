@@ -1,185 +1,132 @@
-"""Scaffold a new model generator package.
+"""Create microcircuit_lab/generators/<name>/ with a runnable main() example.
 
-Creates `microcircuit_lab/generators/<name>/` with the standard generator
-skeleton -- `generator.py` with `add_cli`, so it's picked up automatically by
-`microcircuit_lab.generators.GENERATOR_REGISTRY`, plus a matching test
-stub under `tests/`. Fill in the `# TODO` markers in the generated
-`generator.py` with the actual data-translation logic for the new model.
+A generator is any code whose output is a directory under
+configs/network/<name>/ that passes microcircuit_lab.io.validate_network_config.
+This makes the package that `python scripts/generate.py` discovers, with a
+main() that already builds and writes a small example network -- edit the
+payload values to match your model (see microcircuit_lab/generators/pd14/
+for a minimal real one, .../humam/ for a full one).
 
 Usage: python scripts/new_generator.py <name>
 """
 
-import argparse
 import keyword
+import sys
 from pathlib import Path
 
-GENERATORS_DIR = Path(__file__).resolve().parent.parent / "microcircuit_lab" / "generators"
-TESTS_DIR = Path(__file__).resolve().parent.parent / "tests"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+GENERATORS_DIR = REPO_ROOT / "microcircuit_lab" / "generators"
 
-INIT_TEMPLATE = '''"""{title} model support and configuration generation."""
+STUB = '''\
+"""{title} model -- writes configs/network/{name}/ from this model's parameters.
 
-from .generator import generate_{name}_configs
-
-__all__ = ["generate_{name}_configs"]
-'''
-
-GENERATOR_TEMPLATE = '''"""Generate network configs for the {title} model.
-
-# TODO: describe where the source data for this model comes from and what
-# generate_{name}_configs() derives (e.g. only connectivity.yaml, or the
-# full network config tree).
+main() below builds a small example network to edit. When it outgrows one
+file, move the logic into a build.py and keep this __init__.py a one-line
+re-export, like generators/pd14 and .../humam.
 """
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any
 
-from microcircuit_lab.io.files import write_yaml
+from microcircuit_lab.io import delay, weight, write_network_directory
 
 
-def _build_{name}() -> dict[str, Any]:
-    """Translate this model's raw source data into config-ready data.
+def main(argv: list[str] | None = None) -> None:
+    """Entry point for `python scripts/generate.py {name}`.
 
-    # TODO: replace this stub with the real translation logic, returning
-    # data shaped for the config file(s) generate_{name}_configs() writes.
+    The four payloads below are the configs/network/{name}/ files with their
+    top-level wrapper key removed (write_network_directory adds it back) --
+    replace the example values with this model's numbers. Full field list,
+    types and which are required: microcircuit_lab/config/schema.py.
     """
-
-    raise NotImplementedError("_build_{name} has not been implemented yet")
-
-
-def generate_{name}_configs(
-    *,
-    config_dir: str | Path = "configs",
-    network_name: str = "{name}",
-) -> Path:
-    """Write the {title} network config and return its path.
-
-    # TODO: adjust which file(s) this writes -- a single derived YAML file,
-    # or the full network config tree, depending on how much of this
-    # model's config is actually derived versus static. See other
-    # generators under microcircuit_lab/generators/ for examples of both.
-    """
-
-    output_path = Path(config_dir) / "network" / network_name / "connectivity.yaml"
-    data = _build_{name}()
-    write_yaml(output_path, data)
-    return output_path
-
-
-def _add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--config-dir", default="configs")
-    parser.add_argument("--network-name", default="{name}")
-
-
-def _run(args: argparse.Namespace) -> None:
-    output_path = generate_{name}_configs(
-        config_dir=args.config_dir,
-        network_name=args.network_name,
-    )
-    print(f"Generated config: {{output_path}}")
-
-
-def add_cli(subparser: argparse.ArgumentParser) -> None:
-    """Register {title} generation arguments on a ``scripts/generate.py`` subparser."""
-
-    _add_arguments(subparser)
-    subparser.set_defaults(func=_run)
-
-
-def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate the {title} network config from source data.",
+        prog="generate.py {name}", description="Generate the {name} network config."
     )
-    _add_arguments(parser)
-    args = parser.parse_args()
-    _run(args)
+    parser.add_argument("--config-dir", default="configs")
+    args = parser.parse_args(argv)
 
+    # populations.yaml: one dict per population. V0_mean / V0_std are the
+    # mean and spread of the initial membrane potential (mV);
+    # background_indegree is optional (default 0.0).
+    populations = [
+        {"name": "E", "size": 800, "neuron": "lif",
+         "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
+        {"name": "I", "size": 200, "neuron": "lif",
+         "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
+    ]
 
-if __name__ == "__main__":
-    main()
+    # neurons.yaml: neuron name -> simulator model + its parameters. The
+    # parameter keys are the backend's (iaf_psc_exp's here); this layer
+    # does not check them. populations refer to a neuron by its name.
+    neurons = {
+        "lif": {
+            "model": "iaf_psc_exp",
+            "parameters": {
+                "C_m": 250.0, "tau_m": 10.0, "E_L": -65.0,
+                "V_th": -50.0, "V_reset": -65.0, "t_ref": 2.0,
+                "tau_syn_ex": 0.5, "tau_syn_in": 0.5, "I_e": 0.0,
+            },
+        },
+    }
+
+    # connectivity.yaml: one dict per projection. n_synapses is the
+    # projection total (indegree * target size). weight unit is "PSP" (mV,
+    # converted), "PSC" (pA) or "native"; delay is in ms. Both infer a
+    # fixed vs normal spread from rel_std -- pass distribution= for others.
+    connections = [
+        {"source": "E", "target": "E", "n_synapses": 64000,
+         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+        {"source": "E", "target": "I", "n_synapses": 16000,
+         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+        {"source": "I", "target": "E", "n_synapses": 16000,
+         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+        {"source": "I", "target": "I", "n_synapses": 4000,
+         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+    ]
+
+    # background_inputs.yaml: population name -> always-on external drive.
+    background_inputs = {
+        "E": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
+        "I": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
+    }
+
+    write_network_directory(
+        Path(args.config_dir) / "network" / "{name}",
+        populations=populations,
+        neurons=neurons,
+        connections=connections,
+        background_inputs=background_inputs,
+    )
 '''
 
-README_TEMPLATE = """# {title}
 
-# TODO: describe this model -- what it represents, where its source data
-# comes from, and any citation for the original reference.
-
-## Usage
-
-```bash
-python scripts/generate.py {name} --help
-```
-
-## Data
-
-# TODO: describe what's under `data/` (if anything) and how it was obtained.
-"""
-
-TEST_TEMPLATE = '''"""Tests for {title} configuration generation."""
-
-from pathlib import Path
-
-import yaml
-
-from microcircuit_lab.generators.{name} import generate_{name}_configs
-
-
-def test_generate_{name}_configs_writes_valid_yaml(tmp_path: Path) -> None:
-    output_path = generate_{name}_configs(config_dir=tmp_path, network_name="{name}_test")
-
-    data = yaml.safe_load(output_path.read_text())
-    assert data
-'''
-
-
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("name", help="model name, e.g. 'my_model' (used as the package/CLI name)")
-    return parser.parse_args()
-
-
-def _validate_name(name: str) -> None:
-    if not name.isidentifier() or keyword.iskeyword(name):
-        raise SystemExit(f"'{name}' is not a valid Python identifier for a package name.")
-
-    if name != name.lower():
-        raise SystemExit(f"'{name}' should be lowercase, to match the other model packages.")
-
-    if (GENERATORS_DIR / name).exists():
-        raise SystemExit(f"microcircuit_lab/generators/{name}/ already exists.")
-
-
-def _write(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content)
-    print(f"Created {path}")
-
-
-def scaffold(name: str) -> None:
-    _validate_name(name)
-
-    title = name.replace("_", " ").title()
-    package_dir = GENERATORS_DIR / name
-
-    _write(package_dir / "__init__.py", INIT_TEMPLATE.format(name=name, title=title))
-    _write(package_dir / "generator.py", GENERATOR_TEMPLATE.format(name=name, title=title))
-    _write(package_dir / "README.md", README_TEMPLATE.format(name=name, title=title))
-    _write(TESTS_DIR / f"test_{name}.py", TEST_TEMPLATE.format(name=name, title=title))
-
-    print(
-        f"\nNext steps:\n"
-        f"  1. Fill in the TODOs in microcircuit_lab/generators/{name}/generator.py\n"
-        f"  2. Fill in microcircuit_lab/generators/{name}/README.md\n"
-        f"  3. Update tests/test_{name}.py to match what generate_{name}_configs actually does\n"
-        f"  4. Run: python scripts/generate.py --help  # '{name}' should already be listed"
-    )
+def render_stub(name: str) -> str:
+    """The ``__init__.py`` contents for a new generator named ``name``."""
+    return STUB.replace("{title}", name.replace("_", " ").title()).replace("{name}", name)
 
 
 def main() -> None:
-    args = _parse_args()
-    scaffold(args.name)
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python scripts/new_generator.py <name>")
+
+    name = sys.argv[1]
+    if not name.isidentifier() or keyword.iskeyword(name) or name != name.lower():
+        sys.exit(f"{name!r} must be a lowercase Python identifier.")
+
+    package = GENERATORS_DIR / name
+    if package.exists():
+        sys.exit(f"{package} already exists.")
+
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text(render_stub(name))
+    print(f"Created {package / '__init__.py'}")
+    print(
+        f"It writes an example network as-is; edit the payloads in main() to match "
+        f"your model, then `python scripts/generate.py {name}`. Add a README.md and "
+        f"tests/test_{name}.py once the generator settles."
+    )
 
 
 if __name__ == "__main__":

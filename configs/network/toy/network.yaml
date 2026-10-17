@@ -1,3 +1,6 @@
+# Manifest: maps each part of the network to its file in this directory.
+# All six entries below are required; add `stimuli: stimuli.yaml` to also
+# load a stimuli file. Unknown keys here are rejected.
 populations: populations.yaml
 neurons: neurons.yaml
 connectivity: connectivity.yaml

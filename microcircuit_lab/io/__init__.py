@@ -1,8 +1,7 @@
-"""Configuration file loading and simulation run output writing."""
+"""Configuration file loading, validation, and simulation run output writing."""
 
 from .config import NetworkConfigLoader
 from .files import (
-    NetworkFiles,
     flow_records,
     read_network_directory,
     read_yaml,
@@ -10,10 +9,12 @@ from .files import (
 )
 from .measures import load_measures, load_or_compute, save_measures
 from .output import register_artifact, resolve_run_directory, save_run_outputs
+from .network_validation import validate_network_config
+from .network_directory import delay, weight, write_network_directory
 
 __all__ = [
     "NetworkConfigLoader",
-    "NetworkFiles",
+    "delay",
     "flow_records",
     "load_measures",
     "load_or_compute",
@@ -23,5 +24,8 @@ __all__ = [
     "resolve_run_directory",
     "save_measures",
     "save_run_outputs",
+    "validate_network_config",
+    "weight",
+    "write_network_directory",
     "write_yaml",
 ]

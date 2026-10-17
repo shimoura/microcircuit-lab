@@ -11,6 +11,7 @@ from typing import Any
 
 from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
 from microcircuit_lab.io.files import flow_records, read_yaml, write_yaml
+from microcircuit_lab.io.network_validation import validate_network_config
 
 
 LAYER_ALIAS = {
@@ -601,7 +602,7 @@ def generate_humam_configs(
             neurons_header = (
                 f"Compensated for {other_area_count} area(s) not simulated: each "
                 "population's I_e includes a DC current for the cortical input it "
-                "would otherwise be missing (see humam.generator._compute_missing_area_dc).\n"
+                "would otherwise be missing (see humam.build._compute_missing_area_dc).\n"
                 f"I_e compensation range: {min(values):.3f} to {max(values):.3f} pA.\n"
                 "Regenerate with --no-compensate-missing-areas for a genuinely "
                 "isolated area instead (no compensation)."
@@ -668,23 +669,20 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_cli(subparser: argparse.ArgumentParser) -> None:
-    """Register HuMAM generation arguments on a ``scripts/generate.py`` subparser."""
-
-    _add_arguments(subparser)
-    subparser.set_defaults(func=_run)
-
-
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    """Entry point. ``scripts/generate.py`` discovers this function (via
+    ``microcircuit_lab.generators.humam.main``) and forwards it the
+    arguments after the model name.
+    """
     parser = argparse.ArgumentParser(
+        prog="generate.py humam",
         description=(
             "Generate HuMAM configs from source data. "
             "Use --area all for a full multi-area network."
         ),
     )
     _add_arguments(parser)
-    args = parser.parse_args()
-    _run(args)
+    _run(parser.parse_args(argv))
 
 
 def _run(args: argparse.Namespace) -> None:
@@ -708,6 +706,9 @@ def _run(args: argparse.Namespace) -> None:
     )
     print(f"Generated network config in: {paths['network_dir']}")
     print(f"Generated simulation config: {paths['simulation_path']}")
+
+    validate_network_config(paths["network_dir"])
+    print("Validated: config is a usable input to the simulation pipeline.")
 
     if paths.get("other_area_count", 0) > 0:
         if paths["missing_area_compensation_applied"]:
