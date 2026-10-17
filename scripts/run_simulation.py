@@ -17,8 +17,8 @@ from microcircuit_lab.analysis import (
     PLOT_REGISTRY,
     check_reference_rates,
     check_unknown_plot_sections,
+    list_areas,
 )
-from microcircuit_lab.analysis._utils import list_areas
 from microcircuit_lab.config import AnalysisConfig
 from microcircuit_lab.io.output import register_artifact
 
@@ -149,7 +149,7 @@ def main() -> None:
         if not areas:
             raise SystemExit("--area all needs a multi-area network (<area>__<population> names).")
         plot_targets = [(a, simulation.output_dir / "plots" / a) for a in areas]
-        area = None  # reference check below covers the whole network
+        area = None
     else:
         plot_targets = [(area, simulation.output_dir / "plots")]
 
@@ -171,10 +171,13 @@ def main() -> None:
             spec.plot_fn(simulation, **kwargs)
             register_artifact(simulation.output_dir, "plots", save_path)
             if not args.show:
-                plt.close("all")  # one figure per area adds up
+                plt.close("all")
 
     print(f"Plots saved under: {simulation.output_dir / 'plots'}")
-    print(f"Re-plot without re-simulating: python scripts/run_simulation.py --run-dir {simulation.output_dir}")
+    print(
+        "Re-plot without re-simulating: "
+        f"python scripts/run_simulation.py --run-dir {simulation.output_dir}"
+    )
 
     if args.validate_reference:
         try:

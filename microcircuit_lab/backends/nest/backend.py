@@ -60,20 +60,6 @@ class NestBackend:
         self.stimulus_devices: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
-    @property
-    def spike_recorders(self) -> dict[str, nest.NodeCollection]:
-        """Backward-compatible mapping of population name to spike recorder."""
-        if self.spike_recorder is None:
-            return {}
-        return {pop: self.spike_recorder for pop in self.populations}
-
-    @property
-    def multimeters(self) -> dict[str, nest.NodeCollection]:
-        """Backward-compatible mapping of population name to multimeter."""
-        if self.multimeter is None:
-            return {}
-        return {pop: self.multimeter for pop in self.populations}
-
     def prepare_output(self, run_dir: Path) -> None:
         """
         Point NEST's own ascii recording backend at ``run_dir/recordings``.
@@ -81,7 +67,7 @@ class NestBackend:
         NEST then writes spikes straight to disk during simulate() -- it
         never has to hold the full spike history in Python memory, and we
         never re-serialize what NEST already wrote. Must be called before
-        build(); without it, spike_recorders fall back to NEST's in-memory
+        build(); without it, the spike recorder falls back to NEST's in-memory
         mode (used transparently by get_spike_events/save_recordings).
         """
 
@@ -391,10 +377,11 @@ class NestBackend:
 
     def simulate(self) -> None:
         """
-        Run the simulation.
+        Run the simulation, discarding any spike events cached from before it.
         """
 
         nest.Simulate(self._simulation_config.t_sim)
+        self._cached_spikes = None
 
     def print_statistics(self) -> None:
         """
@@ -534,7 +521,7 @@ class NestBackend:
             times = np.asarray(events["times"], dtype=float)
 
         if len(senders) > 0:
-            order = np.argsort(senders)
+            order = np.argsort(senders, kind="stable")
             self._cached_spikes = (senders[order], times[order])
         else:
             self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))

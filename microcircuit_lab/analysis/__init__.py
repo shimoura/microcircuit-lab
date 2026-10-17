@@ -1,5 +1,6 @@
 """Analysis and visualization utilities."""
 
+from ._utils import list_areas
 from .firing_rates import (
     cached_population_firing_rates,
     check_reference_rates,
@@ -35,6 +36,7 @@ from .registry import PLOT_REGISTRY, PlotSpec, check_unknown_plot_sections, regi
 
 __all__ = [
     "PLOT_REGISTRY",
+    "list_areas",
     "FiringRatePlotConfig",
     "IsiCvPlotConfig",
     "POWER_SPECTRUM_METHODS",

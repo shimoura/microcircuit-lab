@@ -394,7 +394,7 @@ from microcircuit_lab.analysis import plot_firing_rates
 plot_firing_rates(simulation, begin=500.0)
 ```
 
-For multi-area networks, select one area with `area="V1"`. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
+For multi-area networks, select one area with `area="V1"`; `list_areas(simulation)` returns the available area names. The string `"all"` is only understood by `scripts/run_simulation.py` (which loops over the areas); the plot functions themselves take one area at a time. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
 
 ## Run outputs
 
@@ -412,6 +412,8 @@ For multi-area networks, select one area with `area="V1"`. Published reference m
 **Recordings are written by the backend, not re-serialized by microcircuit_lab.** With the NEST backend, `recordings/` is pointed at NEST's own ascii recording backend before the network is built, so NEST writes spikes straight to disk during `simulate()`: `spikes-<id>-<thread>.dat`, one shard per thread/process, NEST's native naming and tab-separated `sender  time_ms` format. Nothing is buffered in Python memory or written twice.
 
 `Simulation`/plotting code still reads spikes back through `backend.get_spike_events(population)`, which transparently merges those shards and slices by GID range when needed (e.g. for `metadata.json`'s statistics or `plot_raster`) -- callers never need to know recording happened natively. A backend without native file recording (or the NEST backend used standalone, without `prepare_output()`) falls back to writing a consolidated `spikes.csv` from the in-memory events instead.
+
+Voltage recording (`recording.voltage_recording: true`) uses one shared multimeter the same way and writes `voltage-<id>-<thread>.dat`. By default it records only the first 5 neurons of each population (`recording.voltage_sample_size: 5`), which keeps memory and file sizes small on large networks; set another number `N` to change that, or `null` to record every neuron.
 
 `metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `scripts/run_simulation.py` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`. Any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
 

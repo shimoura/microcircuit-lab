@@ -61,10 +61,15 @@ class PostHocBackend:
         return np.arange(first_gid, first_gid + stats["size"])
 
     def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
+        """Return all spikes of the run as (senders, times), sorted by sender.
+
+        Reads the ascii shards NEST wrote natively (``spikes-*.dat``) if
+        present, else the in-memory-mode fallback (``spikes.csv``). Cached.
+        """
+
         if self._cached_spikes is not None:
             return self._cached_spikes
 
-        # 1. Consolidated ascii files written natively by NEST (spikes-*.dat)
         ascii_paths = sorted(self._recordings_dir.glob("spikes-*.dat"))
         if ascii_paths:
             senders_list: list[np.ndarray] = []
@@ -73,10 +78,13 @@ class PostHocBackend:
                 data = pd.read_csv(path, sep="\t", comment="#")
                 senders_list.append(data["sender"].to_numpy())
                 times_list.append(data["time_ms"].to_numpy())
-            senders = np.concatenate(senders_list).astype(int) if senders_list else np.array([], dtype=int)
-            times = np.concatenate(times_list).astype(float) if times_list else np.array([], dtype=float)
+            if senders_list:
+                senders = np.concatenate(senders_list).astype(int)
+                times = np.concatenate(times_list).astype(float)
+            else:
+                senders = np.array([], dtype=int)
+                times = np.array([], dtype=float)
 
-        # 2. Consolidated CSV written by memory-mode fallback (spikes.csv)
         elif (self._recordings_dir / "spikes.csv").exists():
             data = pd.read_csv(self._recordings_dir / "spikes.csv")
             senders = data["sender"].to_numpy(dtype=int)
@@ -92,7 +100,7 @@ class PostHocBackend:
             )
 
         if len(senders) > 0:
-            order = np.argsort(senders)
+            order = np.argsort(senders, kind="stable")
             self._cached_spikes = (senders[order], times[order])
         else:
             self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))

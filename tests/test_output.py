@@ -64,8 +64,7 @@ def test_native_ascii_recording_writes_directly_to_disk(tmp_path: Path) -> None:
     backend.prepare_output(tmp_path)
     backend.build()
 
-    for sr in backend.spike_recorders.values():
-        assert sr.get("record_to") == "ascii"
+    assert backend.spike_recorder.get("record_to") == "ascii"
 
     backend.simulate()
 
@@ -93,8 +92,7 @@ def test_memory_mode_fallback_writes_csv_when_no_prepare_output(tmp_path: Path) 
     backend = NestBackend(network=network, simulation_config=simulation_config)
     backend.build()
 
-    for sr in backend.spike_recorders.values():
-        assert sr.get("record_to") == "memory"
+    assert backend.spike_recorder.get("record_to") == "memory"
 
     backend.simulate()
 
@@ -266,8 +264,9 @@ def test_register_artifact_appends_and_is_noop_without_metadata(tmp_path: Path) 
 
 
 def test_voltage_recording_subsampling(tmp_path: Path) -> None:
+    """voltage_sample_size records the first N neurons of every population."""
+
     network = _toy_network()
-    # Toy E has 10 neurons, I has 2 neurons. With sample size 3, E records 3, I records 2 (min(size, 3)).
     simulation_config = SimulationConfig.model_validate(
         {
             "t_sim": 50.0,
@@ -291,7 +290,6 @@ def test_voltage_recording_subsampling(tmp_path: Path) -> None:
     assert voltage_files
     data = pd.read_csv(voltage_files[0], sep="\t", comment="#")
     senders = set(data["sender"].unique())
-    # 3 from E (GIDs 1,2,3) + 3 from I (GIDs 801,802,803) = 6 total
     assert len(senders) == 6
     assert senders == {1, 2, 3, 801, 802, 803}
 
