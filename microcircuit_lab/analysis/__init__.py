@@ -1,6 +1,6 @@
 """Analysis and visualization utilities."""
 
-from ._utils import list_areas
+from ._utils import list_areas, select_populations
 from .firing_rates import (
     cached_population_firing_rates,
     check_reference_rates,
@@ -20,6 +20,8 @@ from .plot_styles import (
     PlotStyle,
     PowerSpectrumPlotConfig,
     RasterPlotConfig,
+    population_color,
+    population_label,
 )
 from .power_spectrum import (
     POWER_SPECTRUM_METHODS,
@@ -32,7 +34,15 @@ from .raster import plot_raster
 # Imported after the four plot modules above, whose module-level
 # register_plot(...) calls populate PLOT_REGISTRY as a side effect of
 # the imports already happening here.
-from .registry import PLOT_REGISTRY, PlotSpec, check_unknown_plot_sections, register_plot
+from .registry import (
+    PLOT_REGISTRY,
+    PlotSpec,
+    call_plot,
+    check_unknown_plot_sections,
+    discover_plots,
+    plot_enabled_in_config,
+    register_plot,
+)
 
 __all__ = [
     "PLOT_REGISTRY",
@@ -46,6 +56,7 @@ __all__ = [
     "RasterPlotConfig",
     "cached_population_firing_rates",
     "cached_power_spectrum",
+    "call_plot",
     "check_reference_rates",
     "check_unknown_plot_sections",
     "compute_neuron_firing_rates",
@@ -54,9 +65,14 @@ __all__ = [
     "compute_population_isi_cv",
     "compute_power_spectrum",
     "compute_reference_deviation",
+    "discover_plots",
     "plot_firing_rates",
     "plot_isi_cv",
     "plot_power_spectrum",
+    "plot_enabled_in_config",
     "plot_raster",
+    "population_color",
+    "population_label",
     "register_plot",
+    "select_populations",
 ]
