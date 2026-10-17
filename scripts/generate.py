@@ -13,12 +13,13 @@ added. This dispatcher just forwards the remaining arguments to that
 
 import sys
 
-from microcircuit_lab.generators import GENERATORS
+from microcircuit_lab.generators import discover_generators
 
 
 def main() -> None:
     argv = sys.argv[1:]
-    names = sorted(GENERATORS)
+    generators = discover_generators()
+    names = sorted(generators)
 
     if not argv or argv[0] in ("-h", "--help"):
         listing = "\n".join(f"  {name}" for name in names) or "  (none found)"
@@ -27,10 +28,10 @@ def main() -> None:
         return
 
     name, rest = argv[0], argv[1:]
-    if name not in GENERATORS:
+    if name not in generators:
         sys.exit(f"Unknown model {name!r}. Available: {', '.join(names) or '(none)'}")
 
-    GENERATORS[name].main(rest)
+    generators[name](rest)
 
 
 if __name__ == "__main__":

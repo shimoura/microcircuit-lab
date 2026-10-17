@@ -3,7 +3,7 @@
 Spectral estimation is pluggable: POWER_SPECTRUM_METHODS maps a method
 name to an estimator function, the same registry pattern used for
 simulator backends (microcircuit_lab.backends.get_backend) and model
-generators (microcircuit_lab.generators.GENERATORS). Add a new method
+generators (microcircuit_lab.generators.discover_generators). Add a new method
 by registering it here; compute_power_spectrum/plot_power_spectrum never
 need to change.
 """

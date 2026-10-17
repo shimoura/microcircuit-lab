@@ -28,9 +28,9 @@ re-export, like generators/pd14 and .../humam.
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
-from microcircuit_lab.generators.helpers import delay, weight
-from microcircuit_lab.io import write_network_directory
+from microcircuit_lab.io import delay, weight, write_network_directory
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -39,17 +39,20 @@ def main(argv: list[str] | None = None) -> None:
     The four payloads below are the configs/network/{name}/ files with their
     top-level wrapper key removed (write_network_directory adds it back) --
     replace the example values with this model's numbers. Full field list,
-    types and which are required: microcircuit_lab/config/files.py.
+    types and which are required: microcircuit_lab/config/schema.py.
     """
-    argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         prog="generate.py {name}", description="Generate the {name} network config."
-    ).parse_args(argv)
+    )
+    parser.add_argument("--config-dir", default="configs")
+    args = parser.parse_args(argv)
 
-    # populations.yaml: one dict per population.
+    # populations.yaml: one dict per population. V0_mean / V0_std are the
+    # mean and spread of the initial membrane potential (mV);
+    # background_indegree is optional (default 0.0).
     populations = [
         {"name": "E", "size": 800, "neuron": "lif",
-         "V0_mean": -65.0, "V0_std": 5.0,      # initial Vm mean / std, mV
-         "background_indegree": 1000},          # optional (default 0.0)
+         "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
         {"name": "I", "size": 200, "neuron": "lif",
          "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
     ]
@@ -90,7 +93,7 @@ def main(argv: list[str] | None = None) -> None:
     }
 
     write_network_directory(
-        "configs/network/{name}",
+        Path(args.config_dir) / "network" / "{name}",
         populations=populations,
         neurons=neurons,
         connections=connections,

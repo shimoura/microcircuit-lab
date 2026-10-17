@@ -18,16 +18,12 @@ from microcircuit_lab.backends import BackendName, SimulationBackend, get_backen
 from microcircuit_lab.backends.post_hoc import PostHocBackend
 from microcircuit_lab.network import Network
 
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.network.preprocessing import NetworkPreprocessor
+from microcircuit_lab.io.network_validation import validate_network_config
 
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 
-from microcircuit_lab.io.files import (
-    read_network_directory,
-    read_yaml,
-)
+from microcircuit_lab.io.files import read_yaml
 from microcircuit_lab.io.output import resolve_run_directory, save_run_outputs
 
 from pathlib import Path
@@ -74,10 +70,13 @@ class Simulation:
         (``configs/simulation/<network_name>.yaml``), so this is the
         common case. Pass it explicitly to use a different, decoupled
         simulation profile instead (e.g. one "quick_test" profile shared
-        across several networks). If no such file exists, an all-defaults
-        ``SimulationConfig()`` is used instead of raising -- same graceful
-        degradation as ``AnalysisConfig.from_yaml`` -- so a new network
-        runs before you've written an execution profile for it.
+        across several networks). If the default profile file does not
+        exist, an all-defaults ``SimulationConfig()`` is used -- same
+        graceful degradation as ``AnalysisConfig.from_yaml`` -- so a new
+        network runs before you've written an execution profile for it.
+        A profile named explicitly that does not exist raises
+        ``FileNotFoundError``, so a misspelled name is not silently
+        replaced by the defaults.
 
         ``backend_options`` is forwarded unchanged to the chosen
         backend's constructor as extra keyword arguments (see
@@ -86,30 +85,20 @@ class Simulation:
         ``extension_modules`` for loading compiled NEST/NESTML models.
         """
 
+        profile_is_explicit = simulation_name is not None
         simulation_name = network_name if simulation_name is None else simulation_name
 
-        network_files = read_network_directory(
-            Path(config_dir) / "network" / network_name
-        )
-
-        network_config = NetworkConfigLoader(
-            network_files,
-        ).build()
-
-        network_config = NetworkPreprocessor(
-            network_config,
-        ).process()
-
         network = Network(
-            network_config,
+            validate_network_config(Path(config_dir) / "network" / network_name)
         )
 
         simulation_path = Path(config_dir) / "simulation" / f"{simulation_name}.yaml"
-        simulation_config = (
-            SimulationConfig.model_validate(read_yaml(simulation_path))
-            if simulation_path.exists()
-            else SimulationConfig()
-        )
+        if simulation_path.exists():
+            simulation_config = SimulationConfig.model_validate(read_yaml(simulation_path))
+        elif profile_is_explicit:
+            raise FileNotFoundError(f"No simulation profile at {simulation_path}.")
+        else:
+            simulation_config = SimulationConfig()
 
         return cls(
             network=network,

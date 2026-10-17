@@ -4,7 +4,7 @@ Utilities for reading and writing configuration files.
 :func:`read_yaml` / :func:`write_yaml` do no interpretation -- they move
 plain dictionaries to and from disk. :func:`read_network_directory` is the
 one exception: it reads a whole ``configs/network/<name>/`` directory and
-validates it against the schema in :mod:`microcircuit_lab.config.files`,
+validates it against the schema in :mod:`microcircuit_lab.config.schema`,
 so a malformed file fails here with a clear message rather than deeper in
 the pipeline.
 """
@@ -15,8 +15,9 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
-from microcircuit_lab.config.files import NetworkDirectory, NetworkManifest
+from microcircuit_lab.config.schema import NetworkDirectory, NetworkManifest
 
 
 def read_yaml(path: str | Path) -> dict[str, Any]:
@@ -54,12 +55,13 @@ def read_network_directory(path: str | Path) -> NetworkDirectory:
     Read and validate a ``configs/network/<name>/`` directory.
 
     ``network.yaml`` names the other files; each is read and checked
-    against its model in :mod:`microcircuit_lab.config.files`. An unknown
-    or missing field raises here, with the file and field in the message
-    (e.g. ``populations.populations.0.size``). Cross-file references (a
-    population's neuron, a connection's populations) are resolved later,
-    when :class:`~microcircuit_lab.io.config.NetworkConfigLoader` assembles
-    the network.
+    against its model in :mod:`microcircuit_lab.config.schema`. An unknown,
+    missing or invalid field raises a ``ValueError`` that names the
+    directory, the file and the field (e.g. ``populations.yaml:
+    populations.0.size: Input should be greater than 0``). Cross-file
+    references (a population's neuron, a connection's populations) are
+    resolved later, when :class:`~microcircuit_lab.io.config.NetworkConfigLoader`
+    assembles the network.
     """
     path = Path(path)
     manifest = NetworkManifest.model_validate(read_yaml(path / "network.yaml"))
@@ -76,7 +78,25 @@ def read_network_directory(path: str | Path) -> NetworkDirectory:
     if manifest.stimuli is not None:
         parts["stimuli"] = read_yaml(path / manifest.stimuli)
 
-    return NetworkDirectory.model_validate(parts)
+    try:
+        return NetworkDirectory.model_validate(parts)
+    except ValidationError as error:
+        raise ValueError(_describe_problems(path, manifest, error)) from error
+
+
+def _describe_problems(path: Path, manifest: NetworkManifest, error: ValidationError) -> str:
+    """One line per problem, as ``<file>: <field path>: <message>``.
+
+    The first element of a pydantic error location is the part name
+    (``populations``, ``neurons``, ...); the manifest says which file holds it.
+    """
+    lines = [f"Invalid network config in {path}:"]
+    for problem in error.errors():
+        part, *field = problem["loc"] or ("network.yaml",)
+        file_name = "network.yaml" if part == "manifest" else getattr(manifest, str(part), part)
+        field_path = ".".join(str(item) for item in field)
+        lines.append(f"  {file_name}: {field_path or '(whole file)'}: {problem['msg']}")
+    return "\n".join(lines)
 
 
 class FlowRecord(dict):

@@ -57,7 +57,9 @@ class NetworkManifest(FrozenConfig):
     populations: str = Field(description="file holding the populations list")
     neurons: str = Field(description="file holding the neuron definitions")
     connectivity: str = Field(description="file holding the connection list")
-    background_inputs: str = Field(description="file holding the background-input entries")
+    background_inputs: str = Field(
+        description="file holding the background-input entries"
+    )
     scaling: str = Field(description="file holding the scaling parameters")
     reference: str = Field(description="file holding the reference rates")
     stimuli: str | None = Field(
@@ -76,7 +78,9 @@ class PopulationEntry(FrozenConfig):
     size: int = Field(gt=0, description="number of neurons")
     neuron: str = Field(description="name of an entry in neurons.yaml")
     V0_mean: float = Field(description="mean initial membrane potential (mV)")
-    V0_std: float = Field(ge=0.0, description="standard deviation of the initial potential (mV)")
+    V0_std: float = Field(
+        ge=0.0, description="standard deviation of the initial potential (mV)"
+    )
     background_indegree: float = Field(
         default=0.0,
         ge=0.0,
@@ -94,7 +98,9 @@ class PopulationsFile(FrozenConfig):
 class NeuronEntry(FrozenConfig):
     """One entry of ``neurons.yaml`` (the file key is the neuron's name)."""
 
-    model: str = Field(description="the simulator's neuron model name, e.g. iaf_psc_exp")
+    model: str = Field(
+        description="the simulator's neuron model name, e.g. iaf_psc_exp"
+    )
     parameters: NeuronParams = Field(
         description="parameters passed to that model as-is; keys are "
         "model-specific and the backend validates them (I_e defaults to 0.0)"

@@ -9,7 +9,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from microcircuit_lab.config.files import NetworkDirectory, NetworkManifest
+from microcircuit_lab.config.schema import NetworkDirectory, NetworkManifest
 from microcircuit_lab.io.files import read_network_directory
 from microcircuit_lab.io.network_validation import validate_network_config
 
@@ -31,7 +31,7 @@ def _edit_yaml(path: Path, mutate) -> None:
 
 
 # -----------------------------------------------------------------------------
-# schema: read_network_directory validates every file against config.files
+# schema: read_network_directory validates every file against config.schema
 # -----------------------------------------------------------------------------
 def test_toy_directory_matches_the_schema() -> None:
     directory = read_network_directory(TOY)
@@ -48,8 +48,21 @@ def test_unknown_field_is_rejected(network_dir: Path) -> None:
         network_dir / "populations.yaml",
         lambda d: d["populations"][0].__setitem__("siz", 800),
     )
-    with pytest.raises(ValidationError, match="siz"):
+    with pytest.raises(ValueError, match="siz"):
         read_network_directory(network_dir)
+
+
+def test_error_names_the_file_and_the_field(network_dir: Path) -> None:
+    _edit_yaml(
+        network_dir / "populations.yaml",
+        lambda d: d["populations"][0].__setitem__("size", -1),
+    )
+    with pytest.raises(ValueError) as error:
+        read_network_directory(network_dir)
+
+    message = str(error.value)
+    assert str(network_dir) in message
+    assert "populations.yaml: populations.0.size" in message
 
 
 def test_missing_required_field_is_rejected(network_dir: Path) -> None:
@@ -57,7 +70,7 @@ def test_missing_required_field_is_rejected(network_dir: Path) -> None:
         network_dir / "populations.yaml",
         lambda d: d["populations"][0].pop("size"),
     )
-    with pytest.raises(ValidationError, match="size"):
+    with pytest.raises(ValueError, match="size"):
         read_network_directory(network_dir)
 
 
@@ -66,7 +79,7 @@ def test_wrong_type_is_rejected(network_dir: Path) -> None:
         network_dir / "connectivity.yaml",
         lambda d: d["connections"][0].__setitem__("n_synapses", "lots"),
     )
-    with pytest.raises(ValidationError, match="n_synapses"):
+    with pytest.raises(ValueError, match="n_synapses"):
         read_network_directory(network_dir)
 
 

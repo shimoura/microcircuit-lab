@@ -1,4 +1,4 @@
-"""The weight/delay dict builders in microcircuit_lab.generators.helpers."""
+"""The weight/delay dict builders in microcircuit_lab.io."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from microcircuit_lab.config.network import DelayDistribution, WeightDistribution
-from microcircuit_lab.generators.helpers import delay, weight
+from microcircuit_lab.io import delay, weight
 
 
 def test_weight_carries_the_unit_through() -> None:

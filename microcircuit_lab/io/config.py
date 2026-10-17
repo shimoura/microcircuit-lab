@@ -2,7 +2,7 @@
 Assemble a validated :class:`NetworkConfig` from a :class:`NetworkDirectory`.
 
 The directory has already been schema-checked file by file (see
-:mod:`microcircuit_lab.config.files`). What is left is resolving the
+:mod:`microcircuit_lab.config.schema`). What is left is resolving the
 references *between* files -- a population names its neuron, a connection
 names its populations -- and handing back the immutable
 :class:`NetworkConfig` the rest of the framework consumes.
@@ -14,7 +14,7 @@ no simulator-specific code belongs here.
 
 from __future__ import annotations
 
-from microcircuit_lab.config.files import NetworkDirectory
+from microcircuit_lab.config.schema import NetworkDirectory
 from microcircuit_lab.config.network import (
     BackgroundInputConfig,
     ConnectionConfig,

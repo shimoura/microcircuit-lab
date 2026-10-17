@@ -19,7 +19,7 @@ from microcircuit_lab.generators.pd14.data import (
     connection_probabilities,
 )
 from microcircuit_lab.network.connectivity import num_synapses_from_conn_prob
-from microcircuit_lab.generators.helpers import delay, weight
+from microcircuit_lab.io import delay, weight
 from microcircuit_lab.io.files import flow_records, write_yaml
 from microcircuit_lab.io.network_validation import validate_network_config
 
