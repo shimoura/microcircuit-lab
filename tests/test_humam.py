@@ -2,9 +2,12 @@
 
 from pathlib import Path
 
+import pytest
 import yaml
 
-from microcircuit_lab.generators.humam import generate_humam_configs
+# The HuMAM builder is a bundled example, not part of the core: skip these
+# tests if a fork removes it.
+generate_humam_configs = pytest.importorskip("builders.humam").generate_humam_configs
 
 
 def test_generate_single_area_uses_bare_population_names(tmp_path: Path) -> None:

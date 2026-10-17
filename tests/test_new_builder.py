@@ -1,4 +1,4 @@
-"""The scaffold new_generator.py writes must stay runnable: rendered stub
+"""The scaffold new_builder.py writes must stay runnable: rendered stub
 is valid Python and produces a network directory that validates."""
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from microcircuit_lab.io import validate_network_config
 
-_NEW_GENERATOR = Path(__file__).resolve().parents[1] / "scripts" / "new_generator.py"
+_NEW_BUILDER = Path(__file__).resolve().parents[1] / "scripts" / "new_builder.py"
 
 
 def _load_module(path: Path, name: str):
@@ -19,14 +19,14 @@ def _load_module(path: Path, name: str):
 
 
 def _render_stub(name: str) -> str:
-    return _load_module(_NEW_GENERATOR, "new_generator").render_stub(name)
+    return _load_module(_NEW_BUILDER, "new_builder").render_stub(name)
 
 
 def test_rendered_stub_is_valid_python() -> None:
     compile(_render_stub("demo_model"), "<stub>", "exec")
 
 
-def test_scaffolded_generator_writes_a_directory_that_validates(
+def test_scaffolded_builder_writes_a_directory_that_validates(
     tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.chdir(tmp_path)

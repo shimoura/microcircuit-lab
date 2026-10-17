@@ -671,7 +671,7 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     """Entry point. ``scripts/generate.py`` discovers this function (via
-    ``microcircuit_lab.generators.humam.main``) and forwards it the
+    ``builders.humam.main``) and forwards it the
     arguments after the model name.
     """
     parser = argparse.ArgumentParser(

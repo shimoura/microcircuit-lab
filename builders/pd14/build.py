@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.generators.pd14.data import (
+from builders.pd14.data import (
     populations,
     full_num_neurons,
     connection_probabilities,
@@ -101,7 +101,7 @@ def _run(args: argparse.Namespace) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     """Entry point. ``scripts/generate.py`` discovers this function (via
-    ``microcircuit_lab.generators.pd14.main``) and forwards it the
+    ``builders.pd14.main``) and forwards it the
     arguments after the model name.
     """
     parser = argparse.ArgumentParser(

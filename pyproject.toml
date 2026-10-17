@@ -40,6 +40,12 @@ nestml = [
     "nestml",
 ]
 
+[tool.pytest.ini_options]
+# builders/ sits next to microcircuit_lab/, outside the installed package, and
+# pytest does not put the repository root on the import path by itself. Without
+# this, tests that import builders.* fail with ModuleNotFoundError.
+pythonpath = ["."]
+
 [tool.ruff.lint]
 # Pinned explicitly so a ruff upgrade can't silently pull in a new default
 # rule category (isort, pyupgrade, pylint-style, ...) and break CI without

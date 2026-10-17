@@ -1,5 +1,6 @@
 """Configuration file loading, validation, and simulation run output writing."""
 
+from .builders import discover_builders
 from .config import NetworkConfigLoader
 from .files import (
     flow_records,
@@ -15,6 +16,7 @@ from .network_directory import delay, weight, write_network_directory
 __all__ = [
     "NetworkConfigLoader",
     "delay",
+    "discover_builders",
     "flow_records",
     "load_measures",
     "load_or_compute",
