@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import yaml
 
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
@@ -62,13 +64,12 @@ def test_native_ascii_recording_writes_directly_to_disk(tmp_path: Path) -> None:
     backend.prepare_output(tmp_path)
     backend.build()
 
-    for sr in backend.spike_recorders.values():
-        assert sr.get("record_to") == "ascii"
+    assert backend.spike_recorder.get("record_to") == "ascii"
 
     backend.simulate()
 
     # Files already exist on disk, written natively by NEST -- not by us.
-    dat_files = sorted((tmp_path / "recordings").glob("E-*.dat"))
+    dat_files = sorted((tmp_path / "recordings").glob("spikes-*.dat"))
     assert dat_files
 
     events = backend.get_spike_events("E")
@@ -76,7 +77,7 @@ def test_native_ascii_recording_writes_directly_to_disk(tmp_path: Path) -> None:
     assert len(events["times"]) == len(events["senders"])
 
     saved = backend.save_recordings(tmp_path)
-    assert set(saved) == set((tmp_path / "recordings").glob("[EI]-*.dat"))
+    assert set(saved) == set((tmp_path / "recordings").glob("spikes-*.dat"))
 
 
 def test_memory_mode_fallback_writes_csv_when_no_prepare_output(tmp_path: Path) -> None:
@@ -91,8 +92,7 @@ def test_memory_mode_fallback_writes_csv_when_no_prepare_output(tmp_path: Path) 
     backend = NestBackend(network=network, simulation_config=simulation_config)
     backend.build()
 
-    for sr in backend.spike_recorders.values():
-        assert sr.get("record_to") == "memory"
+    assert backend.spike_recorder.get("record_to") == "memory"
 
     backend.simulate()
 
@@ -118,7 +118,7 @@ def test_voltage_recording_writes_native_ascii_files(tmp_path: Path) -> None:
     backend.build()
     backend.simulate()
 
-    voltage_files = sorted((tmp_path / "recordings").glob("E_voltage-*.dat"))
+    voltage_files = sorted((tmp_path / "recordings").glob("voltage-*.dat"))
     assert voltage_files
     content = voltage_files[0].read_text()
     assert "V_m" in content
@@ -157,7 +157,7 @@ def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> N
         backend_name="nest",
     )
 
-    assert sorted((tmp_path / "recordings").glob("E_voltage-*.dat"))
+    assert sorted((tmp_path / "recordings").glob("voltage-*.dat"))
     metadata = json.loads((tmp_path / "metadata.json").read_text())
     assert any("voltage" in entry for entry in metadata["artifacts"]["recordings"])
 
@@ -224,8 +224,7 @@ def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
         backend_name="nest",
     )
 
-    assert sorted((tmp_path / "recordings").glob("E-*.dat"))
-    assert sorted((tmp_path / "recordings").glob("I-*.dat"))
+    assert sorted((tmp_path / "recordings").glob("spikes-*.dat"))
 
     config_path = tmp_path / "config.yaml"
     assert config_path.exists()
@@ -262,3 +261,69 @@ def test_register_artifact_appends_and_is_noop_without_metadata(tmp_path: Path) 
 
     metadata = json.loads((tmp_path / "metadata.json").read_text())
     assert metadata["artifacts"]["plots"] == ["plots/raster.png"]
+
+
+def test_voltage_recording_subsampling(tmp_path: Path) -> None:
+    """voltage_sample_size records the first N neurons of every population."""
+
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {
+            "t_sim": 50.0,
+            "local_num_threads": 1,
+            "print_time": False,
+            "recording": {
+                "spike_recording": False,
+                "voltage_recording": True,
+                "voltage_interval": 1.0,
+                "voltage_sample_size": 3,
+            },
+        }
+    )
+
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    backend.prepare_output(tmp_path)
+    backend.build()
+    backend.simulate()
+
+    voltage_files = sorted((tmp_path / "recordings").glob("voltage-*.dat"))
+    assert voltage_files
+    data = pd.read_csv(voltage_files[0], sep="\t", comment="#")
+    senders = set(data["sender"].unique())
+    assert len(senders) == 6
+    assert senders == {1, 2, 3, 801, 802, 803}
+
+
+def test_post_hoc_backend_reads_consolidated_spikes(tmp_path: Path) -> None:
+    from microcircuit_lab.simulation.runner import Simulation
+
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {
+            "t_sim": 100.0,
+            "local_num_threads": 2,
+            "print_time": False,
+            "output": {"output_dir": str(tmp_path), "overwrite": True},
+        }
+    )
+
+    sim = Simulation(
+        network=network,
+        simulation_config=simulation_config,
+        backend="nest",
+        network_name="toy",
+        simulation_name="toy",
+    )
+    sim.run()
+
+    live_e_spikes = sim.backend.get_spike_events("E")
+    live_i_spikes = sim.backend.get_spike_events("I")
+
+    post_hoc_sim = Simulation.from_run_dir(tmp_path)
+    post_e_spikes = post_hoc_sim.backend.get_spike_events("E")
+    post_i_spikes = post_hoc_sim.backend.get_spike_events("I")
+
+    assert len(post_e_spikes["times"]) == len(live_e_spikes["times"])
+    assert len(post_i_spikes["times"]) == len(live_i_spikes["times"])
+    np.testing.assert_array_equal(post_e_spikes["senders"], live_e_spikes["senders"])
+    np.testing.assert_array_equal(post_e_spikes["times"], live_e_spikes["times"])

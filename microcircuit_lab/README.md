@@ -346,7 +346,7 @@ Every registered model's generation arguments are discoverable with `python scri
 `scripts/run_simulation.py` accepts:
 
 - `--network` (or `--run-dir`, see below), `--simulation`, `--analysis` -- which network/simulation/analysis profile to use
-- `--area`, `--begin`, `--end`, `--reference`/`--no-reference` -- analysis window and options
+- `--area`, `--begin`, `--end`, `--reference`/`--no-reference` -- analysis window and options. For multi-area networks `--area <name>` plots one area into `plots/`; `--area all` (or `area: all` in the analysis YAML, as in `humam_all`) writes one set of plots per area into `plots/<area>/`
 - one `--<plot-name>`/`--no-<plot-name>` pair per entry in `microcircuit_lab.analysis.PLOT_REGISTRY`: `--raster`/`--no-raster`, `--firing-rates`/`--no-firing-rates`, `--power-spectrum`/`--no-power-spectrum`, `--isi-cv`/`--no-isi-cv` for the four bundled diagnostics (see [Adding a new diagnostic](#adding-a-new-diagnostic) for how a 5th one gets its own flag automatically)
 
 Every one of these (except `--network`/`--run-dir`/`--simulation`/`--analysis` themselves) is an *optional override*: if omitted, the value comes from `configs/analysis/<analysis_name>.yaml` (see [Configuration](#configuration)) instead. Plots are saved to `<output_dir>/plots/` but not opened interactively by default; pass `--show` to also pop up the plot windows. Plot styling (colors, sizes, figure layout, raster neuron subsampling, spectral estimator, ...) is set entirely via that same analysis YAML, not hardcoded in the script.
@@ -356,7 +356,7 @@ Every one of these (except `--network`/`--run-dir`/`--simulation`/`--analysis` t
 A run already saves everything a plot needs (`config.yaml`, `recordings/`), so trying a different `--begin`/`--end`/`--area`/analysis profile on a run you already have doesn't require re-simulating it. Pass `--run-dir` instead of `--network`/`--simulation`; every other flag above works the same:
 
 ```bash
-python scripts/run_simulation.py --network toy   # note the run_dir it prints
+python scripts/run_simulation.py --network toy   # prints "Run directory: ..."
 python scripts/run_simulation.py --run-dir output/toy/<timestamp> --begin 200 --end 400
 ```
 
@@ -394,7 +394,7 @@ from microcircuit_lab.analysis import plot_firing_rates
 plot_firing_rates(simulation, begin=500.0)
 ```
 
-For multi-area networks, select one area with `area="V1"`. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
+For multi-area networks, select one area with `area="V1"`; `list_areas(simulation)` returns the available area names. The string `"all"` is only understood by `scripts/run_simulation.py` (which loops over the areas); the plot functions themselves take one area at a time. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
 
 ## Run outputs
 
@@ -409,9 +409,11 @@ For multi-area networks, select one area with `area="V1"`. Published reference m
 
 `overwrite: false` (the default, and the convention used by every bundled model) gives each run its own timestamped subdirectory, so results are never silently clobbered. Set `overwrite: true` to instead reuse the same directory every run -- convenient while iterating, but each run replaces the last one's output.
 
-**Recordings are written by the backend, not re-serialized by microcircuit_lab.** With the NEST backend, `recordings/` is pointed at NEST's own ascii recording backend before the network is built, so NEST writes spikes straight to disk during `simulate()`: `<population>-<id>-<thread>.dat`, one shard per thread/process, NEST's native naming and tab-separated `sender  time_ms` format. Nothing is buffered in Python memory or written twice.
+**Recordings are written by the backend, not re-serialized by microcircuit_lab.** With the NEST backend, `recordings/` is pointed at NEST's own ascii recording backend before the network is built, so NEST writes spikes straight to disk during `simulate()`: `spikes-<id>-<thread>.dat`, one shard per thread/process, NEST's native naming and tab-separated `sender  time_ms` format. Nothing is buffered in Python memory or written twice.
 
-`Simulation`/plotting code still reads spikes back through `backend.get_spike_events(population)`, which transparently merges those shards when needed (e.g. for `metadata.json`'s statistics or `plot_raster`) -- callers never need to know recording happened natively. A backend without native file recording (or the NEST backend used standalone, without `prepare_output()`) falls back to writing one `<population>_spikes.csv` per population from the in-memory events instead.
+`Simulation`/plotting code still reads spikes back through `backend.get_spike_events(population)`, which transparently merges those shards and slices by GID range when needed (e.g. for `metadata.json`'s statistics or `plot_raster`) -- callers never need to know recording happened natively. A backend without native file recording (or the NEST backend used standalone, without `prepare_output()`) falls back to writing a consolidated `spikes.csv` from the in-memory events instead.
+
+Voltage recording (`recording.voltage_recording: true`) uses one shared multimeter the same way and writes `voltage-<id>-<thread>.dat`. By default it records only the first 5 neurons of each population (`recording.voltage_sample_size: 5`), which keeps memory and file sizes small on large networks; set another number `N` to change that, or `null` to record every neuron.
 
 `metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `scripts/run_simulation.py` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`. Any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
 

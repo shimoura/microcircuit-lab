@@ -10,11 +10,14 @@ show up here automatically, no changes needed in this file.
 import argparse
 import logging
 
+import matplotlib.pyplot as plt
+
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import (
     PLOT_REGISTRY,
     check_reference_rates,
     check_unknown_plot_sections,
+    list_areas,
 )
 from microcircuit_lab.config import AnalysisConfig
 from microcircuit_lab.io.output import register_artifact
@@ -61,7 +64,10 @@ def _parse_args() -> argparse.Namespace:
         "--end", type=float, default=None, help="Analysis end time in ms. Overrides YAML."
     )
     parser.add_argument(
-        "--area", default=None, help="Area to plot for multi-area networks. Overrides YAML."
+        "--area",
+        default=None,
+        help="Area to plot for multi-area networks, or 'all' for one set of plots per "
+        "area (plots/<area>/). Overrides YAML.",
     )
     parser.add_argument(
         "--reference",
@@ -136,7 +142,16 @@ def main() -> None:
         args.reference if args.reference is not None else analysis_config.show_reference
     )
 
-    plots_dir = simulation.output_dir / "plots"
+    print(f"Run directory: {simulation.output_dir}")
+
+    if area == "all":
+        areas = list_areas(simulation)
+        if not areas:
+            raise SystemExit("--area all needs a multi-area network (<area>__<population> names).")
+        plot_targets = [(a, simulation.output_dir / "plots" / a) for a in areas]
+        area = None
+    else:
+        plot_targets = [(area, simulation.output_dir / "plots")]
 
     for name, spec in PLOT_REGISTRY.items():
         plot_config = analysis_config.plot_config(name, spec.config_cls)
@@ -145,15 +160,24 @@ def main() -> None:
         if not enabled:
             continue
 
-        save_path = plots_dir / spec.filename
-        kwargs = dict(
-            begin=begin, end=end, area=area, style=analysis_config.style,
-            config=plot_config, save_path=save_path, show=args.show,
-        )
-        if name == "firing_rates":
-            kwargs["show_reference"] = show_reference
-        spec.plot_fn(simulation, **kwargs)
-        register_artifact(simulation.output_dir, "plots", save_path)
+        for plot_area, plots_dir in plot_targets:
+            save_path = plots_dir / spec.filename
+            kwargs = dict(
+                begin=begin, end=end, area=plot_area, style=analysis_config.style,
+                config=plot_config, save_path=save_path, show=args.show,
+            )
+            if name == "firing_rates":
+                kwargs["show_reference"] = show_reference
+            spec.plot_fn(simulation, **kwargs)
+            register_artifact(simulation.output_dir, "plots", save_path)
+            if not args.show:
+                plt.close("all")
+
+    print(f"Plots saved under: {simulation.output_dir / 'plots'}")
+    print(
+        "Re-plot without re-simulating: "
+        f"python scripts/run_simulation.py --run-dir {simulation.output_dir}"
+    )
 
     if args.validate_reference:
         try:

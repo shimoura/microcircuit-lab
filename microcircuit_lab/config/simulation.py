@@ -26,6 +26,11 @@ class RecordingConfig(FrozenConfig):
     spike_recording: bool = True
     voltage_recording: bool = False
     voltage_interval: float = Field(default=1.0, gt=0.0)
+    voltage_sample_size: int | None = Field(
+        default=5,
+        ge=1,
+        description="Max neurons to record voltage from per population. None records all.",
+    )
 
 
 # -----------------------------------------------------------------------------

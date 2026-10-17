@@ -50,5 +50,6 @@ def test_toy_network_actually_spikes(tmp_path):
     )
     simulation.run()
 
-    for pop_name, recorder in simulation.backend.spike_recorders.items():
-        assert recorder.n_events > 0, f"population '{pop_name}' produced no spikes"
+    for pop_name in simulation.backend.populations:
+        events = simulation.backend.get_spike_events(pop_name)
+        assert len(events["times"]) > 0, f"population '{pop_name}' produced no spikes"
