@@ -1,13 +1,13 @@
-"""Create microcircuit_lab/generators/<name>/ with a runnable main() example.
+"""Create builders/<name>/ with a runnable main() example.
 
-A generator is any code whose output is a directory under
+A builder is any code whose output is a directory under
 configs/network/<name>/ that passes microcircuit_lab.io.validate_network_config.
 This makes the package that `python scripts/generate.py` discovers, with a
 main() that already builds and writes a small example network -- edit the
-payload values to match your model (see microcircuit_lab/generators/pd14/
+payload values to match your model (see builders/pd14/
 for a minimal real one, .../humam/ for a full one).
 
-Usage: python scripts/new_generator.py <name>
+Usage: python scripts/new_builder.py <name>
 """
 
 import keyword
@@ -15,14 +15,14 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-GENERATORS_DIR = REPO_ROOT / "microcircuit_lab" / "generators"
+BUILDERS_DIR = REPO_ROOT / "builders"
 
 STUB = '''\
 """{title} model -- writes configs/network/{name}/ from this model's parameters.
 
 main() below builds a small example network to edit. When it outgrows one
 file, move the logic into a build.py and keep this __init__.py a one-line
-re-export, like generators/pd14 and .../humam.
+re-export, like builders/pd14 and .../humam.
 """
 
 from __future__ import annotations
@@ -103,19 +103,19 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def render_stub(name: str) -> str:
-    """The ``__init__.py`` contents for a new generator named ``name``."""
+    """The ``__init__.py`` contents for a new builder named ``name``."""
     return STUB.replace("{title}", name.replace("_", " ").title()).replace("{name}", name)
 
 
 def main() -> None:
     if len(sys.argv) != 2:
-        sys.exit("Usage: python scripts/new_generator.py <name>")
+        sys.exit("Usage: python scripts/new_builder.py <name>")
 
     name = sys.argv[1]
     if not name.isidentifier() or keyword.iskeyword(name) or name != name.lower():
         sys.exit(f"{name!r} must be a lowercase Python identifier.")
 
-    package = GENERATORS_DIR / name
+    package = BUILDERS_DIR / name
     if package.exists():
         sys.exit(f"{package} already exists.")
 
@@ -125,7 +125,7 @@ def main() -> None:
     print(
         f"It writes an example network as-is; edit the payloads in main() to match "
         f"your model, then `python scripts/generate.py {name}`. Add a README.md and "
-        f"tests/test_{name}.py once the generator settles."
+        f"tests/test_{name}.py once the builder settles."
     )
 
 

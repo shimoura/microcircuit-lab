@@ -26,7 +26,7 @@ This repository is meant to be forked as the starting point for a new, independe
 1. Fork the repository.
 2. Update `pyproject.toml`'s `name`/`description`/`authors`/`version` to your project.
 3. Replace the root `README.md` with a short description of your own project -- it's meant to be overwritten. Leave this file (`microcircuit_lab/README.md`) as-is; it's the framework reference and stays accurate across forks.
-4. Add your model under `microcircuit_lab/generators/<your_model>/` (see [Adding a new model](#adding-a-new-model)).
+4. Add your model under `builders/<your_model>/` (see [Adding a new model](#adding-a-new-model)).
 5. Add its experiments under `experiments/<your_model>/` (see [Experiments](#experiments)).
 6. Keep the PD14/HuMAM/toy models as working references for the schema and conventions, or delete them once your own model no longer needs the comparison.
 
@@ -38,7 +38,7 @@ The internal Python package name (`microcircuit_lab`) does not need to change --
 model source data
       │
       ▼
-microcircuit_lab/generators/   model-specific translation and parameters
+builders/                      model-specific translation and parameters
       │
       ▼
 configs/network/<model>/       portable YAML network description
@@ -59,7 +59,7 @@ microcircuit_lab/backends/     simulator-specific execution
 microcircuit_lab/analysis/     simulator-facing analysis and plots
 ```
 
-The generic network and simulation layers do not depend on HuMAM, PD14, or any other specific reference model. Generators depend on the generic network utilities, never the reverse. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
+The generic network and simulation layers do not depend on HuMAM, PD14, or any other specific reference model. Builders depend on the generic network utilities, never the reverse. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
 
 ## Project structure
 
@@ -69,9 +69,10 @@ microcircuit_lab/
 ├── backends/       # simulator implementations (currently NEST)
 ├── config/         # validated network and simulation schemas
 ├── io/             # configuration file loading and validation assembly
-├── generators/     # model-specific integrations (HuMAM, PD14, ...)
 ├── network/        # generic network model, transformations, and preprocessing
 └── simulation/     # high-level simulation orchestration
+
+builders/           # model-specific builders (HuMAM, PD14, ...), outside the package
 ```
 
 ## Installation
@@ -139,7 +140,7 @@ configs/
 
 A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording. An analysis configuration (`AnalysisConfig`, `microcircuit_lab/config/analysis.py`) describes presentation only -- which diagnostic plots run, the time window/area to analyze, and their styling (colors, figure sizes, raster neuron subsampling, ...); it has no effect on the simulation itself.
 
-Each network file has a schema in `microcircuit_lab/config/schema.py` (one model per file), and `read_network_directory` validates against it on every load -- so a missing, misspelled, or wrong-typed field fails with the file and field named, the moment a config is loaded (to run it) or written (by a generator), not later as a `KeyError`. Cross-file references (a population's neuron, a connection's populations) and the preprocessing step are checked the same way. The one open spot is a neuron's `parameters:` block -- neuron models differ in what they accept, so the simulator backend, not the schema, is the authority on those names. `microcircuit_lab.io.validate_network_config(dir)` runs the whole check on its own if you want it without a run.
+Each network file has a schema in `microcircuit_lab/config/schema.py` (one model per file), and `read_network_directory` validates against it on every load -- so a missing, misspelled, or wrong-typed field fails with the file and field named, the moment a config is loaded (to run it) or written (by a builder), not later as a `KeyError`. Cross-file references (a population's neuron, a connection's populations) and the preprocessing step are checked the same way. The one open spot is a neuron's `parameters:` block -- neuron models differ in what they accept, so the simulator backend, not the schema, is the authority on those names. `microcircuit_lab.io.validate_network_config(dir)` runs the whole check on its own if you want it without a run.
 
 These are three independent trees, matched by name, so one network can be paired with more than one execution profile or presentation (e.g. a short simulation for a quick check vs. a long one for a real run; a quick raster-only look vs. a full styled figure set for a paper). In the common case where a network only ever has one of each, `Simulation.from_yaml(network_name=...)` and `AnalysisConfig.from_yaml(network_name=...)` alone are enough: `simulation_name`/`analysis_name` both default to whatever `network_name` is, so `configs/network/toy/` pairs automatically with `configs/simulation/toy.yaml` and `configs/analysis/toy.yaml`. Pass `simulation_name`/`analysis_name` explicitly only when you want a different, decoupled profile.
 
@@ -209,7 +210,7 @@ neurons:
 
 Only list the names that actually differ; an omitted key falls back to the canonical name unchanged. A compiled NESTML model is the most common case this solves; see [Using a NESTML model](#using-a-nestml-model).
 
-**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Generator-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; `microcircuit_lab.io.write_network_directory` applies the compact style to `populations`, `connectivity`, and `background_inputs` automatically, or use `microcircuit_lab.io.files.write_yaml`/`flow_records` directly to opt a field in.
+**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Builder-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; `microcircuit_lab.io.write_network_directory` applies the compact style to `populations`, `connectivity`, and `background_inputs` automatically, or use `microcircuit_lab.io.files.write_yaml`/`flow_records` directly to opt a field in.
 
 ## Adding a new model
 
@@ -224,12 +225,12 @@ Best for exploring a new idea or a model small enough to write out by hand.
 3. Optionally add `configs/simulation/<my_model>.yaml` to change execution settings (simulated time, threads, what to record -- `microcircuit_lab/config/simulation.py` is the field list). Leave it out and the built-in `SimulationConfig` defaults are used, same as a missing `configs/analysis/<my_model>.yaml`.
 4. `python scripts/run_simulation.py --network <my_model>` -- loading the config validates every file; fix anything it reports.
 
-### Option B: add a generator
+### Option B: add a builder
 
-Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A generator is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. The only thing the shared `python scripts/generate.py <model>` CLI needs is a `microcircuit_lab/generators/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit.
+Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A builder is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. Each folder in `builders/` turns one model's data into a network description under `configs/network/`. The only thing the shared `python scripts/generate.py <model>` CLI needs (run from the repository root) is a `builders/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit. A builder that lives in another installed package can register its `main` under the `microcircuit_lab.builders` entry-point group instead (see `microcircuit_lab/io/builders.py`).
 
-1. `python scripts/new_generator.py <model_name>` creates `microcircuit_lab/generators/<model_name>/__init__.py` with a runnable `main()` that writes a small example network -- replace its values with your model's. Add a `README.md` and `tests/test_<model_name>.py` yourself.
-2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory(<config_dir>/network/<model_name>, populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/schema.py` is the field list; `microcircuit_lab.io` also has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `microcircuit_lab/generators/pd14/` and `.../humam/` are worked generators.
+1. `python scripts/new_builder.py <model_name>` creates `builders/<model_name>/__init__.py` with a runnable `main()` that writes a small example network -- replace its values with your model's. Add a `README.md` and `tests/test_<model_name>.py` yourself.
+2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory(<config_dir>/network/<model_name>, populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/schema.py` is the field list; `microcircuit_lab.io` also has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `builders/pd14/` and `builders/humam/` are worked builders.
 3. `python scripts/generate.py <model_name>` -- or `python scripts/generate.py` with no arguments to confirm it was discovered.
 
 ### Run it
@@ -268,7 +269,7 @@ simulation = Simulation.from_yaml(
 
 NESTML compiles a custom neuron model into a NEST extension module, loaded at runtime with `nest.Install(module_name)` before any node using that model can be created. This is entirely a capability of `NestBackend` (its `extension_modules` constructor argument, see [Adding a backend](#adding-a-backend)); nothing elsewhere in the package has any notion of NESTML.
 
-1. **Write the `.nestml` source** under a top-level `nestml/` directory, parallel to `configs/` -- not inside `microcircuit_lab/generators/`, since nothing reads a `.nestml` file at runtime (NESTML's own compiler does) and a compiled module is platform/NEST-version-specific, not something to ship as package data. A model reusable across networks can sit flat in `nestml/`; one written specifically for a given model gets its own `nestml/<model_name>/` subdirectory, the same convention used by `configs/network/<model>/` and `experiments/<model>/`:
+1. **Write the `.nestml` source** under a top-level `nestml/` directory, parallel to `configs/` -- not inside `builders/`, since nothing reads a `.nestml` file at runtime (NESTML's own compiler does) and a compiled module is platform/NEST-version-specific, not something to ship as package data. A model reusable across networks can sit flat in `nestml/`; one written specifically for a given model gets its own `nestml/<model_name>/` subdirectory, the same convention used by `configs/network/<model>/` and `experiments/<model>/`:
 
    ```text
    nestml/
@@ -316,7 +317,7 @@ NESTML compiles a custom neuron model into a NEST extension module, loaded at ru
 - **PD14**: Potjans & Diesmann cortical microcircuit configuration and connectivity utilities.
 - **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
 
-Model-specific documentation is located inside each package under `microcircuit_lab/generators/`.
+Model-specific documentation is located inside each folder under `builders/`.
 
 ## Experiments
 
@@ -324,7 +325,7 @@ An experiment -- a parameter sweep, a comparison across configs, exploratory ana
 
 ## Repository scripts
 
-Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces (and validates) a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name -- or re-plots an existing run's recordings without re-simulating, via `--run-dir` (see below). Neither script contains model-specific logic; `scripts/generate.py` just discovers each `microcircuit_lab/generators/<model>/` package that exposes a `main` and forwards to it, so both stay unchanged as models are added.
+Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces (and validates) a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name -- or re-plots an existing run's recordings without re-simulating, via `--run-dir` (see below). Neither script contains model-specific logic; `scripts/generate.py` just discovers each `builders/<model>/` package that exposes a `main` and forwards to it, so both stay unchanged as models are added.
 
 Run the bundled PD14 network (uses the default network/simulation names):
 
@@ -368,7 +369,7 @@ Plots are written back into that same run's own `plots/` directory. Programmatic
 
 ### Adding a new diagnostic
 
-Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model generators (`generators.discover_generators`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
+Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model builders (`io.discover_builders`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
 
 ```python
 from microcircuit_lab.analysis import register_plot
