@@ -346,7 +346,7 @@ Every registered model's generation arguments are discoverable with `python scri
 `scripts/run_simulation.py` accepts:
 
 - `--network` (or `--run-dir`, see below), `--simulation`, `--analysis` -- which network/simulation/analysis profile to use
-- `--area`, `--begin`, `--end`, `--reference`/`--no-reference` -- analysis window and options
+- `--area`, `--begin`, `--end`, `--reference`/`--no-reference` -- analysis window and options. For multi-area networks `--area <name>` plots one area into `plots/`; `--area all` (or `area: all` in the analysis YAML, as in `humam_all`) writes one set of plots per area into `plots/<area>/`
 - one `--<plot-name>`/`--no-<plot-name>` pair per entry in `microcircuit_lab.analysis.PLOT_REGISTRY`: `--raster`/`--no-raster`, `--firing-rates`/`--no-firing-rates`, `--power-spectrum`/`--no-power-spectrum`, `--isi-cv`/`--no-isi-cv` for the four bundled diagnostics (see [Adding a new diagnostic](#adding-a-new-diagnostic) for how a 5th one gets its own flag automatically)
 
 Every one of these (except `--network`/`--run-dir`/`--simulation`/`--analysis` themselves) is an *optional override*: if omitted, the value comes from `configs/analysis/<analysis_name>.yaml` (see [Configuration](#configuration)) instead. Plots are saved to `<output_dir>/plots/` but not opened interactively by default; pass `--show` to also pop up the plot windows. Plot styling (colors, sizes, figure layout, raster neuron subsampling, spectral estimator, ...) is set entirely via that same analysis YAML, not hardcoded in the script.
@@ -356,7 +356,7 @@ Every one of these (except `--network`/`--run-dir`/`--simulation`/`--analysis` t
 A run already saves everything a plot needs (`config.yaml`, `recordings/`), so trying a different `--begin`/`--end`/`--area`/analysis profile on a run you already have doesn't require re-simulating it. Pass `--run-dir` instead of `--network`/`--simulation`; every other flag above works the same:
 
 ```bash
-python scripts/run_simulation.py --network toy   # note the run_dir it prints
+python scripts/run_simulation.py --network toy   # prints "Run directory: ..."
 python scripts/run_simulation.py --run-dir output/toy/<timestamp> --begin 200 --end 400
 ```
 
