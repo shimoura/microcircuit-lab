@@ -41,6 +41,7 @@ class NetworkConfigLoader:
             connections=connections,
             background_inputs=background_inputs,
             background_mode=self._directory.background_inputs.background_mode,
+            bound_mode=self._directory.connectivity.bound_mode,
             stimuli=self._directory.stimuli.stimuli,
             scaling=self._directory.scaling,
             reference=self._directory.reference,

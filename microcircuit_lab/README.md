@@ -161,6 +161,10 @@ Stimuli are not touched by scaling or compensation -- they're applied exactly as
 
 **Poisson vs. DC background.** Add a top-level `background_mode: dc` to `background_inputs.yaml` (default is `poisson`) to replace the background Poisson generator network-wide with a constant current of equal mean, reproducing Potjans & Diesmann (2014)'s comparison of the two drive types (their Fig. 5) -- see `configs/network/pd14_dc/` for a ready-to-run example (`--network pd14_dc`, pairs with `configs/simulation/pd14_dc.yaml`) and `NetworkConfig.background_mode` / `NetworkPreprocessor._apply_background_dc_current` for the implementation.
 
+**Weights and delays outside their range.** A normal weight keeps the sign of its mean and a delay must not be shorter than a minimum, but a random draw can break both. Add a top-level `bound_mode` to `connectivity.yaml` to choose what happens to such a draw, for every weight and delay of the network (background inputs included): `redraw` (default) draws again until the value is allowed; `clip` replaces it by the limit (a weight of the wrong sign becomes 0, a short delay becomes the minimum), as the HuMAM model does. The smallest allowed delay is half the simulation step unless a `delay` sets its own `minimum` (in ms), for example `minimum: 0.1`.
+
+**Inhibitory synapses and the scaling compensation.** When `K_scaling` is below 1 the compensation current uses `tau_syn_ex` for excitatory input and `tau_syn_in` for inhibitory input (a connection is inhibitory when its PSC is negative). The two only differ when the neuron's `tau_syn_in` differs from `tau_syn_ex`.
+
 ```yaml
 stimuli:
   - type: dc

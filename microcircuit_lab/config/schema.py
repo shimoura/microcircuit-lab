@@ -128,6 +128,12 @@ class ConnectivityFile(FrozenConfig):
     """
 
     connections: list[ConnectionConfig]
+    bound_mode: Literal["redraw", "clip"] = Field(
+        default="redraw",
+        description="what to do with a drawn weight or delay outside its allowed "
+        "range: 'redraw' draws again, 'clip' replaces it by the limit; applies to "
+        "all weights and delays of the network, background inputs included",
+    )
 
 
 class BackgroundInputsFile(FrozenConfig):

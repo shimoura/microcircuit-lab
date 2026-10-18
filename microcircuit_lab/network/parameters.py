@@ -175,6 +175,22 @@ def mean_psc_matrix(
     return matrix
 
 
+def _tau_syn(network: NetworkConfig, parameter: str) -> np.ndarray:
+    """Return neuron parameter ``parameter`` (a synaptic time constant) for
+    each population. A population whose neuron parameters don't include it
+    raises a clear error naming that population, instead of a bare
+    AttributeError."""
+
+    values = []
+    for name, population in network.populations.items():
+        try:
+            values.append(population.neuron.parameters.require(parameter)[parameter])
+        except KeyError as exc:
+            raise ValueError(f"Population {name!r}: {exc.args[0]}") from exc
+
+    return np.asarray(values, dtype=float)
+
+
 def tau_syn_ex(
     network: NetworkConfig,
 ) -> np.ndarray:
@@ -183,19 +199,43 @@ def tau_syn_ex(
 
     Used by DC-current scaling compensation, which shares the same
     current-based-synapse assumption as the PSP-to-PSC conversion; see
-    _convert_psp_weight. A population whose neuron parameters don't
-    include tau_syn_ex raises a clear error naming that population,
-    instead of a bare AttributeError.
+    _convert_psp_weight.
     """
 
-    values = []
-    for name, population in network.populations.items():
-        try:
-            values.append(population.neuron.parameters.require("tau_syn_ex")["tau_syn_ex"])
-        except KeyError as exc:
-            raise ValueError(f"Population {name!r}: {exc.args[0]}") from exc
+    return _tau_syn(network, "tau_syn_ex")
 
-    return np.asarray(values, dtype=float)
+
+def tau_syn_in(
+    network: NetworkConfig,
+) -> np.ndarray:
+    """Return the inhibitory synaptic time constant for each population."""
+
+    return _tau_syn(network, "tau_syn_in")
+
+
+def relative_tau_matrix(
+    network: NetworkConfig,
+    mean_PSC_matrix: np.ndarray,
+) -> np.ndarray:
+    """
+    Return each connection's synaptic time constant relative to the
+    excitatory one of its target: 1 for an excitatory connection (positive
+    PSC), ``tau_syn_in / tau_syn_ex`` for an inhibitory one.
+
+    DC-current scaling compensation multiplies the recurrent input by the
+    target's ``tau_syn_ex``. Weighting the input by this matrix first gives
+    every connection its own time constant, which is what the compensation
+    needs when ``tau_syn_in`` differs from ``tau_syn_ex``. ``tau_syn_in`` is
+    only read when the network has an inhibitory connection.
+    """
+
+    relative = np.ones_like(mean_PSC_matrix, dtype=float)
+    inhibitory = mean_PSC_matrix < 0
+    if inhibitory.any():
+        ratio = tau_syn_in(network) / tau_syn_ex(network)
+        relative = np.where(inhibitory, ratio[:, None], relative)
+
+    return relative
 
 
 def convert_network_psp_to_psc(

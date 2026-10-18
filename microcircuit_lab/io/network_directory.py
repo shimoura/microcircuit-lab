@@ -72,14 +72,17 @@ def delay(
     *,
     rel_std: float = 0.0,
     distribution: str | None = None,
+    minimum: float | None = None,
 ) -> dict[str, Any]:
     """A connection or background delay, ``mean`` in ms. ``distribution``
-    is chosen as in :func:`weight`."""
+    is chosen as in :func:`weight`. ``minimum`` is the smallest allowed
+    delay in ms; it is left out of the file when not given."""
     return DelayDistribution(
         mean=mean,
         rel_std=rel_std,
         distribution=_distribution(rel_std, distribution),
-    ).model_dump()
+        minimum=minimum,
+    ).model_dump(exclude_none=True)
 
 
 def write_network_directory(
@@ -90,6 +93,7 @@ def write_network_directory(
     connections: Iterable[Mapping[str, Any]],
     background_inputs: Mapping[str, Mapping[str, Any]],
     background_mode: Literal["poisson", "dc"] = "poisson",
+    bound_mode: Literal["redraw", "clip"] = "redraw",
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
     stimuli: Iterable[Mapping[str, Any]] | None = None,
@@ -106,7 +110,8 @@ def write_network_directory(
 
     ``stimuli=None`` omits ``stimuli.yaml``; pass a list to write it.
     ``background_mode`` is written into ``background_inputs.yaml`` only when
-    it is ``"dc"`` (``"poisson"`` is the schema default).
+    it is ``"dc"`` (``"poisson"`` is the schema default). ``bound_mode`` is
+    written into ``connectivity.yaml`` only when it is ``"clip"``.
 
     Always overwrites, always validates: returns the resolved, preprocessed
     :class:`~microcircuit_lab.config.network.NetworkConfig` from
@@ -128,6 +133,11 @@ def write_network_directory(
     if stimuli is not None:
         file_names["stimuli"] = "stimuli.yaml"
 
+    connectivity_payload: dict[str, Any] = {}
+    if bound_mode != "redraw":
+        connectivity_payload["bound_mode"] = bound_mode
+    connectivity_payload["connections"] = flow_records(list(connections))
+
     background_payload: dict[str, Any] = {}
     if background_mode != "poisson":
         background_payload["background_mode"] = background_mode
@@ -141,7 +151,7 @@ def write_network_directory(
         "network.yaml": file_names,
         "populations.yaml": {"populations": flow_records(list(populations))},
         "neurons.yaml": {"neurons": dict(neurons)},
-        "connectivity.yaml": {"connections": flow_records(list(connections))},
+        "connectivity.yaml": connectivity_payload,
         "background_inputs.yaml": background_payload,
         "scaling.yaml": dict(scaling) if scaling is not None else {},
         "reference.yaml": {

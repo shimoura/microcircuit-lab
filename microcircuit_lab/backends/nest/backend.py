@@ -414,6 +414,10 @@ class NestBackend:
     def create_weight_spec(self, weight):
         """
         Create a NEST weight parameter.
+
+        A normal weight keeps the sign of its mean. A drawn value of the
+        other sign is redrawn or clipped to 0, as set by the network's
+        ``bound_mode``.
         """
 
         if weight.distribution == "fixed":
@@ -422,24 +426,17 @@ class NestBackend:
         std = abs(weight.mean * weight.rel_std)
 
         if weight.distribution == "normal":
-            if weight.mean >= 0:
-                return nest.math.redraw(
-                    nest.random.normal(
-                        mean=weight.mean,
-                        std=std,
-                    ),
-                    min=0.0,
-                    max=float("inf"),
-                )
+            distribution = nest.random.normal(mean=weight.mean, std=std)
+            clip = self._network.config.bound_mode == "clip"
 
-            return nest.math.redraw(
-                nest.random.normal(
-                    mean=weight.mean,
-                    std=std,
-                ),
-                min=-float("inf"),
-                max=0.0,
-            )
+            if weight.mean >= 0:
+                if clip:
+                    return nest.math.max(distribution, 0.0)
+                return nest.math.redraw(distribution, min=0.0, max=float("inf"))
+
+            if clip:
+                return nest.math.min(distribution, 0.0)
+            return nest.math.redraw(distribution, min=-float("inf"), max=0.0)
 
         if weight.distribution == "lognormal":
             variance = (weight.mean * weight.rel_std) ** 2
@@ -455,11 +452,22 @@ class NestBackend:
         raise NotImplementedError(f"Unsupported distribution: {weight.distribution}")
 
     def create_delay_parameter(self, delay):
+        """
+        Create a NEST delay parameter.
+
+        A drawn delay below the minimum (``delay.minimum``, or half the
+        simulation step if not set) is redrawn or clipped to the minimum,
+        as set by the network's ``bound_mode``.
+        """
+
         if delay.distribution == "fixed" or delay.rel_std == 0.0:
             return delay.mean
 
         std = delay.mean * delay.rel_std
-        min_delay = nest.resolution - 0.5 * nest.resolution
+        if delay.minimum is not None:
+            min_delay = delay.minimum
+        else:
+            min_delay = nest.resolution - 0.5 * nest.resolution
 
         if delay.distribution == "normal":
             distribution = nest.random.normal(
@@ -480,6 +488,9 @@ class NestBackend:
 
         else:
             raise ValueError(f"Unsupported delay distribution: {delay.distribution!r}")
+
+        if self._network.config.bound_mode == "clip":
+            return nest.math.max(distribution, min_delay)
 
         return nest.math.redraw(
             distribution,

@@ -29,6 +29,7 @@ from microcircuit_lab.network.parameters import (
     background_indegrees,
     background_psc_weights,
     mean_psc_matrix,
+    relative_tau_matrix,
     tau_syn_ex,
     convert_network_psp_to_psc,
     network_mean_input,
@@ -218,8 +219,9 @@ class NetworkPreprocessor:
         PSC_ext = background_psc_weights(original)
         PSC_matrix = mean_psc_matrix(original)
 
-        # Synaptic time constant (ms) for excitatory synapses
-        # (used for both recurrent and external contributions)
+        # Synaptic time constant (ms) for excitatory synapses. The external
+        # contribution uses it directly; the recurrent one weights each
+        # connection by its own time constant first (see relative_tau_matrix).
         tau_syn = tau_syn_ex(original)
 
         # Compute recurrent contribution when requested.
@@ -229,7 +231,7 @@ class NetworkPreprocessor:
             mean_rates = full_mean_rates(original)
 
             network_input = network_mean_input(
-                mean_PSC_matrix=PSC_matrix,
+                mean_PSC_matrix=PSC_matrix * relative_tau_matrix(original, PSC_matrix),
                 indegree_matrix=indegrees,
                 mean_rates=mean_rates,
             )
