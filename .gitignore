@@ -4,3 +4,5 @@ microcircuit_lab.egg-info/*
 **/__pycache__/*
 *.pyc
 .venv/
+build/
+dist/

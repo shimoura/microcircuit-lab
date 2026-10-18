@@ -27,7 +27,7 @@ A project is a folder with your own `builders/`, `analyses/` (see [Analysing a r
 **Installed.** For using the core as it is:
 
 ```bash
-pip install <the core>                # see Installation below
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
 microcircuit-lab init my_project      # creates the four folders, touches nothing that exists
 cd my_project
 microcircuit-lab new-builder my_model # creates builders/my_model/
@@ -92,18 +92,30 @@ The generic network and simulation layers do not depend on HuMAM, PD14, or any o
 microcircuit_lab/
 ├── analysis/       # analysis and visualization
 ├── backends/       # simulator implementations (currently NEST)
-├── cli/            # the `microcircuit-lab` command (generate, run, new-builder)
+├── cli/            # the `microcircuit-lab` command (init, new-builder, generate, run)
 ├── config/         # validated network and simulation schemas
 ├── io/             # configuration file loading and validation assembly
 ├── network/        # generic network model, transformations, and preprocessing
 └── simulation/     # high-level simulation orchestration
 
-builders/           # model-specific builders (HuMAM, PD14, ...), outside the package
+builders/           # model-specific builders (PD14, HuMAM, toy_two_areas), outside the package
+configs/            # network, simulation and analysis configs of the examples
+experiments/        # example experiment scripts (e.g. a parameter sweep)
+scripts/            # helper scripts (building NEST from source)
+tests/              # tests of the core
 ```
+
+Only `microcircuit_lab/` is installed by `pip`; the other folders come with a clone of the repository (or, for `builders/` and `configs/`, with `microcircuit-lab init --with-core`).
 
 ## Installation
 
-To use the core as it is, install a released version in a virtual environment. This is the `pip install <the core>` of [Starting a project](#starting-a-project); the command is fixed once the first version is published. To work on the core itself, install a clone in editable mode:
+To use the core as it is, install a released version in a virtual environment:
+
+```bash
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
+```
+
+Replace `v0.1.0` with the version you want (see the repository's releases); drop `[nest]` if you get NEST another way (see **NEST** below). To work on the core itself, install a clone in editable mode:
 
 ```bash
 python -m venv .venv
@@ -129,7 +141,7 @@ The fastest way to see the framework run is the bundled `toy` network, a minimal
 microcircuit-lab run --network toy
 ```
 
-`microcircuit-lab run` is the generic runner for any pre-generated network (defaults to `pd14`; `--simulation`/`--analysis` default to whatever `--network` is set to, see [Configuration](#configuration)). It produces raster, firing-rate, power-spectrum, and ISI-CV diagnostics with one shared plot style. Use `microcircuit-lab generate <model>` to (re)generate a model's network configuration.
+`microcircuit-lab run --network <name>` is the generic runner for any network under `configs/network/` (`--simulation`/`--analysis` default to the same name, see [Configuration](#configuration); `--run-dir` re-plots a finished run instead, see [Re-plotting without re-simulating](#re-plotting-without-re-simulating)). It produces raster, firing-rate, power-spectrum, and ISI-CV diagnostics with one shared plot style. Use `microcircuit-lab generate <model>` to (re)generate a model's network configuration.
 
 The same thing from Python, e.g. for a notebook or a script under `experiments/`:
 
@@ -174,7 +186,7 @@ These are three independent trees, matched by name, so one network can be paired
 
 Unlike network/simulation configs, an analysis config is optional: if `configs/analysis/<name>.yaml` doesn't exist, `AnalysisConfig.from_yaml` falls back to built-in defaults rather than raising, so adding a new network never requires an analysis file. Because `AnalysisConfig`/`PlotStyle`/`RasterPlotConfig`/etc. are just pydantic models, a one-off tweak for a specific script or notebook doesn't need a YAML file at all -- override in memory instead, e.g. `plot_raster(sim, config=RasterPlotConfig(neuron_fraction=0.05))`. Save a variant to YAML only once it's a default worth reusing; see [Experiments](#experiments) for where a one-off analysis script belongs instead.
 
-Beyond `begin`/`end`/`area`/`show_reference`/`style`, `AnalysisConfig` doesn't pre-declare a field per plot -- `raster:`/`firing_rates:`/`power_spectrum:`/`isi_cv:` are just the top-level sections the four bundled diagnostics happen to be registered under (see [Adding a new diagnostic](#adding-a-new-diagnostic)). A section name that isn't registered raises a clear error rather than being silently ignored.
+Beyond `begin`/`end`/`area`/`show_reference`/`style`, `AnalysisConfig` doesn't pre-declare a field per plot -- `raster:`/`firing_rates:`/`power_spectrum:`/`isi_cv:` are just the top-level sections the four bundled diagnostics happen to be registered under (see [Adding a bundled plot](#adding-a-bundled-plot-package-maintainers)). A section name that isn't registered raises a clear error rather than being silently ignored.
 
 **Background input vs. stimulation.** `background_inputs.yaml` is the always-on background Poisson drive tied to `background_indegree`; it scales with `K_scaling` and is what the DC-compensation math in `network/scaling.py` accounts for.
 

@@ -4,7 +4,8 @@
     microcircuit-lab init <project> --with-core   # also keep a clone of the core inside
 
 Nothing that already exists is touched. With ``--with-core`` the core is cloned
-into ``<project>/microcircuit-lab/`` and installed in editable mode, so its code
+into ``<project>/microcircuit-lab/`` (at the release tag of the installed version,
+or the latest ``main`` if there is none) and installed in editable mode, so its code
 sits next to the project's and can be read and edited; the folder is added to
 ``.gitignore`` because it is a clone of its own repository.
 
@@ -19,6 +20,7 @@ import argparse
 import shutil
 import subprocess
 import sys
+from importlib.metadata import version
 from pathlib import Path
 
 PROJECT_FOLDERS = ("builders", "analyses", "configs", "experiments")
@@ -55,12 +57,30 @@ def _copy_examples(core: Path, project: Path) -> None:
             print(f"Copied {folder}/{entry.name}")
 
 
+def _release_tag() -> str | None:
+    """The tag of the installed version (e.g. ``v0.1.0``) if the core repository
+    has it, else None (e.g. a development version that was never released)."""
+    tag = f"v{version('microcircuit_lab')}"
+    found = subprocess.run(
+        ["git", "ls-remote", "--tags", CORE_URL, f"refs/tags/{tag}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return tag if found.stdout.strip() else None
+
+
 def _install_core(project: Path) -> None:
     core = project / CORE_FOLDER
     if core.exists():
         print(f"{core} already exists, left as it is.")
     else:
-        subprocess.run(["git", "clone", CORE_URL, str(core)], check=True)
+        tag = _release_tag()
+        if tag is None:
+            print("The installed version has no release tag; cloning the latest main instead.")
+            subprocess.run(["git", "clone", CORE_URL, str(core)], check=True)
+        else:
+            subprocess.run(["git", "clone", "--branch", tag, CORE_URL, str(core)], check=True)
     _copy_examples(core, project)
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", str(core)], check=True)
     _ignore_core_folder(project)
