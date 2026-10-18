@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,10 +7,12 @@ name = "microcircuit_lab"
 version = "0.1.0"
 description = "A flexible framework for building, simulating, and analyzing biologically inspired neural microcircuit models."
 readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 
 authors = [
-    { name = "Renan O. Shimoura" }
+    { name = "Renan Oliveira Shimoura" }
 ]
 
 dependencies = [

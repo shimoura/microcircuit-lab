@@ -21,3 +21,11 @@ microcircuit-lab run --network toy
 See [`microcircuit_lab/README.md`](microcircuit_lab/README.md) for everything else.
 
 To use the framework in your own project, install it and keep only your own builders, analyses and configs in the project folder (see "Starting a project" in `microcircuit_lab/README.md`). To change the framework itself, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## How to cite
+
+If you use Microcircuit Lab in your work, please cite it. [`CITATION.cff`](CITATION.cff) has the reference; on GitHub, "Cite this repository" in the sidebar gives it in APA and BibTeX. Please also cite the papers of the models you use (listed in each builder's README).
+
+## License
+
+BSD 3-Clause, see [`LICENSE`](LICENSE).
