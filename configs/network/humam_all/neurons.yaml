@@ -1,5 +1,5 @@
 neurons:
-  excitatory:
+  E:
     model: iaf_psc_exp
     parameters:
       C_m: 220.0
@@ -11,7 +11,7 @@ neurons:
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
       I_e: 0.0
-  inhibitory:
+  I:
     model: iaf_psc_exp
     parameters:
       C_m: 100.0
