@@ -48,6 +48,14 @@ def test_resolve_run_directory_without_overwrite_never_collides(tmp_path: Path) 
     assert first.parent == second.parent == tmp_path / "run"
 
 
+def test_resolve_run_directory_defaults_to_the_network_name(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    run_dir = resolve_run_directory(OutputConfig(), network_name="toy", simulation_name="toy")
+
+    assert run_dir.parent == Path("output") / "toy"
+
+
 def test_native_ascii_recording_writes_directly_to_disk(tmp_path: Path) -> None:
     """
     With prepare_output() called (as Simulation.run() does), NEST's own

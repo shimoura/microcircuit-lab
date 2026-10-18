@@ -37,9 +37,13 @@ class RecordingConfig(FrozenConfig):
 # Output
 # -----------------------------------------------------------------------------
 class OutputConfig(FrozenConfig):
-    """Configuration of simulation output."""
+    """Configuration of simulation output.
 
-    output_dir: Path = Path("output")
+    ``output_dir`` defaults to ``output/<network name>``, so runs of different
+    networks never share a folder.
+    """
+
+    output_dir: Path | None = None
     overwrite: bool = False
     save_metadata: bool = True
     save_config: bool = True

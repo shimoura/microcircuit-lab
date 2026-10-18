@@ -32,10 +32,10 @@ def resolve_run_directory(
     ``output.output_dir`` directly -- convenient while iterating on a
     model. Otherwise each run gets its own ``<output_dir>/<timestamp>``
     subdirectory, so results from different runs are never silently
-    overwritten.
+    overwritten. Without an ``output_dir``, it is ``output/<network_name>``.
     """
 
-    base = Path(output.output_dir)
+    base = Path(output.output_dir) if output.output_dir else Path("output") / network_name
 
     if output.overwrite:
         run_dir = base

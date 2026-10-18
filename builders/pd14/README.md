@@ -9,7 +9,7 @@ from microcircuit_lab import Simulation
 
 simulation = Simulation.from_yaml(
     network_name="pd14",
-    simulation_name="default",
+    simulation_name="pd14",
 )
 simulation.run()
 ```

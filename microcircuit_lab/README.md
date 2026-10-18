@@ -43,7 +43,17 @@ microcircuit-lab init my_project --with-core
 
 This also clones the core into `my_project/microcircuit-lab/`, installs it in editable mode (so edits take effect immediately) and adds that folder to the project's `.gitignore`, because it is a clone of its own repository. Pull new core versions with `git pull` inside that folder; to share a change, follow [CONTRIBUTING.md](../CONTRIBUTING.md). Every run records both the project's git commit (`git`) and the core's (`core_git`) in `metadata.json`, so a result can be traced to the exact code that produced it. Without the clone, the core is recorded by its version only.
 
-Run the commands from the project root: that is where the core looks for `builders/`, `analyses/` and `configs/`. The package does not ship the example configs (`toy`, `pd14`, `humam`); a clone of this repository has them under `configs/` for you to copy. A change that only your project needs belongs in your `builders/` or `analyses/`, not in the core.
+It also copies the examples (`toy`, `toy_stimulated`, `pd14`, `humam`) into the project's `builders/` and `configs/`, so you can try them two ways:
+
+```bash
+microcircuit-lab run --network pd14           # run a network config as it is
+microcircuit-lab generate humam               # or regenerate it with its builder first
+microcircuit-lab run --network humam_single
+```
+
+The copies are yours to edit and don't follow later core updates. An example whose name already exists in the project is skipped, so `microcircuit-lab init . --with-core` is safe inside an existing repository. A plain `pip install` without `--with-core` has no examples.
+
+Run the commands from the project root: that is where the core looks for `builders/`, `analyses/` and `configs/`. A change that only your project needs belongs in your `builders/` or `analyses/`, not in the core.
 
 Experiments are plain Python scripts under `experiments/`; a sweep runs `Simulation` several times and writes its results to `output/experiments/<name>/`, apart from the normal run directories.
 
@@ -417,7 +427,7 @@ For multi-area networks, select one area with `area="V1"`; `list_areas(simulatio
 `Simulation.run()` saves its outputs automatically, controlled by `simulation.yaml`'s `output` and `recording` sections (all optional, see `microcircuit_lab/config/simulation.py`):
 
 ```text
-<output_dir>/                      # fixed if overwrite: true, else <output_dir>/<timestamp>/
+<output_dir>/                      # fixed if overwrite: true, else <output_dir>/<timestamp>/; default output/<network>/
 ├── recordings/                    # spike recordings, see below
 ├── config.yaml                    # the fully resolved network + simulation config actually used
 └── metadata.json                  # run identity, per-population spike stats, and an artifact manifest
