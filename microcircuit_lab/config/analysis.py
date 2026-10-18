@@ -153,14 +153,19 @@ class AnalysisConfig(FrozenConfig):
 
     style: PlotStyle = PlotStyle()
 
-    def plot_config(self, name: str, config_cls: type[FrozenConfig]) -> FrozenConfig:
+    def plot_config(
+        self, name: str, config_cls: type[FrozenConfig] | None
+    ) -> FrozenConfig | dict:
         """
         Validate this config's ``name`` section (or ``{}`` if absent)
         against ``config_cls`` -- how a specific plot's own settings are
-        pulled out of the open-ended extra fields above.
+        pulled out of the open-ended extra fields above. Without a
+        ``config_cls`` the section is returned as a plain dict.
         """
 
         raw = (self.model_extra or {}).get(name, {})
+        if config_cls is None:
+            return dict(raw)
         return config_cls.model_validate(raw)
 
     @classmethod

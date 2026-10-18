@@ -17,6 +17,7 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 - [Experiments](#experiments)
 - [Repository scripts](#repository-scripts)
 - [Run outputs](#run-outputs)
+- [Analysing a run](#analysing-a-run)
 - [Testing](#testing)
 
 ## Using this as a template for a new project
@@ -321,40 +322,7 @@ Model-specific documentation is located inside each folder under `builders/`.
 
 ## Experiments
 
-An experiment -- a parameter sweep, a comparison across configs, exploratory analysis for a specific model -- is a plain Python script under `experiments/<model_name>/<experiment_name>.py`. There's no dedicated framework for this beyond `Simulation`/`microcircuit_lab.analysis`: build a network config (from YAML, or with fields overridden in-memory as needed), run it, and use the same `compute_*`/`plot_*` functions as everywhere else. See `experiments/toy/background_drive_sweep.py` for a worked example (a small sweep over one population parameter, reproducing how the toy network's own background drive was calibrated).
-
-## Repository scripts
-
-Model generation and simulation execution are intentionally separate: `scripts/generate.py` produces (and validates) a model's config files, and `scripts/run_simulation.py` runs any pre-generated config by name -- or re-plots an existing run's recordings without re-simulating, via `--run-dir` (see below). Neither script contains model-specific logic; `scripts/generate.py` just discovers each `builders/<model>/` package that exposes a `main` and forwards to it, so both stay unchanged as models are added.
-
-Run the bundled PD14 network (uses the default network/simulation names):
-
-```bash
-python scripts/run_simulation.py
-```
-
-Generate a HuMAM network, then run it by name:
-
-```bash
-python scripts/generate.py humam --area bankssts
-python scripts/run_simulation.py --network humam_single --simulation humam_single
-```
-
-Regenerate PD14's connectivity from source data (its other config files are static):
-
-```bash
-python scripts/generate.py pd14
-```
-
-`python scripts/generate.py` with no arguments lists the discovered models; `python scripts/generate.py <model> --help` shows one model's options. Generation validates its own output, and every config is validated again whenever it is loaded to run.
-
-`scripts/run_simulation.py` accepts:
-
-- `--network` (or `--run-dir`, see below), `--simulation`, `--analysis` -- which network/simulation/analysis profile to use
-- `--area`, `--begin`, `--end`, `--reference`/`--no-reference` -- analysis window and options. For multi-area networks `--area <name>` plots one area into `plots/`; `--area all` (or `area: all` in the analysis YAML, as in `humam_all`) writes one set of plots per area into `plots/<area>/`
-- one `--<plot-name>`/`--no-<plot-name>` pair per entry in `microcircuit_lab.analysis.PLOT_REGISTRY`: `--raster`/`--no-raster`, `--firing-rates`/`--no-firing-rates`, `--power-spectrum`/`--no-power-spectrum`, `--isi-cv`/`--no-isi-cv` for the four bundled diagnostics (see [Adding a new diagnostic](#adding-a-new-diagnostic) for how a 5th one gets its own flag automatically)
-
-Every one of these (except `--network`/`--run-dir`/`--simulation`/`--analysis` themselves) is an *optional override*: if omitted, the value comes from `configs/analysis/<analysis_name>.yaml` (see [Configuration](#configuration)) instead. Plots are saved to `<output_dir>/plots/` but not opened interactively by default; pass `--show` to also pop up the plot windows. Plot styling (colors, sizes, figure layout, raster neuron subsampling, spectral estimator, ...) is set entirely via that same analysis YAML, not hardcoded in the script.
+An experiment -- a parameter sweep, or a comparison across configs -- is a plain Python script under `experiments/<model_name>/<experiment_name>.py` that runs simulations itself. There's no dedicated framework for this beyond `Simulation`/`microcircuit_lab.analysis`: build a network config (from YAML, or with fields overridden in-memory as needed), run it, and use the same `compute_*`/`plot_*` functions as everywhere else. See `experiments/toy/background_drive_sweep.py` for a worked example (a small sweep over one population parameter, reproducing how the toy network's own background drive was calibrated). To analyse a run you already have, see [Analysing a run](#analysing-a-run).
 
 ### Re-plotting without re-simulating
 
@@ -367,17 +335,17 @@ python scripts/run_simulation.py --run-dir output/toy/<timestamp> --begin 200 --
 
 Plots are written back into that same run's own `plots/` directory. Programmatically, this is `Simulation.from_run_dir(run_dir)` -- it returns a `Simulation` with a working `.backend` (reading spikes back from `recordings/` instead of a live NEST process, via `PostHocBackend`) without ever calling `.run()`, so `microcircuit_lab.analysis`'s `plot_*`/`compute_*` functions work on it exactly as they do on a freshly-run one. Only runs saved after this feature was added carry the `first_gid` metadata field it needs; an older run raises a clear error instead of silently reconstructing the wrong neuron IDs -- just re-run it once to pick up the new field.
 
-### Adding a new diagnostic
+### Adding a bundled plot (package maintainers)
 
-Adding a 5th bundled plot (raster/firing-rates/power-spectrum/ISI-CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model builders (`io.discover_builders`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function (same shape as `plot_raster`/`plot_firing_rates`: `(simulation, begin, end, *, area, style, config, save_path, show)`) and a small config class for its own settings, then register it once:
+Adding a bundled plot (raster, firing rates, power spectrum and ISI CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model builders (`io.discover_builders`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function and a small config class for its settings, then register it once:
 
 ```python
 from microcircuit_lab.analysis import register_plot
 
 register_plot(
     "spectrogram",
+    plot_spectrogram,
     config_cls=SpectrogramPlotConfig,
-    plot_fn=plot_spectrogram,
     filename="spectrogram.png",
 )
 ```
@@ -387,7 +355,7 @@ That's the entire wiring:
 - `scripts/run_simulation.py` gets a `--spectrogram`/`--no-spectrogram` flag automatically (it builds its CLI by looping over `microcircuit_lab.analysis.PLOT_REGISTRY`)
 - `configs/analysis/*.yaml` files don't need to change shape at all -- a `spectrogram:` top-level section works exactly like `raster:`/`firing_rates:` already do (an unregistered section name raises a clear error instead of being silently ignored, via `check_unknown_plot_sections`)
 
-This works from your own code too, e.g. a module under `experiments/<model>/` -- calling `register_plot` there plugs a project-specific diagnostic into the same CLI/YAML dispatch without editing this package at all.
+For a plot in your own project, not in this package, see [Analysing a run](#analysing-a-run).
 
 ### Firing-rate distributions
 
@@ -423,6 +391,84 @@ Voltage recording (`recording.voltage_recording: true`) uses one shared multimet
 `metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `scripts/run_simulation.py` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`. Any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
 
 The simulation object exposes `simulation.output_dir` (a `Path`, set once `run()` has completed) for building further artifact paths.
+
+## Analysing a run
+
+Every run writes a *run folder* (`output/<model>/<timestamp>/`, see above) that holds its config and its spike recordings. An analysis is any Python code that opens a run folder, computes what you want, and saves files back into it. How you do the middle part is up to you, as for builders.
+
+### Write an analysis
+
+Put a file in an `analyses/` folder next to `configs/` and `builders/`:
+
+```python
+# analyses/rate_bars.py
+import sys
+
+import matplotlib.pyplot as plt
+
+from microcircuit_lab import Simulation
+from microcircuit_lab.analysis import compute_population_firing_rates, register_plot
+from microcircuit_lab.io.output import register_artifact
+
+
+def rate_bars(simulation, save_path, area=None):
+    """Mean rate of each population, as bars."""
+    rates = compute_population_firing_rates(simulation, area=area)
+    fig, ax = plt.subplots()
+    ax.bar(list(rates), list(rates.values()))
+    ax.set_ylabel("Rate (spikes/s)")
+    fig.savefig(save_path)
+
+
+register_plot("rate_bars", rate_bars)
+
+
+if __name__ == "__main__":
+    simulation = Simulation.from_run_dir(sys.argv[1])
+    path = simulation.output_dir / "plots" / "rate_bars.png"
+    path.parent.mkdir(exist_ok=True)
+    rate_bars(simulation, path)
+    register_artifact(simulation.output_dir, "plots", path)
+```
+
+The file works in two ways, and you can use either or both:
+
+- **Run it yourself** on any run folder. Nothing else is needed:
+  ```bash
+  python analyses/rate_bars.py output/my_model/<timestamp>
+  ```
+  `Simulation.from_run_dir` opens the finished run without re-simulating it. The last line lists the new file in the run's `metadata.json`.
+- **Let `run_simulation.py` run it.** The line `register_plot("rate_bars", rate_bars)` gives you a `--rate-bars` flag and, in the analysis YAML, a `rate_bars:` section. With `--area all` you get one figure per area, saved under `plots/` and listed in `metadata.json`:
+  ```bash
+  python scripts/run_simulation.py --run-dir output/my_model/<timestamp> --rate-bars
+  ```
+  The script imports every file in `analyses/` before it reads its flags, so run it from the project folder. Because of the `if __name__ == "__main__":` line, the standalone part does not run when the script imports the file.
+
+### What your function can ask for
+
+The first parameter is always the simulation. After that, name only what you need, and `run_simulation.py` fills it in:
+
+| Parameter | What you get |
+|---|---|
+| `save_path` | where to save the figure (the script creates the folder) |
+| `area` | one area name, or `None` for single-area networks |
+| `begin`, `end` | the time window in ms (`--begin`, `--end`) |
+| `style` | the shared plot style; `population_color(name, index, style)` and `population_label(name, style)` use it |
+| `config` | your settings: the `rate_bars:` section of the analysis YAML, as a plain dict (`{"enabled": true, "color": "green"}`) |
+| `show` | `True` with `--show` |
+| `show_reference` | `True` if reference rates should be overlaid (`--reference`) |
+
+A parameter with any other name must have a default value, as `area=None` has above. If it doesn't, `register_plot` fails at once and lists the names you can use.
+
+A plot registered like this is off by default. Pass `--rate-bars`, or set `enabled: true` in the `rate_bars:` section, to switch it on.
+
+### Good to know
+
+- A name that is already used raises an error, so a plot of yours cannot replace `raster` or another bundled plot.
+- To make `--area all` work, use `area` when you pick populations: `select_populations(simulation, None, area)` returns the populations of that area. If you cache a result with `load_or_compute`, put the area in its name, for example `f"rate_bars_{area}"`.
+- Read data only through `simulation` (`simulation.backend.get_spike_events(...)`, `simulation.network.config`, `simulation.simulation_config`) so the analysis also works on saved runs.
+- Many simulations with one parameter changed (a sweep, an f-I curve) are not an analysis of one run. Write them as a script under `experiments/` (see [Experiments](#experiments)).
+- A package that provides analyses can register them too, by listing the module under the `microcircuit_lab.analyses` entry-point group in its `pyproject.toml` (see `microcircuit_lab/analysis/registry.py`).
 
 ## Testing
 

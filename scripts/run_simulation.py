@@ -4,7 +4,9 @@ with optional diagnostics.
 Which diagnostics exist at all -- and their CLI flags -- come from
 microcircuit_lab.analysis.PLOT_REGISTRY, not this script: adding a new
 bundled diagnostic (microcircuit_lab.analysis.register_plot) makes it
-show up here automatically, no changes needed in this file.
+show up here automatically, no changes needed in this file. A project's
+own plots in its ``analyses/`` folder are found the same way (see
+microcircuit_lab.analysis.discover_plots), so run this from the project root.
 """
 
 import argparse
@@ -15,9 +17,12 @@ import matplotlib.pyplot as plt
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import (
     PLOT_REGISTRY,
+    call_plot,
     check_reference_rates,
     check_unknown_plot_sections,
+    discover_plots,
     list_areas,
+    plot_enabled_in_config,
 )
 from microcircuit_lab.config import AnalysisConfig
 from microcircuit_lab.io.output import register_artifact
@@ -110,6 +115,9 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+    # Before parsing: the --<plot> flags are built from PLOT_REGISTRY.
+    discover_plots()
+
     args = _parse_args()
 
     if args.run_dir is not None:
@@ -158,19 +166,21 @@ def main() -> None:
     for name, spec in PLOT_REGISTRY.items():
         plot_config = analysis_config.plot_config(name, spec.config_cls)
         cli_override = getattr(args, name)
-        enabled = cli_override if cli_override is not None else plot_config.enabled
+        enabled = (
+            cli_override if cli_override is not None else plot_enabled_in_config(plot_config)
+        )
         if not enabled:
             continue
 
         for plot_area, plots_dir in plot_targets:
             save_path = plots_dir / spec.filename
-            kwargs = dict(
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            call_plot(
+                spec, simulation,
                 begin=begin, end=end, area=plot_area, style=analysis_config.style,
                 config=plot_config, save_path=save_path, show=args.show,
+                show_reference=show_reference,
             )
-            if name == "firing_rates":
-                kwargs["show_reference"] = show_reference
-            spec.plot_fn(simulation, **kwargs)
             register_artifact(simulation.output_dir, "plots", save_path)
             if not args.show:
                 plt.close("all")

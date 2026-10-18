@@ -70,7 +70,7 @@ def test_a_builder_that_fails_to_import_raises(tmp_path: Path) -> None:
 
 def test_an_installed_package_can_register_a_builder(monkeypatch, tmp_path: Path) -> None:
     external = EntryPoint(
-        name="external_model", value="builtins:print", group=builders_module.ENTRY_POINT_GROUP
+        name="external_model", value="builtins:print", group=builders_module.BUILDER_ENTRY_POINT_GROUP
     )
     monkeypatch.setattr(builders_module, "entry_points", lambda group: [external])
 

@@ -23,14 +23,13 @@ entry point.
 
 from __future__ import annotations
 
-import importlib
-import pkgutil
-import sys
 from collections.abc import Callable
 from importlib.metadata import entry_points
 from pathlib import Path
 
-ENTRY_POINT_GROUP = "microcircuit_lab.builders"
+from microcircuit_lab.io.discovery import import_folder_modules
+
+BUILDER_ENTRY_POINT_GROUP = "microcircuit_lab.builders"
 
 
 def discover_builders(
@@ -40,21 +39,12 @@ def discover_builders(
 
     found: dict[str, Callable[[list[str] | None], None]] = {}
 
-    folder = Path(builders_dir).resolve()
-    if folder.is_dir():
-        if str(folder.parent) not in sys.path:
-            sys.path.insert(0, str(folder.parent))
+    for name, package in import_folder_modules(builders_dir, packages_only=True).items():
+        main = getattr(package, "main", None)
+        if callable(main):
+            found[name] = main
 
-        for module_info in pkgutil.iter_modules([str(folder)]):
-            if not module_info.ispkg:
-                continue
-
-            package = importlib.import_module(f"{folder.name}.{module_info.name}")
-            main = getattr(package, "main", None)
-            if callable(main):
-                found[module_info.name] = main
-
-    for entry_point in entry_points(group=ENTRY_POINT_GROUP):
+    for entry_point in entry_points(group=BUILDER_ENTRY_POINT_GROUP):
         found.setdefault(entry_point.name, entry_point.load())
 
     return found
