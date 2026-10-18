@@ -148,7 +148,7 @@ def test_manifest_rejects_an_unknown_file_key() -> None:
 
 
 # -----------------------------------------------------------------------------
-# load_network: schema + cross-file refs + preprocessing dry run
+# load_network: schema + cross-file refs + prepare_network dry run
 # -----------------------------------------------------------------------------
 def test_validate_passes_on_the_toy_network() -> None:
     config = load_network(TOY)

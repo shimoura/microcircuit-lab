@@ -56,7 +56,7 @@ def save_run_config(
     simulation_config: SimulationConfig,
     run_dir: Path,
 ) -> Path:
-    """Save the fully resolved (preprocessed) network and simulation config.
+    """Save the prepared network (after prepare_network) and the simulation config.
 
     connections/populations/background_inputs are written one-record-per-line
     (see yaml_files.flow_records) since a full-scale network can have

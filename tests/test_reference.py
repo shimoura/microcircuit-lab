@@ -41,7 +41,7 @@ def test_reference_matrices():
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
 
 
-def test_preprocessing_preserves_original_network():
+def test_prepare_network_keeps_the_original_network():
 
     network_files = read_network_files("configs/network/toy")
 

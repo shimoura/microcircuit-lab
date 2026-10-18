@@ -14,7 +14,7 @@ from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.prepare import prepare_network
 
 
-def test_toy_network_loads_and_preprocesses():
+def test_toy_network_loads_and_prepares():
     network_files = read_network_files("configs/network/toy")
     network = assemble_network(network_files)
     network = prepare_network(network)
