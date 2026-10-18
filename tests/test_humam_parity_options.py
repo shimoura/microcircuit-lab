@@ -32,6 +32,7 @@ TAU_SYN_EX = 2.0
 def _network(
     *,
     tau_syn_in: float,
+    background_indegree: float = 0.0,
     connections: list[ConnectionConfig] | None = None,
     scaling: ScalingConfig | None = None,
     reference: ReferenceConfig | None = None,
@@ -48,7 +49,7 @@ def _network(
     populations = {
         name: PopulationConfig(
             name=name, size=100, neuron=neuron, V0_mean=-58.0, V0_std=5.0,
-            background_indegree=0.0,
+            background_indegree=background_indegree,
         )
         for name in ("E", "I")
     }
@@ -62,8 +63,8 @@ def _network(
     )
 
 
-def _psc(mean: float) -> WeightDistribution:
-    return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit="PSC")
+def _psc(mean: float, unit: str = "PSC") -> WeightDistribution:
+    return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
 
 
 def _fixed_delay() -> DelayDistribution:
@@ -112,6 +113,61 @@ def test_compensation_is_unchanged_when_both_time_constants_are_equal() -> None:
     expected = 0.001 * (1.0 - np.sqrt(0.25)) * TAU_SYN_EX * indegree * (50.0 * 4.0 - 200.0 * 8.0)
 
     assert _compensation_into_E(TAU_SYN_EX) == pytest.approx(expected)
+
+
+def test_compensation_sign_rule_also_holds_for_weights_given_as_psp() -> None:
+    """A PSP weight keeps its sign when converted to a PSC, so an inhibitory
+    PSP is compensated with tau_syn_in just like an inhibitory PSC."""
+    from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
+
+    tau_syn_in = 4.0
+    config = _network(
+        tau_syn_in=tau_syn_in,
+        connections=[
+            ConnectionConfig(source="I", target="E", n_synapses=1000, weight=_psc(-0.5, "PSP"), delay=_fixed_delay()),
+        ],
+        scaling=ScalingConfig(K_scaling=0.25),
+        reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
+    )
+    config = config.model_copy(
+        update={
+            "background_inputs": {
+                name: BackgroundInputConfig(rate=0.0, weight=_psc(0.0), delay=_fixed_delay())
+                for name in ("E", "I")
+            }
+        }
+    )
+    psc = psp_to_psc_iaf_psc_exp(psp=-0.5, C_m=250.0, tau_m=10.0, tau_syn=tau_syn_in)
+    expected = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * psc * 10.0 * 8.0
+
+    derived = NetworkPreprocessor(config).process()
+
+    assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected)
+
+
+def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitory_input() -> None:
+    tau_syn_in = 4.0
+    config = _network(
+        tau_syn_in=tau_syn_in,
+        background_indegree=100.0,
+        scaling=ScalingConfig(K_scaling=0.25),
+        reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
+    )
+    config = config.model_copy(
+        update={
+            "background_inputs": {
+                "E": BackgroundInputConfig(rate=8.0, weight=_psc(-30.0), delay=_fixed_delay()),
+                "I": BackgroundInputConfig(rate=8.0, weight=_psc(30.0), delay=_fixed_delay()),
+            }
+        }
+    )
+    expected_E = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * -30.0 * 100.0 * 8.0
+    expected_I = 0.001 * (1.0 - np.sqrt(0.25)) * TAU_SYN_EX * 30.0 * 100.0 * 8.0
+
+    derived = NetworkPreprocessor(config).process()
+
+    assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected_E)
+    assert derived.populations["I"].neuron.parameters.I_e == pytest.approx(expected_I)
 
 
 # -----------------------------------------------------------------------------
@@ -164,13 +220,13 @@ def test_a_delay_without_a_minimum_leaves_it_out_of_the_file() -> None:
 # -----------------------------------------------------------------------------
 # what NEST draws
 # -----------------------------------------------------------------------------
-def _draw_synapses(bound_mode: str, *, weight_mean: float, minimum: float):
+def _draw_synapses(bound_mode: str, *, weight_mean: float, minimum: float, rel_std: float = 2.0):
     """Connect E to E with 4000 synapses whose weights and delays are wide
     enough that many draws fall outside their range; return both lists."""
     import nest
 
-    wide_weight = WeightDistribution(mean=weight_mean, rel_std=2.0, distribution="normal", unit="PSC")
-    wide_delay = DelayDistribution(mean=1.0, rel_std=2.0, distribution="normal", minimum=minimum)
+    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution="normal", unit="PSC")
+    wide_delay = DelayDistribution(mean=1.0, rel_std=rel_std, distribution="normal", minimum=minimum)
     config = _network(
         tau_syn_in=TAU_SYN_EX,
         connections=[
@@ -211,3 +267,19 @@ def test_clip_sets_short_delays_to_the_minimum_and_redraw_does_not() -> None:
     assert np.mean(clipped == 0.5) > 0.3
     assert np.all(redrawn >= 0.5)
     assert np.mean(redrawn == 0.5) < 0.1
+
+
+def test_clip_leaves_values_inside_their_range_unchanged() -> None:
+    weights, delays = _draw_synapses("clip", weight_mean=10.0, minimum=0.5, rel_std=0.05)
+
+    assert np.all(weights > 0.0)
+    assert np.mean(weights == 10.0) < 0.01
+    assert np.all(delays > 0.5)
+
+
+@pytest.mark.parametrize("bound_mode", ["clip", "redraw"])
+def test_a_minimum_delay_below_half_a_step_is_raised_not_rejected(bound_mode: str) -> None:
+    """NEST rounds a delay below half a step to 0 and refuses it."""
+    _, delays = _draw_synapses(bound_mode, weight_mean=10.0, minimum=0.01)
+
+    assert np.all(delays >= 0.1)

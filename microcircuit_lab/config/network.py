@@ -176,7 +176,8 @@ class DelayDistribution(FrozenConfig):
     minimum: float | None = Field(
         default=None,
         gt=0.0,
-        description="smallest allowed delay (ms); omit for half the simulation step",
+        description="smallest allowed delay (ms) of a drawn delay, never below half the "
+        "simulation step; omit for half the simulation step",
     )
 
 

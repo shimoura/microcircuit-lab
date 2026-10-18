@@ -213,29 +213,34 @@ def tau_syn_in(
     return _tau_syn(network, "tau_syn_in")
 
 
-def relative_tau_matrix(
+def synaptic_tau(
     network: NetworkConfig,
-    mean_PSC_matrix: np.ndarray,
+    mean_PSC: np.ndarray,
 ) -> np.ndarray:
     """
-    Return each connection's synaptic time constant relative to the
-    excitatory one of its target: 1 for an excitatory connection (positive
-    PSC), ``tau_syn_in / tau_syn_ex`` for an inhibitory one.
+    Return the synaptic time constant (ms) of each input in ``mean_PSC``:
+    the target's ``tau_syn_ex`` for an excitatory input (positive PSC) and
+    its ``tau_syn_in`` for an inhibitory one (negative PSC), the same sign
+    rule the PSP-to-PSC conversion uses.
 
-    DC-current scaling compensation multiplies the recurrent input by the
-    target's ``tau_syn_ex``. Weighting the input by this matrix first gives
-    every connection its own time constant, which is what the compensation
-    needs when ``tau_syn_in`` differs from ``tau_syn_ex``. ``tau_syn_in`` is
-    only read when the network has an inhibitory connection.
+    ``mean_PSC`` is either a (target, source) matrix or one value per
+    population (the background inputs); the result has the same shape.
+    ``tau_syn_in`` is only read when some input is inhibitory.
     """
 
-    relative = np.ones_like(mean_PSC_matrix, dtype=float)
-    inhibitory = mean_PSC_matrix < 0
-    if inhibitory.any():
-        ratio = tau_syn_in(network) / tau_syn_ex(network)
-        relative = np.where(inhibitory, ratio[:, None], relative)
+    tau = tau_syn_ex(network)
+    if mean_PSC.ndim == 2:
+        tau = tau[:, None]
 
-    return relative
+    inhibitory = mean_PSC < 0
+    if not inhibitory.any():
+        return np.broadcast_to(tau, mean_PSC.shape).astype(float)
+
+    tau_in = tau_syn_in(network)
+    if mean_PSC.ndim == 2:
+        tau_in = tau_in[:, None]
+
+    return np.where(inhibitory, tau_in, tau)
 
 
 def convert_network_psp_to_psc(

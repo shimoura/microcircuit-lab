@@ -29,8 +29,7 @@ from microcircuit_lab.network.parameters import (
     background_indegrees,
     background_psc_weights,
     mean_psc_matrix,
-    relative_tau_matrix,
-    tau_syn_ex,
+    synaptic_tau,
     convert_network_psp_to_psc,
     network_mean_input,
 )
@@ -208,7 +207,7 @@ class NetworkPreprocessor:
         if not scaling.preserve_variance or not scaling.preserve_mean_input:
             return network
 
-        if original.reference is None:
+        if original.reference is None or scaling.K_scaling == 1.0:
             return network
 
         # Connection indegrees for recurrent and background connections
@@ -219,10 +218,10 @@ class NetworkPreprocessor:
         PSC_ext = background_psc_weights(original)
         PSC_matrix = mean_psc_matrix(original)
 
-        # Synaptic time constant (ms) for excitatory synapses. The external
-        # contribution uses it directly; the recurrent one weights each
-        # connection by its own time constant first (see relative_tau_matrix).
-        tau_syn = tau_syn_ex(original)
+        # Synaptic time constant (ms) of each input: the target's tau_syn_ex
+        # for excitatory inputs, its tau_syn_in for inhibitory ones.
+        tau_matrix = synaptic_tau(original, PSC_matrix)
+        tau_ext = synaptic_tau(original, PSC_ext)
 
         # Compute recurrent contribution when requested.
         network_current = np.zeros(len(original.populations))
@@ -230,15 +229,17 @@ class NetworkPreprocessor:
         if scaling.compensate_recurrent_input:
             mean_rates = full_mean_rates(original)
 
+            # The input is weighted by each connection's own time constant
+            # (pA ms), so the compensation takes no further tau_syn.
             network_input = network_mean_input(
-                mean_PSC_matrix=PSC_matrix * relative_tau_matrix(original, PSC_matrix),
+                mean_PSC_matrix=PSC_matrix * tau_matrix,
                 indegree_matrix=indegrees,
                 mean_rates=mean_rates,
             )
 
             network_current = network_compensation_current(
                 network_input=network_input,
-                tau_syn=tau_syn,
+                tau_syn=1.0,
                 K_scaling=scaling.K_scaling,
             )
 
@@ -255,7 +256,7 @@ class NetworkPreprocessor:
                 PSC_ext=PSC_ext,
                 K_ext=K_ext,
                 bg_rate=bg_rates,
-                tau_syn=tau_syn,
+                tau_syn=tau_ext,
                 K_scaling=scaling.K_scaling,
             )
 
@@ -317,7 +318,7 @@ class NetworkPreprocessor:
 
         K_ext = background_indegrees(original)
         PSC_ext = background_psc_weights(original)
-        tau_syn = tau_syn_ex(original)
+        tau_syn = synaptic_tau(original, PSC_ext)
 
         pop_names = list(original.populations.keys())
         bg_rates = np.asarray(

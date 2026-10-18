@@ -457,17 +457,18 @@ class NestBackend:
 
         A drawn delay below the minimum (``delay.minimum``, or half the
         simulation step if not set) is redrawn or clipped to the minimum,
-        as set by the network's ``bound_mode``.
+        as set by the network's ``bound_mode``. The minimum is never below
+        half the simulation step, which NEST would round to a delay of 0.
+        A fixed delay is returned as given.
         """
 
         if delay.distribution == "fixed" or delay.rel_std == 0.0:
             return delay.mean
 
         std = delay.mean * delay.rel_std
+        min_delay = 0.5 * nest.resolution
         if delay.minimum is not None:
-            min_delay = delay.minimum
-        else:
-            min_delay = nest.resolution - 0.5 * nest.resolution
+            min_delay = max(delay.minimum, min_delay)
 
         if delay.distribution == "normal":
             distribution = nest.random.normal(
