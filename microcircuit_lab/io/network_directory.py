@@ -97,6 +97,7 @@ def write_network_directory(
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
     stimuli: Iterable[Mapping[str, Any]] | None = None,
+    compact: bool = True,
 ) -> NetworkConfig:
     """Write ``path`` as a network-config directory and validate it.
 
@@ -112,6 +113,10 @@ def write_network_directory(
     ``background_mode`` is written into ``background_inputs.yaml`` only when
     it is ``"dc"`` (``"poisson"`` is the schema default). ``bound_mode`` is
     written into ``connectivity.yaml`` only when it is ``"clip"``.
+
+    Connections are always written one record per line. ``compact=True``
+    writes populations and background inputs the same way; ``compact=False``
+    writes them in block style, easier to read for a small network.
 
     Always overwrites, always validates: returns the resolved, preprocessed
     :class:`~microcircuit_lab.config.network.NetworkConfig` from
@@ -133,6 +138,8 @@ def write_network_directory(
     if stimuli is not None:
         file_names["stimuli"] = "stimuli.yaml"
 
+    table = flow_records if compact else (lambda records: records)
+
     connectivity_payload: dict[str, Any] = {}
     if bound_mode != "redraw":
         connectivity_payload["bound_mode"] = bound_mode
@@ -141,15 +148,15 @@ def write_network_directory(
     background_payload: dict[str, Any] = {}
     if background_mode != "poisson":
         background_payload["background_mode"] = background_mode
-    background_payload["background_inputs"] = flow_records(dict(background_inputs))
+    background_payload["background_inputs"] = table(dict(background_inputs))
 
-    # populations / connections / background_inputs go one-record-per-line:
-    # they run to thousands of uniform rows for multi-area networks and the
-    # compact form parses identically (see the package README). neurons /
-    # scaling / reference stay in readable block style.
+    # connections (and, with compact, populations / background_inputs) go
+    # one-record-per-line: they run to thousands of uniform rows for
+    # multi-area networks and the compact form parses identically (see the
+    # package README). neurons / scaling / reference stay in block style.
     payloads: dict[str, Any] = {
         "network.yaml": file_names,
-        "populations.yaml": {"populations": flow_records(list(populations))},
+        "populations.yaml": {"populations": table(list(populations))},
         "neurons.yaml": {"neurons": dict(neurons)},
         "connectivity.yaml": connectivity_payload,
         "background_inputs.yaml": background_payload,

@@ -107,6 +107,15 @@ def test_big_tables_are_written_one_record_per_line(tmp_path: Path) -> None:
     assert "- {source:" in (tmp_path / "net" / "connectivity.yaml").read_text()
 
 
+def test_compact_false_writes_block_style_with_the_same_content(tmp_path: Path) -> None:
+    compact = write_network_directory(**_parts(tmp_path / "compact"))
+    block = write_network_directory(**_parts(tmp_path / "block"), compact=False)
+
+    assert "- name:" in (tmp_path / "block" / "net" / "populations.yaml").read_text()
+    assert "- {source:" in (tmp_path / "block" / "net" / "connectivity.yaml").read_text()
+    assert block == compact
+
+
 def test_an_invalid_part_raises_with_the_field_named(tmp_path: Path) -> None:
     parts = _parts(tmp_path)
     parts["populations"][0]["size"] = -1
