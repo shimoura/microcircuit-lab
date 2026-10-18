@@ -10,6 +10,7 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
+- [Scaling a network](#scaling-a-network)
 - [Adding a new model](#adding-a-new-model)
 - [Adding a backend](#adding-a-backend)
 - [Using a NESTML model](#using-a-nestml-model)
@@ -159,8 +160,6 @@ Beyond `begin`/`end`/`area`/`show_reference`/`style`, `AnalysisConfig` doesn't p
 
 Stimuli are not touched by scaling or compensation -- they're applied exactly as configured. See `StimulusConfig` in `microcircuit_lab/config/network.py` for the full field reference, e.g.:
 
-**Poisson vs. DC background.** Add a top-level `background_mode: dc` to `background_inputs.yaml` (default is `poisson`) to replace the background Poisson generator network-wide with a constant current of equal mean, reproducing Potjans & Diesmann (2014)'s comparison of the two drive types (their Fig. 5) -- see `configs/network/pd14_dc/` for a ready-to-run example (`--network pd14_dc`, pairs with `configs/simulation/pd14_dc.yaml`) and `NetworkConfig.background_mode` / `NetworkPreprocessor._apply_background_dc_current` for the implementation.
-
 ```yaml
 stimuli:
   - type: dc
@@ -183,6 +182,12 @@ A runnable version of this lives in `configs/network/toy_stimulated/` (the toy n
 ```bash
 python scripts/run_simulation.py --network toy_stimulated --simulation toy_stimulated
 ```
+
+**Poisson vs. DC background.** Add a top-level `background_mode: dc` to `background_inputs.yaml` (default is `poisson`) to replace the background Poisson generator network-wide with a constant current of equal mean, reproducing Potjans & Diesmann (2014)'s comparison of the two drive types (their Fig. 5) -- see `configs/network/pd14_dc/` for a ready-to-run example (`--network pd14_dc`, pairs with `configs/simulation/pd14_dc.yaml`) and `NetworkConfig.background_mode` / `NetworkPreprocessor._apply_background_dc_current` for the implementation.
+
+**Weights and delays outside their range.** A normal weight keeps the sign of its mean and a delay must not be shorter than a minimum, but a random draw can break both. Add a top-level `bound_mode` to `connectivity.yaml` to choose what happens to such a draw, for every weight and delay of the network (background inputs and stimuli included): `redraw` (default) draws again until the value is allowed; `clip` replaces it by the limit (a weight of the wrong sign becomes 0, a short delay becomes the minimum), as the HuMAM model does. The smallest allowed delay of a drawn delay is half the simulation step unless a `delay` sets its own `minimum` (in ms, for example `minimum: 0.1`); a smaller `minimum` is raised to half the step, and a `fixed` delay keeps its value.
+
+**Inhibitory synapses and the scaling compensation.** When `K_scaling` is below 1 the compensation current, and the DC current of `background_mode: dc`, use `tau_syn_ex` for excitatory input and `tau_syn_in` for inhibitory input, recurrent or background (an input is inhibitory when its PSC is negative). The two only differ when the neuron's `tau_syn_in` differs from `tau_syn_ex`.
 
 **Weight units.** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out.
 
@@ -212,6 +217,28 @@ neurons:
 Only list the names that actually differ; an omitted key falls back to the canonical name unchanged. A compiled NESTML model is the most common case this solves; see [Using a NESTML model](#using-a-nestml-model).
 
 **Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Builder-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; `microcircuit_lab.io.write_network_directory` applies the compact style to `populations`, `connectivity`, and `background_inputs` automatically, or use `microcircuit_lab.io.files.write_yaml`/`flow_records` directly to opt a field in.
+
+## Scaling a network
+
+A full-scale network can be slow or need a lot of memory. `scaling.yaml` runs a smaller copy:
+
+```yaml
+N_scaling: 0.1   # keep 10 % of the neurons of every population
+K_scaling: 0.1   # keep 10 % of the connections each neuron receives (the indegree)
+```
+
+Both default to 1 (no scaling). Fewer connections means less input, so the weights are made stronger and a constant current (DC) is added to give each neuron back the mean input it lost. The other options choose how:
+
+| `preserve_variance` | `preserve_mean_input` | `compensate_recurrent_input` | What happens |
+|---|---|---|---|
+| true | true | true | **Default.** Weights are divided by √`K_scaling`, which keeps the size of the input fluctuations. A DC current replaces the mean input lost from the recurrent and the background connections. |
+| true | true | false | Same weights. The DC replaces only the lost background input. |
+| true | false | (ignored) | Same weights, no DC. The mean input is lower than in the full network. |
+| false | (ignored) | (ignored) | Weights are divided by `K_scaling`, which keeps the mean input but increases the fluctuations. No DC. |
+
+The recurrent part of the DC is computed from the full-scale mean rates, so `reference.yaml` needs `full_mean_rates` for every population; a missing one raises an error that names it. Set `compensate_recurrent_input: false` to compensate only the background, or `preserve_mean_input: false` to scale without a DC. Inhibitory input is compensated with `tau_syn_in` and excitatory input with `tau_syn_ex`. A connection that ends up with less than one synapse after scaling is dropped.
+
+Example, PD14 at `N_scaling = K_scaling = 0.1`: without the DC, two populations are silent; with it, most rates are within 10-20 % of the full-scale values (L2/3 E is lower, 0.45 Hz instead of 0.9 Hz). The DC restores the mean input, not the fluctuations, so a downscaled network never reproduces the full one exactly.
 
 ## Adding a new model
 
@@ -477,3 +504,5 @@ pytest
 ```
 
 The scientific transformation functions and configuration preprocessing are tested independently from simulator execution where possible.
+
+The tests cover the core: how config files are read and validated, the transformations, the analysis and the simulator backend. They do not test a builder itself. What a builder writes is tested by the core reading it, for example by validating every network config under `configs/network/`. A test for your own builder goes in `tests/` like any other.

@@ -264,6 +264,10 @@ def _compute_missing_area_dc(
     survived scaling"; 0.0 means none of it survived (the source area
     isn't simulated at all), so the *entire* contribution is compensated
     rather than just the fraction lost to scaling.
+
+    Every input is compensated with the target's ``tau_syn_ex``, which is
+    right for the inter-area connections of HuMAM: they all come from
+    excitatory populations.
     """
 
     other_areas = [a for a in area_list if a not in selected_areas]

@@ -8,6 +8,8 @@ configuration.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from microcircuit_lab.config.network import (
@@ -29,10 +31,15 @@ from microcircuit_lab.network.parameters import (
     background_indegrees,
     background_psc_weights,
     mean_psc_matrix,
+    synaptic_tau,
     tau_syn_ex,
+    tau_syn_in,
     convert_network_psp_to_psc,
     network_mean_input,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class NetworkPreprocessor:
@@ -207,7 +214,15 @@ class NetworkPreprocessor:
         if not scaling.preserve_variance or not scaling.preserve_mean_input:
             return network
 
+        if scaling.K_scaling == 1.0:
+            return network
+
         if original.reference is None:
+            logger.warning(
+                "Scaled network without reference.full_mean_rates: no DC compensation "
+                "is applied. Add the full-scale mean rates to reference.yaml to "
+                "compensate the lost mean input."
+            )
             return network
 
         # Connection indegrees for recurrent and background connections
@@ -218,9 +233,10 @@ class NetworkPreprocessor:
         PSC_ext = background_psc_weights(original)
         PSC_matrix = mean_psc_matrix(original)
 
-        # Synaptic time constant (ms) for excitatory synapses
-        # (used for both recurrent and external contributions)
-        tau_syn = tau_syn_ex(original)
+        # Synaptic time constant (ms) of the background input of each
+        # population: tau_syn_ex if its weight is excitatory, tau_syn_in if
+        # it is inhibitory.
+        tau_ext = synaptic_tau(original, PSC_ext)
 
         # Compute recurrent contribution when requested.
         network_current = np.zeros(len(original.populations))
@@ -228,17 +244,31 @@ class NetworkPreprocessor:
         if scaling.compensate_recurrent_input:
             mean_rates = full_mean_rates(original)
 
-            network_input = network_mean_input(
-                mean_PSC_matrix=PSC_matrix,
-                indegree_matrix=indegrees,
-                mean_rates=mean_rates,
-            )
+            # Excitatory and inhibitory input have different synaptic time
+            # constants, so each kind is compensated with its own.
+            excitatory_PSC = np.where(PSC_matrix > 0, PSC_matrix, 0.0)
+            inhibitory_PSC = np.where(PSC_matrix < 0, PSC_matrix, 0.0)
 
             network_current = network_compensation_current(
-                network_input=network_input,
-                tau_syn=tau_syn,
+                network_input=network_mean_input(
+                    mean_PSC_matrix=excitatory_PSC,
+                    indegree_matrix=indegrees,
+                    mean_rates=mean_rates,
+                ),
+                tau_syn=tau_syn_ex(original),
                 K_scaling=scaling.K_scaling,
             )
+
+            if inhibitory_PSC.any():
+                network_current += network_compensation_current(
+                    network_input=network_mean_input(
+                        mean_PSC_matrix=inhibitory_PSC,
+                        indegree_matrix=indegrees,
+                        mean_rates=mean_rates,
+                    ),
+                    tau_syn=tau_syn_in(original),
+                    K_scaling=scaling.K_scaling,
+                )
 
         # Compute background contribution to DC compensation from biological network quantities
         pop_names = list(original.populations.keys())
@@ -253,7 +283,7 @@ class NetworkPreprocessor:
                 PSC_ext=PSC_ext,
                 K_ext=K_ext,
                 bg_rate=bg_rates,
-                tau_syn=tau_syn,
+                tau_syn=tau_ext,
                 K_scaling=scaling.K_scaling,
             )
 
@@ -315,7 +345,7 @@ class NetworkPreprocessor:
 
         K_ext = background_indegrees(original)
         PSC_ext = background_psc_weights(original)
-        tau_syn = tau_syn_ex(original)
+        tau_syn = synaptic_tau(original, PSC_ext)
 
         pop_names = list(original.populations.keys())
         bg_rates = np.asarray(

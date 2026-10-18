@@ -77,6 +77,17 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
             "NetworkConfig.reference is required to obtain " "reference firing rates."
         )
 
+    missing = [
+        name for name in network.populations if name not in network.reference.full_mean_rates
+    ]
+    if missing:
+        raise ValueError(
+            f"reference.full_mean_rates has no rate for population(s) {missing}. The DC "
+            "compensation of a scaled network needs the full-scale mean rate of every "
+            "population; add them to reference.yaml, or set compensate_recurrent_input: "
+            "false (background only) or preserve_mean_input: false (no DC) in scaling.yaml."
+        )
+
     return np.asarray(
         [network.reference.full_mean_rates[name] for name in network.populations],
         dtype=float,
@@ -175,6 +186,22 @@ def mean_psc_matrix(
     return matrix
 
 
+def _tau_syn(network: NetworkConfig, parameter: str) -> np.ndarray:
+    """Return neuron parameter ``parameter`` (a synaptic time constant) for
+    each population. A population whose neuron parameters don't include it
+    raises a clear error naming that population, instead of a bare
+    AttributeError."""
+
+    values = []
+    for name, population in network.populations.items():
+        try:
+            values.append(population.neuron.parameters.require(parameter)[parameter])
+        except KeyError as exc:
+            raise ValueError(f"Population {name!r}: {exc.args[0]}") from exc
+
+    return np.asarray(values, dtype=float)
+
+
 def tau_syn_ex(
     network: NetworkConfig,
 ) -> np.ndarray:
@@ -183,19 +210,37 @@ def tau_syn_ex(
 
     Used by DC-current scaling compensation, which shares the same
     current-based-synapse assumption as the PSP-to-PSC conversion; see
-    _convert_psp_weight. A population whose neuron parameters don't
-    include tau_syn_ex raises a clear error naming that population,
-    instead of a bare AttributeError.
+    _convert_psp_weight.
     """
 
-    values = []
-    for name, population in network.populations.items():
-        try:
-            values.append(population.neuron.parameters.require("tau_syn_ex")["tau_syn_ex"])
-        except KeyError as exc:
-            raise ValueError(f"Population {name!r}: {exc.args[0]}") from exc
+    return _tau_syn(network, "tau_syn_ex")
 
-    return np.asarray(values, dtype=float)
+
+def tau_syn_in(
+    network: NetworkConfig,
+) -> np.ndarray:
+    """Return the inhibitory synaptic time constant for each population."""
+
+    return _tau_syn(network, "tau_syn_in")
+
+
+def synaptic_tau(
+    network: NetworkConfig,
+    mean_PSC: np.ndarray,
+) -> np.ndarray:
+    """
+    Return the synaptic time constant (ms) of the input of each population,
+    given its mean PSC (one value per population): the population's
+    ``tau_syn_ex`` for a positive PSC and its ``tau_syn_in`` for a negative
+    one, the same sign rule the PSP-to-PSC conversion uses. ``tau_syn_in``
+    is only read when some PSC is negative.
+    """
+
+    tau = tau_syn_ex(network)
+    if (mean_PSC < 0).any():
+        tau = np.where(mean_PSC < 0, tau_syn_in(network), tau)
+
+    return tau
 
 
 def convert_network_psp_to_psc(

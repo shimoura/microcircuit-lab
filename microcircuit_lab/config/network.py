@@ -173,6 +173,12 @@ class DelayDistribution(FrozenConfig):
     distribution: Literal["normal", "lognormal", "fixed"] = Field(
         default="normal", description="normal | lognormal | fixed"
     )
+    minimum: float | None = Field(
+        default=None,
+        gt=0.0,
+        description="smallest allowed delay (ms) of a drawn delay, never below half the "
+        "simulation step; omit for half the simulation step",
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -310,6 +316,13 @@ class ScalingConfig(FrozenConfig):
         compensation for the mean-input bias sqrt scaling introduces.
         Only meaningful when preserve_variance is True -- under linear
         scaling there is no bias to compensate for.
+
+    compensate_recurrent_input:
+        True (default): the DC compensation also replaces the mean input
+        lost from the recurrent connections, which needs the full-scale
+        mean rate of every population in reference.full_mean_rates.
+        False: it replaces only the lost background input. Ignored unless
+        preserve_variance and preserve_mean_input are True.
     """
 
     # Scaling factors: default to 1.0 (no scaling) and gt(greater than)=0.0
@@ -366,6 +379,13 @@ class NetworkConfig(FrozenConfig):
         of truth for computing that mean (see
         NetworkPreprocessor._apply_background_dc_current); no Poisson
         generator is created in this mode.
+
+    bound_mode:
+        What to do with a drawn weight or delay that falls outside its
+        allowed range (a weight of the wrong sign, a delay below its
+        minimum). "redraw" (default): draw again until the value is
+        allowed. "clip": replace the value by the limit, as the HuMAM
+        model does. Applies to all weights and delays of the network.
     """
 
     populations: dict[str, PopulationConfig]
@@ -373,6 +393,7 @@ class NetworkConfig(FrozenConfig):
 
     background_inputs: dict[str, BackgroundInputConfig]
     background_mode: Literal["poisson", "dc"] = "poisson"
+    bound_mode: Literal["redraw", "clip"] = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     scaling: ScalingConfig
 

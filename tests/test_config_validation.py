@@ -14,6 +14,16 @@ from microcircuit_lab.io.files import read_network_directory
 from microcircuit_lab.io.network_validation import validate_network_config
 
 TOY = Path("configs/network/toy")
+NETWORK_CONFIGS = sorted(
+    path.parent for path in Path("configs/network").glob("*/network.yaml")
+)
+
+
+@pytest.mark.parametrize("network_config", NETWORK_CONFIGS, ids=lambda path: path.name)
+def test_every_network_config_in_the_repository_is_valid(network_config: Path) -> None:
+    """The core reads every network config under configs/network, however
+    it was written: by hand or by a builder."""
+    assert validate_network_config(network_config).populations
 
 
 @pytest.fixture
