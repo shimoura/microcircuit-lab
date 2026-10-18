@@ -39,11 +39,17 @@ DEFAULT_ISI_CV_CONFIG = IsiCvPlotConfig()
 
 
 def population_metadata(name: str) -> tuple[str | None, str | None, str | None]:
-    """Infer area, layer, and E/I type from conventional population names."""
+    """Infer area, layer, and cell type from conventional population names.
+
+    ``<area>__L<layer>_<type>`` gives all three, e.g. ``B__L23_VIP`` gives
+    ``("B", "L23", "VIP")``; the type is any name (``E``, ``I``, ``PV``, ...),
+    up to the next underscore. Without a layer only a plain ``E``/``I`` is
+    recognised as a type.
+    """
     import re
 
     area, local_name = (name.split("__", 1) + [None])[:2] if "__" in name else (None, name)
-    match = re.search(r"(?:^|_)(L(?:23|[1-6]))_([EI])(?:$|_)", local_name)
+    match = re.search(r"(?:^|_)(L(?:23|[1-6]))_([A-Za-z0-9]+)", local_name)
     if match:
         return area, match.group(1), match.group(2)
     cell_match = re.search(r"(?:^|_)([EI])(?:$|_)", local_name)
