@@ -30,6 +30,8 @@ from microcircuit_lab.network.parameters import (
     background_psc_weights,
     mean_psc_matrix,
     synaptic_tau,
+    tau_syn_ex,
+    tau_syn_in,
     convert_network_psp_to_psc,
     network_mean_input,
 )
@@ -218,9 +220,9 @@ class NetworkPreprocessor:
         PSC_ext = background_psc_weights(original)
         PSC_matrix = mean_psc_matrix(original)
 
-        # Synaptic time constant (ms) of each input: the target's tau_syn_ex
-        # for excitatory inputs, its tau_syn_in for inhibitory ones.
-        tau_matrix = synaptic_tau(original, PSC_matrix)
+        # Synaptic time constant (ms) of the background input of each
+        # population: tau_syn_ex if its weight is excitatory, tau_syn_in if
+        # it is inhibitory.
         tau_ext = synaptic_tau(original, PSC_ext)
 
         # Compute recurrent contribution when requested.
@@ -229,19 +231,31 @@ class NetworkPreprocessor:
         if scaling.compensate_recurrent_input:
             mean_rates = full_mean_rates(original)
 
-            # The input is weighted by each connection's own time constant
-            # (pA ms), so the compensation takes no further tau_syn.
-            network_input = network_mean_input(
-                mean_PSC_matrix=PSC_matrix * tau_matrix,
-                indegree_matrix=indegrees,
-                mean_rates=mean_rates,
-            )
+            # Excitatory and inhibitory input have different synaptic time
+            # constants, so each kind is compensated with its own.
+            excitatory_PSC = np.where(PSC_matrix > 0, PSC_matrix, 0.0)
+            inhibitory_PSC = np.where(PSC_matrix < 0, PSC_matrix, 0.0)
 
             network_current = network_compensation_current(
-                network_input=network_input,
-                tau_syn=1.0,
+                network_input=network_mean_input(
+                    mean_PSC_matrix=excitatory_PSC,
+                    indegree_matrix=indegrees,
+                    mean_rates=mean_rates,
+                ),
+                tau_syn=tau_syn_ex(original),
                 K_scaling=scaling.K_scaling,
             )
+
+            if inhibitory_PSC.any():
+                network_current += network_compensation_current(
+                    network_input=network_mean_input(
+                        mean_PSC_matrix=inhibitory_PSC,
+                        indegree_matrix=indegrees,
+                        mean_rates=mean_rates,
+                    ),
+                    tau_syn=tau_syn_in(original),
+                    K_scaling=scaling.K_scaling,
+                )
 
         # Compute background contribution to DC compensation from biological network quantities
         pop_names = list(original.populations.keys())

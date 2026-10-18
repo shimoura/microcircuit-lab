@@ -218,29 +218,18 @@ def synaptic_tau(
     mean_PSC: np.ndarray,
 ) -> np.ndarray:
     """
-    Return the synaptic time constant (ms) of each input in ``mean_PSC``:
-    the target's ``tau_syn_ex`` for an excitatory input (positive PSC) and
-    its ``tau_syn_in`` for an inhibitory one (negative PSC), the same sign
-    rule the PSP-to-PSC conversion uses.
-
-    ``mean_PSC`` is either a (target, source) matrix or one value per
-    population (the background inputs); the result has the same shape.
-    ``tau_syn_in`` is only read when some input is inhibitory.
+    Return the synaptic time constant (ms) of the input of each population,
+    given its mean PSC (one value per population): the population's
+    ``tau_syn_ex`` for a positive PSC and its ``tau_syn_in`` for a negative
+    one, the same sign rule the PSP-to-PSC conversion uses. ``tau_syn_in``
+    is only read when some PSC is negative.
     """
 
     tau = tau_syn_ex(network)
-    if mean_PSC.ndim == 2:
-        tau = tau[:, None]
+    if (mean_PSC < 0).any():
+        tau = np.where(mean_PSC < 0, tau_syn_in(network), tau)
 
-    inhibitory = mean_PSC < 0
-    if not inhibitory.any():
-        return np.broadcast_to(tau, mean_PSC.shape).astype(float)
-
-    tau_in = tau_syn_in(network)
-    if mean_PSC.ndim == 2:
-        tau_in = tau_in[:, None]
-
-    return np.where(inhibitory, tau_in, tau)
+    return tau
 
 
 def convert_network_psp_to_psc(

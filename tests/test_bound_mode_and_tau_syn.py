@@ -1,6 +1,6 @@
-"""Options that let a network reproduce the HuMAM model: the synaptic time
-constant of inhibitory input in the DC compensation, and what to do with a
-weight or delay drawn outside its allowed range."""
+"""The synaptic time constant of inhibitory input in the DC compensation,
+and what to do with a weight or delay drawn outside its allowed range
+(bound_mode, DelayDistribution.minimum)."""
 
 from __future__ import annotations
 

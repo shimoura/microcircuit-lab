@@ -481,3 +481,5 @@ pytest
 ```
 
 The scientific transformation functions and configuration preprocessing are tested independently from simulator execution where possible.
+
+The tests cover the core: how config files are read and validated, the transformations, the analysis and the simulator backend. They do not test a builder itself. What a builder writes is tested by the core reading it, for example by validating every network config under `configs/network/`. A test for your own builder goes in `tests/` like any other.
