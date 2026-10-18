@@ -284,7 +284,7 @@ Best for exploring a new idea or a model small enough to write out by hand.
 Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A builder is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. Each folder in `builders/` turns one model's data into a network description under `configs/network/`. The only thing the shared `microcircuit-lab generate <model>` CLI needs (run from the repository root) is a `builders/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit. A builder that lives in another installed package can register its `main` under the `microcircuit_lab.builders` entry-point group instead (see `microcircuit_lab/io/builders.py`).
 
 1. `microcircuit-lab new-builder <model_name>` creates `builders/<model_name>/__init__.py` with a runnable `main()` that writes a small example network -- replace its values with your model's. Add a `README.md` and `tests/test_<model_name>.py` yourself.
-2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory(<config_dir>/network/<model_name>, populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/schema.py` is the field list; `microcircuit_lab.io` also has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `builders/pd14/` and `builders/humam/` are worked builders.
+2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory(<config_dir>/network/<model_name>, populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/schema.py` is the field list; `microcircuit_lab.io` also has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `builders/pd14/` and `builders/humam/` are worked builders. `write_network_directory` is a convenience, not a requirement: files written any other way are checked the same way when the network is loaded, or right away with `microcircuit_lab.io.network_validation.validate_network_config(<folder>)`.
 3. `microcircuit-lab generate <model_name>` -- or `microcircuit-lab generate` with no arguments to confirm it was discovered.
 
 ### Run it
@@ -370,6 +370,7 @@ NESTML compiles a custom neuron model into a NEST extension module, loaded at ru
 
 - **PD14**: Potjans & Diesmann cortical microcircuit configuration and connectivity utilities.
 - **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
+- **Two-area toy** (`toy_two_areas`): a small synthetic multi-area network whose areas have different layers and cell types (E, PV, SOM, VIP); an example and a test case, not a model of cortex.
 
 Model-specific documentation is located inside each folder under `builders/`.
 

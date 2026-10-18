@@ -106,3 +106,15 @@ def test_grid_layout_groups_shared_layer_into_one_row():
     assert cells[(0, 1)] == ["L23_I"]
     assert cells[(1, 0)] == ["L4_E"]
     assert cells[(1, 1)] == ["L4_I"]
+
+
+def test_grid_layout_handles_areas_with_different_cell_types():
+    from microcircuit_lab.analysis.power_spectrum import _grid_layout
+
+    cells = _grid_layout(["A__L23_E", "A__L23_PV", "A__L4_E", "B__L23_E", "B__L23_VIP"])
+
+    assert cells[(0, 0)] == ["A__L23_E"]
+    assert cells[(0, 1)] == ["A__L23_PV"]
+    assert cells[(1, 0)] == ["A__L4_E"]
+    assert cells[(2, 0)] == ["B__L23_E"]
+    assert cells[(2, 2)] == ["B__L23_VIP"]
