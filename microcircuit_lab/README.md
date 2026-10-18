@@ -10,6 +10,7 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
+- [Scaling a network](#scaling-a-network)
 - [Adding a new model](#adding-a-new-model)
 - [Adding a backend](#adding-a-backend)
 - [Using a NESTML model](#using-a-nestml-model)
@@ -216,6 +217,28 @@ neurons:
 Only list the names that actually differ; an omitted key falls back to the canonical name unchanged. A compiled NESTML model is the most common case this solves; see [Using a NESTML model](#using-a-nestml-model).
 
 **Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Builder-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; `microcircuit_lab.io.write_network_directory` applies the compact style to `populations`, `connectivity`, and `background_inputs` automatically, or use `microcircuit_lab.io.files.write_yaml`/`flow_records` directly to opt a field in.
+
+## Scaling a network
+
+A full-scale network can be slow or need a lot of memory. `scaling.yaml` runs a smaller copy:
+
+```yaml
+N_scaling: 0.1   # keep 10 % of the neurons of every population
+K_scaling: 0.1   # keep 10 % of the connections each neuron receives (the indegree)
+```
+
+Both default to 1 (no scaling). Fewer connections means less input, so the weights are made stronger and a constant current (DC) is added to give each neuron back the mean input it lost. The other options choose how:
+
+| `preserve_variance` | `preserve_mean_input` | `compensate_recurrent_input` | What happens |
+|---|---|---|---|
+| true | true | true | **Default.** Weights are divided by √`K_scaling`, which keeps the size of the input fluctuations. A DC current replaces the mean input lost from the recurrent and the background connections. |
+| true | true | false | Same weights. The DC replaces only the lost background input. |
+| true | false | (ignored) | Same weights, no DC. The mean input is lower than in the full network. |
+| false | (ignored) | (ignored) | Weights are divided by `K_scaling`, which keeps the mean input but increases the fluctuations. No DC. |
+
+The recurrent part of the DC is computed from the full-scale mean rates, so `reference.yaml` needs `full_mean_rates` for every population; a missing one raises an error that names it. Set `compensate_recurrent_input: false` to compensate only the background, or `preserve_mean_input: false` to scale without a DC. Inhibitory input is compensated with `tau_syn_in` and excitatory input with `tau_syn_ex`. A connection that ends up with less than one synapse after scaling is dropped.
+
+Example, PD14 at `N_scaling = K_scaling = 0.1`: without the DC, two populations are silent; with it, most rates are within 10-20 % of the full-scale values (L2/3 E is lower, 0.45 Hz instead of 0.9 Hz). The DC restores the mean input, not the fluctuations, so a downscaled network never reproduces the full one exactly.
 
 ## Adding a new model
 

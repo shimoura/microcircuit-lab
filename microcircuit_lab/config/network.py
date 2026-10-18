@@ -316,6 +316,13 @@ class ScalingConfig(FrozenConfig):
         compensation for the mean-input bias sqrt scaling introduces.
         Only meaningful when preserve_variance is True -- under linear
         scaling there is no bias to compensate for.
+
+    compensate_recurrent_input:
+        True (default): the DC compensation also replaces the mean input
+        lost from the recurrent connections, which needs the full-scale
+        mean rate of every population in reference.full_mean_rates.
+        False: it replaces only the lost background input. Ignored unless
+        preserve_variance and preserve_mean_input are True.
     """
 
     # Scaling factors: default to 1.0 (no scaling) and gt(greater than)=0.0

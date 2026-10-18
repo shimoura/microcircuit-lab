@@ -8,6 +8,8 @@ configuration.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from microcircuit_lab.config.network import (
@@ -35,6 +37,9 @@ from microcircuit_lab.network.parameters import (
     convert_network_psp_to_psc,
     network_mean_input,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class NetworkPreprocessor:
@@ -209,7 +214,15 @@ class NetworkPreprocessor:
         if not scaling.preserve_variance or not scaling.preserve_mean_input:
             return network
 
-        if original.reference is None or scaling.K_scaling == 1.0:
+        if scaling.K_scaling == 1.0:
+            return network
+
+        if original.reference is None:
+            logger.warning(
+                "Scaled network without reference.full_mean_rates: no DC compensation "
+                "is applied. Add the full-scale mean rates to reference.yaml to "
+                "compensate the lost mean input."
+            )
             return network
 
         # Connection indegrees for recurrent and background connections

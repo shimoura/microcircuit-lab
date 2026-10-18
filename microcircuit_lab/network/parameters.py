@@ -77,6 +77,17 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
             "NetworkConfig.reference is required to obtain " "reference firing rates."
         )
 
+    missing = [
+        name for name in network.populations if name not in network.reference.full_mean_rates
+    ]
+    if missing:
+        raise ValueError(
+            f"reference.full_mean_rates has no rate for population(s) {missing}. The DC "
+            "compensation of a scaled network needs the full-scale mean rate of every "
+            "population; add them to reference.yaml, or set compensate_recurrent_input: "
+            "false (background only) or preserve_mean_input: false (no DC) in scaling.yaml."
+        )
+
     return np.asarray(
         [network.reference.full_mean_rates[name] for name in network.populations],
         dtype=float,
