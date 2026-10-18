@@ -2,6 +2,13 @@
 
 This package translates HuMAM source data into Microcircuit Lab's generic network configuration format. HuMAM-specific data handling stays here; simulation is handled by the generic core and selected backend.
 
+## Sources
+
+- Pronold, J., van Meegen, A., Shimoura, R. O., Vollenbröker, H., Senden, M., Hilgetag, C. C., Bakker, R., & van Albada, S. J. (2024). Multi-scale spiking network model of human cerebral cortex. *Cerebral Cortex*. https://doi.org/10.1093/cercor/bhae409
+- The HuMAM code, [INM-6/human-multi-area-model](https://github.com/INM-6/human-multi-area-model), `main` at commit `cab39b3`.
+
+`data/` holds network data produced by the HuMAM code at full scale (neuron and synapse numbers, weights, delays, external input, theoretical rates), with cortico-cortical scaling 1.0 (E→E) and 2.0 (E→I); the parameters it was produced with are in `data/network_params.yaml`.
+
 ## Generate and run
 
 From the repository root, these commands reproduce the bundled configs:

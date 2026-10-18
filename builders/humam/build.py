@@ -1,4 +1,18 @@
-"""Generate simulation configs from HuMAM source data."""
+"""Generate simulation configs from HuMAM source data.
+
+Sources:
+
+* Pronold J, van Meegen A, Shimoura RO, Vollenbröker H, Senden M, Hilgetag CC,
+  Bakker R, van Albada SJ (2024). Multi-scale spiking network model of human
+  cerebral cortex. Cerebral Cortex. https://doi.org/10.1093/cercor/bhae409
+* The HuMAM code, INM-6/human-multi-area-model, main at commit
+  cab39b3: how the network is built (``src/simulation.py``) and the simulation
+  defaults (``src/default_sim_params.py``).
+
+``data/`` holds network data produced by the HuMAM code at full scale, with
+cortico-cortical scaling 1.0 (E to E) and 2.0 (E to I); the parameters it was
+produced with are in ``data/network_params.yaml``.
+"""
 
 from __future__ import annotations
 
