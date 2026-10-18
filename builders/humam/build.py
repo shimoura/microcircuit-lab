@@ -23,8 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.io.files import flow_records, read_yaml, write_yaml
-from microcircuit_lab.io.network_validation import validate_network_config
+from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
+from microcircuit_lab.network.load import load_network
 
 
 LAYER_ALIAS = {
@@ -694,7 +694,7 @@ def _run(args: argparse.Namespace) -> None:
     print(f"Generated network config in: {paths['network_dir']}")
     print(f"Generated simulation config: {paths['simulation_path']}")
 
-    validate_network_config(paths["network_dir"])
+    load_network(paths["network_dir"])
     print("Validated: config is a usable input to the simulation pipeline.")
 
     if paths.get("other_area_count", 0) > 0:

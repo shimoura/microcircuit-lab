@@ -1,17 +1,18 @@
 # Microcircuit Lab
 
-Microcircuit Lab is a configuration-driven framework for building, simulating, and analyzing recurrent neural microcircuit models. It separates **model-specific data**, **generic network representation**, and **simulator backends** so published models can share the same simulation infrastructure.
+Microcircuit Lab builds, simulates and analyses spiking network models of cortex, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core then prepares it, runs it in NEST and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
 
 ## Contents
 
 - [Starting a project](#starting-a-project)
-- [Architecture](#architecture)
+- [How it works](#how-it-works)
 - [Project structure](#project-structure)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Scaling a network](#scaling-a-network)
 - [Adding a new model](#adding-a-new-model)
+- [Changing the core](#changing-the-core)
 - [Adding a backend](#adding-a-backend)
 - [Using a NESTML model](#using-a-nestml-model)
 - [Included models](#included-models)
@@ -22,7 +23,15 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 
 ## Starting a project
 
-A project is a folder with your own `builders/`, `analyses/` (see [Analysing a run](#analysing-a-run)), `configs/` and `experiments/`. The core is never copied into it. There are two ways to have the core available.
+A project is a folder with your own `builders/`, `analyses/`, `configs/` and `experiments/`. The core is never copied into it. There are two ways to have the core available:
+
+```mermaid
+flowchart LR
+  A["pip install microcircuit_lab"] --> B["microcircuit-lab init my_project"]
+  B --> C["empty builders/, analyses/,<br/>configs/, experiments/"]
+  A --> D["microcircuit-lab init my_project --with-core"]
+  D --> E["the same folders, plus the examples<br/>and a clone of the core in microcircuit-lab/"]
+```
 
 **Installed.** For using the core as it is:
 
@@ -41,9 +50,9 @@ microcircuit-lab run --network my_model
 microcircuit-lab init my_project --with-core
 ```
 
-This also clones the core into `my_project/microcircuit-lab/`, installs it in editable mode (so edits take effect immediately) and adds that folder to the project's `.gitignore`, because it is a clone of its own repository. Pull new core versions with `git pull` inside that folder; to share a change, follow [CONTRIBUTING.md](../CONTRIBUTING.md). Every run records both the project's git commit (`git`) and the core's (`core_git`) in `metadata.json`, so a result can be traced to the exact code that produced it. Without the clone, the core is recorded by its version only.
+This also clones the core into `my_project/microcircuit-lab/` (at the release tag of the version you installed), installs it in editable mode so your edits take effect at once, and adds that folder to the project's `.gitignore`, because it is a clone of its own repository. Pull new core versions with `git pull` inside that folder; to share a change, see [CONTRIBUTING.md](../CONTRIBUTING.md). Every run records both the project's git commit (`git`) and the core's (`core_git`) in `metadata.json`, so a result can be traced to the exact code that produced it. Without the clone, the core is recorded by its version only.
 
-It also copies the examples (`toy`, `toy_stimulated`, `pd14`, `humam`) into the project's `builders/` and `configs/`, so you can try them two ways:
+`--with-core` also copies the examples (`toy`, `toy_stimulated`, `toy_two_areas`, `pd14`, `humam`) into the project's `builders/` and `configs/`, so you can try them two ways:
 
 ```bash
 microcircuit-lab run --network pd14           # run a network config as it is
@@ -55,57 +64,59 @@ The copies are yours to edit and don't follow later core updates. An example who
 
 Run the commands from the project root: that is where the core looks for `builders/`, `analyses/` and `configs/`. A change that only your project needs belongs in your `builders/` or `analyses/`, not in the core.
 
-Experiments are plain Python scripts under `experiments/`; a sweep runs `Simulation` several times and writes its results to `output/experiments/<name>/`, apart from the normal run directories.
+## How it works
 
-## Architecture
+A network goes through the same steps whatever model it comes from:
 
-```text
-model source data
-      │
-      ▼
-builders/                      model-specific translation and parameters
-      │
-      ▼
-configs/network/<model>/       portable YAML network description
-      │
-      ▼
-microcircuit_lab/config/       validated configuration schemas
-      │
-      ▼
-microcircuit_lab/network/      network representation and preprocessing
-      │
-      ▼
-microcircuit_lab/simulation/   high-level simulation orchestration
-      │
-      ▼
-microcircuit_lab/backends/     simulator-specific execution
-      │
-      ▼
-microcircuit_lab/analysis/     simulator-facing analysis and plots
+```mermaid
+flowchart TD
+  data["model data<br/>(published tables, pickles, recordings)"] -->|"builders/&lt;model&gt;/<br/>microcircuit-lab generate"| files
+  files["configs/network/&lt;name&gt;/<br/>populations, neurons, connectivity, ..."] -->|"read_network<br/>(network/load.py)"| net["NetworkConfig<br/>the network as written, checked"]
+  net -->|"prepare_network<br/>(network/prepare.py)"| ready["NetworkConfig<br/>weights in pA, scaling applied,<br/>compensation currents added"]
+  ready -->|"Simulation.run<br/>(simulation/runner.py)"| nest["NestBackend<br/>(backends/nest/backend.py)"]
+  nest --> run["run folder output/&lt;name&gt;/&lt;timestamp&gt;/<br/>config.yaml, recordings/, metadata.json"]
+  run -->|"microcircuit_lab.analysis"| plots["plots and measures"]
 ```
 
-The generic network and simulation layers do not depend on HuMAM, PD14, or any other specific reference model. Builders depend on the generic network utilities, never the reverse. New models should translate their source data into the common network configuration schema rather than add model-specific logic to the core.
+- **Builders** are the only model-specific code. They write the network files and are never imported by the core.
+- **`read_network`** reads the files and checks every field (with the [pydantic](https://docs.pydantic.dev) models in `microcircuit_lab/config/`) and the references between files.
+- **`prepare_network`** turns the network as written into the network to simulate: it converts weights given in mV to pA, applies the scaling and adds the compensation currents. `load_network` does both steps.
+- **The backend** builds the network in the simulator (NEST today), simulates it and writes the recordings.
+- **The analysis** reads a run, live or saved, through the same `simulation` object.
 
 ## Project structure
 
 ```text
 microcircuit_lab/
-├── analysis/       # analysis and visualization
-├── backends/       # simulator implementations (currently NEST)
-├── cli/            # the `microcircuit-lab` command (init, new-builder, generate, run)
-├── config/         # validated network and simulation schemas
-├── io/             # configuration file loading and validation assembly
-├── network/        # generic network model, transformations, and preprocessing
-└── simulation/     # high-level simulation orchestration
+├── config/            what each config file may contain, one module per file
+│   ├── populations.py, neurons.py, connectivity.py, background_inputs.py,
+│   │   stimuli.py, scaling.py, reference.py     (configs/network/<name>/*.yaml)
+│   ├── network.py     the whole network (NetworkConfig) and network.yaml
+│   ├── simulation.py  configs/simulation/<name>.yaml
+│   └── analysis.py    configs/analysis/<name>.yaml
+├── network/           from a network folder to the network to simulate
+│   ├── load.py        read_network, load_network
+│   ├── prepare.py     prepare_network and its steps
+│   ├── scaling.py     scaling and compensation formulas
+│   ├── units.py       PSP (mV) to PSC (pA) conversion
+│   └── quantities.py  indegrees, mean PSCs, tau_syn per population, ...
+├── simulation/        Simulation: load, run, re-open a run
+├── backends/          simulators (NEST) and reading back a saved run
+├── analysis/          rates, ISI CV, power spectrum, raster; plot registry; cache
+├── cli/               the microcircuit-lab command (init, new-builder, generate, run)
+├── builder_tools.py   everything a builder needs, in one import
+├── runs.py            run folders, saved config, metadata
+├── discovery.py       finds the builders/ and analyses/ of your project
+└── yaml_files.py      reading and writing YAML
 
-builders/           # model-specific builders (PD14, HuMAM, toy_two_areas), outside the package
-configs/            # network, simulation and analysis configs of the examples
-experiments/        # example experiment scripts (e.g. a parameter sweep)
-scripts/            # helper scripts (building NEST from source)
-tests/              # tests of the core
+builders/              model-specific builders (PD14, HuMAM, toy_two_areas), outside the package
+configs/               network, simulation and analysis configs of the examples
+experiments/           example experiment scripts (e.g. a parameter sweep)
+scripts/               helper scripts (building NEST from source)
+tests/                 tests of the core
 ```
 
-Only `microcircuit_lab/` is installed by `pip`; the other folders come with a clone of the repository (or, for `builders/` and `configs/`, with `microcircuit-lab init --with-core`).
+The same word follows a concept through the stages: `stimuli.yaml` is described by `config/stimuli.py`, built by `NestBackend.create_stimuli` and tested in `tests/test_stimuli.py`. Only `microcircuit_lab/` is installed by `pip`; the other folders come with a clone of the repository (or, for `builders/` and `configs/`, with `microcircuit-lab init --with-core`).
 
 ## Installation
 
@@ -123,7 +134,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-If you'd rather manage the environment with mamba/conda:
+Or with mamba/conda:
 
 ```bash
 mamba create -n microcircuit-lab python=3.12
@@ -131,109 +142,108 @@ mamba activate microcircuit-lab
 pip install -e ".[dev]"
 ```
 
-**NEST.** This package doesn't pin NEST as a hard dependency, since how you get it depends heavily on where you run: install the PyPI package with `pip install -e ".[dev,nest]"`, get it from conda-forge (`mamba install -c conda-forge nest-simulator`), or build it from source (common on clusters, e.g. for MPI or a site-specific compiler toolchain). Whichever route you use, all that matters is that `import nest` works in the environment you run simulations in -- see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) for the source-build instructions.
+**NEST.** NEST is not a hard dependency, because how you get it depends on where you run: the PyPI package (`pip install -e ".[dev,nest]"`), conda-forge (`mamba install -c conda-forge nest-simulator`), or a build from source (common on clusters, e.g. for MPI or a site-specific compiler; see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh`). All that matters is that `import nest` works in the environment you run simulations in.
 
 ## Quick start
 
-The fastest way to see the framework run is the bundled `toy` network, a minimal two-population (E/I) example under `configs/network/toy/`:
+The smallest example is the bundled `toy` network, two populations (E and I) under `configs/network/toy/`:
 
 ```bash
 microcircuit-lab run --network toy
 ```
 
-`microcircuit-lab run --network <name>` is the generic runner for any network under `configs/network/` (`--simulation`/`--analysis` default to the same name, see [Configuration](#configuration); `--run-dir` re-plots a finished run instead, see [Re-plotting without re-simulating](#re-plotting-without-re-simulating)). It produces raster, firing-rate, power-spectrum, and ISI-CV diagnostics with one shared plot style. Use `microcircuit-lab generate <model>` to (re)generate a model's network configuration.
+`microcircuit-lab run --network <name>` runs any network under `configs/network/` and saves raster, firing-rate, power-spectrum and ISI-CV plots in one shared style. `--simulation` and `--analysis` default to the same name (see [Configuration](#configuration)); `--run-dir` re-plots a finished run instead (see [Re-plotting without re-simulating](#re-plotting-without-re-simulating)). `microcircuit-lab generate <model>` (re)writes a model's network files with its builder.
 
-The same thing from Python, e.g. for a notebook or a script under `experiments/`:
+The same from Python, e.g. in a notebook or a script under `experiments/`:
 
 ```python
-from microcircuit_lab import Simulation
+from microcircuit_lab import Simulation, load_network
 
-simulation = Simulation.from_yaml()  # defaults to network_name="toy", simulation_name="toy"
+simulation = Simulation.from_yaml(network_name="toy")  # configs/network/toy + configs/simulation/toy.yaml
 simulation.run()
-```
 
-Swap in a published reference model by passing its name: `Simulation.from_yaml(network_name="pd14")`.
+network = load_network("configs/network/pd14")          # just the network, ready to simulate
+print(network.populations["L4_E"].size)
+```
 
 ## Configuration
 
-Network, execution, and analysis/plot settings are deliberately separate:
+Network, simulation and analysis settings are kept apart:
 
 ```text
 configs/
 ├── network/
 │   └── <network_name>/
-│       ├── network.yaml
+│       ├── network.yaml           names the other files
 │       ├── populations.yaml
 │       ├── neurons.yaml
 │       ├── connectivity.yaml
 │       ├── background_inputs.yaml
-│       ├── stimuli.yaml   # optional
+│       ├── stimuli.yaml           optional
 │       ├── scaling.yaml
 │       └── reference.yaml
 ├── simulation/
-│   └── <simulation_name>.yaml
+│   └── <simulation_name>.yaml     duration, seed, threads, what to record
 └── analysis/
-    └── <analysis_name>.yaml   # optional
+    └── <analysis_name>.yaml       optional: which plots, time window, style
 ```
 
-`microcircuit_lab/config/schema.py` is the field reference: one short model per file, listing every field with its type and constraints. A field with no default is required; one with `Field(default=...)` is optional and shows its default. `configs/network/toy/` is that same schema as a small working network to copy.
+**Where the fields are listed.** Each file has its module in `microcircuit_lab/config/` with the same name (`populations.yaml` → `config/populations.py`). Each field is listed there with its type and limits; a field with no default is required, one with `Field(default=...)` is optional and shows its default. `configs/network/toy/` is a small working network that uses them, ready to copy.
 
-A network configuration describes biology and connectivity. A simulation configuration describes execution settings such as duration, seed, threads, and recording. An analysis configuration (`AnalysisConfig`, `microcircuit_lab/config/analysis.py`) describes presentation only -- which diagnostic plots run, the time window/area to analyze, and their styling (colors, figure sizes, raster neuron subsampling, ...); it has no effect on the simulation itself.
+**Checks.** A network is checked every time it is loaded (to run it) or written (by a builder): a missing, misspelled or wrong-typed field fails at once with the file and the field named, for example `populations.yaml: populations.0.size: Input should be greater than 0`. References between files (a population's neuron, a connection's populations) and the preparation step are checked the same way. The one open block is a neuron's `parameters:`, because neuron models differ in what they accept; the simulator checks those names. `load_network(folder)` runs the whole check without a simulation.
 
-Each network file has a schema in `microcircuit_lab/config/schema.py` (one model per file), and `read_network_directory` validates against it on every load -- so a missing, misspelled, or wrong-typed field fails with the file and field named, the moment a config is loaded (to run it) or written (by a builder), not later as a `KeyError`. Cross-file references (a population's neuron, a connection's populations) and the preprocessing step are checked the same way. The one open spot is a neuron's `parameters:` block -- neuron models differ in what they accept, so the simulator backend, not the schema, is the authority on those names. `microcircuit_lab.io.validate_network_config(dir)` runs the whole check on its own if you want it without a run.
+**Pairing by name.** The three trees are matched by name, so one network can be run with more than one simulation profile or plot style (a short run for a quick check, a long one for a paper). By default `Simulation.from_yaml(network_name="toy")` uses `configs/simulation/toy.yaml`, and the analysis uses `configs/analysis/toy.yaml`; pass `simulation_name`/`analysis_name` to pick another. The analysis file is optional (built-in defaults are used without it), and so is the simulation file (`SimulationConfig()` defaults). The config models are pydantic models, so a one-off change in a script doesn't need a YAML file: `plot_raster(sim, config=RasterPlotConfig(neuron_fraction=0.05))`.
 
-These are three independent trees, matched by name, so one network can be paired with more than one execution profile or presentation (e.g. a short simulation for a quick check vs. a long one for a real run; a quick raster-only look vs. a full styled figure set for a paper). In the common case where a network only ever has one of each, `Simulation.from_yaml(network_name=...)` and `AnalysisConfig.from_yaml(network_name=...)` alone are enough: `simulation_name`/`analysis_name` both default to whatever `network_name` is, so `configs/network/toy/` pairs automatically with `configs/simulation/toy.yaml` and `configs/analysis/toy.yaml`. Pass `simulation_name`/`analysis_name` explicitly only when you want a different, decoupled profile.
+Besides `begin`/`end`/`area`/`show_reference`/`style`, the sections of an analysis file (`raster:`, `firing_rates:`, `power_spectrum:`, `isi_cv:`) are the names the plots are registered under (see [Adding a bundled plot](#adding-a-bundled-plot)). An unknown section name raises an error instead of being ignored.
 
-Unlike network/simulation configs, an analysis config is optional: if `configs/analysis/<name>.yaml` doesn't exist, `AnalysisConfig.from_yaml` falls back to built-in defaults rather than raising, so adding a new network never requires an analysis file. Because `AnalysisConfig`/`PlotStyle`/`RasterPlotConfig`/etc. are just pydantic models, a one-off tweak for a specific script or notebook doesn't need a YAML file at all -- override in memory instead, e.g. `plot_raster(sim, config=RasterPlotConfig(neuron_fraction=0.05))`. Save a variant to YAML only once it's a default worth reusing; see [Experiments](#experiments) for where a one-off analysis script belongs instead.
+### Background input and stimuli
 
-Beyond `begin`/`end`/`area`/`show_reference`/`style`, `AnalysisConfig` doesn't pre-declare a field per plot -- `raster:`/`firing_rates:`/`power_spectrum:`/`isi_cv:` are just the top-level sections the four bundled diagnostics happen to be registered under (see [Adding a bundled plot](#adding-a-bundled-plot-package-maintainers)). A section name that isn't registered raises a clear error rather than being silently ignored.
+`background_inputs.yaml` is the always-on background Poisson input of each population, tied to its `background_indegree`. It scales with `K_scaling`, and the compensation of a scaled network accounts for it.
 
-**Background input vs. stimulation.** `background_inputs.yaml` is the always-on background Poisson drive tied to `background_indegree`; it scales with `K_scaling` and is what the DC-compensation math in `network/scaling.py` accounts for.
+`stimuli.yaml` (optional; leave out the file and the `stimuli:` line in `network.yaml` if unused) holds targeted, time-limited inputs for experiments:
 
-`stimuli.yaml` (optional -- omit both the file and the `stimuli:` entry in `network.yaml` if unused) describes targeted, time-limited devices for experiments instead:
+- `type: dc`: a constant-current pulse;
+- `type: poisson`: a Poisson spike train for part of the run;
+- `type: inhomogeneous_poisson`: a Poisson rate that changes in steps.
 
-- `type: dc` -- a constant-current pulse
-- `type: poisson` -- a Poisson train active for part of the run
-- `type: inhomogeneous_poisson` -- a piecewise-constant Poisson rate profile
-
-Stimuli are not touched by scaling or compensation -- they're applied exactly as configured. See `StimulusConfig` in `microcircuit_lab/config/network.py` for the full field reference, e.g.:
+Stimuli are not scaled or compensated; they are applied exactly as written. `config/stimuli.py` lists their fields:
 
 ```yaml
 stimuli:
   - type: dc
     targets: [E]
-    amplitude: 200.0   # pA
-    start: 500.0        # ms
-    stop: 600.0          # ms
+    amplitude: 200.0
+    start: 500.0
+    stop: 600.0
 
   - type: poisson
     targets: [E, I]
-    rate: 50.0           # spikes/s
+    rate: 50.0
     start: 200.0
     stop: 400.0
     weight: {mean: 0.15, rel_std: 0.0, distribution: fixed, unit: PSP}
     delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
 ```
 
-A runnable version of this lives in `configs/network/toy_stimulated/` (the toy network plus a `stimuli.yaml`), kept separate from `configs/network/toy/` so the bundled baseline network -- used as a calibrated, unperturbed reference by several tests -- stays quiet:
+Amplitudes are in pA, rates in spikes/s and times in ms. A runnable version is `configs/network/toy_stimulated/` (the toy network plus a `stimuli.yaml`), kept apart from `configs/network/toy/` so the baseline network several tests use stays unperturbed:
 
 ```bash
-microcircuit-lab run --network toy_stimulated --simulation toy_stimulated
+microcircuit-lab run --network toy_stimulated
 ```
 
-**Poisson vs. DC background.** Add a top-level `background_mode: dc` to `background_inputs.yaml` (default is `poisson`) to replace the background Poisson generator network-wide with a constant current of equal mean, reproducing Potjans & Diesmann (2014)'s comparison of the two drive types (their Fig. 5) -- see `configs/network/pd14_dc/` for a ready-to-run example (`--network pd14_dc`, pairs with `configs/simulation/pd14_dc.yaml`) and `NetworkConfig.background_mode` / `NetworkPreprocessor._apply_background_dc_current` for the implementation.
+**Poisson or DC background.** A top-level `background_mode: dc` in `background_inputs.yaml` (default `poisson`) replaces the background Poisson input of every population by a constant current of the same mean, the comparison of Potjans & Diesmann (2014), Fig. 5. `configs/network/pd14_dc/` is a ready-to-run example; the step is `_replace_background_by_dc` in `network/prepare.py`.
 
-**Weights and delays outside their range.** A normal weight keeps the sign of its mean and a delay must not be shorter than a minimum, but a random draw can break both. Add a top-level `bound_mode` to `connectivity.yaml` to choose what happens to such a draw, for every weight and delay of the network (background inputs and stimuli included): `redraw` (default) draws again until the value is allowed; `clip` replaces it by the limit (a weight of the wrong sign becomes 0, a short delay becomes the minimum), as the HuMAM model does. The smallest allowed delay of a drawn delay is half the simulation step unless a `delay` sets its own `minimum` (in ms, for example `minimum: 0.1`); a smaller `minimum` is raised to half the step, and a `fixed` delay keeps its value.
+### Weights and delays
 
-**Inhibitory synapses and the scaling compensation.** When `K_scaling` is below 1 the compensation current, and the DC current of `background_mode: dc`, use `tau_syn_ex` for excitatory input and `tau_syn_in` for inhibitory input, recurrent or background (an input is inhibitory when its PSC is negative). The two only differ when the neuron's `tau_syn_in` differs from `tau_syn_ex`.
+**Out-of-range draws.** A normal weight keeps the sign of its mean and a delay must not be shorter than a minimum, but a random draw can break both. A top-level `bound_mode` in `connectivity.yaml` decides what happens, for every weight and delay of the network (background inputs and stimuli included): `redraw` (default) draws again until the value is allowed; `clip` replaces it by the limit (a weight of the wrong sign becomes 0, a short delay becomes the minimum), as HuMAM does. The minimum of a drawn delay is half the simulation step unless the `delay` sets its own `minimum` (in ms); a smaller `minimum` is raised to half the step, and a `fixed` delay keeps its value.
 
-**Weight units.** Every `weight` block requires a `unit` (see `WeightDistribution` in `microcircuit_lab/config/network.py`) -- deliberately no default, so a config can't silently run with the wrong conversion just because a field was left out.
+**Units.** Every `weight` needs a `unit`, on purpose without a default, so a config can't silently run with the wrong conversion:
 
-`PSP` (biological amplitude, mV) is converted to a current amplitude by `NetworkPreprocessor`. That conversion (`network/synapses.py`) only depends on the target neuron having `C_m`, `tau_m`, `tau_syn_ex` and `tau_syn_in` parameters, not on the model's name -- it applies to any current-based LIF neuron with single-exponential synaptic currents, `iaf_psc_exp` is just the model most people know it from. This module has no notion of "simulator" or "backend", so it can't check the model's actual dynamics for you: giving `unit: PSP` to a neuron that happens to have those four parameter names without actually having this dynamics will silently produce the wrong weight. That's on whoever writes the config, the same way `unit: PSC`/`unit: native` are already explicit choices.
+- `PSP`: the amplitude of the postsynaptic potential, in mV. It is converted to a current with the target population's own neuron parameters (`network/units.py`). The formula holds for any current-based LIF neuron with exponential synaptic currents (`iaf_psc_exp` and its variants) and only needs `C_m`, `tau_m`, `tau_syn_ex` and `tau_syn_in`. The code can't check a neuron's dynamics, so `PSP` on a model with those four names but other dynamics gives wrong weights without an error.
+- `PSC`: the current amplitude in pA, used as given.
+- `native`: used exactly as given, without any interpretation; the right choice for a conductance-based model (nS) or any other.
 
-For a genuinely different model (a conductance-based one, an adaptive-exponential one, or anything else), give its connections `unit: PSC` (if the weights are already current amplitudes in pA) or `unit: native` (used exactly as given, no interpretation at all) instead of `PSP`. Adding a new neuron model should essentially never require touching `network/parameters.py`.
-
-If your model has this dynamics but names its parameters differently, set `psp_conversion_aliases` on its `neurons.yaml` entry instead of renaming anything (the parameter names in `parameters:` have to stay whatever your model actually accepts):
+A new neuron model never needs a new conversion: give it `PSC` or `native` weights. If it has these dynamics but other parameter names, map them with `psp_conversion_aliases` on its `neurons.yaml` entry (the names in `parameters:` stay whatever the model accepts):
 
 ```yaml
 neurons:
@@ -244,7 +254,6 @@ neurons:
       tau_membrane: 10.0
       tau_exc: 2.0
       tau_inh: 2.0
-      # ... whatever else your model needs
     psp_conversion_aliases:
       C_m: Cm
       tau_m: tau_membrane
@@ -252,9 +261,13 @@ neurons:
       tau_syn_in: tau_inh
 ```
 
-Only list the names that actually differ; an omitted key falls back to the canonical name unchanged. A compiled NESTML model is the most common case this solves; see [Using a NESTML model](#using-a-nestml-model).
+List only the names that differ. A compiled NESTML model is the usual case; see [Using a NESTML model](#using-a-nestml-model).
 
-**Formatting convention**: hand-edited files (e.g. `configs/network/toy/`) use normal YAML block style, one field per line, for readability. Builder-written tables that can run to thousands of uniform rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` for multi-area networks) are written one-record-per-line instead -- e.g. `humam_all`'s `connectivity.yaml` is ~8,400 lines of `- {source: ..., target: ..., weight: {...}, delay: {...}}` rather than ~100,000 lines of block style, with identical parsed content. Both styles are plain YAML and load identically; `microcircuit_lab.io.write_network_directory` applies the compact style to `populations`, `connectivity`, and `background_inputs` automatically, or use `microcircuit_lab.io.files.write_yaml`/`flow_records` directly to opt a field in.
+**Excitatory and inhibitory input** are told apart by the sign of the weight, never by a population's name. When `K_scaling` is below 1, the compensation current (and the DC current of `background_mode: dc`) uses `tau_syn_ex` for excitatory input and `tau_syn_in` for inhibitory input.
+
+### File layout
+
+Files written by hand (e.g. `configs/network/toy/`) use normal YAML block style, one field per line. Tables a builder writes with thousands of rows (`connectivity.yaml`, and `populations.yaml`/`background_inputs.yaml` of multi-area networks) are written one record per line, e.g. `- {source: ..., target: ..., weight: {...}, delay: {...}}`: `humam_all`'s `connectivity.yaml` is about 8,400 lines this way instead of about 100,000. Both are plain YAML and load the same. `write_network_directory` in `microcircuit_lab.builder_tools` does this by itself (`compact=False` keeps block style for populations and background inputs of small networks); `microcircuit_lab.yaml_files` has `write_yaml` and `flow_records` to do it by hand.
 
 ## Scaling a network
 
@@ -265,7 +278,7 @@ N_scaling: 0.1   # keep 10 % of the neurons of every population
 K_scaling: 0.1   # keep 10 % of the connections each neuron receives (the indegree)
 ```
 
-Both default to 1 (no scaling). Fewer connections means less input, so the weights are made stronger and a constant current (DC) is added to give each neuron back the mean input it lost. The other options choose how:
+Both default to 1 (no scaling). Fewer connections means less input, so the weights are made stronger and a constant current (DC) gives each neuron back the mean input it lost. The other options choose how:
 
 | `preserve_variance` | `preserve_mean_input` | `compensate_recurrent_input` | What happens |
 |---|---|---|---|
@@ -274,34 +287,57 @@ Both default to 1 (no scaling). Fewer connections means less input, so the weigh
 | true | false | (ignored) | Same weights, no DC. The mean input is lower than in the full network. |
 | false | (ignored) | (ignored) | Weights are divided by `K_scaling`, which keeps the mean input but increases the fluctuations. No DC. |
 
-The recurrent part of the DC is computed from the full-scale mean rates, so `reference.yaml` needs `full_mean_rates` for every population; a missing one raises an error that names it. Set `compensate_recurrent_input: false` to compensate only the background, or `preserve_mean_input: false` to scale without a DC. Inhibitory input is compensated with `tau_syn_in` and excitatory input with `tau_syn_ex`. A connection that ends up with less than one synapse after scaling is dropped.
+The recurrent part of the DC uses the full-scale mean rates, so `reference.yaml` needs `full_mean_rates` for every population; a missing one raises an error that names it. A connection left with less than one synapse after scaling is dropped.
 
-Example, PD14 at `N_scaling = K_scaling = 0.1`: without the DC, two populations are silent; with it, most rates are within 10-20 % of the full-scale values (L2/3 E is lower, 0.45 Hz instead of 0.9 Hz). The DC restores the mean input, not the fluctuations, so a downscaled network never reproduces the full one exactly.
+Example, PD14 at `N_scaling = K_scaling = 0.1`: without the DC two populations are silent; with it, most rates are within 10–20 % of the full-scale values (L2/3 E is lower, 0.45 Hz instead of 0.9 Hz). The DC restores the mean input, not the fluctuations, so a downscaled network never reproduces the full one exactly.
 
 ## Adding a new model
 
-There are two ways to add a model, and the core package (`network/`, `simulation/`, `config/`, `io/`, `backends/`) never changes for either one. Both produce the same thing: a `configs/network/<model>/` directory matching the schema in `microcircuit_lab/config/schema.py`. That directory is validated automatically whenever it is loaded -- so a mistake surfaces the first time you run the network (or generate it), with the file and field named.
+A model enters as a network folder, `configs/network/<model>/`; the core doesn't change. There are two ways to write that folder:
 
-### Option A: write YAML directly
+```mermaid
+flowchart LR
+  A["Option A:<br/>copy configs/network/toy/<br/>and edit the YAML"] --> F["configs/network/&lt;model&gt;/"]
+  B["Option B:<br/>a builder turns your data<br/>into the files"] --> F
+  F --> R["microcircuit-lab run --network &lt;model&gt;"]
+```
 
-Best for exploring a new idea or a model small enough to write out by hand.
+### Option A: write the YAML yourself
 
-1. Copy `configs/network/toy/` to `configs/network/<my_model>/` -- a small working example, one comment per file. `microcircuit_lab/config/schema.py` is the full field list (types, defaults, which are required).
-2. Edit the values in `configs/network/<my_model>/*.yaml` by hand.
-3. Optionally add `configs/simulation/<my_model>.yaml` to change execution settings (simulated time, threads, what to record -- `microcircuit_lab/config/simulation.py` is the field list). Leave it out and the built-in `SimulationConfig` defaults are used, same as a missing `configs/analysis/<my_model>.yaml`.
-4. `microcircuit-lab run --network <my_model>` -- loading the config validates every file; fix anything it reports.
+Best for a new idea or a model small enough to write by hand.
 
-### Option B: add a builder
+1. Copy `configs/network/toy/` to `configs/network/<my_model>/`. It is a small working example with one comment per file; the modules in `microcircuit_lab/config/` list every field.
+2. Change the values.
+3. Optionally add `configs/simulation/<my_model>.yaml` for the duration, threads and recording (`config/simulation.py` lists the fields). Without it the defaults are used.
+4. `microcircuit-lab run --network <my_model>`. Loading checks every file; fix what it reports.
 
-Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A builder is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. Each folder in `builders/` turns one model's data into a network description under `configs/network/`. The only thing the shared `microcircuit-lab generate <model>` CLI needs (run from the repository root) is a `builders/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit. A builder that lives in another installed package can register its `main` under the `microcircuit_lab.builders` entry-point group instead (see `microcircuit_lab/io/builders.py`).
+### Option B: write a builder
 
-1. `microcircuit-lab new-builder <model_name>` creates `builders/<model_name>/__init__.py` with a runnable `main()` that writes a small example network -- replace its values with your model's. Add a `README.md` and `tests/test_<model_name>.py` yourself.
-2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory(<config_dir>/network/<model_name>, populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/schema.py` is the field list; `microcircuit_lab.io` also has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `builders/pd14/` and `builders/humam/` are worked builders. `write_network_directory` is a convenience, not a requirement: files written any other way are checked the same way when the network is loaded, or right away with `microcircuit_lab.io.network_validation.validate_network_config(<folder>)`.
-3. `microcircuit-lab generate <model_name>` -- or `microcircuit-lab generate` with no arguments to confirm it was discovered.
+Best for a model whose parameters come from data (published tables, recordings, pickled matrices). A builder is any code that writes a valid `configs/network/<model>/`: a script, a notebook, anything. For `microcircuit-lab generate <model>` to find it, it is a package `builders/<model>/` with a function `main(argv=None)`; there is no list to edit. A builder in another installed package can register its `main` under the `microcircuit_lab.builders` entry-point group instead (see `microcircuit_lab/discovery.py`).
+
+1. `microcircuit-lab new-builder <model_name>` creates `builders/<model_name>/__init__.py` with a `main()` that already writes a small example network. Replace its values with your model's, and add a `README.md` with the model's sources.
+2. Read your data (keep it in the package, e.g. a `data/` folder or a `data.py` as in `pd14`) and pass the parts to `write_network_directory`:
+
+   ```python
+   from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+
+   write_network_directory(
+       "configs/network/my_model",
+       populations=[...],
+       neurons={...},
+       connections=[{"source": "E", "target": "I", "n_synapses": 5000,
+                     "weight": weight(0.15, unit="PSP", rel_std=0.1),
+                     "delay": delay(1.5, rel_std=0.5)}, ...],
+       background_inputs={...},
+   )
+   ```
+
+   It writes every file and checks the result, so a mistake raises with the file and the field named. `microcircuit_lab.builder_tools` also has `num_synapses_from_conn_prob` (connection probability to synapse number, as in PD14) and `psp_to_psc_iaf_psc_exp`. `builders/pd14/`, `builders/toy_two_areas/` and `builders/humam/` are worked examples. Using `write_network_directory` is optional: files written any other way are checked the same way when the network is loaded, or at once with `load_network(<folder>)`.
+3. `microcircuit-lab generate <model_name>`; run `microcircuit-lab generate` with no name to list the builders it found.
 
 ### Run it
 
-Either way, once the config exists under `configs/network/<my_model>/`, run it through the same public API:
+Either way, the network then runs like any other:
 
 ```python
 from microcircuit_lab import Simulation
@@ -310,43 +346,45 @@ simulation = Simulation.from_yaml(network_name="my_model")
 simulation.run()
 ```
 
-or from the CLI: `microcircuit-lab run --network my_model`.
+or `microcircuit-lab run --network my_model`.
 
-Do not add model-specific branches to `network/`, `simulation/`, or a simulator backend unless the feature is genuinely generic.
+## Changing the core
+
+When an idea doesn't fit what the config files can already say (a new stimulus type, a new distribution, spatial structure, plasticity), the change goes in the core. [CONTRIBUTING.md](../CONTRIBUTING.md#changing-the-core) shows which files each kind of change touches, and when a change needs a short design note first. Don't add model-specific branches to the core; if only one model needs it, it belongs in that model's builder.
 
 ## Adding a backend
 
-1. Implement the `SimulationBackend` contract from `microcircuit_lab/backends/base.py` under a new `microcircuit_lab/backends/<name>/` package.
-   - `prepare_output(run_dir)` and `save_recordings(run_dir)` are where recording-to-disk should happen, in whatever way is native and efficient for that simulator (see [Run outputs](#run-outputs)).
-   - `get_spike_events()` should transparently read that data back regardless of how it was stored, so callers (analysis, `io/output.py`) never need backend-specific branches.
-   - The constructor isn't limited to `(network, simulation_config)`: it can accept additional keyword-only arguments for whatever it alone needs. `NestBackend`'s `extension_modules` is the existing example; see [Using a NESTML model](#using-a-nestml-model) for it in context.
-2. Register the backend in `backends.get_backend` (`microcircuit_lab/backends/__init__.py`).
-3. Select it by name, passing any backend-specific arguments through `backend_options` -- `Simulation`/`config`/`network` never inspect those:
+1. Implement the `SimulationBackend` contract from `microcircuit_lab/backends/base.py` in a new package `microcircuit_lab/backends/<name>/`.
+   - `prepare_output(run_dir)` and `save_recordings(run_dir)` are where recordings go to disk, in whatever way is native and efficient for that simulator (see [Run outputs](#run-outputs)).
+   - `get_spike_events()` reads them back however they were stored, so the analysis and `runs.py` never need backend-specific code.
+   - The constructor can take keyword-only arguments beyond `(network, simulation_config)` for what that backend alone needs; `NestBackend`'s `extension_modules` is the example (see [Using a NESTML model](#using-a-nestml-model)).
+2. Register it in `get_backend` (`microcircuit_lab/backends/__init__.py`).
+3. Select it by name and pass its own arguments through `backend_options`, which the rest of the package never reads:
 
 ```python
 simulation = Simulation.from_yaml(
     network_name="my_model",
     backend="nest",
-    backend_options={},  # backend-specific kwargs, e.g. extension_modules for NEST
+    backend_options={},  # backend-specific arguments, e.g. extension_modules for NEST
 )
 ```
 
 ## Using a NESTML model
 
-NESTML compiles a custom neuron model into a NEST extension module, loaded at runtime with `nest.Install(module_name)` before any node using that model can be created. This is entirely a capability of `NestBackend` (its `extension_modules` constructor argument, see [Adding a backend](#adding-a-backend)); nothing elsewhere in the package has any notion of NESTML.
+NESTML compiles a custom neuron model into a NEST extension module, which `nest.Install(module_name)` loads before any neuron of that model is created. Only `NestBackend` knows about this (its `extension_modules` argument); nothing else in the package does.
 
-1. **Write the `.nestml` source** under a top-level `nestml/` directory, parallel to `configs/` -- not inside `builders/`, since nothing reads a `.nestml` file at runtime (NESTML's own compiler does) and a compiled module is platform/NEST-version-specific, not something to ship as package data. A model reusable across networks can sit flat in `nestml/`; one written specifically for a given model gets its own `nestml/<model_name>/` subdirectory, the same convention used by `configs/network/<model>/` and `experiments/<model>/`:
+1. **Write the `.nestml` source** in a top-level `nestml/` folder next to `configs/`, not inside `builders/`: nothing reads a `.nestml` file at run time (NESTML's compiler does), and a compiled module depends on the platform and the NEST version. A model used by several networks sits directly in `nestml/`; one written for a single model goes in `nestml/<model_name>/`:
 
    ```text
    nestml/
-   ├── generic_lif.nestml           # reusable across networks
+   ├── generic_lif.nestml           # used by several networks
    └── humam/
-       └── humam_lif.nestml         # written specifically for the HuMAM reproduction
+       └── humam_lif.nestml         # written for the HuMAM reproduction
    ```
 
-   Compiled output is gitignored, like `output/`.
+   The compiled output is not committed, like `output/`.
 
-2. **Compile it**, once, ahead of time, with NESTML's own tooling (same idea for a model-specific file under `nestml/<model_name>/`, just with that path instead):
+2. **Compile it** once, ahead of time, with NESTML's own tools:
 
    ```python
    from pynestml.frontend.pynestml_frontend import generate_nest_target
@@ -358,52 +396,63 @@ NESTML compiles a custom neuron model into a NEST extension module, loaded at ru
    )
    ```
 
-   This registers the model under whatever name your `.nestml` file (or NESTML's default suffixing) gives it, e.g. `generic_lif_nestml`.
+   The model is then known to NEST under the name your `.nestml` file gives it (with NESTML's suffix), e.g. `generic_lif_nestml`.
 
-3. **Reference the compiled model in a network config.** From here it's just another neuron model as far as `neurons.yaml` is concerned: use that name as `model`, its own parameters as `parameters`, and `psp_conversion_aliases` if you're using `unit: PSP` and it names things differently (see [Configuration](#configuration)). To try it against a network you already trust, copy rather than edit in place, e.g. `configs/network/toy/` to `configs/network/toy_nestml/` -- the same way `toy_stimulated` was kept separate from `toy`.
+3. **Use it in a network.** For `neurons.yaml` it is just another model: its name as `model`, its parameters as `parameters`, and `psp_conversion_aliases` if you use `unit: PSP` and it names things differently (see [Weights and delays](#weights-and-delays)). To try it on a network you trust, copy the network rather than edit it, e.g. `configs/network/toy/` to `configs/network/toy_nestml/`.
 
-4. **Load the compiled module before building the network.** This is the only NEST-specific step, and it's `NestBackend`'s `extension_modules` from [Adding a backend](#adding-a-backend):
+4. **Load the module before the network is built:**
 
    ```python
    from microcircuit_lab import Simulation
 
    simulation = Simulation.from_yaml(
        network_name="toy_nestml",
-       simulation_name="toy_nestml",
        backend="nest",
        backend_options={"extension_modules": ["my_module"]},
    )
    simulation.run()
    ```
 
-   `extension_modules` is loaded fresh on every `run()`, in `NestBackend.initialize()`, before populations are created.
+   The modules are loaded on every `run()`, in `NestBackend.initialize()`, before the populations are created.
 
 ## Included models
 
-- **PD14**: Potjans & Diesmann cortical microcircuit configuration and connectivity utilities.
-- **HuMAM**: single-area and multi-area configuration generation from bundled HuMAM source data.
+- **PD14** (`pd14`, `pd14_dc`): the Potjans & Diesmann (2014) cortical microcircuit, built from the published parameters.
+- **HuMAM** (`humam_single`, `humam_all`): one area or all 34 areas of the human multi-area model (Pronold et al. 2024), from the bundled HuMAM data.
 - **Two-area toy** (`toy_two_areas`): a small synthetic multi-area network whose areas have different layers and cell types (E, PV, SOM, VIP); an example and a test case, not a model of cortex.
+- **Toy** (`toy`, `toy_stimulated`): two populations (E and I), the smallest example, with and without stimuli.
 
-Model-specific documentation is located inside each folder under `builders/`.
+Each builder's README in `builders/` gives its sources and how its configs were generated.
 
 ## Experiments
 
-An experiment -- a parameter sweep, or a comparison across configs -- is a plain Python script under `experiments/<model_name>/<experiment_name>.py` that runs simulations itself. There's no dedicated framework for this beyond `Simulation`/`microcircuit_lab.analysis`: build a network config (from YAML, or with fields overridden in-memory as needed), run it, and use the same `compute_*`/`plot_*` functions as everywhere else. See `experiments/toy/background_drive_sweep.py` for a worked example (a small sweep over one population parameter, reproducing how the toy network's own background drive was calibrated). To analyse a run you already have, see [Analysing a run](#analysing-a-run).
+An experiment (a parameter sweep, a comparison across configs) is a plain Python script under `experiments/<model_name>/` that runs simulations itself. There is no framework for it beyond `Simulation` and `microcircuit_lab.analysis`: read a network, change what you want in memory, prepare it, run it, and use the same `compute_*`/`plot_*` functions as everywhere else:
+
+```python
+from microcircuit_lab import Simulation, prepare_network, read_network
+
+network = read_network("configs/network/toy")
+populations = {name: pop.model_copy(update={"background_indegree": 2000})
+               for name, pop in network.populations.items()}
+network = prepare_network(network.model_copy(update={"populations": populations}))
+```
+
+`experiments/toy/background_drive_sweep.py` is a worked example (a sweep over the background indegree, which is how the toy network's own background drive was chosen). To analyse a run you already have, see [Analysing a run](#analysing-a-run).
 
 ### Re-plotting without re-simulating
 
-A run already saves everything a plot needs (`config.yaml`, `recordings/`), so trying a different `--begin`/`--end`/`--area`/analysis profile on a run you already have doesn't require re-simulating it. Pass `--run-dir` instead of `--network`/`--simulation`; every other flag above works the same:
+A run saves everything a plot needs (`config.yaml`, `recordings/`), so trying another `--begin`/`--end`/`--area` or analysis profile doesn't need a new simulation. Pass `--run-dir` instead of `--network`; every other flag works the same:
 
 ```bash
 microcircuit-lab run --network toy   # prints "Run directory: ..."
 microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 ```
 
-Plots are written back into that same run's own `plots/` directory. Programmatically, this is `Simulation.from_run_dir(run_dir)` -- it returns a `Simulation` with a working `.backend` (reading spikes back from `recordings/` instead of a live NEST process, via `PostHocBackend`) without ever calling `.run()`, so `microcircuit_lab.analysis`'s `plot_*`/`compute_*` functions work on it exactly as they do on a freshly-run one. Only runs saved after this feature was added carry the `first_gid` metadata field it needs; an older run raises a clear error instead of silently reconstructing the wrong neuron IDs -- just re-run it once to pick up the new field.
+The plots go back into that run's `plots/` folder. From Python, `Simulation.from_run_dir(run_dir)` returns a `Simulation` whose `backend` reads the spikes back from `recordings/` (a `PostHocBackend`) without running anything, so the `plot_*`/`compute_*` functions work on it as on a fresh run. A run saved before this was added lacks the `first_gid` field it needs and raises a clear error; run it once more to get the field.
 
-### Adding a bundled plot (package maintainers)
+### Adding a bundled plot
 
-Adding a bundled plot (raster, firing rates, power spectrum and ISI CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `microcircuit-lab run` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model builders (`io.discover_builders`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function and a small config class for its settings, then register it once:
+A bundled plot (raster, firing rates, power spectrum and ISI CV today) is registered once; `AnalysisConfig` and `microcircuit-lab run` don't change. Write the plot function and a small config class for its settings in `analysis/<plot>.py`, import that module in `analysis/__init__.py` (a module that is never imported never registers its plot), and register it:
 
 ```python
 from microcircuit_lab.analysis import register_plot
@@ -416,16 +465,11 @@ register_plot(
 )
 ```
 
-That's the entire wiring:
-
-- `microcircuit-lab run` gets a `--spectrogram`/`--no-spectrogram` flag automatically (it builds its CLI by looping over `microcircuit_lab.analysis.PLOT_REGISTRY`)
-- `configs/analysis/*.yaml` files don't need to change shape at all -- a `spectrogram:` top-level section works exactly like `raster:`/`firing_rates:` already do (an unregistered section name raises a clear error instead of being silently ignored, via `check_unknown_plot_sections`)
-
-For a plot in your own project, not in this package, see [Analysing a run](#analysing-a-run).
+`microcircuit-lab run` then has a `--spectrogram`/`--no-spectrogram` flag, and analysis files accept a `spectrogram:` section. For a plot in your own project, see [Analysing a run](#analysing-a-run).
 
 ### Firing-rate distributions
 
-After running a simulation, inspect the distribution of single-neuron firing rates within each population:
+The distribution of single-neuron rates in each population, after a run:
 
 ```python
 from microcircuit_lab.analysis import plot_firing_rates
@@ -433,34 +477,30 @@ from microcircuit_lab.analysis import plot_firing_rates
 plot_firing_rates(simulation, begin=500.0)
 ```
 
-For multi-area networks, select one area with `area="V1"`; `list_areas(simulation)` returns the available area names. The string `"all"` is only understood by `microcircuit-lab run` (which loops over the areas); the plot functions themselves take one area at a time. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
+For a multi-area network, pick one area with `area="V1"`; `list_areas(simulation)` gives the area names. `"all"` is only understood by `microcircuit-lab run`, which loops over the areas; the plot functions take one area at a time. Published reference rates can be overlaid with `show_reference=True`.
 
 ## Run outputs
 
-`Simulation.run()` saves its outputs automatically, controlled by `simulation.yaml`'s `output` and `recording` sections (all optional, see `microcircuit_lab/config/simulation.py`):
+`Simulation.run()` saves its outputs, as set in the `output` and `recording` sections of the simulation file (all optional, see `config/simulation.py`):
 
 ```text
-<output_dir>/                      # fixed if overwrite: true, else <output_dir>/<timestamp>/; default output/<network>/
-├── recordings/                    # spike recordings, see below
-├── config.yaml                    # the fully resolved network + simulation config actually used
-└── metadata.json                  # run identity, per-population spike stats, and an artifact manifest
+<output_dir>/                      default output/<network>/<timestamp>/; fixed with overwrite: true
+├── recordings/                    spike recordings, see below
+├── config.yaml                    the prepared network and the simulation settings actually used
+└── metadata.json                  run identity, spike statistics per population, list of files
 ```
 
-`overwrite: false` (the default, and the convention used by every bundled model) gives each run its own timestamped subdirectory, so results are never silently clobbered. Set `overwrite: true` to instead reuse the same directory every run -- convenient while iterating, but each run replaces the last one's output.
+`overwrite: false` (the default) gives each run its own timestamped folder, so results are never replaced. `overwrite: true` reuses one folder, which is handy while iterating.
 
-**Recordings are written by the backend, not re-serialized by microcircuit_lab.** With the NEST backend, `recordings/` is pointed at NEST's own ascii recording backend before the network is built, so NEST writes spikes straight to disk during `simulate()`: `spikes-<id>-<thread>.dat`, one shard per thread/process, NEST's native naming and tab-separated `sender  time_ms` format. Nothing is buffered in Python memory or written twice.
+**Recordings are written by the simulator, not copied by Python.** With NEST, `recordings/` is set as NEST's own output folder before the network is built, so NEST writes spikes straight to disk during the simulation: `spikes-<id>-<thread>.dat`, one file per thread or process, tab-separated `sender  time_ms`. `backend.get_spike_events(population)` reads them back, merging the files and selecting the population's neurons, so the analysis never has to know. A backend without its own file output (or NEST used without `prepare_output()`) writes a single `spikes.csv` instead.
 
-`Simulation`/plotting code still reads spikes back through `backend.get_spike_events(population)`, which transparently merges those shards and slices by GID range when needed (e.g. for `metadata.json`'s statistics or `plot_raster`) -- callers never need to know recording happened natively. A backend without native file recording (or the NEST backend used standalone, without `prepare_output()`) falls back to writing a consolidated `spikes.csv` from the in-memory events instead.
+Voltage recording (`recording.voltage_recording: true`) works the same way and writes `voltage-<id>-<thread>.dat`. It records the first 5 neurons of each population by default (`recording.voltage_sample_size`), to keep files small; set another number, or `null` for every neuron.
 
-Voltage recording (`recording.voltage_recording: true`) uses one shared multimeter the same way and writes `voltage-<id>-<thread>.dat`. By default it records only the first 5 neurons of each population (`recording.voltage_sample_size: 5`), which keeps memory and file sizes small on large networks; set another number `N` to change that, or `null` to record every neuron.
-
-`metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `microcircuit-lab run` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`. Any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
-
-The simulation object exposes `simulation.output_dir` (a `Path`, set once `run()` has completed) for building further artifact paths.
+`metadata.json`'s `artifacts` lists every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run folder. `microcircuit-lab run` registers its plots there; code that saves another file into the run folder should call `register_artifact(simulation.output_dir, "<category>", path)` from `microcircuit_lab.runs` too. `simulation.output_dir` is set once `run()` has finished.
 
 ## Analysing a run
 
-Every run writes a *run folder* (`output/<model>/<timestamp>/`, see above) that holds its config and its spike recordings. An analysis is any Python code that opens a run folder, computes what you want, and saves files back into it. How you do the middle part is up to you, as for builders.
+Every run writes a *run folder* (`output/<model>/<timestamp>/`) with its config and its spikes. An analysis is any Python code that opens a run folder, computes something and saves files back into it. How you do the middle part is up to you, as for builders.
 
 ### Write an analysis
 
@@ -474,7 +514,7 @@ import matplotlib.pyplot as plt
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import compute_population_firing_rates, register_plot
-from microcircuit_lab.io.output import register_artifact
+from microcircuit_lab.runs import register_artifact
 
 
 def rate_bars(simulation, save_path, area=None):
@@ -497,18 +537,18 @@ if __name__ == "__main__":
     register_artifact(simulation.output_dir, "plots", path)
 ```
 
-The file works in two ways, and you can use either or both:
+The file works two ways; use either or both:
 
-- **Run it yourself** on any run folder. Nothing else is needed:
+- **Run it yourself** on any run folder:
   ```bash
   python analyses/rate_bars.py output/my_model/<timestamp>
   ```
-  `Simulation.from_run_dir` opens the finished run without re-simulating it. The last line lists the new file in the run's `metadata.json`.
-- **Let `microcircuit-lab run` run it.** The line `register_plot("rate_bars", rate_bars)` gives you a `--rate-bars` flag and, in the analysis YAML, a `rate_bars:` section. With `--area all` you get one figure per area, saved under `plots/` and listed in `metadata.json`:
+  `Simulation.from_run_dir` opens the finished run without simulating it again. The last line lists the new file in the run's `metadata.json`.
+- **Let `microcircuit-lab run` run it.** `register_plot("rate_bars", rate_bars)` gives a `--rate-bars` flag and a `rate_bars:` section in the analysis file. With `--area all` you get one figure per area, saved under `plots/` and listed in `metadata.json`:
   ```bash
   microcircuit-lab run --run-dir output/my_model/<timestamp> --rate-bars
   ```
-  The script imports every file in `analyses/` before it reads its flags, so run it from the project folder. Because of the `if __name__ == "__main__":` line, the standalone part does not run when the script imports the file.
+  The command imports every file in `analyses/` before it reads its flags, so run it from the project folder. The `if __name__ == "__main__":` part doesn't run on import.
 
 ### What your function can ask for
 
@@ -516,25 +556,23 @@ The first parameter is always the simulation. After that, name only what you nee
 
 | Parameter | What you get |
 |---|---|
-| `save_path` | where to save the figure (the script creates the folder) |
+| `save_path` | where to save the figure (the folder is created for you) |
 | `area` | one area name, or `None` for single-area networks |
 | `begin`, `end` | the time window in ms (`--begin`, `--end`) |
 | `style` | the shared plot style; `population_color(name, index, style)` and `population_label(name, style)` use it |
-| `config` | your settings: the `rate_bars:` section of the analysis YAML, as a plain dict (`{"enabled": true, "color": "green"}`) |
+| `config` | your settings: the `rate_bars:` section of the analysis file, as a plain dict (`{"enabled": true, "color": "green"}`) |
 | `show` | `True` with `--show` |
 | `show_reference` | `True` if reference rates should be overlaid (`--reference`) |
 
-A parameter with any other name must have a default value, as `area=None` has above. If it doesn't, `register_plot` fails at once and lists the names you can use.
-
-A plot registered like this is off by default. Pass `--rate-bars`, or set `enabled: true` in the `rate_bars:` section, to switch it on.
+Any other parameter needs a default value, like `area=None` above; otherwise `register_plot` fails at once and lists the names you can use. A plot registered this way is off by default: pass `--rate-bars`, or set `enabled: true` in its section.
 
 ### Good to know
 
-- A name that is already used raises an error, so a plot of yours cannot replace `raster` or another bundled plot.
-- To make `--area all` work, use `area` when you pick populations: `select_populations(simulation, None, area)` returns the populations of that area. If you cache a result with `load_or_compute`, put the area in its name, for example `f"rate_bars_{area}"`.
-- Read data only through `simulation` (`simulation.backend.get_spike_events(...)`, `simulation.network.config`, `simulation.simulation_config`) so the analysis also works on saved runs.
-- Many simulations with one parameter changed (a sweep, an f-I curve) are not an analysis of one run. Write them as a script under `experiments/` (see [Experiments](#experiments)).
-- A package that provides analyses can register them too, by listing the module under the `microcircuit_lab.analyses` entry-point group in its `pyproject.toml` (see `microcircuit_lab/analysis/registry.py`).
+- A name that is already taken raises an error, so your plot can't replace `raster` or another bundled plot.
+- For `--area all`, use `area` when you pick populations: `select_populations(simulation, None, area)` returns the populations of that area. If you cache a result with `load_or_compute` (`microcircuit_lab.analysis.cache`), put the area in its name, e.g. `f"rate_bars_{area}"`.
+- Read data only through `simulation` (`simulation.backend.get_spike_events(...)`, `simulation.network`, `simulation.simulation_config`), so the analysis also works on saved runs.
+- Many simulations with one parameter changed (a sweep, an f-I curve) are not an analysis of one run: write them as a script under `experiments/` (see [Experiments](#experiments)).
+- A package can provide analyses too, by listing its module under the `microcircuit_lab.analyses` entry-point group in its `pyproject.toml` (see `microcircuit_lab/analysis/registry.py`).
 
 ## Testing
 
@@ -542,6 +580,4 @@ A plot registered like this is off by default. Pass `--rate-bars`, or set `enabl
 pytest
 ```
 
-The scientific transformation functions and configuration preprocessing are tested independently from simulator execution where possible.
-
-The tests cover the core: how config files are read and validated, the transformations, the analysis and the simulator backend. They do not test a builder itself. What a builder writes is tested by the core reading it, for example by validating every network config under `configs/network/`. A test for your own builder goes in `tests/` like any other.
+The tests cover the core: reading and checking config files, preparing a network (units, scaling, compensation), the analysis and the NEST backend. They don't test a builder's code; what a builder writes is tested by the core reading it, e.g. every network under `configs/network/` is loaded and checked. Tests that run a simulation need NEST.

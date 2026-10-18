@@ -8,10 +8,10 @@ from microcircuit_lab.network.scaling import (
     network_compensation_current,
     background_dc_current,
 )
-from microcircuit_lab.network.parameters import (
+from microcircuit_lab.network.quantities import (
     network_mean_input,
 )
-from microcircuit_lab.network.connectivity import (
+from microcircuit_lab.builder_tools import (
     num_synapses_from_conn_prob,
 )
 

@@ -7,24 +7,21 @@ import yaml
 from pydantic import ValidationError
 
 from microcircuit_lab.backends.nest import NestBackend
-from microcircuit_lab.config.network import (
+from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
-    DelayDistribution,
     InhomogeneousPoissonStimulusConfig,
-    NetworkConfig,
-    NeuronConfig,
-    NeuronParams,
     PoissonStimulusConfig,
-    PopulationConfig,
-    ScalingConfig,
     StimulusConfig,
-    WeightDistribution,
 )
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network import Network, NetworkPreprocessor
-from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.units import psp_to_psc_iaf_psc_exp
 
 
 def _neuron(**overrides) -> NeuronConfig:
@@ -172,8 +169,8 @@ def test_loader_reads_stimuli_yaml_when_declared(tmp_path: Path) -> None:
         )
     )
 
-    network_files = read_network_directory(network_dir)
-    config = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files(network_dir)
+    config = assemble_network(network_files)
 
     assert len(config.stimuli) == 1
     assert config.stimuli[0].type == "dc"
@@ -196,16 +193,16 @@ def test_loader_rejects_stimulus_targeting_unknown_population(tmp_path: Path) ->
         )
     )
 
-    network_files = read_network_directory(network_dir)
+    network_files = read_network_files(network_dir)
     with pytest.raises(ValueError, match="unknown population"):
-        NetworkConfigLoader(network_files).build()
+        assemble_network(network_files)
 
 
 def test_network_yaml_without_stimuli_key_still_loads() -> None:
     """Existing configs (no `stimuli:` entry in network.yaml) keep working."""
 
-    network_files = read_network_directory("configs/network/toy")
-    config = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    config = assemble_network(network_files)
     assert config.stimuli == []
 
 
@@ -213,8 +210,8 @@ def test_network_yaml_without_stimuli_key_still_loads() -> None:
 # PSP -> PSC conversion (must not silently skip stimulus weights)
 # -----------------------------------------------------------------------------
 def test_stimulus_psp_weight_is_converted_like_connections():
-    network_files = read_network_directory("configs/network/toy")
-    config = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    config = assemble_network(network_files)
 
     stimulus = PoissonStimulusConfig(
         targets=["E", "I"],
@@ -224,7 +221,7 @@ def test_stimulus_psp_weight_is_converted_like_connections():
     )
     config = config.model_copy(update={"stimuli": [stimulus]})
 
-    processed = NetworkPreprocessor(config).process()
+    processed = prepare_network(config)
 
     converted = processed.stimuli[0].weight
     assert converted.unit == "PSC"
@@ -258,7 +255,7 @@ def test_stimulus_psp_weight_raises_when_targets_have_different_neuron_params():
     )
 
     with pytest.raises(ValueError, match="don't convert it to the same"):
-        NetworkPreprocessor(network).process()
+        prepare_network(network)
 
 
 def test_dc_stimulus_has_no_weight_to_convert():
@@ -273,7 +270,7 @@ def test_dc_stimulus_has_no_weight_to_convert():
         scaling=ScalingConfig(),
     )
 
-    processed = NetworkPreprocessor(network).process()
+    processed = prepare_network(network)
     assert isinstance(processed.stimuli[0], DcStimulusConfig)
     assert processed.stimuli[0].amplitude == 200.0
 
@@ -281,7 +278,7 @@ def test_dc_stimulus_has_no_weight_to_convert():
 # -----------------------------------------------------------------------------
 # NEST backend: device creation and end-to-end current-pulse behavior
 # -----------------------------------------------------------------------------
-def _isolated_network(stimuli: list[StimulusConfig]) -> Network:
+def _isolated_network(stimuli: list[StimulusConfig]) -> NetworkConfig:
     """A single population with no background input and no recurrent
     connections, so any spiking is attributable only to `stimuli`."""
 
@@ -293,10 +290,10 @@ def _isolated_network(stimuli: list[StimulusConfig]) -> Network:
         stimuli=stimuli,
         scaling=ScalingConfig(),
     )
-    return Network(config)
+    return config
 
 
-def test_create_stimulus_devices_builds_correct_nest_models():
+def test_create_stimuli_builds_correct_nest_models():
     stimuli = [
         DcStimulusConfig(targets=["E"], amplitude=500.0, start=10.0, stop=20.0),
         PoissonStimulusConfig(
@@ -317,18 +314,18 @@ def test_create_stimulus_devices_builds_correct_nest_models():
     backend = NestBackend(network=network, simulation_config=simulation_config)
     backend.build()
 
-    assert len(backend.stimulus_devices) == 3
+    assert len(backend.stimulus_generators) == 3
 
-    dc_stim, dc_device = backend.stimulus_devices[0]
+    dc_stim, dc_device = backend.stimulus_generators[0]
     assert dc_device.get("model") == "dc_generator"
     assert dc_device.get("amplitude") == 500.0
     assert dc_device.get("stop") == 20.0
 
-    poisson_stim, poisson_device = backend.stimulus_devices[1]
+    poisson_stim, poisson_device = backend.stimulus_generators[1]
     assert poisson_device.get("model") == "poisson_generator"
     assert poisson_device.get("rate") == 50.0
 
-    inhom_stim, inhom_device = backend.stimulus_devices[2]
+    inhom_stim, inhom_device = backend.stimulus_generators[2]
     assert inhom_device.get("model") == "inhomogeneous_poisson_generator"
     assert list(inhom_device.get("rate_times")) == [10.0, 20.0]
     assert list(inhom_device.get("rate_values")) == [50.0, 100.0]

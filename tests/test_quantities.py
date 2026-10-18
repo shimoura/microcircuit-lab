@@ -2,22 +2,16 @@ import math
 import pytest
 import numpy as np
 
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.network.preprocessing import (
-    NetworkPreprocessor,
-)
-from microcircuit_lab.config.network import (
-    NetworkConfig,
-    PopulationConfig,
-    ScalingConfig,
-    NeuronConfig,
-    NeuronParams,
-)
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network.synapses import (
+from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.units import (
     psp_to_psc_iaf_psc_exp,
 )
-from microcircuit_lab.network.parameters import (
+from microcircuit_lab.network.quantities import (
     indegree_matrix,
     full_mean_rates,
     mean_psc_matrix,
@@ -28,8 +22,8 @@ from microcircuit_lab.network.parameters import (
 
 
 def _load_toy():
-    network_files = read_network_directory("configs/network/toy")
-    network = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    network = assemble_network(network_files)
     # toy's own reference.yaml has no published rates; the manual-vs-computed
     # tests below only need *some* rates to compare against themselves.
     return network.model_copy(
@@ -43,7 +37,7 @@ def _load_toy():
 
 def _expected_first_weight_psc(network: NetworkConfig, *, linear: bool) -> float:
     """The PSC a network's own neuron parameters and first connection's
-    PSP amplitude convert to, scaled the same way NetworkPreprocessor
+    PSP amplitude convert to, scaled the same way prepare_network
     would (linear w -> w/K, or sqrt-preserving w -> w/sqrt(K))."""
 
     first = network.connections[0]
@@ -135,7 +129,7 @@ def test_n_scaling():
         ),
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     #
     # original unchanged
@@ -189,7 +183,7 @@ def test_k_scaling():
         ),
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     #
     # original unchanged
@@ -208,7 +202,7 @@ def test_weight_scaling():
 
     network_config = _load_toy()
 
-    derived = NetworkPreprocessor(network_config).process()
+    derived = prepare_network(network_config)
 
     expected = _expected_first_weight_psc(network_config, linear=False)
 
@@ -217,9 +211,9 @@ def test_weight_scaling():
 
 def test_identity_scaling():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     original_size = network.populations["E"].size
     original_indegree = network.populations["E"].background_indegree
@@ -235,7 +229,7 @@ def test_identity_scaling():
         }
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     assert derived.populations["E"].size == original_size
 
@@ -244,9 +238,9 @@ def test_identity_scaling():
 
 def test_identity_scaling_has_zero_dc():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     network = network.model_copy(
         update={
@@ -259,7 +253,7 @@ def test_identity_scaling_has_zero_dc():
         }
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     for pop in derived.populations.values():
 
@@ -268,9 +262,9 @@ def test_identity_scaling_has_zero_dc():
 
 def test_downscaled_network_has_dc_compensation():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     network = network.model_copy(
         update={
@@ -288,7 +282,7 @@ def test_downscaled_network_has_dc_compensation():
         }
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     assert any(pop.neuron.parameters.I_e != 0.0 for pop in derived.populations.values())
 
@@ -297,8 +291,8 @@ def test_preserve_variance_false_uses_linear_weight_scaling():
     """scaling.preserve_variance=False selects scale_weight (w -> w/K)
     instead of the default scale_weight_sqrt (w -> w/sqrt(K))."""
 
-    network_files = read_network_directory("configs/network/toy")
-    network = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    network = assemble_network(network_files)
 
     network = network.model_copy(
         update={
@@ -308,7 +302,7 @@ def test_preserve_variance_false_uses_linear_weight_scaling():
         }
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     expected = _expected_first_weight_psc(network, linear=True)  # linear, not sqrt
 
@@ -320,8 +314,8 @@ def test_preserve_variance_false_skips_dc_compensation():
     correct for, so DC compensation must not fire even though
     preserve_mean_input defaults to True."""
 
-    network_files = read_network_directory("configs/network/toy")
-    network = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    network = assemble_network(network_files)
 
     network = network.model_copy(
         update={
@@ -331,7 +325,7 @@ def test_preserve_variance_false_skips_dc_compensation():
         }
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     for pop in derived.populations.values():
         assert pop.neuron.parameters.I_e == pytest.approx(0.0)
@@ -342,8 +336,8 @@ def test_preserve_mean_input_false_disables_dc_compensation():
     preserve_mean_input must disable the DC compensation that would
     otherwise fire for a downscaled network."""
 
-    network_files = read_network_directory("configs/network/toy")
-    network = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    network = assemble_network(network_files)
 
     network = network.model_copy(
         update={
@@ -353,7 +347,7 @@ def test_preserve_mean_input_false_disables_dc_compensation():
         }
     )
 
-    derived = NetworkPreprocessor(network).process()
+    derived = prepare_network(network)
 
     for pop in derived.populations.values():
         assert pop.neuron.parameters.I_e == pytest.approx(0.0)

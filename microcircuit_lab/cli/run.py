@@ -24,8 +24,8 @@ from microcircuit_lab.analysis import (
     list_areas,
     plot_enabled_in_config,
 )
-from microcircuit_lab.config import AnalysisConfig
-from microcircuit_lab.io.output import register_artifact
+from microcircuit_lab.config.analysis import AnalysisConfig
+from microcircuit_lab.runs import register_artifact
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:

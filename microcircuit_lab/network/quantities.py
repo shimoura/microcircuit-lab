@@ -15,8 +15,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.network import DcStimulusConfig, NetworkConfig, PopulationConfig
-from microcircuit_lab.network.synapses import convert_psp_to_psc
+from microcircuit_lab.config.network import NetworkConfig
+
+from microcircuit_lab.config.populations import PopulationConfig
+
+from microcircuit_lab.config.stimuli import DcStimulusConfig
+from microcircuit_lab.network.units import convert_psp_to_psc
 
 
 def full_num_neurons(network: NetworkConfig) -> np.ndarray:
@@ -134,7 +138,7 @@ def background_psc_weights(
     Return the background input weights as PSC amplitudes (pA).
 
     Only ``unit: PSP`` weights are converted, and only for a population
-    whose neuron parameters support it (see network.synapses.convert_psp_to_psc);
+    whose neuron parameters support it (see network.units.convert_psp_to_psc);
     any other unit (``PSC``, ``native``, ...) is returned unchanged.
     """
 
@@ -160,7 +164,7 @@ def mean_psc_matrix(
 
     Only ``unit: PSP`` connections are converted, and only for a target
     population whose neuron parameters support it (see
-    network.synapses.convert_psp_to_psc); any other unit (``PSC``,
+    network.units.convert_psp_to_psc); any other unit (``PSC``,
     ``native``, ...) is used unchanged.
     """
 
@@ -252,7 +256,7 @@ def convert_network_psp_to_psc(
     untouched; it is not reinterpreted as PSP.
 
     The conversion is performed independently for each target population
-    using its neuron parameters, via network.synapses.convert_psp_to_psc;
+    using its neuron parameters, via network.units.convert_psp_to_psc;
     see that function for what it requires. A population whose neuron
     parameters don't support it raises ValueError; give its connections
     ``unit: native`` (or ``PSC`` if the weights are genuinely already

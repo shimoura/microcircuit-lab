@@ -4,7 +4,7 @@
 # conversion formula (e.g. conductance-based), set weight.unit to PSC
 # (already a current amplitude in pA) or native (used exactly as given,
 # no interpretation) instead; see WeightDistribution in
-# microcircuit_lab/config/network.py.
+# microcircuit_lab/config/connectivity.py.
 connections:
 
   - source: E
@@ -63,7 +63,7 @@ connections:
   # PSP-to-PSC conversion implemented, so their weights are unit: native:
   # NEST reads them directly as synaptic conductances (nS). The sign
   # still selects excitatory vs inhibitory (see WeightDistribution in
-  # microcircuit_lab/config/network.py).
+  # microcircuit_lab/config/connectivity.py).
   #
   # 0.6 nS excitatory / -2.4 nS inhibitory (same 4x ratio as E/I above)
   # is sized, not guessed: for a Poisson drive at rate R (Hz) with

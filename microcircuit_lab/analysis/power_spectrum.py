@@ -3,7 +3,7 @@
 Spectral estimation is pluggable: POWER_SPECTRUM_METHODS maps a method
 name to an estimator function, the same registry pattern used for
 simulator backends (microcircuit_lab.backends.get_backend) and model
-builders (microcircuit_lab.io.discover_builders). Add a new method
+builders (microcircuit_lab.discovery.discover_builders). Add a new method
 by registering it here; compute_power_spectrum/plot_power_spectrum never
 need to change.
 """
@@ -16,9 +16,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from microcircuit_lab.io.measures import load_or_compute
+from microcircuit_lab.analysis.cache import load_or_compute
 
-from ._utils import UNSET, select_populations
+from .areas import select_populations
+from .registry import UNSET
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
     DEFAULT_POWER_SPECTRUM_CONFIG,
@@ -135,9 +136,27 @@ def compute_population_rate_signal(
     pop_name: str,
     bin_size: float,
 ) -> np.ndarray:
-    """Bin one population's spikes into a population-rate (Hz) time series."""
+    """
+    One population's spikes binned into a population rate over time.
 
-    n_neurons = simulation.network.config.populations[pop_name].size
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms.
+    pop_name
+        The population.
+    bin_size
+        The bin width in ms.
+
+    Returns
+    -------
+    numpy.ndarray
+        The population rate in each bin, in spikes/s.
+    """
+
+    n_neurons = simulation.network.populations[pop_name].size
     events = simulation.backend.get_spike_events(pop_name)
     times = np.asarray(events["times"])
     times = times[(times >= begin) & (times < end)]
@@ -158,10 +177,32 @@ def compute_power_spectrum(
     method: str = "welch",
     method_kwargs: dict | None = None,
 ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
-    """Compute the population-rate power spectrum for each selected population.
+    """
+    The power spectrum of each population's rate.
 
-    Returns ``{population: (freqs_hz, power)}``. ``method`` selects the
-    spectral estimator from :data:`POWER_SPECTRUM_METHODS`.
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    bin_size
+        The bin width of the rate signal, in ms.
+    method
+        The estimator: a name in :data:`POWER_SPECTRUM_METHODS` (``"welch"``,
+        ``"periodogram"``, ``"multitaper"``).
+    method_kwargs
+        Extra arguments for the estimator, e.g. ``{"bandwidth": 4.0}`` for
+        ``"multitaper"``.
+
+    Returns
+    -------
+    dict of str to tuple
+        ``{population: (frequencies in Hz, power)}``.
     """
 
     if simulation.backend is None:
@@ -204,14 +245,34 @@ def cached_power_spectrum(
     recompute: bool = False,
     save: bool = True,
 ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
-    """compute_power_spectrum, reusing a previous run's saved result (see
-    microcircuit_lab.io.measures) under simulation.output_dir when present,
-    instead of recomputing from spikes -- e.g. useful when iterating on how
-    a comparison across several runs is plotted.
+    """
+    Like :func:`compute_power_spectrum`, but saved in the run folder and read
+    back the next time (see :mod:`microcircuit_lab.analysis.cache`).
 
-    Not derived from begin/end/populations/area/bin_size/method/
-    method_kwargs -- pass recompute=True after changing any of those,
-    since a stale cache won't reflect that.
+    The saved result does not know which settings it was computed with: pass
+    ``recompute=True`` after changing them.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    bin_size, method, method_kwargs
+        As in :func:`compute_power_spectrum`.
+    recompute
+        Compute again even if a saved result exists.
+    save
+        Save the result in the run folder.
+
+    Returns
+    -------
+    dict of str to tuple
+        ``{population: (frequencies in Hz, power)}``.
     """
 
     if simulation.output_dir is None:
@@ -284,20 +345,44 @@ def plot_power_spectrum(
     save_path: str | Path | None = None,
     show: bool = True,
 ):
-    """Plot the power spectrum of each selected population, arranged in a
-    grid: populations that share a layer (see :func:`_grid_layout`) share a
-    row, one column per cell type -- so e.g. ``L23_E``/``L23_I`` line up
-    next to each other while ``L4_E``/``L4_I`` form the row below.
+    """
+    Plot the power spectrum of each population, in a grid: one row per layer,
+    one column per cell type (``L23_E`` next to ``L23_I``, ``L4_E`` below).
 
-    The zero-frequency (DC) bin is never plotted -- after mean-detrending
-    it carries no information, and it would break a log-scaled frequency
-    axis (``config.log_freq``) anyway. ``xlim`` defaults to ``config.xlim``
-    (the full frequency range, so keep it out of ``(0, ...)`` if
-    ``log_freq`` is on); pass an explicit range, e.g. ``xlim=(1, 150)``, to
-    zoom in. ``method``/``method_kwargs`` default to ``config.method``/
-    ``config.method_kwargs`` (e.g. ``{"bandwidth": 4.0}`` for
-    ``method="multitaper"``). Set ``config.log_power``/``config.log_freq``
-    for a log or log-log plot.
+    The zero-frequency bin is never plotted: after removing the mean it carries
+    no information, and it would break a log frequency axis.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    bin_size
+        The bin width of the rate signal, in ms.
+    method, method_kwargs
+        The estimator, as in :func:`compute_power_spectrum`; by default as set in
+        ``config``.
+    xlim
+        The frequency range to show, e.g. ``(1, 150)``; by default as set in
+        ``config`` (the full range). Keep 0 out of it with ``config.log_freq``.
+    style
+        The shared plot style (:class:`~microcircuit_lab.config.PlotStyle`).
+    config
+        This plot's settings from the analysis file; its defaults otherwise.
+    save_path
+        Where to save the figure; not saved if ``None``.
+    show
+        Open the figure in a window.
+
+    Returns
+    -------
+    tuple
+        The matplotlib ``(figure, axes)``.
     """
 
     style = style or DEFAULT_PLOT_STYLE

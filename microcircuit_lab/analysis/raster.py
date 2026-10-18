@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 
-from ._utils import UNSET, select_populations
+from .areas import select_populations
+from .registry import UNSET
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
     DEFAULT_RASTER_CONFIG,
@@ -33,16 +34,41 @@ def plot_raster(
     save_path: str | Path | None = None,
     show: bool = True,
 ):
-    """Plot recorded spikes for any network configuration.
+    """
+    Plot the spikes of each population (a raster plot).
 
-    Population selection is independent of presentation. ``area`` supports the
-    generic ``<group>__<population>`` naming convention used by multi-area
-    configurations; ``style`` controls colors and figure appearance.
-    ``max_neurons_per_population`` defaults to ``config.neuron_fraction``
-    (if set, takes precedence) or ``config.max_neurons_per_population``;
-    pass an explicit value (or ``None`` for no cap) to override the config.
-    ``config.begin``/``config.end``, if set, override the ``begin``/``end``
-    arguments for this plot only.
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    max_neurons_per_population
+        Show at most this many neurons per population (``None`` for all). By
+        default from ``config``: ``neuron_fraction`` if set, else
+        ``max_neurons_per_population``.
+    style
+        The shared plot style (:class:`~microcircuit_lab.config.PlotStyle`).
+    config
+        This plot's settings from the analysis file; its defaults otherwise.
+    save_path
+        Where to save the figure; not saved if ``None``.
+    show
+        Open the figure in a window.
+
+    Returns
+    -------
+    tuple
+        The matplotlib ``(figure, axes)``.
+
+    Notes
+    -----
+    ``config.begin`` and ``config.end``, if set, replace ``begin`` and ``end``
+    for this plot only.
     """
     if simulation.backend is None:
         raise RuntimeError("Simulation has not been run yet.")

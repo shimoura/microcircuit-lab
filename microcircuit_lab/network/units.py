@@ -15,7 +15,7 @@ from collections.abc import Mapping
 
 import numpy as np
 
-from microcircuit_lab.config.network import NeuronParams
+from microcircuit_lab.config.neurons import NeuronParams
 
 
 def psc_over_psp(
@@ -69,13 +69,28 @@ def psp_to_psc_iaf_psc_exp(
     tau_syn: float,
 ) -> float:
     """
-    Convert a PSP amplitude to the equivalent PSC amplitude for a
-    current-based LIF neuron with single-exponential synaptic currents.
+    Convert a PSP amplitude (mV) to the current amplitude (pA) that produces it.
 
-    Named after NEST's iaf_psc_exp, the model most people recognize this
-    from, but the formula (see psc_over_psp) only depends on C_m, tau_m
-    and tau_syn, so it applies to any neuron with that dynamics
-    regardless of what it's called or which simulator it runs on.
+    Holds for a current-based LIF neuron with exponential synaptic currents.
+    It is named after NEST's ``iaf_psc_exp``, where people know it from, but it
+    only depends on ``C_m``, ``tau_m`` and ``tau_syn`` (see
+    :func:`psc_over_psp`), whatever the model is called.
+
+    Parameters
+    ----------
+    psp
+        The PSP amplitude, in mV.
+    C_m
+        Membrane capacitance, in pF.
+    tau_m
+        Membrane time constant, in ms.
+    tau_syn
+        Synaptic time constant, in ms.
+
+    Returns
+    -------
+    float
+        The current amplitude, in pA.
     """
 
     return psp * psc_over_psp(
@@ -93,29 +108,35 @@ def convert_psp_to_psc(
     aliases: Mapping[str, str] | None = None,
 ) -> float:
     """
-    Convert a PSP amplitude (mV) to a PSC amplitude (pA) for a population
-    using neuron model `model` with parameters `params`.
+    Convert a PSP amplitude (mV) to a current (pA) with a neuron's parameters.
 
-    Applies whenever `params` has C_m, tau_m, tau_syn_ex and tau_syn_in
-    (read under those names, or under `aliases[name]` for any of the
-    four `aliases` remaps), which is what the conversion needs and, in
-    practice, what a current-based LIF neuron with single-exponential
-    synaptic currents looks like: a conductance-based model exposes its
-    leak as g_L instead of a fixed tau_m, so it won't have all four
-    under any naming. `aliases` is how a model whose own parameters use
-    a different naming convention (e.g. a NESTML model) than NEST's
-    iaf_psc_exp still gets to use this conversion, see NeuronConfig's
-    psp_conversion_aliases.
+    Used for ``unit: PSP`` weights. It needs ``C_m``, ``tau_m``, ``tau_syn_ex``
+    and ``tau_syn_in``, under those names or under the names given in
+    ``aliases`` (a neuron's ``psp_conversion_aliases``, e.g. for a NESTML
+    model). The code can't check the neuron's dynamics: a model that has these
+    four parameters but is not a current-based LIF neuron with exponential
+    synaptic currents gets a wrong weight without an error.
 
-    This module doesn't know about `model` as a simulator identifier,
-    so unlike `unit: PSC`/`unit: native` it can't be told explicitly
-    not to apply; giving unit: PSP to a population whose neuron doesn't
-    actually have this dynamics, even if it happens to expose these
-    four names (aliased or not), will silently produce the wrong
-    weight, so that choice is on whoever wrote the config.
+    Parameters
+    ----------
+    model
+        The neuron model's name (only used in error messages).
+    psp
+        The PSP amplitude, in mV; a negative one uses ``tau_syn_in``.
+    params
+        The neuron's parameters.
+    aliases
+        ``{canonical name: the model's name}`` for parameters named differently.
 
-    Raises ValueError, naming the missing parameter, if `params` is
-    missing one of the four.
+    Returns
+    -------
+    float
+        The current amplitude, in pA.
+
+    Raises
+    ------
+    ValueError
+        Naming the missing parameter, if one of the four is missing.
     """
 
     aliases = aliases or {}
@@ -154,7 +175,20 @@ def psc_to_psp(
     tau_syn: float,
 ) -> float:
     """
-    Convert a PSC amplitude (pA) to a PSP amplitude (mV).
+    Convert a current amplitude (pA) to the PSP amplitude (mV) it produces; the
+    inverse of :func:`psp_to_psc_iaf_psc_exp`.
+
+    Parameters
+    ----------
+    psc
+        The current amplitude, in pA.
+    C_m, tau_m, tau_syn
+        As in :func:`psp_to_psc_iaf_psc_exp`.
+
+    Returns
+    -------
+    float
+        The PSP amplitude, in mV.
     """
 
     return psc / psc_over_psp(

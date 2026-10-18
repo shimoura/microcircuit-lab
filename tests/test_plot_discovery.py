@@ -155,7 +155,7 @@ def test_filename_defaults_to_the_plot_name_and_config_is_optional() -> None:
 
 
 def test_without_a_config_class_the_yaml_section_is_a_plain_dict() -> None:
-    from microcircuit_lab.config import AnalysisConfig
+    from microcircuit_lab.config.analysis import AnalysisConfig
 
     analysis_config = AnalysisConfig.model_validate({"my_plot": {"enabled": True, "color": "green"}})
 

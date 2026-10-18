@@ -5,14 +5,14 @@ and a project's own.
 Same registry pattern already used elsewhere in this package for
 "pluggable, named thing" problems -- simulator backends
 (microcircuit_lab.backends.get_backend), model builders
-(microcircuit_lab.io.discover_builders), spectral estimators
+(microcircuit_lab.discovery.discover_builders), spectral estimators
 (power_spectrum.POWER_SPECTRUM_METHODS). Applied to plots: adding a new
 bundled diagnostic means writing its plot function + config class (the
 actual work, same as today) plus one register_plot(...) call -- no
 AnalysisConfig edits, no CLI hand-writing, no extra __init__.py exports
 required for it to be usable through microcircuit-lab run.
 
-Each of raster.py/firing_rates.py/power_spectrum.py/irregularity.py
+Each of raster.py/firing_rates.py/power_spectrum.py/isi_cv.py
 calls register_plot() once at module level, so importing
 microcircuit_lab.analysis (which already imports all four) populates
 this registry as a side effect.
@@ -47,7 +47,16 @@ from pathlib import Path
 
 from microcircuit_lab.config.analysis import AnalysisConfig
 from microcircuit_lab.config.base import FrozenConfig
-from microcircuit_lab.io.discovery import import_folder_modules
+from microcircuit_lab.discovery import import_folder_modules
+
+#: Sentinel distinguishing "this argument wasn't passed at all" (fall back
+#: to the plot's config object) from an explicit value -- including an
+#: explicit None, which is itself a meaningful choice for some fields
+#: (e.g. xlim=None means "full range", not "unset"). Python has no
+#: cleaner built-in way to get this 3-state default; shared here so every
+#: plot module uses the same sentinel instead of a differently-named
+#: local one each.
+UNSET = object()
 
 PLOT_ENTRY_POINT_GROUP = "microcircuit_lab.analyses"
 
@@ -122,17 +131,31 @@ def register_plot(
     config_cls: type[FrozenConfig] | None = None,
     filename: str | None = None,
 ) -> None:
-    """Register a diagnostic under `name` (the AnalysisConfig YAML
-    section / --<name> CLI flag it's addressed by).
+    """
+    Add a plot to ``microcircuit-lab run``.
 
-    plot_fn takes the simulation first, then any of PLOT_ARGUMENTS by name;
-    a parameter with another name needs a default value. config_cls is
-    optional: without it ``config`` is the plain dict from the plot's YAML
-    section, and the plot is off unless that section sets ``enabled: true``
-    or the flag is passed. With it, config_cls must have an ``enabled``
-    field. filename defaults to ``<name>.png``. Raises if the name is
-    already taken, so a project's plot cannot silently replace a bundled
-    one.
+    Parameters
+    ----------
+    name
+        The plot's name: its ``--<name>`` flag and its section in the analysis
+        file.
+    plot_fn
+        The plot function. It takes the simulation first, then any of
+        ``PLOT_ARGUMENTS`` by name (``save_path``, ``area``, ``begin``, ...); a
+        parameter with any other name needs a default value.
+    config_cls
+        Optional pydantic model for the plot's settings, with an ``enabled``
+        field. Without it, ``config`` is the plain dict from the plot's section,
+        and the plot is off unless that section sets ``enabled: true`` or the
+        flag is passed.
+    filename
+        The figure's file name; ``<name>.png`` by default.
+
+    Raises
+    ------
+    ValueError
+        If the name is already taken, so a project's plot can't replace a
+        bundled one, or if ``plot_fn`` asks for a parameter it can't be given.
     """
 
     if name in PLOT_REGISTRY:
@@ -169,13 +192,18 @@ def plot_enabled_in_config(plot_config: FrozenConfig | dict) -> bool:
 
 
 def discover_plots(analyses_dir: str | Path = "analyses") -> None:
-    """Import the project's plot modules so their register_plot() calls run.
+    """
+    Import the plots of the project you run from, so their ``register_plot``
+    calls run.
 
     Looks in ``analyses_dir`` and in the ``microcircuit_lab.analyses``
-    entry-point group (see the module docstring). Nothing is returned: the
-    plots end up in PLOT_REGISTRY. An error raised while importing a
-    module propagates, so a broken plot fails loudly instead of silently
-    disappearing.
+    entry-point group. The plots end up in ``PLOT_REGISTRY``. An error in a
+    module is raised, so a broken plot fails loudly instead of disappearing.
+
+    Parameters
+    ----------
+    analyses_dir
+        The project's analyses folder; a missing folder is fine.
     """
 
     import_folder_modules(analyses_dir)

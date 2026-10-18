@@ -9,7 +9,7 @@ DC-current calculation, which runs whenever a network is scaled --
 including any network with N_scaling/K_scaling below 1).
 
 The conversion doesn't look at the neuron's `model` name at all, only at
-which parameters are present -- see network.synapses.convert_psp_to_psc.
+which parameters are present -- see network.units.convert_psp_to_psc.
 CONDUCTANCE_NEURON_PARAMS stands in for a real conductance-based model
 (no tau_m; a leak conductance g_L instead, matching e.g. NEST's
 aeif_cond_exp/iaf_cond_exp/iaf_cond_alpha) to exercise that missing-parameter
@@ -18,24 +18,33 @@ path realistically.
 
 import pytest
 
-from microcircuit_lab.config.network import (
-    BackgroundInputConfig,
+from microcircuit_lab.config.background_inputs import BackgroundInputConfig
+
+from microcircuit_lab.config.connectivity import (
+
     ConnectionConfig,
+
     DelayDistribution,
-    NetworkConfig,
-    NeuronConfig,
-    NeuronParams,
-    PopulationConfig,
-    ReferenceConfig,
-    ScalingConfig,
+
     WeightDistribution,
+
 )
-from microcircuit_lab.network.parameters import (
+
+from microcircuit_lab.config.network import NetworkConfig
+
+from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+
+from microcircuit_lab.config.populations import PopulationConfig
+
+from microcircuit_lab.config.reference import ReferenceConfig
+
+from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.network.quantities import (
     convert_network_psp_to_psc,
     background_psc_weights,
     mean_psc_matrix,
 )
-from microcircuit_lab.network.preprocessing import NetworkPreprocessor
+from microcircuit_lab.network.prepare import prepare_network
 
 NEURON_PARAMS = NeuronParams(
     C_m=250.0,
@@ -196,7 +205,7 @@ def test_psc_unit_skips_the_required_parameters_check():
 
 
 # mean_psc_matrix / background_psc_weights: used by the scaling-compensation
-# DC-current calculation (preprocessing.py::_apply_scaling_compensation),
+# DC-current calculation (prepare.py::_compensate_lost_mean_input),
 # which is a *separate* call site from convert_network_psp_to_psc and
 # needs its own unit.PSC / required-parameters guard.
 
@@ -238,7 +247,7 @@ def test_background_psc_weights_rejects_missing_required_parameters_for_psp_unit
 
 
 def test_psc_and_equivalent_psp_unit_networks_process_identically():
-    """End-to-end regression covering NetworkPreprocessor.process(), which
+    """End-to-end regression covering prepare_network(), which
     scales and applies DC compensation (any network scaled below full
     size takes this same path). A PSC-unit weight of X pA and a PSP-unit
     weight that converts to exactly X pA describe the same physical
@@ -269,8 +278,8 @@ def test_psc_and_equivalent_psp_unit_networks_process_identically():
         neuron_model="iaf_psc_exp", weight_unit="PSP", scaling=scaling, with_reference=True,
     )  # mean=0.15 PSP, which converts to psc_value
 
-    processed_psc = NetworkPreprocessor(network_psc).process()
-    processed_psp = NetworkPreprocessor(network_psp).process()
+    processed_psc = prepare_network(network_psc)
+    processed_psp = prepare_network(network_psp)
 
     assert processed_psc.connections[0].weight.mean == pytest.approx(
         processed_psp.connections[0].weight.mean

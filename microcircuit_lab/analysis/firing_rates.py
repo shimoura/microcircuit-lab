@@ -8,9 +8,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from microcircuit_lab.io.measures import load_or_compute
+from microcircuit_lab.analysis.cache import load_or_compute
 
-from ._utils import UNSET, select_populations
+from .areas import select_populations
+from .registry import UNSET
 from .plot_styles import (
     DEFAULT_FIRING_RATE_CONFIG,
     DEFAULT_PLOT_STYLE,
@@ -30,7 +31,25 @@ def compute_neuron_firing_rates(
     populations: Sequence[str] | None = None,
     area: str | None = None,
 ) -> dict[str, np.ndarray]:
-    """Compute the firing rate of every neuron in each selected population."""
+    """
+    The firing rate of every neuron, per population.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+
+    Returns
+    -------
+    dict of str to numpy.ndarray
+        ``{population: rate of each neuron}``, in spikes/s.
+    """
     if simulation.backend is None:
         raise RuntimeError("Simulation has not been run yet.")
     if not simulation.simulation_config.recording.spike_recording:
@@ -70,7 +89,25 @@ def compute_population_firing_rates(
     populations: Sequence[str] | None = None,
     area: str | None = None,
 ) -> dict[str, float]:
-    """Compute the mean firing rate of each selected population."""
+    """
+    The mean firing rate of each population.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+
+    Returns
+    -------
+    dict of str to float
+        ``{population: mean rate}``, in spikes/s.
+    """
     neuron_rates = compute_neuron_firing_rates(
         simulation,
         begin,
@@ -91,13 +128,33 @@ def cached_population_firing_rates(
     recompute: bool = False,
     save: bool = True,
 ) -> dict[str, float]:
-    """compute_population_firing_rates, reusing a previous run's saved
-    result (see microcircuit_lab.io.measures) under simulation.output_dir
-    when present, instead of recomputing from spikes -- e.g. useful when
-    iterating on how a comparison across several runs is plotted.
+    """
+    Like :func:`compute_population_firing_rates`, but saved in the run folder and
+    read back the next time (see :mod:`microcircuit_lab.analysis.cache`).
 
-    Not derived from begin/end/populations/area -- pass recompute=True
-    after changing any of those, since a stale cache won't reflect that.
+    Useful when re-plotting a comparison of many runs. The saved result does not
+    know which window, populations or area it was computed for: pass
+    ``recompute=True`` after changing them.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    recompute
+        Compute again even if a saved result exists.
+    save
+        Save the result in the run folder.
+
+    Returns
+    -------
+    dict of str to float
+        ``{population: mean rate}``, in spikes/s.
     """
 
     if simulation.output_dir is None:
@@ -126,16 +183,35 @@ def compute_reference_deviation(
     area: str | None = None,
 ) -> dict[str, float]:
     """
-    Relative deviation of simulated mean firing rates from published
-    reference rates: ``(simulated - reference) / reference``.
+    How far each population's mean rate is from its reference rate.
 
-    A programmatic counterpart to ``plot_firing_rates(..., show_reference=True)``
-    -- for scripting a pass/fail check instead of eyeballing a plot.
-    Raises if the network has no ``reference.full_mean_rates``, or a
-    selected population isn't in it.
+    The reference rates are ``full_mean_rates`` in the network's
+    ``reference.yaml``. This is the number behind
+    ``plot_firing_rates(..., show_reference=True)``, for a check in a script.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+
+    Returns
+    -------
+    dict of str to float
+        ``{population: (simulated - reference) / reference}``.
+
+    Raises
+    ------
+    ValueError
+        If the network has no reference rates, or none for a selected population.
     """
 
-    reference = simulation.network.config.reference
+    reference = simulation.network.reference
     if reference is None or not reference.full_mean_rates:
         raise ValueError("This network has no reference.full_mean_rates to validate against.")
 
@@ -163,14 +239,34 @@ def check_reference_rates(
     rtol: float = 0.5,
 ) -> dict[str, float]:
     """
-    Assert every selected population's simulated rate is within ``rtol``
-    relative deviation of its published reference rate.
+    Check that every population's mean rate is within ``rtol`` of its reference.
 
-    Returns the deviations (see compute_reference_deviation) on success;
-    raises AssertionError listing every population that failed otherwise.
-    Reference rates are typically full-scale/unscaled published values,
-    so a loose default tolerance is deliberate -- a scaled-down network
-    isn't expected to match them precisely, only be in the right regime.
+    Reference rates are usually full-scale published values, so the default
+    tolerance is loose: a downscaled network is expected to be in the right
+    regime, not to match them exactly.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    rtol
+        The largest allowed relative deviation (0.5 means 50 %).
+
+    Returns
+    -------
+    dict of str to float
+        The deviations, as in :func:`compute_reference_deviation`.
+
+    Raises
+    ------
+    AssertionError
+        Listing every population outside the tolerance.
     """
 
     deviations = compute_reference_deviation(
@@ -201,8 +297,38 @@ def plot_firing_rates(
     show: bool = True,
     rng_seed: int = 0,
 ):
-    """Plot per-neuron firing-rate distributions for selected populations.
-    ``show_reference`` defaults to ``config.show_reference``."""
+    """
+    Plot the distribution of single-neuron firing rates of each population.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    show_reference
+        Overlay the reference rates; by default as set in ``config``.
+    style
+        The shared plot style (:class:`~microcircuit_lab.config.PlotStyle`).
+    config
+        This plot's settings from the analysis file; its defaults otherwise.
+    save_path
+        Where to save the figure; not saved if ``None``.
+    show
+        Open the figure in a window.
+    rng_seed
+        Seed for choosing which points to show (when there are many) and
+        for their horizontal jitter.
+
+    Returns
+    -------
+    tuple
+        The matplotlib ``(figure, axes)``.
+    """
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_FIRING_RATE_CONFIG
     if show_reference is UNSET:
@@ -263,7 +389,7 @@ def plot_firing_rates(
 
     reference_plotted = False
     if show_reference:
-        reference = simulation.network.config.reference
+        reference = simulation.network.reference
         if reference is not None:
             for position, name in zip(positions, names):
                 if name in reference.full_mean_rates:

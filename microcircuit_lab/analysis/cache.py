@@ -25,7 +25,19 @@ def _measures_path(run_dir: str | Path, name: str) -> Path:
 
 
 def save_measures(run_dir: str | Path, name: str, measures: dict) -> Path:
-    """Save `measures` to ``<run_dir>/measures/<name>.npz``."""
+    """
+    Save computed measures in the run folder, as ``<run_dir>/measures/<name>.npz``.
+
+    Parameters
+    ----------
+    run_dir
+        The run folder.
+    name
+        The file name, without extension; include anything that changes the
+        result (e.g. the area or the time window).
+    measures
+        ``{key: array}`` to save.
+    """
 
     path = _measures_path(run_dir, name)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -45,8 +57,21 @@ def save_measures(run_dir: str | Path, name: str, measures: dict) -> Path:
 
 
 def load_measures(run_dir: str | Path, name: str) -> dict | None:
-    """Load measures saved by :func:`save_measures`, or None if
-    ``<run_dir>/measures/<name>.npz`` doesn't exist."""
+    """
+    Load measures saved by :func:`save_measures`.
+
+    Parameters
+    ----------
+    run_dir
+        The run folder.
+    name
+        The name they were saved under.
+
+    Returns
+    -------
+    dict or None
+        ``{key: array}``, or ``None`` if there is no such file.
+    """
 
     path = _measures_path(run_dir, name)
     if not path.exists():
@@ -73,12 +98,28 @@ def load_or_compute(
     recompute: bool = False,
     save: bool = True,
 ) -> dict:
-    """Return :func:`load_measures`'s result if present and `recompute` is
-    False; otherwise call `compute`, optionally :func:`save_measures` the
-    result, and return that.
+    """
+    Load saved measures, or compute and save them.
 
-    The generic building block behind microcircuit_lab.analysis's
-    cached_population_firing_rates/cached_power_spectrum.
+    Used by ``cached_population_firing_rates`` and ``cached_power_spectrum``.
+
+    Parameters
+    ----------
+    run_dir
+        The run folder.
+    name
+        The name the measures are saved under.
+    compute
+        A function without arguments that returns ``{key: array}``.
+    recompute
+        Compute even if saved measures exist.
+    save
+        Save what was computed.
+
+    Returns
+    -------
+    dict
+        ``{key: array}``.
     """
 
     if not recompute:

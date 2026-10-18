@@ -14,16 +14,15 @@ import pytest
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
-from microcircuit_lab.config.network import ScalingConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network.preprocessing import NetworkPreprocessor
+from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
 
 NETWORK = "configs/network/toy_two_areas"
 
 
 def _config(**scaling):
-    config = NetworkConfigLoader(read_network_directory(NETWORK)).build()
+    config = assemble_network(read_network_files(NETWORK))
     if scaling:
         config = config.model_copy(update={"scaling": ScalingConfig(**scaling)})
     return config
@@ -67,7 +66,7 @@ def test_areas_keep_their_own_layers_and_cell_types():
 
 
 def test_area_selection_finds_each_area():
-    simulation = SimpleNamespace(network=SimpleNamespace(config=_config()))
+    simulation = SimpleNamespace(network=_config())
 
     assert list_areas(simulation) == ["A", "B"]
     assert len(select_populations(simulation, None, "A")) == 12
@@ -77,7 +76,7 @@ def test_area_selection_finds_each_area():
 def test_psp_weights_are_converted_with_each_target_neuron():
     """A__L23_PV and A__L5_PV use different neuron entries that differ only
     in C_m, so the same PSP gives PSCs in the ratio of their capacitances."""
-    network = NetworkPreprocessor(_config()).process()
+    network = prepare_network(_config())
     psc = {
         connection.target: connection.weight.mean
         for connection in network.connections
@@ -94,9 +93,9 @@ def test_psp_weights_are_converted_with_each_target_neuron():
     [(1.0, 0.5), (0.5, 0.5), (0.5, 0.2)],
 )
 def test_scaling_preserves_the_mean_input_of_every_population(N_scaling, K_scaling):
-    full = _mean_input(NetworkPreprocessor(_config()).process())
+    full = _mean_input(prepare_network(_config()))
     scaled = _mean_input(
-        NetworkPreprocessor(_config(N_scaling=N_scaling, K_scaling=K_scaling)).process()
+        prepare_network(_config(N_scaling=N_scaling, K_scaling=K_scaling))
     )
 
     names = list(full)

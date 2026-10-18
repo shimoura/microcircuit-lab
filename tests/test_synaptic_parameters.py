@@ -1,6 +1,6 @@
 import numpy as np
 
-from microcircuit_lab.network.synapses import (
+from microcircuit_lab.network.units import (
     psc_over_psp,
     psc_to_psp,
     psp_to_psc_iaf_psc_exp,

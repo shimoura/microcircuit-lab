@@ -1,6 +1,6 @@
 """Writing simulation run outputs (recordings, config, metadata).
 
-This is the write-side counterpart to :mod:`microcircuit_lab.io.files`. It
+This is the write-side counterpart to :mod:`microcircuit_lab.yaml_files`. It
 depends only on the generic :class:`~microcircuit_lab.backends.base.SimulationBackend`
 contract, never on a specific backend, so it works for any simulator.
 """
@@ -14,9 +14,9 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from microcircuit_lab.backends.base import SimulationBackend
+from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
-from microcircuit_lab.io.files import flow_records, write_yaml
-from microcircuit_lab.network import Network
+from microcircuit_lab.yaml_files import flow_records, write_yaml
 
 
 def resolve_run_directory(
@@ -52,18 +52,18 @@ def resolve_run_directory(
 
 
 def save_run_config(
-    network: Network,
+    network: NetworkConfig,
     simulation_config: SimulationConfig,
     run_dir: Path,
 ) -> Path:
     """Save the fully resolved (preprocessed) network and simulation config.
 
     connections/populations/background_inputs are written one-record-per-line
-    (see io.files.flow_records) since a full-scale network can have
+    (see yaml_files.flow_records) since a full-scale network can have
     thousands of connection entries.
     """
 
-    network_payload = network.config.model_dump(mode="json")
+    network_payload = network.model_dump(mode="json")
     for field in ("connections", "populations", "background_inputs"):
         network_payload[field] = flow_records(network_payload[field])
 
@@ -112,7 +112,7 @@ def _core_git_provenance() -> dict[str, object] | None:
     git would otherwise find the project's.
     """
 
-    package_dir = Path(__file__).resolve().parents[1]
+    package_dir = Path(__file__).resolve().parent
     if not (package_dir.parent / ".git").exists():
         return None
     return _git_provenance(package_dir)
@@ -128,7 +128,7 @@ def _package_version() -> str | None:
 def write_run_metadata(
     run_dir: Path,
     *,
-    network: Network,
+    network: NetworkConfig,
     backend: SimulationBackend,
     simulation_config: SimulationConfig,
     network_name: str,
@@ -149,7 +149,7 @@ def write_run_metadata(
     t_sim_s = simulation_config.t_sim / 1000.0
     populations = {}
 
-    for pop_name, pop_cfg in network.config.populations.items():
+    for pop_name, pop_cfg in network.populations.items():
         stats = {
             "size": pop_cfg.size,
             "first_gid": int(backend.get_population(pop_name).tolist()[0]),
@@ -183,12 +183,20 @@ def write_run_metadata(
 
 def register_artifact(run_dir: Path, category: str, path: str | Path) -> None:
     """
-    Record an artifact (e.g. a saved plot) under ``category`` in
-    ``metadata.json``, so the run directory carries a single manifest of
-    everything it contains instead of requiring callers to glob for files.
+    List a file in the run's ``metadata.json``, under a category.
 
-    No-op if ``metadata.json`` was not written for this run
-    (``output.save_metadata=False``).
+    ``metadata.json`` then lists everything a run folder holds, so nobody has
+    to search the folder for files. Does nothing if the run has no
+    ``metadata.json`` (``save_metadata: false``).
+
+    Parameters
+    ----------
+    run_dir
+        The run folder, e.g. ``simulation.output_dir``.
+    category
+        The kind of file, e.g. ``"plots"``.
+    path
+        The file; stored relative to ``run_dir``.
     """
 
     metadata_path = Path(run_dir) / "metadata.json"
@@ -208,7 +216,7 @@ def register_artifact(run_dir: Path, category: str, path: str | Path) -> None:
 def save_run_outputs(
     *,
     run_dir: Path,
-    network: Network,
+    network: NetworkConfig,
     simulation_config: SimulationConfig,
     backend: SimulationBackend,
     network_name: str,

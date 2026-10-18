@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.network import Network
+from microcircuit_lab.config.network import NetworkConfig
 
 
 class SimulationBackend(Protocol):
@@ -23,7 +23,7 @@ class SimulationBackend(Protocol):
     needs to know about them.
     """
 
-    def __init__(self, network: Network, simulation_config: SimulationConfig) -> None: ...
+    def __init__(self, network: NetworkConfig, simulation_config: SimulationConfig) -> None: ...
 
     def prepare_output(self, run_dir: Path) -> None:
         """

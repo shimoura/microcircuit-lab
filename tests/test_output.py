@@ -8,22 +8,22 @@ import pandas as pd
 import yaml
 
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.io.output import (
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.runs import (
     register_artifact,
     resolve_run_directory,
     save_run_outputs,
 )
-from microcircuit_lab.network import Network, NetworkPreprocessor
+from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.backends.nest import NestBackend
 
 
-def _toy_network() -> Network:
-    network_files = read_network_directory("configs/network/toy")
-    config = NetworkConfigLoader(network_files).build()
-    config = NetworkPreprocessor(config).process()
-    return Network(config)
+def _toy_network() -> NetworkConfig:
+    network_files = read_network_files("configs/network/toy")
+    config = assemble_network(network_files)
+    config = prepare_network(config)
+    return config
 
 
 def test_resolve_run_directory_overwrite_reuses_same_dir(tmp_path: Path) -> None:
@@ -206,20 +206,20 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
 
 
 def test_core_git_provenance_only_for_a_clone_of_the_core(tmp_path: Path, monkeypatch) -> None:
-    from microcircuit_lab.io import output
+    from microcircuit_lab import runs
 
     # The test suite runs from a clone of the repository.
-    assert len(output._core_git_provenance()["commit"]) == 40
+    assert len(runs._core_git_provenance()["commit"]) == 40
 
     # An installed copy (no .git next to the package) has no commit of its own.
-    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "io" / "output.py"
-    monkeypatch.setattr(output, "__file__", str(package_file))
-    assert output._core_git_provenance() is None
+    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "runs.py"
+    monkeypatch.setattr(runs, "__file__", str(package_file))
+    assert runs._core_git_provenance() is None
 
 
 def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
     network = _toy_network()
-    expected_size = network.config.populations["E"].size
+    expected_size = network.populations["E"].size
     simulation_config = SimulationConfig.model_validate(
         {
             "t_sim": 200.0,

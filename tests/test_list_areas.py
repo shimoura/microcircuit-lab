@@ -1,11 +1,10 @@
 from types import SimpleNamespace
 
-from microcircuit_lab.analysis._utils import list_areas
+from microcircuit_lab.analysis.areas import list_areas
 
 
 def _sim(names):
-    config = SimpleNamespace(populations={name: None for name in names})
-    return SimpleNamespace(network=SimpleNamespace(config=config))
+    return SimpleNamespace(network=SimpleNamespace(populations={name: None for name in names}))
 
 
 def test_list_areas_keeps_order_and_skips_duplicates():
