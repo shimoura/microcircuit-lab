@@ -15,9 +15,9 @@ pip install -e ".[dev,nest]"
 NEST isn't pinned as a hard dependency, since how you get it depends heavily on where you run (PyPI, conda-forge, or building from source on a cluster) -- see [`microcircuit_lab/README.md`](microcircuit_lab/README.md#installation) for the alternatives. All that matters is `import nest` works in the environment you run simulations in. Then run the bundled `toy` network, a minimal two-population (E/I) example:
 
 ```bash
-python scripts/run_simulation.py --network toy
+microcircuit-lab run --network toy
 ```
 
 See [`microcircuit_lab/README.md`](microcircuit_lab/README.md) for everything else.
 
-This repository is meant to be forked as the starting point for a new, independent research project. When forking, replace this file with a short description of your own project and leave the framework documentation in `microcircuit_lab/README.md` untouched (see its "Using this as a template for a new project" section for details).
+To use the framework in your own project, install it and keep only your own builders, analyses and configs in the project folder (see "Starting a project" in `microcircuit_lab/README.md`). To change the framework itself, see [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -6,10 +6,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+from microcircuit_lab.cli.new_builder import render_stub
 from microcircuit_lab.io import validate_network_config
-
-_NEW_BUILDER = Path(__file__).resolve().parents[1] / "scripts" / "new_builder.py"
-
 
 def _load_module(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -19,7 +17,7 @@ def _load_module(path: Path, name: str):
 
 
 def _render_stub(name: str) -> str:
-    return _load_module(_NEW_BUILDER, "new_builder").render_stub(name)
+    return render_stub(name)
 
 
 def test_rendered_stub_is_valid_python() -> None:

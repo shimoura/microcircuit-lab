@@ -197,6 +197,18 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
     assert isinstance(metadata["git"]["dirty"], bool)
 
 
+def test_core_git_provenance_only_for_a_clone_of_the_core(tmp_path: Path, monkeypatch) -> None:
+    from microcircuit_lab.io import output
+
+    # The test suite runs from a clone of the repository.
+    assert len(output._core_git_provenance()["commit"]) == 40
+
+    # An installed copy (no .git next to the package) has no commit of its own.
+    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "io" / "output.py"
+    monkeypatch.setattr(output, "__file__", str(package_file))
+    assert output._core_git_provenance() is None
+
+
 def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
     network = _toy_network()
     expected_size = network.config.populations["E"].size

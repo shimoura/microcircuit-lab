@@ -674,7 +674,7 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Entry point. ``scripts/generate.py`` discovers this function (via
+    """Entry point. ``microcircuit-lab generate`` discovers this function (via
     ``builders.humam.main``) and forwards it the
     arguments after the model name.
     """
@@ -729,7 +729,7 @@ def _run(args: argparse.Namespace) -> None:
 
     print("\nRun with:")
     print(
-        "python scripts/run_simulation.py "
+        "microcircuit-lab run "
         f"--config-dir {args.config_dir} "
         f"--network {network_name} "
         f"--simulation {simulation_name}"

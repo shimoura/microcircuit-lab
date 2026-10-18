@@ -6,7 +6,7 @@ convert_psp_to_psc needs (C_m, tau_m, tau_syn_ex, tau_syn_in): the main
 convert_network_psp_to_psc pass (runs for every network), and
 mean_psc_matrix/background_psc_weights (used by the scaling-compensation
 DC-current calculation, which runs whenever a network is scaled --
-including PD14's bundled default, N_scaling/K_scaling: 0.05).
+including any network with N_scaling/K_scaling below 1).
 
 The conversion doesn't look at the neuron's `model` name at all, only at
 which parameters are present -- see network.synapses.convert_psp_to_psc.
@@ -239,8 +239,8 @@ def test_background_psc_weights_rejects_missing_required_parameters_for_psp_unit
 
 def test_psc_and_equivalent_psp_unit_networks_process_identically():
     """End-to-end regression covering NetworkPreprocessor.process(), which
-    scales and applies DC compensation (PD14's bundled default scaling
-    triggers this same path). A PSC-unit weight of X pA and a PSP-unit
+    scales and applies DC compensation (any network scaled below full
+    size takes this same path). A PSC-unit weight of X pA and a PSP-unit
     weight that converts to exactly X pA describe the same physical
     synapse, so they must produce identical results -- including the
     compensation current, which is where a silent PSC->PSP

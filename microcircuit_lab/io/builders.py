@@ -1,5 +1,5 @@
 """
-Find the model builders that ``scripts/generate.py`` can run.
+Find the model builders that ``microcircuit-lab generate`` can run.
 
 A builder is any package with a callable ``main(argv=None)``; ``main`` is
 all the shared CLI needs, and how it parses its arguments or splits its
