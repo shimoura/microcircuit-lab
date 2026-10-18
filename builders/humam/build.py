@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
 from microcircuit_lab.io.files import flow_records, read_yaml, write_yaml
 from microcircuit_lab.io.network_validation import validate_network_config
 
@@ -20,6 +19,17 @@ LAYER_ALIAS = {
     "V": "L5",
     "VI": "L6",
 }
+
+# HuMAM main (INM-6/human-multi-area-model @ cab39b3), src/default_sim_params.py:
+# initial membrane potentials (mV), simulation resolution (ms) and the minimal
+# cortico-cortical delay (ms; 0 means the resolution).
+V0_MEAN = -150.0
+V0_SD = 50.0
+RESOLUTION = 0.1
+DELAY_CC_MIN = 0.0
+
+# HuMAM's delay distributions: drawn values below the minimum delay are clipped.
+DELAY_DISTRIBUTIONS = {"lognormal_clipped": "lognormal", "normal_clipped": "normal"}
 
 
 def _population_label(
@@ -61,23 +71,6 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
         json.dumps(data, indent=2),
         encoding="utf-8",
     )
-
-
-def _psc_to_psp(
-    psc: float,
-    target_params: dict[str, float],
-    is_inhibitory: bool,
-) -> float:
-    tau_syn = (
-        target_params["tau_syn_in"] if is_inhibitory else target_params["tau_syn_ex"]
-    )
-    psc_per_psp = psp_to_psc_iaf_psc_exp(
-        psp=1.0,
-        C_m=target_params["C_m"],
-        tau_m=target_params["tau_m"],
-        tau_syn=tau_syn,
-    )
-    return psc / psc_per_psp
 
 
 def _load_humam_data(
@@ -153,9 +146,9 @@ def _build_population_entries(
                     {
                         "name": label,
                         "size": n,
-                        "neuron": "excitatory" if pop == "E" else "inhibitory",
-                        "V0_mean": -65.0,
-                        "V0_std": 5.0,
+                        "neuron": pop,
+                        "V0_mean": V0_MEAN,
+                        "V0_std": V0_SD,
                         "background_indegree": k_ext,
                     }
                 )
@@ -171,13 +164,19 @@ def _build_connections(
     weights_sd: Any,
     delay_cc: Any,
     delay_cc_sd: Any,
-    excitatory_params: dict[str, float],
-    inhibitory_params: dict[str, float],
     delay_e: float,
     delay_i: float,
     delay_e_rel: float,
     delay_i_rel: float,
+    delay_distribution: str,
 ) -> list[dict[str, Any]]:
+    """Connections as HuMAM main makes them: PSC weights (pA) drawn from a normal
+    and clipped at 0 keeping their sign, delays drawn from ``delay_distribution``
+    and clipped at the minimum delay (the resolution locally, at least
+    DELAY_CC_MIN between areas). A local connection gets the excitatory or
+    inhibitory delay by the sign of its weight. Connections with weight 0 are
+    skipped, as in HuMAM."""
+
     connections: list[dict[str, Any]] = []
 
     for src_idx, src_label in labels:
@@ -187,35 +186,23 @@ def _build_connections(
                 continue
 
             mean_psc = float(weights.loc[tgt_idx, src_idx])
+            if mean_psc == 0.0:
+                continue
             sd_psc = float(weights_sd.loc[tgt_idx, src_idx])
 
-            target_is_inhibitory = tgt_idx[2] == "I"
-            target_params = inhibitory_params if target_is_inhibitory else excitatory_params
-
-            mean_psp = _psc_to_psp(
-                psc=mean_psc,
-                target_params=target_params,
-                is_inhibitory=(mean_psc < 0.0),
-            )
-
-            rel_std = abs(sd_psc / mean_psc) if mean_psc != 0.0 else 0.0
-
-            source_is_excitatory = src_idx[2] == "E"
+            source_is_excitatory = mean_psc > 0.0
             source_area = src_idx[0]
             target_area = tgt_idx[0]
 
+            delay_mean = delay_e if source_is_excitatory else delay_i
+            delay_rel = delay_e_rel if source_is_excitatory else delay_i_rel
+            delay_min = RESOLUTION
             if source_area != target_area:
                 cc_delay_mean = float(delay_cc.loc[target_area, source_area])
-                cc_delay_sd = float(delay_cc_sd.loc[target_area, source_area])
                 if cc_delay_mean > 0.0:
                     delay_mean = cc_delay_mean
-                    delay_rel = abs(cc_delay_sd / cc_delay_mean)
-                else:
-                    delay_mean = delay_e if source_is_excitatory else delay_i
-                    delay_rel = delay_e_rel if source_is_excitatory else delay_i_rel
-            else:
-                delay_mean = delay_e if source_is_excitatory else delay_i
-                delay_rel = delay_e_rel if source_is_excitatory else delay_i_rel
+                    delay_rel = abs(float(delay_cc_sd.loc[target_area, source_area]) / cc_delay_mean)
+                delay_min = max(DELAY_CC_MIN, RESOLUTION)
 
             connections.append(
                 {
@@ -223,15 +210,16 @@ def _build_connections(
                     "target": tgt_label,
                     "n_synapses": n_synapses,
                     "weight": {
-                        "mean": mean_psp,
-                        "rel_std": rel_std,
+                        "mean": mean_psc,
+                        "rel_std": abs(sd_psc / mean_psc),
                         "distribution": "normal",
-                        "unit": "PSP",
+                        "unit": "PSC",
                     },
                     "delay": {
                         "mean": delay_mean,
                         "rel_std": delay_rel,
-                        "distribution": "lognormal",
+                        "distribution": DELAY_DISTRIBUTIONS[delay_distribution],
+                        "minimum": delay_min,
                     },
                 }
             )
@@ -250,8 +238,7 @@ def _compute_missing_area_dc(
     synapses_internal: Any,
     weights: Any,
     base_theory_rates: Any,
-    excitatory_params: dict[str, float],
-    inhibitory_params: dict[str, float],
+    neuron_params: dict[str, dict[str, float]],
 ) -> dict[str, float]:
     """
     DC current (pA) compensating each population in ``labels`` for the
@@ -265,9 +252,10 @@ def _compute_missing_area_dc(
     isn't simulated at all), so the *entire* contribution is compensated
     rather than just the fraction lost to scaling.
 
-    Every input is compensated with the target's ``tau_syn_ex``, which is
-    right for the inter-area connections of HuMAM: they all come from
-    excitatory populations.
+    Each input is compensated with the target's ``tau_syn_ex`` or
+    ``tau_syn_in``, by the sign of its weight (in HuMAM all inter-area
+    connections are excitatory). ``neuron_params`` maps a population type
+    (e.g. ``"E"``) to its neuron parameters.
     """
 
     other_areas = [a for a in area_list if a not in selected_areas]
@@ -279,11 +267,11 @@ def _compute_missing_area_dc(
     compensation: dict[str, float] = {}
 
     for tgt_idx, tgt_label in labels:
-        target_is_inhibitory = tgt_idx[2] == "I"
-        target_params = inhibitory_params if target_is_inhibitory else excitatory_params
+        target_params = neuron_params[tgt_idx[2]]
         n_target = float(neuron_numbers.loc[tgt_idx])
 
-        network_input = 0.0
+        excitatory_input = 0.0
+        inhibitory_input = 0.0
         for src_area in other_areas:
             for layer in layers:
                 for pop in pops:
@@ -301,12 +289,20 @@ def _compute_missing_area_dc(
                     rate = float(base_theory_rates.loc[src_idx])
 
                     indegree = n_synapses / n_target
-                    network_input += mean_psc * indegree * rate
+                    if mean_psc > 0.0:
+                        excitatory_input += mean_psc * indegree * rate
+                    else:
+                        inhibitory_input += mean_psc * indegree * rate
 
         compensation[tgt_label] = float(
             network_compensation_current(
-                network_input=network_input,
+                network_input=excitatory_input,
                 tau_syn=target_params["tau_syn_ex"],
+                K_scaling=0.0,
+            )
+            + network_compensation_current(
+                network_input=inhibitory_input,
+                tau_syn=target_params["tau_syn_in"],
                 K_scaling=0.0,
             )
         )
@@ -339,38 +335,26 @@ def _build_background_inputs(
     rate_ext: Any,
     weights_ext: Any,
     weights_ext_sd: Any,
-    excitatory_params: dict[str, float],
-    inhibitory_params: dict[str, float],
-    resolution: float,
 ) -> dict[str, dict[str, Any]]:
+    """Poisson background as in HuMAM main: PSC weights (pA) drawn from a normal
+    and clipped at 0, delay fixed at the resolution."""
+
     background_inputs: dict[str, dict[str, Any]] = {}
 
     for idx, label in labels:
-        pop = idx[2]
-        target_is_inhibitory = pop == "I"
-        target_params = inhibitory_params if target_is_inhibitory else excitatory_params
-
         ext_mean_psc = float(weights_ext.loc[idx])
         ext_sd_psc = float(weights_ext_sd.loc[idx])
-
-        ext_mean_psp = _psc_to_psp(
-            psc=ext_mean_psc,
-            target_params=target_params,
-            is_inhibitory=False,
-        )
-
-        ext_rel_std = abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0
 
         background_inputs[label] = {
             "rate": float(rate_ext.loc[idx]),
             "weight": {
-                "mean": ext_mean_psp,
-                "rel_std": ext_rel_std,
+                "mean": ext_mean_psc,
+                "rel_std": abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0,
                 "distribution": "normal",
-                "unit": "PSP",
+                "unit": "PSC",
             },
             "delay": {
-                "mean": resolution,
+                "mean": RESOLUTION,
                 "rel_std": 0.0,
                 "distribution": "fixed",
             },
@@ -429,14 +413,10 @@ def generate_humam_configs(
         data.net_yaml["area_list"],
     )
 
-    excitatory_params = {
-        **data.net_yaml["neuron_params_E"],
-        "I_e": 0.0,
-    }
-    inhibitory_params = {
-        **data.net_yaml["neuron_params_I"],
-        "I_e": 0.0,
-    }
+    # One neuron entry per population type, from net.yaml's neuron_params_<type>
+    # and neuron_model_<type> (HuMAM: E and I).
+    neuron_params = {pop: {**data.net_yaml[f"neuron_params_{pop}"], "I_e": 0.0} for pop in pops}
+    neuron_models = {pop: data.net_yaml[f"neuron_model_{pop}"] for pop in pops}
 
     delay_e = float(data.net_yaml["delay_e"])
     delay_i = float(data.net_yaml["delay_i"])
@@ -465,12 +445,11 @@ def generate_humam_configs(
         weights_sd=data.weights_sd,
         delay_cc=data.delay_cc,
         delay_cc_sd=data.delay_cc_sd,
-        excitatory_params=excitatory_params,
-        inhibitory_params=inhibitory_params,
         delay_e=delay_e,
         delay_i=delay_i,
         delay_e_rel=delay_e_rel,
         delay_i_rel=delay_i_rel,
+        delay_distribution=data.net_yaml["delay_distribution"],
     )
 
     background_inputs = _build_background_inputs(
@@ -478,9 +457,6 @@ def generate_humam_configs(
         rate_ext=data.rate_ext,
         weights_ext=data.weights_ext,
         weights_ext_sd=data.weights_ext_sd,
-        excitatory_params=excitatory_params,
-        inhibitory_params=inhibitory_params,
-        resolution=0.1
     )
 
     missing_area_dc: dict[str, float] = {}
@@ -495,8 +471,7 @@ def generate_humam_configs(
             synapses_internal=data.synapses_internal,
             weights=data.weights,
             base_theory_rates=data.base_theory_rates,
-            excitatory_params=excitatory_params,
-            inhibitory_params=inhibitory_params,
+            neuron_params=neuron_params,
         )
 
     scaling = {
@@ -531,13 +506,9 @@ def generate_humam_configs(
         neurons = {
             "neurons": {
                 label: {
-                    "model": (
-                        data.net_yaml["neuron_model_I"]
-                        if idx[2] == "I"
-                        else data.net_yaml["neuron_model_E"]
-                    ),
+                    "model": neuron_models[idx[2]],
                     "parameters": {
-                        **(inhibitory_params if idx[2] == "I" else excitatory_params),
+                        **neuron_params[idx[2]],
                         "I_e": missing_area_dc.get(label, 0.0),
                     },
                 }
@@ -549,20 +520,14 @@ def generate_humam_configs(
     else:
         neurons = {
             "neurons": {
-                "excitatory": {
-                    "model": data.net_yaml["neuron_model_E"],
-                    "parameters": excitatory_params,
-                },
-                "inhibitory": {
-                    "model": data.net_yaml["neuron_model_I"],
-                    "parameters": inhibitory_params,
-                },
+                pop: {"model": neuron_models[pop], "parameters": neuron_params[pop]}
+                for pop in pops
             }
         }
 
     simulation_cfg = {
         "t_sim": t_sim,
-        "resolution": 0.1,
+        "resolution": RESOLUTION,
         "rng_seed": rng_seed,
         "local_num_threads": local_num_threads,
         "print_time": False,
@@ -589,7 +554,7 @@ def generate_humam_configs(
         "network.yaml": network_manifest,
         "populations.yaml": {"populations": population_entries},
         "neurons.yaml": neurons,
-        "connectivity.yaml": {"connections": connections},
+        "connectivity.yaml": {"bound_mode": "clip", "connections": connections},
         "background_inputs.yaml": {"background_inputs": background_inputs},
         "scaling.yaml": scaling,
         "reference.yaml": reference,
@@ -653,7 +618,11 @@ def generate_humam_configs(
 
 
 def _add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--area", default="bankssts")
+    parser.add_argument(
+        "--area",
+        default="rostralanteriorcingulate",
+        help="HuMAM area, or 'all' for the multi-area network (default: the area of the bundled humam_single).",
+    )
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network-name", default=None)
     parser.add_argument("--simulation-name", default=None)

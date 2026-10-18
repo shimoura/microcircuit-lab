@@ -1,4 +1,4 @@
-# Compensated for 33 area(s) not simulated: each population's I_e includes a DC current for the cortical input it would otherwise be missing (see humam.generator._compute_missing_area_dc).
+# Compensated for 33 area(s) not simulated: each population's I_e includes a DC current for the cortical input it would otherwise be missing (see humam.build._compute_missing_area_dc).
 # I_e compensation range: 2.261 to 19.282 pA.
 # Regenerate with --no-compensate-missing-areas for a genuinely isolated area instead (no compensation).
 neurons:
