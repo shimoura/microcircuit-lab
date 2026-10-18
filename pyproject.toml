@@ -14,6 +14,22 @@ requires-python = ">=3.11"
 authors = [
     { name = "Renan Oliveira Shimoura" }
 ]
+keywords = [
+    "computational neuroscience",
+    "spiking neural networks",
+    "cortical microcircuit",
+    "multi-area model",
+    "reproducibility",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 
 dependencies = [
     "numpy>=1.24",
@@ -23,6 +39,10 @@ dependencies = [
     "matplotlib>=3.8",
     "mne",
 ]
+
+[project.urls]
+Repository = "https://github.com/shimoura/microcircuit-lab"
+Issues = "https://github.com/shimoura/microcircuit-lab/issues"
 
 [project.scripts]
 microcircuit-lab = "microcircuit_lab.cli:main"

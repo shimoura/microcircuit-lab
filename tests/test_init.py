@@ -2,8 +2,20 @@
 
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 from microcircuit_lab.cli import init
+
+
+def _recorder(commands, tag_exists=True):
+    """A stand-in for subprocess.run that records each command; `git ls-remote`
+    answers as if the release tag exists (or not)."""
+
+    def run(command, check, **kwargs):
+        commands.append(command)
+        return SimpleNamespace(stdout="abc123\trefs/tags/v0.1.0\n" if tag_exists else "")
+
+    return run
 
 
 def test_creates_the_project_folders(tmp_path):
@@ -22,20 +34,42 @@ def test_existing_files_are_left_alone(tmp_path, capsys):
 
 def test_with_core_clones_installs_and_ignores_the_folder(tmp_path, monkeypatch):
     commands = []
-    monkeypatch.setattr(subprocess, "run", lambda command, check: commands.append(command))
+    monkeypatch.setattr(subprocess, "run", _recorder(commands))
     (tmp_path / ".gitignore").write_text("output/\n")
     init.main([str(tmp_path), "--with-core"])
     init.main([str(tmp_path), "--with-core"])
 
-    assert commands[0][:2] == ["git", "clone"]
-    assert commands[1][1:5] == ["-m", "pip", "install", "-e"]
+    assert commands[0][:3] == ["git", "ls-remote", "--tags"]
+    assert commands[1][:2] == ["git", "clone"]
+    assert commands[2][1:5] == ["-m", "pip", "install", "-e"]
     assert (tmp_path / ".gitignore").read_text() == "output/\nmicrocircuit-lab/\n"
+
+
+def test_with_core_clones_the_release_tag_of_the_installed_version(tmp_path, monkeypatch):
+    commands = []
+    monkeypatch.setattr(subprocess, "run", _recorder(commands))
+    monkeypatch.setattr(init, "version", lambda package: "0.1.0")
+    init.main([str(tmp_path), "--with-core"])
+
+    assert commands[0][-1] == "refs/tags/v0.1.0"
+    assert commands[1][:4] == ["git", "clone", "--branch", "v0.1.0"]
+
+
+def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch, capsys):
+    commands = []
+    monkeypatch.setattr(subprocess, "run", _recorder(commands, tag_exists=False))
+    init.main([str(tmp_path), "--with-core"])
+
+    assert commands[1] == ["git", "clone", init.CORE_URL, str(tmp_path / init.CORE_FOLDER)]
+    assert "no release tag" in capsys.readouterr().out
 
 
 def _fake_clone(monkeypatch):
     """Make `git clone` create a small core with one example of each kind."""
 
-    def run(command, check):
+    def run(command, check, **kwargs):
+        if command[:2] == ["git", "ls-remote"]:
+            return SimpleNamespace(stdout="")
         if command[:2] != ["git", "clone"]:
             return
         core = Path(command[-1])

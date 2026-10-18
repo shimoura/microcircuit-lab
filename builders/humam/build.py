@@ -662,7 +662,7 @@ def main(argv: list[str] | None = None) -> None:
     arguments after the model name.
     """
     parser = argparse.ArgumentParser(
-        prog="generate.py humam",
+        prog="microcircuit-lab generate humam",
         description=(
             "Generate HuMAM configs from source data. "
             "Use --area all for a full multi-area network."
