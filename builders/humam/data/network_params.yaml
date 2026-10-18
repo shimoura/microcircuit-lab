@@ -1,3 +1,5 @@
+# Parameters the HuMAM code (INM-6/human-multi-area-model) used to produce the data in this folder.
+# Paths are relative to the root of that repository.
 K_scaling: 1.0
 N_scaling: 1.0
 connection_params:
@@ -7,11 +9,11 @@ connection_params:
   g: -5.0
   p_transmit: 1.0
 cytoarchitecture_params:
-  ei_ratio_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/fraction_EI/lichtman.csv
+  ei_ratio_path: experimental_data/fraction_EI/lichtman.csv
   min_neurons_per_layer: 5000
   remove_smaller_layerI: false
   source: VonEconomoKoskinas
-  src_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/voneconomokoskinas/StructuralData_VonEconomoKoskinas_addedvalues.xls
+  src_path: experimental_data/voneconomokoskinas/StructuralData_VonEconomoKoskinas_addedvalues.xls
   target: DesikanKilliany
 delay_params:
   delay_e: 1.5
@@ -62,7 +64,7 @@ neuron_params_I:
   tau_m: 10.0
   tau_syn_ex: 2.0
   tau_syn_in: 2.0
-outpath: /opt/app-root/src/human-multi-area-model.git/out/downscaled1.0_cc1.0
+outpath: out/downscaled1.0_cc1.0
 predictive_connectomic_params:
   FLN: 0.86
   SLN_FB: 0.35
@@ -70,11 +72,11 @@ predictive_connectomic_params:
   Z_i: 0.93
   a0: -0.152
   a1: -1.534
-  con_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/hcp_dti/Connectivity_Distances_HCP_DesikanKilliany.mat
+  con_path: experimental_data/hcp_dti/Connectivity_Distances_HCP_DesikanKilliany.mat
   connectivity: HcpDesikanKilliany
   lmbda: 160
   rho_syn: 660000000.0
-  vol_path: /opt/app-root/src/human-multi-area-model.git/experimental_data/hcp_dti/DKAtlas_VolumeAndNames.mat
+  vol_path: experimental_data/hcp_dti/DKAtlas_VolumeAndNames.mat
 scaling_factors_external:
   scaling5E: 1.05
   scaling6E: 1.15
