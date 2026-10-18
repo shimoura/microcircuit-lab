@@ -105,6 +105,19 @@ def _git_provenance(cwd: Path) -> dict[str, object] | None:
         return None
 
 
+def _core_git_provenance() -> dict[str, object] | None:
+    """
+    Git commit of the core, when it runs from a clone of its repository (an
+    editable install). An installed copy has no repository of its own, and
+    git would otherwise find the project's.
+    """
+
+    package_dir = Path(__file__).resolve().parents[1]
+    if not (package_dir.parent / ".git").exists():
+        return None
+    return _git_provenance(package_dir)
+
+
 def _package_version() -> str | None:
     try:
         return version("microcircuit_lab")
@@ -156,6 +169,7 @@ def write_run_metadata(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "microcircuit_lab_version": _package_version(),
         "git": _git_provenance(Path.cwd()),
+        "core_git": _core_git_provenance(),
         "t_sim_ms": simulation_config.t_sim,
         "rng_seed": simulation_config.rng_seed,
         "populations": populations,

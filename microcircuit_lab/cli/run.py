@@ -28,8 +28,9 @@ from microcircuit_lab.config import AnalysisConfig
 from microcircuit_lab.io.output import register_artifact
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
+        prog="microcircuit-lab run",
         description="Run a generated network configuration, or re-plot an existing run."
     )
     parser.add_argument("--config-dir", default="configs")
@@ -106,19 +107,19 @@ def _parse_args() -> argparse.Namespace:
         help="Open plot windows interactively (plots are always saved to output_dir regardless).",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
     return args
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     # Before parsing: the --<plot> flags are built from PLOT_REGISTRY.
     discover_plots()
 
-    args = _parse_args()
+    args = _parse_args(argv)
 
     if args.run_dir is not None:
         simulation = Simulation.from_run_dir(args.run_dir)
@@ -188,7 +189,7 @@ def main() -> None:
     print(f"Plots saved under: {simulation.output_dir / 'plots'}")
     print(
         "Re-plot without re-simulating: "
-        f"python scripts/run_simulation.py --run-dir {simulation.output_dir}"
+        f"microcircuit-lab run --run-dir {simulation.output_dir}"
     )
 
     if args.validate_reference:
@@ -205,6 +206,3 @@ def main() -> None:
         except AssertionError as exc:
             print(f"\nReference check FAILED: {exc}")
 
-
-if __name__ == "__main__":
-    main()

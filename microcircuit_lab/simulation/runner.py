@@ -124,7 +124,7 @@ class Simulation:
         Simulation's ``backend`` is a PostHocBackend reading spikes back
         from ``run_dir/recordings`` -- ``.run()`` is never called, so
         nothing is re-simulated, and ``.output_dir`` is already ``run_dir``
-        (so e.g. ``scripts/run_simulation.py --run-dir ...``'s plots land
+        (so e.g. ``microcircuit-lab run --run-dir ...``'s plots land
         back in that run's own ``plots/`` directory).
 
         Raises if ``run_dir`` has no ``config.yaml`` (``output.save_config

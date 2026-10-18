@@ -2,20 +2,19 @@
 
 A builder is any code whose output is a directory under
 configs/network/<name>/ that passes microcircuit_lab.io.validate_network_config.
-This makes the package that `python scripts/generate.py` discovers, with a
+This makes the package that `microcircuit-lab generate` discovers, with a
 main() that already builds and writes a small example network -- edit the
 payload values to match your model (see builders/pd14/
 for a minimal real one, .../humam/ for a full one).
 
-Usage: python scripts/new_builder.py <name>
+Usage: microcircuit-lab new-builder <name>
 """
 
 import keyword
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-BUILDERS_DIR = REPO_ROOT / "builders"
+BUILDERS_DIR = Path("builders")
 
 STUB = '''\
 """{title} model -- writes configs/network/{name}/ from this model's parameters.
@@ -34,7 +33,7 @@ from microcircuit_lab.io import delay, weight, write_network_directory
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Entry point for `python scripts/generate.py {name}`.
+    """Entry point for `microcircuit-lab generate {name}`.
 
     The four payloads below are the configs/network/{name}/ files with their
     top-level wrapper key removed (write_network_directory adds it back) --
@@ -42,7 +41,7 @@ def main(argv: list[str] | None = None) -> None:
     types and which are required: microcircuit_lab/config/schema.py.
     """
     parser = argparse.ArgumentParser(
-        prog="generate.py {name}", description="Generate the {name} network config."
+        prog="microcircuit-lab generate {name}", description="Generate the {name} network config."
     )
     parser.add_argument("--config-dir", default="configs")
     args = parser.parse_args(argv)
@@ -107,11 +106,12 @@ def render_stub(name: str) -> str:
     return STUB.replace("{title}", name.replace("_", " ").title()).replace("{name}", name)
 
 
-def main() -> None:
-    if len(sys.argv) != 2:
-        sys.exit("Usage: python scripts/new_builder.py <name>")
+def main(argv: list[str] | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    if len(argv) != 1:
+        sys.exit("Usage: microcircuit-lab new-builder <name>")
 
-    name = sys.argv[1]
+    name = argv[0]
     if not name.isidentifier() or keyword.iskeyword(name) or name != name.lower():
         sys.exit(f"{name!r} must be a lowercase Python identifier.")
 
@@ -124,10 +124,7 @@ def main() -> None:
     print(f"Created {package / '__init__.py'}")
     print(
         f"It writes an example network as-is; edit the payloads in main() to match "
-        f"your model, then `python scripts/generate.py {name}`. Add a README.md and "
+        f"your model, then `microcircuit-lab generate {name}`. Add a README.md and "
         f"tests/test_{name}.py once the builder settles."
     )
 
-
-if __name__ == "__main__":
-    main()

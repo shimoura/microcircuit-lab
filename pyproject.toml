@@ -22,6 +22,9 @@ dependencies = [
     "mne",
 ]
 
+[project.scripts]
+microcircuit-lab = "microcircuit_lab.cli:main"
+
 [tool.setuptools]
 include-package-data = true
 

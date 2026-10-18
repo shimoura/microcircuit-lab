@@ -10,7 +10,7 @@ Same registry pattern already used elsewhere in this package for
 bundled diagnostic means writing its plot function + config class (the
 actual work, same as today) plus one register_plot(...) call -- no
 AnalysisConfig edits, no CLI hand-writing, no extra __init__.py exports
-required for it to be usable through scripts/run_simulation.py.
+required for it to be usable through microcircuit-lab run.
 
 Each of raster.py/firing_rates.py/power_spectrum.py/irregularity.py
 calls register_plot() once at module level, so importing
@@ -18,7 +18,7 @@ microcircuit_lab.analysis (which already imports all four) populates
 this registry as a side effect.
 
 A project's own diagnostics live outside this package and are found by
-:func:`discover_plots`, which scripts/run_simulation.py calls before it
+:func:`discover_plots`, which microcircuit-lab run calls before it
 builds its command-line flags. It looks in two places:
 
 * the ``analyses/`` folder of the project you run from -- every module or
@@ -52,7 +52,7 @@ from microcircuit_lab.io.discovery import import_folder_modules
 PLOT_ENTRY_POINT_GROUP = "microcircuit_lab.analyses"
 
 
-#: What scripts/run_simulation.py can hand to a plot function, by parameter
+#: What microcircuit-lab run can hand to a plot function, by parameter
 #: name. A function asks only for the ones it needs.
 PLOT_ARGUMENTS = (
     "begin",
@@ -78,7 +78,7 @@ class PlotSpec:
     saved to ``save_path``. ``config`` is an instance of config_cls, or
     the plain dict from the plot's YAML section when config_cls is None.
     Anything plot-specific belongs in that config, not as an extra argument
-    -- that's what keeps the dispatch in scripts/run_simulation.py generic.
+    -- that's what keeps the dispatch in microcircuit-lab run generic.
     """
 
     plot_fn: Callable[..., object]
@@ -95,7 +95,7 @@ def _extra_parameters(plot_fn: Callable[..., object]) -> list[inspect.Parameter]
 
 
 def _check_plot_function(name: str, plot_fn: Callable[..., object]) -> None:
-    """Raise if plot_fn asks for something run_simulation.py cannot provide."""
+    """Raise if plot_fn asks for something microcircuit-lab run cannot provide."""
 
     if not inspect.signature(plot_fn).parameters:
         raise ValueError(f"Plot {name!r}: {plot_fn.__name__}() needs a first parameter for the simulation.")
@@ -110,7 +110,7 @@ def _check_plot_function(name: str, plot_fn: Callable[..., object]) -> None:
     if unknown:
         raise ValueError(
             f"Plot {name!r}: {plot_fn.__name__}() asks for {unknown}, which "
-            f"run_simulation.py cannot provide. After the simulation, a parameter can be "
+            f"microcircuit-lab run cannot provide. After the simulation, a parameter can be "
             f"one of {list(PLOT_ARGUMENTS)}; give any other parameter a default value."
         )
 

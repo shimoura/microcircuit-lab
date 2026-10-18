@@ -49,7 +49,7 @@ def test_a_folder_with_a_main_is_found_and_one_without_is_skipped(tmp_path: Path
 
 
 def test_builder_main_takes_an_argv_list(tmp_path: Path) -> None:
-    # The one hook scripts/generate.py relies on: main(argv). --help must
+    # The one hook microcircuit-lab generate relies on: main(argv). --help must
     # build the parser and exit cleanly without running generation.
     folder = tmp_path / "other_builders"
     _write_builder(folder, "demo", BUILDER)

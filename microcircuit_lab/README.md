@@ -4,7 +4,7 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 
 ## Contents
 
-- [Using this as a template for a new project](#using-this-as-a-template-for-a-new-project)
+- [Starting a project](#starting-a-project)
 - [Architecture](#architecture)
 - [Project structure](#project-structure)
 - [Installation](#installation)
@@ -16,23 +16,36 @@ Microcircuit Lab is a configuration-driven framework for building, simulating, a
 - [Using a NESTML model](#using-a-nestml-model)
 - [Included models](#included-models)
 - [Experiments](#experiments)
-- [Repository scripts](#repository-scripts)
 - [Run outputs](#run-outputs)
 - [Analysing a run](#analysing-a-run)
 - [Testing](#testing)
 
-## Using this as a template for a new project
+## Starting a project
 
-This repository is meant to be forked as the starting point for a new, independent research project. A fork is not expected to track this repository going forward -- treat it as a one-time starting point, not an upstream dependency.
+A project is a folder with your own `builders/`, `analyses/` (see [Analysing a run](#analysing-a-run)), `configs/` and `experiments/`. The core is never copied into it. There are two ways to have the core available.
 
-1. Fork the repository.
-2. Update `pyproject.toml`'s `name`/`description`/`authors`/`version` to your project.
-3. Replace the root `README.md` with a short description of your own project -- it's meant to be overwritten. Leave this file (`microcircuit_lab/README.md`) as-is; it's the framework reference and stays accurate across forks.
-4. Add your model under `builders/<your_model>/` (see [Adding a new model](#adding-a-new-model)).
-5. Add its experiments under `experiments/<your_model>/` (see [Experiments](#experiments)).
-6. Keep the PD14/HuMAM/toy models as working references for the schema and conventions, or delete them once your own model no longer needs the comparison.
+**Installed.** For using the core as it is:
 
-The internal Python package name (`microcircuit_lab`) does not need to change -- renaming it means updating every import across the codebase for little practical benefit, since it's an internal detail nobody outside the project sees.
+```bash
+pip install <the core>                # see Installation below
+microcircuit-lab init my_project      # creates the four folders, touches nothing that exists
+cd my_project
+microcircuit-lab new-builder my_model # creates builders/my_model/
+microcircuit-lab generate my_model    # writes configs/network/my_model/
+microcircuit-lab run --network my_model
+```
+
+**With the core inside the project.** For reading or editing the core next to your own code:
+
+```bash
+microcircuit-lab init my_project --with-core
+```
+
+This also clones the core into `my_project/microcircuit-lab/`, installs it in editable mode (so edits take effect immediately) and adds that folder to the project's `.gitignore`, because it is a clone of its own repository. Pull new core versions with `git pull` inside that folder; to share a change, follow [CONTRIBUTING.md](../CONTRIBUTING.md). Every run records both the project's git commit (`git`) and the core's (`core_git`) in `metadata.json`, so a result can be traced to the exact code that produced it. Without the clone, the core is recorded by its version only.
+
+Run the commands from the project root: that is where the core looks for `builders/`, `analyses/` and `configs/`. The package does not ship the example configs (`toy`, `pd14`, `humam`); a clone of this repository has them under `configs/` for you to copy. A change that only your project needs belongs in your `builders/` or `analyses/`, not in the core.
+
+Experiments are plain Python scripts under `experiments/`; a sweep runs `Simulation` several times and writes its results to `output/experiments/<name>/`, apart from the normal run directories.
 
 ## Architecture
 
@@ -69,6 +82,7 @@ The generic network and simulation layers do not depend on HuMAM, PD14, or any o
 microcircuit_lab/
 ├── analysis/       # analysis and visualization
 ├── backends/       # simulator implementations (currently NEST)
+├── cli/            # the `microcircuit-lab` command (generate, run, new-builder)
 ├── config/         # validated network and simulation schemas
 ├── io/             # configuration file loading and validation assembly
 ├── network/        # generic network model, transformations, and preprocessing
@@ -78,6 +92,8 @@ builders/           # model-specific builders (HuMAM, PD14, ...), outside the pa
 ```
 
 ## Installation
+
+To use the core as it is, install a released version in a virtual environment. This is the `pip install <the core>` of [Starting a project](#starting-a-project); the command is fixed once the first version is published. To work on the core itself, install a clone in editable mode:
 
 ```bash
 python -m venv .venv
@@ -100,10 +116,10 @@ pip install -e ".[dev]"
 The fastest way to see the framework run is the bundled `toy` network, a minimal two-population (E/I) example under `configs/network/toy/`:
 
 ```bash
-python scripts/run_simulation.py --network toy
+microcircuit-lab run --network toy
 ```
 
-`scripts/run_simulation.py` is the generic runner for any pre-generated network (defaults to `pd14`; `--simulation`/`--analysis` default to whatever `--network` is set to, see [Configuration](#configuration)). It produces raster, firing-rate, power-spectrum, and ISI-CV diagnostics with one shared plot style. Use `scripts/generate.py <model>` to (re)generate a model's network configuration.
+`microcircuit-lab run` is the generic runner for any pre-generated network (defaults to `pd14`; `--simulation`/`--analysis` default to whatever `--network` is set to, see [Configuration](#configuration)). It produces raster, firing-rate, power-spectrum, and ISI-CV diagnostics with one shared plot style. Use `microcircuit-lab generate <model>` to (re)generate a model's network configuration.
 
 The same thing from Python, e.g. for a notebook or a script under `experiments/`:
 
@@ -180,7 +196,7 @@ stimuli:
 A runnable version of this lives in `configs/network/toy_stimulated/` (the toy network plus a `stimuli.yaml`), kept separate from `configs/network/toy/` so the bundled baseline network -- used as a calibrated, unperturbed reference by several tests -- stays quiet:
 
 ```bash
-python scripts/run_simulation.py --network toy_stimulated --simulation toy_stimulated
+microcircuit-lab run --network toy_stimulated --simulation toy_stimulated
 ```
 
 **Poisson vs. DC background.** Add a top-level `background_mode: dc` to `background_inputs.yaml` (default is `poisson`) to replace the background Poisson generator network-wide with a constant current of equal mean, reproducing Potjans & Diesmann (2014)'s comparison of the two drive types (their Fig. 5) -- see `configs/network/pd14_dc/` for a ready-to-run example (`--network pd14_dc`, pairs with `configs/simulation/pd14_dc.yaml`) and `NetworkConfig.background_mode` / `NetworkPreprocessor._apply_background_dc_current` for the implementation.
@@ -251,15 +267,15 @@ Best for exploring a new idea or a model small enough to write out by hand.
 1. Copy `configs/network/toy/` to `configs/network/<my_model>/` -- a small working example, one comment per file. `microcircuit_lab/config/schema.py` is the full field list (types, defaults, which are required).
 2. Edit the values in `configs/network/<my_model>/*.yaml` by hand.
 3. Optionally add `configs/simulation/<my_model>.yaml` to change execution settings (simulated time, threads, what to record -- `microcircuit_lab/config/simulation.py` is the field list). Leave it out and the built-in `SimulationConfig` defaults are used, same as a missing `configs/analysis/<my_model>.yaml`.
-4. `python scripts/run_simulation.py --network <my_model>` -- loading the config validates every file; fix anything it reports.
+4. `microcircuit-lab run --network <my_model>` -- loading the config validates every file; fix anything it reports.
 
 ### Option B: add a builder
 
-Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A builder is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. Each folder in `builders/` turns one model's data into a network description under `configs/network/`. The only thing the shared `python scripts/generate.py <model>` CLI needs (run from the repository root) is a `builders/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit. A builder that lives in another installed package can register its `main` under the `microcircuit_lab.builders` entry-point group instead (see `microcircuit_lab/io/builders.py`).
+Best for a model whose parameters come from source data (published tables, experimental recordings, pickled matrices, etc.). A builder is **any code that writes a valid `configs/network/<model>/`** -- a script, a notebook, whatever. Each folder in `builders/` turns one model's data into a network description under `configs/network/`. The only thing the shared `microcircuit-lab generate <model>` CLI needs (run from the repository root) is a `builders/<model>/` package exposing a callable `main(argv=None)`; it is then discovered automatically, with no list to edit. A builder that lives in another installed package can register its `main` under the `microcircuit_lab.builders` entry-point group instead (see `microcircuit_lab/io/builders.py`).
 
-1. `python scripts/new_builder.py <model_name>` creates `builders/<model_name>/__init__.py` with a runnable `main()` that writes a small example network -- replace its values with your model's. Add a `README.md` and `tests/test_<model_name>.py` yourself.
+1. `microcircuit-lab new-builder <model_name>` creates `builders/<model_name>/__init__.py` with a runnable `main()` that writes a small example network -- replace its values with your model's. Add a `README.md` and `tests/test_<model_name>.py` yourself.
 2. Implement `main()`: read your source data (put it under the package, e.g. a `data/` dir or a `data.py` like `pd14`), build the parts, and pass them to `microcircuit_lab.io.write_network_directory(<config_dir>/network/<model_name>, populations=..., neurons=..., connections=..., background_inputs=...)` -- it writes every file and validates the result, raising with the file and field named if a mistake slipped in. `microcircuit_lab/config/schema.py` is the field list; `microcircuit_lab.io` also has `weight(...)`/`delay(...)` for the repeated `weight`/`delay` dicts; `builders/pd14/` and `builders/humam/` are worked builders.
-3. `python scripts/generate.py <model_name>` -- or `python scripts/generate.py` with no arguments to confirm it was discovered.
+3. `microcircuit-lab generate <model_name>` -- or `microcircuit-lab generate` with no arguments to confirm it was discovered.
 
 ### Run it
 
@@ -272,7 +288,7 @@ simulation = Simulation.from_yaml(network_name="my_model")
 simulation.run()
 ```
 
-or from the CLI: `python scripts/run_simulation.py --network my_model`.
+or from the CLI: `microcircuit-lab run --network my_model`.
 
 Do not add model-specific branches to `network/`, `simulation/`, or a simulator backend unless the feature is genuinely generic.
 
@@ -356,15 +372,15 @@ An experiment -- a parameter sweep, or a comparison across configs -- is a plain
 A run already saves everything a plot needs (`config.yaml`, `recordings/`), so trying a different `--begin`/`--end`/`--area`/analysis profile on a run you already have doesn't require re-simulating it. Pass `--run-dir` instead of `--network`/`--simulation`; every other flag above works the same:
 
 ```bash
-python scripts/run_simulation.py --network toy   # prints "Run directory: ..."
-python scripts/run_simulation.py --run-dir output/toy/<timestamp> --begin 200 --end 400
+microcircuit-lab run --network toy   # prints "Run directory: ..."
+microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 ```
 
 Plots are written back into that same run's own `plots/` directory. Programmatically, this is `Simulation.from_run_dir(run_dir)` -- it returns a `Simulation` with a working `.backend` (reading spikes back from `recordings/` instead of a live NEST process, via `PostHocBackend`) without ever calling `.run()`, so `microcircuit_lab.analysis`'s `plot_*`/`compute_*` functions work on it exactly as they do on a freshly-run one. Only runs saved after this feature was added carry the `first_gid` metadata field it needs; an older run raises a clear error instead of silently reconstructing the wrong neuron IDs -- just re-run it once to pick up the new field.
 
 ### Adding a bundled plot (package maintainers)
 
-Adding a bundled plot (raster, firing rates, power spectrum and ISI CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `scripts/run_simulation.py` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model builders (`io.discover_builders`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function and a small config class for its settings, then register it once:
+Adding a bundled plot (raster, firing rates, power spectrum and ISI CV are the current four) doesn't touch `AnalysisConfig`, any `__init__.py` export list, or `microcircuit-lab run` -- it's a registry, the same pattern already used for simulator backends (`backends.get_backend`), model builders (`io.discover_builders`), and spectral estimators (`power_spectrum.POWER_SPECTRUM_METHODS`). Write the plot function and a small config class for its settings, then register it once:
 
 ```python
 from microcircuit_lab.analysis import register_plot
@@ -379,7 +395,7 @@ register_plot(
 
 That's the entire wiring:
 
-- `scripts/run_simulation.py` gets a `--spectrogram`/`--no-spectrogram` flag automatically (it builds its CLI by looping over `microcircuit_lab.analysis.PLOT_REGISTRY`)
+- `microcircuit-lab run` gets a `--spectrogram`/`--no-spectrogram` flag automatically (it builds its CLI by looping over `microcircuit_lab.analysis.PLOT_REGISTRY`)
 - `configs/analysis/*.yaml` files don't need to change shape at all -- a `spectrogram:` top-level section works exactly like `raster:`/`firing_rates:` already do (an unregistered section name raises a clear error instead of being silently ignored, via `check_unknown_plot_sections`)
 
 For a plot in your own project, not in this package, see [Analysing a run](#analysing-a-run).
@@ -394,7 +410,7 @@ from microcircuit_lab.analysis import plot_firing_rates
 plot_firing_rates(simulation, begin=500.0)
 ```
 
-For multi-area networks, select one area with `area="V1"`; `list_areas(simulation)` returns the available area names. The string `"all"` is only understood by `scripts/run_simulation.py` (which loops over the areas); the plot functions themselves take one area at a time. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
+For multi-area networks, select one area with `area="V1"`; `list_areas(simulation)` returns the available area names. The string `"all"` is only understood by `microcircuit-lab run` (which loops over the areas); the plot functions themselves take one area at a time. Published reference mean rates are optional and can be overlaid with `show_reference=True`; they are hidden by default.
 
 ## Run outputs
 
@@ -415,7 +431,7 @@ For multi-area networks, select one area with `area="V1"`; `list_areas(simulatio
 
 Voltage recording (`recording.voltage_recording: true`) uses one shared multimeter the same way and writes `voltage-<id>-<thread>.dat`. By default it records only the first 5 neurons of each population (`recording.voltage_sample_size: 5`), which keeps memory and file sizes small on large networks; set another number `N` to change that, or `null` to record every neuron.
 
-`metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `scripts/run_simulation.py` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`. Any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
+`metadata.json`'s `artifacts` field is a single reference point listing every file the run produced, by category (`recordings`, `config`, `plots`, ...), as paths relative to the run directory -- no need to glob the directory to know what's there. `microcircuit-lab run` saves its raster/firing-rate plots into `<output_dir>/plots/` and registers them the same way via `microcircuit_lab.io.output.register_artifact`. Any other analysis code that saves a file into the run directory should call `register_artifact(simulation.output_dir, "<category>", path)` too, so it shows up in the same manifest.
 
 The simulation object exposes `simulation.output_dir` (a `Path`, set once `run()` has completed) for building further artifact paths.
 
@@ -465,15 +481,15 @@ The file works in two ways, and you can use either or both:
   python analyses/rate_bars.py output/my_model/<timestamp>
   ```
   `Simulation.from_run_dir` opens the finished run without re-simulating it. The last line lists the new file in the run's `metadata.json`.
-- **Let `run_simulation.py` run it.** The line `register_plot("rate_bars", rate_bars)` gives you a `--rate-bars` flag and, in the analysis YAML, a `rate_bars:` section. With `--area all` you get one figure per area, saved under `plots/` and listed in `metadata.json`:
+- **Let `microcircuit-lab run` run it.** The line `register_plot("rate_bars", rate_bars)` gives you a `--rate-bars` flag and, in the analysis YAML, a `rate_bars:` section. With `--area all` you get one figure per area, saved under `plots/` and listed in `metadata.json`:
   ```bash
-  python scripts/run_simulation.py --run-dir output/my_model/<timestamp> --rate-bars
+  microcircuit-lab run --run-dir output/my_model/<timestamp> --rate-bars
   ```
   The script imports every file in `analyses/` before it reads its flags, so run it from the project folder. Because of the `if __name__ == "__main__":` line, the standalone part does not run when the script imports the file.
 
 ### What your function can ask for
 
-The first parameter is always the simulation. After that, name only what you need, and `run_simulation.py` fills it in:
+The first parameter is always the simulation. After that, name only what you need, and `microcircuit-lab run` fills it in:
 
 | Parameter | What you get |
 |---|---|

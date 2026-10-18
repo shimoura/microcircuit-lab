@@ -100,7 +100,7 @@ def _run(args: argparse.Namespace) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Entry point. ``scripts/generate.py`` discovers this function (via
+    """Entry point. ``microcircuit-lab generate`` discovers this function (via
     ``builders.pd14.main``) and forwards it the
     arguments after the model name.
     """

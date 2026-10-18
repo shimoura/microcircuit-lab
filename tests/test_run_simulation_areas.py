@@ -1,6 +1,6 @@
-"""`scripts/run_simulation.py --area all`: one set of plots per area."""
+"""`microcircuit-lab run --area all`: one set of plots per area."""
 
-import importlib.util
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -23,15 +23,9 @@ def _toy_network() -> Network:
     return Network(config)
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "run_simulation.py"
-
-
 @pytest.fixture(scope="module")
 def script():
-    spec = importlib.util.spec_from_file_location("run_simulation_script", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return importlib.import_module("microcircuit_lab.cli.run")
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +51,7 @@ def toy_run(tmp_path_factory):
 
 
 def _argv(run_dir, area):
-    return ["run_simulation.py", "--run-dir", str(run_dir), "--area", area]
+    return ["microcircuit-lab run", "--run-dir", str(run_dir), "--area", area]
 
 
 def _recording_registry(calls):
@@ -123,7 +117,7 @@ def test_a_plot_from_the_project_analyses_folder_runs(
         sys,
         "argv",
         [
-            "run_simulation.py", "--run-dir", str(toy_run), "--config-dir", str(config_dir),
+            "microcircuit-lab run", "--run-dir", str(toy_run), "--config-dir", str(config_dir),
             "--no-raster", "--no-firing-rates", "--no-power-spectrum", "--no-isi-cv",
             "--e2e-plot",
         ],
