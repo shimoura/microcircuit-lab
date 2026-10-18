@@ -427,7 +427,7 @@ For multi-area networks, select one area with `area="V1"`; `list_areas(simulatio
 `Simulation.run()` saves its outputs automatically, controlled by `simulation.yaml`'s `output` and `recording` sections (all optional, see `microcircuit_lab/config/simulation.py`):
 
 ```text
-<output_dir>/                      # fixed if overwrite: true, else <output_dir>/<timestamp>/
+<output_dir>/                      # fixed if overwrite: true, else <output_dir>/<timestamp>/; default output/<network>/
 ├── recordings/                    # spike recordings, see below
 ├── config.yaml                    # the fully resolved network + simulation config actually used
 └── metadata.json                  # run identity, per-population spike stats, and an artifact manifest
