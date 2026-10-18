@@ -1,5 +1,4 @@
 background_inputs:
-
   L23_E:
     rate: 8.0
     weight:
@@ -9,9 +8,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L23_I:
     rate: 8.0
     weight:
@@ -21,9 +19,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L4_E:
     rate: 8.0
     weight:
@@ -33,9 +30,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L4_I:
     rate: 8.0
     weight:
@@ -45,9 +41,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L5_E:
     rate: 8.0
     weight:
@@ -57,9 +52,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L5_I:
     rate: 8.0
     weight:
@@ -69,9 +63,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L6_E:
     rate: 8.0
     weight:
@@ -81,9 +74,8 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
-
   L6_I:
     rate: 8.0
     weight:
@@ -93,5 +85,5 @@ background_inputs:
       unit: PSP
     delay:
       mean: 1.5
-      rel_std: 0.5
+      rel_std: 0.0
       distribution: fixed
