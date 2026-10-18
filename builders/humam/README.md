@@ -1,6 +1,6 @@
-# HuMAM model integration
+# HuMAM builder
 
-This package translates HuMAM source data into Microcircuit Lab's generic network configuration format. HuMAM-specific data handling stays here; simulation is handled by the generic core and selected backend.
+Writes the network files of the human multi-area model (HuMAM) from its data, for one area or all 34. Everything specific to HuMAM stays here; the core runs the result like any other network.
 
 ## Sources
 
@@ -62,7 +62,7 @@ simulation.run()
 
 ## Package contents
 
-- `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `microcircuit-lab generate humam` discovers and forwards to. Ends by calling `validate_network_config` on its output.
+- `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `microcircuit-lab generate humam` discovers and forwards to. Ends by checking its output with `load_network`.
 - `data/`: bundled source data used by the builder.
 
 New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.

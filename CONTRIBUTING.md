@@ -12,49 +12,105 @@ To pull later changes into your fork, add this repository as a remote: `git remo
 
 ## Changing the core
 
-### Where things are
+### Follow the name
 
-Every network goes through the same steps, and each step has its place:
+A concept keeps its name from the YAML file to the test. To change something, start from its YAML file and follow the name:
 
 ```mermaid
-flowchart LR
-  F["configs/network/&lt;name&gt;/*.yaml"] --> C["config/<br/>what each file may contain"]
-  C --> L["network/load.py<br/>read and check"]
-  L --> P["network/prepare.py<br/>units, scaling, compensation"]
-  P --> B["backends/nest/backend.py<br/>build and simulate in NEST"]
-  B --> R["runs.py<br/>run folder"]
-  R --> A["analysis/<br/>measures and plots"]
+%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
+flowchart TD
+  Y["configs/network/toy_stimulated/stimuli.yaml"] --> C["config/stimuli.py<br/>what the file may contain"]
+  C --> B["backends/nest/backend.py<br/>create_stimuli: builds it in NEST"]
+  B --> T["tests/test_stimuli.py"]
 ```
 
-A concept keeps its name through the steps. Stimuli, for example, are written in `stimuli.yaml`, described in `config/stimuli.py`, built in `NestBackend.create_stimuli` and tested in `tests/test_stimuli.py`. The YAML file you want to change is the way in.
+Anything that changes numbers before the simulation (units, scaling, compensation) is a step of `prepare_network` in `network/prepare.py`.
 
 ### Does your idea fit what already exists?
 
 ```mermaid
 flowchart TD
-  Q{"Is it one more of something<br/>the files already have?<br/>(a stimulus type, a distribution,<br/>a scaling option, a plot)"}
-  Q -->|yes| T["Find it in the table below:<br/>2–3 files, a test, a line of docs.<br/>Open a pull request."]
-  Q -->|"no, a new concept<br/>(spatial structure, plasticity,<br/>clusters, receptors)"| D["Open an issue with a short design note first"]
-  D --> S["Then small pull requests, one step each,<br/>with a small example network as the reference"]
+  Q{"One more of something<br/>the files already have?<br/>(a stimulus type, a plot, ...)"}
+  Q -->|yes| T["Find its recipe below:<br/>2–3 files, a test, docs,<br/>then a pull request"]
+  Q -->|"no, a new concept<br/>(spatial structure, plasticity)"| D["Open an issue with<br/>a short design note first"]
+  D --> S["Small pull requests,<br/>one step each, with<br/>a small example network"]
 ```
 
-**A new concept touches every step** (config, loading, preparation, backend, run folder, analysis), and it raises scientific questions that need an answer before the code: for spatial structure, what `N_scaling` keeps (the density or the size of the sheet), what `K_scaling` does to a connection kernel, and how the indegrees needed by the compensation come out of it. The design note settles those, so each pull request can be reviewed on its own.
+A new concept touches every step and raises scientific questions to answer before the code. For spatial structure, for example: does `N_scaling` keep the density or the size of the sheet, and what does `K_scaling` do to a connection kernel? The design note settles those, so each pull request can be reviewed on its own.
 
-### What to change, by kind of change
+### Recipes
 
-| You want to add | Change | Test in |
-|---|---|---|
-| a stimulus type | `config/stimuli.py`: the class, and add it to `StimulusConfig` at the end of the file; `backends/nest/backend.py`: `create_stimuli` (and `connect_stimuli` if it connects differently) | `tests/test_stimuli.py` |
-| a weight or delay distribution | `config/connectivity.py`: the `distribution` list of `WeightDistribution` / `DelayDistribution`; `backends/nest/backend.py`: `create_weight_spec` / `create_delay_parameter` | `tests/test_bound_mode_and_tau_syn.py` |
-| a field on a connection | `config/connectivity.py` (`ConnectionConfig`); where it is used: `NestBackend.create_connections`, and `network/prepare.py` if scaling must change it | `tests/test_builder_tools.py`, or a new test |
-| a field on a population | `config/populations.py` (`PopulationEntry` for the file, `PopulationConfig` for the network) and copying it in `assemble_network` (`network/load.py`); where it is used: `NestBackend.create_populations` / `initialize_population` | `tests/test_config_validation.py` |
-| a connection rule (e.g. `fixed_indegree`) | `config/connectivity.py` (a `rule` field); `NestBackend.create_connections`; `network/quantities.py` and `network/prepare.py` if indegrees or scaling depend on it | a new test |
-| a scaling or compensation option | `config/scaling.py` (the option), `network/scaling.py` (the formula), `network/prepare.py` (the step in `prepare_network`) | `tests/test_scaling*.py`, `tests/test_heterogeneous_areas.py` |
-| something to record | `config/simulation.py` (`RecordingConfig`); `NestBackend`: a `create_*`/`connect_*` pair and reading it back; `runs.py` if it is saved | `tests/test_output.py` |
-| a bundled plot | `analysis/<plot>.py` with `register_plot(...)` at the end, and import it in `analysis/__init__.py` (a module that is never imported never registers its plot) | `tests/test_<plot>.py` |
-| a simulator | `backends/<name>/` and `get_backend` (see the README, "Adding a backend") | a new test |
-| a neuron model | nothing in the core: name it in `neurons.yaml` (NESTML models too) | — |
-| a model | nothing in the core: a builder or a network folder (see the README, "Adding a new model") | — |
+Click the kind of change. Each recipe ends with a test and a line in the README.
+
+<details>
+<summary><b>A stimulus type</b></summary>
+
+1. `config/stimuli.py`: add a class next to the others, and add it to `StimulusConfig` at the end of the file.
+2. `backends/nest/backend.py`, `create_stimuli`: create its NEST device. Change `connect_stimuli` only if it connects differently.
+3. Test in `tests/test_stimuli.py`.
+
+The [worked example](#an-example-a-single-spike-stimulus) below does exactly this.
+</details>
+
+<details>
+<summary><b>A weight or delay distribution</b></summary>
+
+1. `config/connectivity.py`: add its name to the `distribution` list of `WeightDistribution` or `DelayDistribution`.
+2. `backends/nest/backend.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
+3. Test in `tests/test_bound_mode_and_tau_syn.py`.
+</details>
+
+<details>
+<summary><b>A field on a population</b></summary>
+
+1. `config/populations.py`: add it to `PopulationEntry` (the file) and `PopulationConfig` (the network).
+2. `network/load.py`, `assemble_network`: copy it from one to the other.
+3. `backends/nest/backend.py`: use it in `create_populations` or `initialize_population`.
+4. Test in `tests/test_config_validation.py`.
+</details>
+
+<details>
+<summary><b>A field on a connection, or a connection rule</b></summary>
+
+1. `config/connectivity.py`: add it to `ConnectionConfig`.
+2. `backends/nest/backend.py`: use it in `create_connections`.
+3. If scaling or the indegrees depend on it: `network/quantities.py` and `network/prepare.py`.
+4. Test in `tests/test_builder_tools.py`, or a new test file.
+</details>
+
+<details>
+<summary><b>A scaling or compensation option</b></summary>
+
+1. `config/scaling.py`: the option.
+2. `network/scaling.py`: the formula.
+3. `network/prepare.py`: use it in the right step of `prepare_network`.
+4. Test in `tests/test_scaling.py` or `tests/test_scaling_compensation.py`, and in `tests/test_heterogeneous_areas.py` if it depends on cell types.
+</details>
+
+<details>
+<summary><b>Something to record</b></summary>
+
+1. `config/simulation.py`: add it to `RecordingConfig`.
+2. `backends/nest/backend.py`: a `create_*`/`connect_*` pair, and reading it back.
+3. `runs.py`, if it is saved in the run folder.
+4. Test in `tests/test_output.py`.
+</details>
+
+<details>
+<summary><b>A bundled plot</b></summary>
+
+1. `analysis/<plot>.py`: the plot function, a settings class, and `register_plot(...)` at the end.
+2. `analysis/__init__.py`: import the module, so the plot is registered when the package loads.
+3. Test in `tests/test_<plot>.py`.
+</details>
+
+<details>
+<summary><b>A simulator</b></summary>
+
+A new package `backends/<name>/` and a line in `get_backend`; see "Adding a backend" in the README.
+</details>
+
+**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too) or for a new model (a network folder or a builder; see "Adding a new model" in the README).
 
 When a stimulus `type` or a `distribution` is not known, the error message points to this section.
 
@@ -91,7 +147,7 @@ When a stimulus `type` or a `distribution` is not known, the error message point
 
 ## Code style
 
-- Write for a scientist reading the code: plain names close to the papers and reference codes (`N_scaling`, `K_ext`, `tau_syn_ex`), no extra layers, no logic written twice.
+- Use plain names close to the papers and reference codes (`N_scaling`, `K_ext`, `tau_syn_ex`), no extra layers, no logic written twice.
 - Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks.
 - Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `runs.register_artifact`, `network/units.py`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
