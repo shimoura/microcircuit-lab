@@ -28,6 +28,8 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
+from microcircuit_lab.analysis import PLOT_REGISTRY
+from microcircuit_lab.config.analysis import AnalysisConfig
 from microcircuit_lab.config.background_inputs import BackgroundInputsFile
 from microcircuit_lab.config.connectivity import ConnectivityFile
 from microcircuit_lab.config.network import NetworkManifest
@@ -54,6 +56,7 @@ FILES = [
     ("reference.yaml", ReferenceConfig, "Published values to compare with, and to compensate a scaled network."),
 ]
 SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration, seed, threads, what to record and save.")
+ANALYSIS = ("analysis/<name>.yaml", AnalysisConfig, "Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.")
 
 # An example key for the fields that are a mapping keyed by name.
 KEY_EXAMPLES = {"neurons": "excitatory", "background_inputs": "L23_E"}
@@ -121,8 +124,10 @@ def _kind(annotation) -> str:
         return "one of " + " | ".join(str(arg) for arg in args)
     if origin is list:
         return "list of " + {str: "names", float: "numbers", int: "integers"}.get(args[0], "entries")
-    if origin is dict:
+    if origin is dict or annotation is dict:
         return "mapping"
+    if origin is tuple:
+        return "pair of numbers"
     return {str: "text", int: "integer", float: "number", bool: "true or false", Path: "path"}.get(
         annotation, ""
     )
@@ -141,6 +146,8 @@ def _comment(field: FieldInfo, *, tag: bool = False) -> str:
             parts.append("optional")
         elif isinstance(default, (dict, list)) and not default:
             parts.append("optional, default empty")
+        elif isinstance(default, (dict, list)):
+            parts.append("optional, default as shown")
         elif not isinstance(default, BaseModel):
             parts.append(f"optional, default {_value(default)}")
         else:
@@ -151,7 +158,7 @@ def _comment(field: FieldInfo, *, tag: bool = False) -> str:
         for m in field.metadata
         if type(m) in LIMITS
     ]
-    values = " ".join([kind, *limits]).strip()
+    values = " ".join([kind, ", ".join(limits)]).strip()
     lengths = [f"at least {m.min_length}" for m in field.metadata if isinstance(m, annotated_types.MinLen)]
     if values or lengths:
         parts.append(", ".join(part for part in [values, *lengths] if part))
@@ -307,6 +314,22 @@ def names_svg() -> str:
     )
 
 
+def _analysis_section(writer: _Writer) -> str:
+    """The analysis file: its own fields, then one section per bundled plot."""
+    file, model, intro = ANALYSIS
+    writer.file = file
+    lines = writer.model(model, "")
+    for name, spec in PLOT_REGISTRY.items():
+        lines += _comment_lines(f"optional · the {name} plot, saved as {spec.filename}", "")
+        lines += [f"{name}:", *writer.model(spec.config_cls, "  ")]
+    body = "\n".join(lines)
+    # The example must itself be a valid file, each plot section included.
+    config = model.model_validate(yaml.safe_load(body))
+    for name, spec in PLOT_REGISTRY.items():
+        config.plot_config(name, spec.config_cls)
+    return f"### {file}\n\n{intro}\n\n```yaml\n{body}\n```"
+
+
 def render() -> str:
     writer = _Writer()
     sections = []
@@ -317,6 +340,7 @@ def render() -> str:
         model.model_validate(yaml.safe_load(body))
         sections.append(f"### {file}\n\n{intro}\n\n```yaml\n{body}\n```")
     network, simulation = sections[: len(FILES)], sections[len(FILES):]
+    analysis = _analysis_section(writer)
     return "\n".join(
         [
             "# Config files",
@@ -358,12 +382,15 @@ def render() -> str:
             "",
             "\n\n".join(network),
             "",
-            "## Running it: `configs/simulation/`",
+            "## Running and plotting: `configs/simulation/`, `configs/analysis/`",
             "",
-            "`microcircuit-lab run --network <name>` uses `configs/simulation/<name>.yaml`, "
-            "or the defaults below when there is none.",
+            "`microcircuit-lab run --network <name>` uses `configs/simulation/<name>.yaml` and "
+            "`configs/analysis/<name>.yaml`, or the defaults below for a file that is missing. "
+            "`--simulation` and `--analysis` pick other files.",
             "",
             "\n\n".join(simulation),
+            "",
+            analysis,
             "",
         ]
     )

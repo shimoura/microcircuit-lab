@@ -292,6 +292,8 @@ microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 
 `--run-dir` takes the same flags as `--network`. The plots go back into the run's `plots/`.
 
+Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
+
 ### Use the bundled functions
 
 ```python

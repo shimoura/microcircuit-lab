@@ -248,9 +248,9 @@ full_mean_rates:
   L23_I: 2.9
 ```
 
-## Running it: `configs/simulation/`
+## Running and plotting: `configs/simulation/`, `configs/analysis/`
 
-`microcircuit-lab run --network <name>` uses `configs/simulation/<name>.yaml`, or the defaults below when there is none.
+`microcircuit-lab run --network <name>` uses `configs/simulation/<name>.yaml` and `configs/analysis/<name>.yaml`, or the defaults below for a file that is missing. `--simulation` and `--analysis` pick other files.
 
 ### simulation/<name>.yaml
 
@@ -291,4 +291,190 @@ output:
   # optional, default true · true or false · write config.yaml (the prepared network);
   #   needed to re-plot the run
   save_config: true
+```
+
+### analysis/<name>.yaml
+
+Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.
+
+```yaml
+# optional, default 0.0 · number ≥ 0 · start of the analysed time (ms), e.g. after the
+#   transient
+begin: 0.0
+# optional · number · end of the analysed time (ms); omit for the end of the run
+end: 1000.0
+# optional · text · multi-area networks: one area's name, or all for one set of plots
+#   per area; omit to plot every population together
+area: all
+# optional, default false · true or false · mark the reference rates on the firing-rate
+#   plot (as --reference)
+show_reference: false
+# optional · colors, labels and sizes of every plot
+style:
+  # optional, default layer · one of layer | cell_type | population | custom · layer: a
+  #   color per layer, mixed with white by excitatory_tone (E) or inhibitory_tone (I);
+  #   cell_type: a color per cell type; population: matplotlib's color cycle; custom:
+  #   custom_colors
+  color_mode: layer
+  # optional, default as shown · mapping · color per layer, for color_mode: layer
+  layer_colors:
+    L23: tab:blue
+    L4: tab:orange
+    L5: tab:green
+    L6: tab:red
+  # optional, default as shown · mapping · color per cell type, for color_mode:
+  #   cell_type
+  cell_type_colors:
+    E: tab:blue
+    I: tab:red
+  # optional, default empty · mapping · color per population name, for color_mode:
+  #   custom
+  custom_colors:
+    E: '#595289'
+    I: '#af143c'
+  # optional, default 0.25 · number · for color_mode: layer, how much white is mixed
+  #   into E colors (0-1)
+  excitatory_tone: 0.25
+  # optional, default 0.65 · number · for color_mode: layer, how much white is mixed
+  #   into I colors (0-1)
+  inhibitory_tone: 0.65
+  # optional, default empty · mapping · label to show instead of a population name
+  population_labels:
+    L23_E: L2/3E
+  # optional, default 8.0 · number · font size of tick labels (pt)
+  tick_label_size: 8.0
+  # optional, default 9.0 · number · font size of axis labels (pt)
+  axis_label_size: 9.0
+  # optional, default 10.0 · number · font size of titles (pt)
+  title_size: 10.0
+  # optional, default 8.0 · number · font size of legends (pt)
+  legend_size: 8.0
+  # optional, default 300 · integer · resolution of the saved figures
+  dpi: 300
+# optional · the firing_rates plot, saved as firing_rates.png
+firing_rates:
+  # optional, default true · true or false · make this plot
+  enabled: true
+  # optional · pair of numbers · width and height (inches); omit to size from the number
+  #   of populations
+  figsize: [6.0, 4.0]
+  # optional, default 8.0 · number · width (inches) when figsize is omitted
+  width: 8.0
+  # optional, default 0.55 · number · height per population (inches) when figsize is
+  #   omitted
+  height_per_population: 0.55
+  # optional, default 3.5 · number · smallest height (inches) when figsize is omitted
+  min_height: 3.5
+  # optional, default 0.35 · number · opacity of the violins (0-1)
+  violin_alpha: 0.35
+  # optional, default 0.18 · number · width of the boxes
+  box_width: 0.18
+  # optional, default true · true or false · mark each population's mean
+  show_mean: true
+  # optional, default 28.0 · number · size of that mark
+  mean_marker_size: 28.0
+  # optional, default true · true or false · first population at the top
+  invert_yaxis: true
+  # optional, default false · true or false · also show each neuron's rate as a dot
+  show_points: false
+  # optional, default 500 · integer · at most this many dots per population (picked at
+  #   random)
+  max_points_per_population: 500
+  # optional, default 8.0 · number · size of a dot
+  point_size: 8.0
+  # optional, default 0.2 · number · opacity of the dots (0-1)
+  point_alpha: 0.2
+  # optional, default true · true or false · show a legend
+  show_legend: true
+# optional · the isi_cv plot, saved as isi_cv.png
+isi_cv:
+  # optional, default true · true or false · make this plot
+  enabled: true
+  # optional · pair of numbers · width and height (inches); omit to size from the number
+  #   of populations
+  figsize: [6.0, 4.0]
+  # optional, default 8.0 · number · width (inches) when figsize is omitted
+  width: 8.0
+  # optional, default 0.55 · number · height per population (inches) when figsize is
+  #   omitted
+  height_per_population: 0.55
+  # optional, default 3.5 · number · smallest height (inches) when figsize is omitted
+  min_height: 3.5
+  # optional, default 0.35 · number · opacity of the violins (0-1)
+  violin_alpha: 0.35
+  # optional, default 0.18 · number · width of the boxes
+  box_width: 0.18
+  # optional, default true · true or false · mark each population's mean
+  show_mean: true
+  # optional, default 28.0 · number · size of that mark
+  mean_marker_size: 28.0
+  # optional, default true · true or false · first population at the top
+  invert_yaxis: true
+  # optional, default 3 · integer ≥ 2 · neurons with fewer spikes in the window are left
+  #   out
+  min_spikes: 3
+# optional · the power_spectrum plot, saved as power_spectrum.png
+power_spectrum:
+  # optional, default true · true or false · make this plot
+  enabled: true
+  # optional, default welch · text · welch, periodogram or multitaper
+  method: welch
+  # optional, default empty · mapping · passed to the method, e.g. bandwidth for
+  #   multitaper
+  method_kwargs: {bandwidth: 4.0}
+  # optional · pair of numbers · width and height (inches); omit to size from the grid
+  figsize: [9.0, 6.0]
+  # optional, default 3.0 · number · width per column (inches) when figsize is omitted
+  width_per_column: 3.0
+  # optional, default 1.8 · number · height per row (inches) when figsize is omitted
+  height_per_row: 1.8
+  # optional, default 4.5 · number · smallest width (inches) when figsize is omitted
+  min_width: 4.5
+  # optional, default 2.2 · number · smallest height (inches) when figsize is omitted
+  min_height: 2.2
+  # optional, default 1.2 · number · line width
+  linewidth: 1.2
+  # optional, default false · true or false · power on a log axis
+  log_power: false
+  # optional, default false · true or false · frequency on a log axis
+  log_freq: false
+  # optional · pair of numbers · frequency range to show (Hz); omit for all; with
+  #   log_freq, start above 0
+  xlim: [1.0, 150.0]
+# optional · the raster plot, saved as raster.png
+raster:
+  # optional, default true · true or false · make this plot
+  enabled: true
+  # optional, default 1.0 · number · size of a spike dot
+  marker_size: 1.0
+  # optional, default 0.8 · number · opacity of the dots (0-1)
+  alpha: 0.8
+  # optional · pair of numbers · width and height (inches); omit to size from the number
+  #   of populations
+  figsize: [6.0, 4.0]
+  # optional, default 10.0 · number · width (inches) when figsize is omitted
+  width: 10.0
+  # optional, default 0.55 · number · height per population (inches) when figsize is
+  #   omitted
+  height_per_population: 0.55
+  # optional, default 4.0 · number · smallest height (inches) when figsize is omitted
+  min_height: 4.0
+  # optional, default true · true or false · draw a line between populations
+  separator_lines: true
+  # optional, default 0.25 · number · opacity of those lines (0-1)
+  separator_alpha: 0.25
+  # optional, default true · true or false · show a legend
+  show_legend: true
+  # optional, default true · true or false · first population at the top
+  invert_yaxis: true
+  # optional · integer > 0 · show at most this many neurons per population; omit for all
+  max_neurons_per_population:
+  # optional · number > 0, ≤ 1 · show this fraction of each population's neurons;
+  #   replaces max_neurons_per_population when set
+  neuron_fraction: 0.05
+  # optional · number ≥ 0 · start of this plot only (ms); omit to use the top-level
+  #   begin
+  begin:
+  # optional · number ≥ 0 · end of this plot only (ms); omit to use the top-level end
+  end:
 ```

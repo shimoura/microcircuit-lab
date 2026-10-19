@@ -30,6 +30,4 @@ power_spectrum:
 
 isi_cv:
   figsize: [5, 3.5]
-  show_points: false
   show_mean: true
-  show_legend: true
