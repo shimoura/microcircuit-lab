@@ -8,7 +8,7 @@
 # Each population names its neuron, a key in neurons.yaml; background_indegree
 # is optional (default: 0.0).
 #
-# Fields: PopulationEntry in microcircuit_lab/config/populations.py.
+# All fields: the core's docs/config_files.md.
 populations:
 
   - name: E

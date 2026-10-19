@@ -137,7 +137,7 @@ configs/
 └── analysis/<name>.yaml         optional: which plots, time window, style
 ```
 
-- **The fields** of each file are listed in its module in `microcircuit_lab/config/` (`populations.yaml` → `config/populations.py`), with types, limits and defaults. `configs/network/toy/` is a small working example to copy.
+- **The fields** of every file, with units, limits and defaults: [docs/config_files.md](../docs/config_files.md), one commented example per file. `configs/network/toy/` is a small working example to copy.
 - **Checks.** A mistake fails at once, naming the file and the field:
   ```text
   populations.yaml: populations.0.size: Input should be greater than 0
@@ -164,7 +164,7 @@ stimuli:
     delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
 ```
 
-- Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). `config/stimuli.py` lists their fields.
+- Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). [docs/config_files.md](../docs/config_files.md#stimuliyaml) lists their fields.
 - Stimuli are applied exactly as written: not scaled, not compensated.
 - Add `stimuli: stimuli.yaml` to `network.yaml`. A runnable example: `microcircuit-lab run --network toy_stimulated`.
 

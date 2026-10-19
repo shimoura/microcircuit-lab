@@ -17,18 +17,24 @@ class PopulationEntry(FrozenConfig):
     """One row of ``populations.yaml``."""
 
     name: str = Field(
+        examples=["L23_E"],
         description="unique population name; referenced by connectivity, "
-        "background_inputs, stimuli and reference"
+        "background_inputs, stimuli and reference",
     )
-    size: int = Field(gt=0, description="number of neurons")
-    neuron: str = Field(description="name of an entry in neurons.yaml")
-    V0_mean: float = Field(description="mean initial membrane potential (mV)")
+    size: int = Field(gt=0, examples=[20683], description="number of neurons")
+    neuron: str = Field(
+        examples=["excitatory"],
+        description="name of an entry in neurons.yaml; every neuron of the population "
+        "gets that model and those parameters",
+    )
+    V0_mean: float = Field(examples=[-58.0], description="mean initial membrane potential (mV)")
     V0_std: float = Field(
-        ge=0.0, description="standard deviation of the initial potential (mV)"
+        ge=0.0, examples=[10.0], description="standard deviation of the initial potential (mV)"
     )
     background_indegree: float = Field(
         default=0.0,
         ge=0.0,
+        examples=[2510.0],
         description="background-input connections per neuron; multiplies the "
         "rate in background_inputs.yaml",
     )
@@ -37,7 +43,7 @@ class PopulationEntry(FrozenConfig):
 class PopulationsFile(FrozenConfig):
     """``populations.yaml``."""
 
-    populations: list[PopulationEntry]
+    populations: list[PopulationEntry] = Field(description="one entry per population")
 
 
 class PopulationConfig(FrozenConfig):

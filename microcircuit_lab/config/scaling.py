@@ -9,44 +9,32 @@ from microcircuit_lab.config.base import FrozenConfig
 
 
 class ScalingConfig(FrozenConfig):
-    """
-    Network scaling parameters.
+    """How to downscale the network; the formulas are in ``network/scaling.py``.
 
-    N_scaling:
-        Multiplies the number of neurons.
-
-    K_scaling:
-        Multiplies the indegree / number of synapses.
-
-    preserve_variance:
-        Selects the weight-scaling law (see network.scaling.scale_weights).
-        True (default): w -> w / sqrt(K_scaling) -- preserves input
-        fluctuations, biases mean input. False: w -> w / K_scaling --
-        preserves mean input directly, at the cost of fluctuations (no
-        variance compensation is attempted in that case).
-
-    preserve_mean_input:
-        Master switch for whether prepare_network applies DC-current
-        compensation for the mean-input bias sqrt scaling introduces.
-        Only meaningful when preserve_variance is True -- under linear
-        scaling there is no bias to compensate for.
-
-    compensate_recurrent_input:
-        True (default): the DC compensation also replaces the mean input
-        lost from the recurrent connections, which needs the full-scale
-        mean rate of every population in reference.full_mean_rates.
-        False: it replaces only the lost background input. Ignored unless
-        preserve_variance and preserve_mean_input are True.
+    ``preserve_mean_input`` matters only when ``preserve_variance`` is true
+    (linear weight scaling leaves no mean to restore), and
+    ``compensate_recurrent_input`` only when both are true.
     """
 
     # Scaling factors: default to 1.0 (no scaling) and gt(greater than)=0.0
     # to ensure positive values.
-    N_scaling: float = Field(default=1.0, gt=0.0)
-    K_scaling: float = Field(default=1.0, gt=0.0)
-
-    preserve_mean_input: bool = True
-    preserve_variance: bool = True
-    compensate_recurrent_input: bool = True
+    N_scaling: float = Field(default=1.0, gt=0.0, description="multiplies the number of neurons")
+    K_scaling: float = Field(
+        default=1.0, gt=0.0, description="multiplies the indegrees (synapses per neuron)"
+    )
+    preserve_mean_input: bool = Field(
+        default=True, description="add a DC current that restores the mean input lost by scaling"
+    )
+    preserve_variance: bool = Field(
+        default=True,
+        description="true: weights / sqrt(K_scaling), keeps the fluctuations; "
+        "false: weights / K_scaling, keeps the mean and needs no DC current",
+    )
+    compensate_recurrent_input: bool = Field(
+        default=True,
+        description="the DC current also replaces the lost recurrent input (needs "
+        "reference.full_mean_rates); false: only the lost background input",
+    )
 
     @property
     def is_scaled(self) -> bool:

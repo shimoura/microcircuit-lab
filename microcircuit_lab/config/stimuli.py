@@ -26,20 +26,18 @@ class StimulusBase(FrozenConfig):
     as configured, on top of whatever background drive and recurrent
     activity is already there. Intended for experimental perturbations
     (a current pulse, a burst of input for part of a run, ...).
-
-    targets:
-        Population names this device is connected to (all-to-all, one
-        device shared by all targets).
-
-    start / stop:
-        Window during which the device is active, in ms. `stop=None`
-        means "until the end of the simulation".
     """
 
-    targets: list[str] = Field(min_length=1)
-
-    start: float = Field(default=0.0, ge=0.0)
-    stop: float | None = Field(default=None, gt=0.0)
+    targets: list[str] = Field(
+        min_length=1, examples=[["L4_E", "L4_I"]], description="population names to stimulate; one device, connected to every neuron of each"
+    )
+    start: float = Field(default=0.0, ge=0.0, description="when the stimulus starts (ms)")
+    stop: float | None = Field(
+        default=None,
+        gt=0.0,
+        examples=[600.0],
+        description="when it stops (ms); omit to keep it on until the end",
+    )
 
     @model_validator(mode="after")
     def _check_window(self) -> "StimulusBase":
@@ -52,26 +50,32 @@ class DcStimulusConfig(StimulusBase):
     """Constant-current pulse. Current is injected directly; no weight/delay."""
 
     type: Literal["dc"] = "dc"
-    amplitude: float
+    amplitude: float = Field(examples=[200.0], description="current (pA)")
 
 
 class PoissonStimulusConfig(StimulusBase):
     """Homogeneous Poisson spike train, active for [start, stop)."""
 
     type: Literal["poisson"] = "poisson"
-    rate: float = Field(ge=0.0)
-    weight: WeightDistribution
-    delay: DelayDistribution
+    rate: float = Field(ge=0.0, examples=[50.0], description="spike rate (spikes/s)")
+    weight: WeightDistribution = Field(description="weight of each stimulus connection")
+    delay: DelayDistribution = Field(description="delay of each stimulus connection")
 
 
 class InhomogeneousPoissonStimulusConfig(StimulusBase):
     """Poisson spike train with a piecewise-constant rate profile."""
 
     type: Literal["inhomogeneous_poisson"] = "inhomogeneous_poisson"
-    rate_times: list[float] = Field(min_length=1, description="ms, strictly increasing")
-    rate_values: list[float] = Field(min_length=1, description="spikes/s, same length as rate_times")
-    weight: WeightDistribution
-    delay: DelayDistribution
+    rate_times: list[float] = Field(
+        min_length=1, examples=[[200.0, 400.0]], description="when the rate changes (ms), increasing"
+    )
+    rate_values: list[float] = Field(
+        min_length=1,
+        examples=[[20.0, 0.0]],
+        description="the rate from each of those times on (spikes/s), one per time",
+    )
+    weight: WeightDistribution = Field(description="weight of each stimulus connection")
+    delay: DelayDistribution = Field(description="delay of each stimulus connection")
 
     @model_validator(mode="after")
     def _check_rate_profile(self) -> "InhomogeneousPoissonStimulusConfig":
@@ -96,8 +100,10 @@ class StimuliFile(FrozenConfig):
     """``stimuli.yaml`` (optional; only read when ``network.yaml`` names it).
 
     Each entry is a :data:`StimulusConfig` -- a ``dc`` / ``poisson`` /
-    ``inhomogeneous_poisson`` device selected by its ``type`` field; see
-    ``config/network.py`` for the per-type fields.
+    ``inhomogeneous_poisson`` device selected by its ``type`` field, with
+    the fields of that type (above).
     """
 
-    stimuli: list[StimulusConfig] = Field(default_factory=list)
+    stimuli: list[StimulusConfig] = Field(
+        default_factory=list, description="one entry per stimulus; `type` selects its fields"
+    )

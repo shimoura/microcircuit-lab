@@ -28,9 +28,9 @@ PROJECT_FOLDERS = ("builders", "analyses", "configs", "experiments")
 CORE_URL = "https://github.com/shimoura/microcircuit-lab.git"
 CORE_FOLDER = "microcircuit-lab"
 EXAMPLE_FOLDERS = ("builders", "configs/network", "configs/simulation", "configs/analysis")
-# What the copy of the core needs to be installed and edited: the package, and
-# the files pyproject.toml names (readme, license).
-CORE_FILES = ("microcircuit_lab", "pyproject.toml", "README.md", "LICENSE", "CITATION.cff")
+# What the copy of the core needs to be installed and edited: the package, its
+# docs (the README links to them), and the files pyproject.toml names (readme, license).
+CORE_FILES = ("microcircuit_lab", "docs", "pyproject.toml", "README.md", "LICENSE", "CITATION.cff")
 
 
 def _ignore_build_files(project: Path) -> None:

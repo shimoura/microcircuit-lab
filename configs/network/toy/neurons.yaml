@@ -8,8 +8,7 @@
 #
 # `psp_conversion_aliases` (optional, default: {}) is omitted here -- it is
 # only needed for `unit: PSP` connections on a model that names C_m/tau_m/
-# tau_syn_ex/tau_syn_in differently. Fields: NeuronEntry in
-# microcircuit_lab/config/neurons.py.
+# tau_syn_ex/tau_syn_in differently. All fields: the core's docs/config_files.md.
 neurons:
   excitatory:
     model: iaf_psc_exp
