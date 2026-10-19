@@ -6,7 +6,7 @@ import nest
 import numpy as np
 import pytest
 
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
@@ -20,8 +20,8 @@ from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.synapses import SynapseEntry
+from microcircuit_lab.network.mean_input import expected_synapses, full_num_synapses
 from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.quantities import expected_synapses, full_num_synapses
 
 SIZES = {"S": 100, "T": 50}
 

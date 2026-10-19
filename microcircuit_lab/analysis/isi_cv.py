@@ -1,10 +1,9 @@
 """Spike-train irregularity (ISI coefficient of variation) analysis.
 
-CV ~ 0 is regular/clock-like firing, CV ~ 1 is Poisson-like (the
-textbook "asynchronous irregular" cortical target regime), CV > 1 is
-bursty. Mirrors firing_rates.py's compute/plot split and reuses
-FiringRatePlotConfig -- the same per-population distribution layout
-applies, just with a different quantity on the x-axis.
+A CV near 0 is regular, clock-like firing, near 1 is Poisson-like (the
+asynchronous irregular regime), and above 1 is bursty. Like ``firing_rates.py``,
+the module has one function that computes and one that plots. The plot
+uses ``IsiCvPlotConfig``.
 """
 
 from __future__ import annotations
@@ -16,7 +15,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .areas import select_populations
-from .registry import UNSET
 from .plot_styles import (
     DEFAULT_ISI_CV_CONFIG,
     DEFAULT_PLOT_STYLE,
@@ -25,7 +23,7 @@ from .plot_styles import (
     population_color,
     population_label,
 )
-from .registry import register_plot
+from .run_command_plots import UNSET, register_plot
 
 
 def compute_neuron_isi_cv(
@@ -222,7 +220,7 @@ def plot_isi_cv(
 
     if plot_values:
         violins = ax.violinplot(
-            plot_values, positions=plot_positions, vert=False,
+            plot_values, positions=plot_positions, orientation="horizontal",
             showmeans=False, showmedians=False, showextrema=False,
         )
         for body, color in zip(violins["bodies"], plot_colors):
@@ -231,7 +229,7 @@ def plot_isi_cv(
             body.set_alpha(config.violin_alpha)
 
         box = ax.boxplot(
-            plot_values, positions=plot_positions, vert=False, widths=config.box_width,
+            plot_values, positions=plot_positions, orientation="horizontal", widths=config.box_width,
             showfliers=False, patch_artist=True,
         )
         for patch, color in zip(box["boxes"], plot_colors):

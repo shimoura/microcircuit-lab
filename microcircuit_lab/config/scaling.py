@@ -1,11 +1,10 @@
-"""What ``scaling.yaml`` may contain: how to downscale the network.
-"""
+"""What ``scaling.yaml`` may contain: how to downscale the network."""
 
 from __future__ import annotations
 
 from pydantic import Field
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class ScalingConfig(FrozenConfig):
@@ -16,8 +15,7 @@ class ScalingConfig(FrozenConfig):
     ``compensate_recurrent_input`` only when both are true.
     """
 
-    # Scaling factors: default to 1.0 (no scaling) and gt(greater than)=0.0
-    # to ensure positive values.
+    # Both factors default to 1.0 (no scaling) and must be greater than 0.
     N_scaling: float = Field(default=1.0, gt=0.0, description="multiplies the number of neurons")
     K_scaling: float = Field(
         default=1.0, gt=0.0, description="multiplies the indegrees (synapses per neuron)"

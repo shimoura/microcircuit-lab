@@ -1,8 +1,8 @@
 import numpy as np
 
-from microcircuit_lab.network.scaling import (
-    network_compensation_current,
+from microcircuit_lab.network.compensation import (
     background_dc_current,
+    network_compensation_current,
 )
 
 

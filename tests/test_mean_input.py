@@ -1,17 +1,18 @@
 import math
+
 import pytest
 
-from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.units import (
-    psp_to_psc_iaf_psc_exp,
-)
-from microcircuit_lab.network.quantities import (
-    indegree_matrix,
+from microcircuit_lab.network.mean_input import (
     full_mean_rates,
+    indegree_matrix,
     mean_psc_matrix,
     network_mean_input,
+)
+from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.psp_psc_conversion import (
+    psp_to_psc_iaf_psc_exp,
 )
 
 

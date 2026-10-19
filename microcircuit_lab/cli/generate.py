@@ -5,15 +5,15 @@
     microcircuit-lab generate <model> [opts]  # generate
 
 Any subpackage under ``builders/`` that exposes a callable
-``main(argv=None)`` is discovered automatically -- there is nothing to
+``main(argv=None)`` is found automatically: there is nothing to
 register and nothing to change in this file when a model is added. This
-dispatcher just forwards the remaining arguments to that ``main``; each
+command just forwards the remaining arguments to that ``main``; each
 builder owns its own argument parsing. Run it from the project root.
 """
 
 import sys
 
-from microcircuit_lab.discovery import discover_builders
+from microcircuit_lab.project_code import discover_builders
 
 
 def main(argv: list[str] | None = None) -> None:

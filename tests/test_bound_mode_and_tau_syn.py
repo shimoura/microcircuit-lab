@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
@@ -22,7 +23,6 @@ from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
 from microcircuit_lab.network.load import load_network
 from microcircuit_lab.network.prepare import prepare_network
 
@@ -118,7 +118,7 @@ def test_compensation_is_unchanged_when_both_time_constants_are_equal() -> None:
 def test_compensation_sign_rule_also_holds_for_weights_given_as_psp() -> None:
     """A PSP weight keeps its sign when converted to a PSC, so an inhibitory
     PSP is compensated with tau_syn_in just like an inhibitory PSC."""
-    from microcircuit_lab.network.units import psp_to_psc_iaf_psc_exp
+    from microcircuit_lab.network.psp_psc_conversion import psp_to_psc_iaf_psc_exp
 
     tau_syn_in = 4.0
     config = _network(

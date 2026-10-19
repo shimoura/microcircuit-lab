@@ -23,9 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 from microcircuit_lab.network.load import load_network
-
+from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
 LAYER_ALIAS = {
     "II/III": "L23",
@@ -277,7 +276,7 @@ def _compute_missing_area_dc(
     if not other_areas:
         return {}
 
-    from microcircuit_lab.network.scaling import network_compensation_current
+    from microcircuit_lab.network.compensation import network_compensation_current
 
     compensation: dict[str, float] = {}
 

@@ -8,7 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from microcircuit_lab.analysis.cache import load_or_compute
+from microcircuit_lab.analysis.measure_files import load_or_compute
 
 from .areas import select_populations
 from .plot_styles import (
@@ -19,7 +19,7 @@ from .plot_styles import (
     population_color,
     population_label,
 )
-from .registry import register_plot
+from .run_command_plots import register_plot
 
 
 def compute_neuron_firing_rates(
@@ -129,7 +129,7 @@ def cached_population_firing_rates(
 ) -> dict[str, float]:
     """
     Like :func:`compute_population_firing_rates`, but saved in the run folder and
-    read back the next time (see :mod:`microcircuit_lab.analysis.cache`).
+    read back the next time (see :mod:`microcircuit_lab.analysis.measure_files`).
 
     Useful when re-plotting a comparison of many runs. The saved result does not
     know which window, populations or area it was computed for: pass
@@ -345,7 +345,7 @@ def plot_firing_rates(
     fig, ax = plt.subplots(figsize=figsize, dpi=style.dpi)
 
     violins = ax.violinplot(
-        values, positions=positions, vert=False,
+        values, positions=positions, orientation="horizontal",
         showmeans=False, showmedians=False, showextrema=False,
     )
     for body, color in zip(violins["bodies"], colors):
@@ -354,7 +354,7 @@ def plot_firing_rates(
         body.set_alpha(config.violin_alpha)
 
     box = ax.boxplot(
-        values, positions=positions, vert=False, widths=config.box_width,
+        values, positions=positions, orientation="horizontal", widths=config.box_width,
         showfliers=False, patch_artist=True,
     )
     for patch, color in zip(box["boxes"], colors):

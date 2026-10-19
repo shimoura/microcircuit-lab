@@ -1,6 +1,6 @@
 # Microcircuit Lab
 
-Build, simulate and analyse spiking network models of cortex, from a single microcircuit to multi-area models. A network is a folder of YAML files; the same core checks it, runs it in NEST and plots the result, whatever model it came from.
+Build, simulate and analyse spiking neural network models, from a single microcircuit to multi-area models. A network is a folder of YAML files; the same core checks it, runs it in NEST and plots the result, whatever model it came from.
 
 ## Contents
 
@@ -55,10 +55,11 @@ simulation.run()
 |---|---|
 | `toy`, `toy_stimulated` | two populations (E and I), with and without stimuli; the smallest example |
 | `toy_two_areas` | a made-up two-area network with different layers and cell types (E, PV, SOM, VIP) |
+| `toy_two_areas_advanced` | the same network with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
 | `humam_single`, `humam_all` | the human multi-area model (Pronold et al. 2024): one area, or all 34 |
 
-`pd14` is full scale (77,169 neurons, about 15 GB of memory) and runs for 11 s; for a quick look, scale it down first (see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
+`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, scale it down first (see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
 
 ## Starting a project
 
@@ -106,7 +107,11 @@ Use the version you want in place of `v0.1.0`. Only NEST built from source runs 
 - conda-forge: `mamba install -c conda-forge nest-simulator`
 - from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh` (`NEST_WITH_MPI=ON` for MPI)
 
-All that matters is that `import nest` works. To work on the core itself, clone the repository and install it editable:
+All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
+
+The power spectrum with `method: multitaper` needs `mne`: `pip install "microcircuit_lab[multitaper]"`.
+
+To work on the core itself, clone the repository and install it editable:
 
 ```bash
 python -m venv .venv
@@ -191,7 +196,7 @@ neurons:
     psp_conversion_aliases: {C_m: Cm, tau_m: tau_membrane, tau_syn_ex: tau_exc, tau_syn_in: tau_inh}
 ```
 
-- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`.
+- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the PSP conversion and the scaling compensation use that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
 
 ### Connection rules and synapses
@@ -240,11 +245,11 @@ N_scaling: 0.1   # keep 10 % of the neurons
 K_scaling: 0.1   # keep 10 % of the inputs of each neuron
 ```
 
-`N_scaling` only makes the populations smaller: each neuron keeps all its inputs. `K_scaling` cuts the inputs, and that changes the input current each neuron gets. With $K$ inputs of weight $J$ (pA) firing at rate $\nu$, and synaptic time constant $\tau_s$, the mean and the variance of that current are
+`N_scaling` only makes the populations smaller: each neuron keeps all its inputs. `K_scaling` cuts the inputs, and that changes the input current each neuron gets. With $K$ inputs of weight $J$ (pA) firing at rate $\nu$ (spikes/ms), and synaptic time constant $\tau_s$, the mean and the variance of that current are
 
 $$\mu = \tau_s\, K J \nu, \qquad \sigma^2 = \tfrac{1}{2}\,\tau_s\, K J^2 \nu .$$
 
-With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigma^2$, not both. The options choose what to keep:
+With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigma^2$, not both. Scaling the weights by $1/\sqrt{k}$ and adding the lost mean as a DC current keeps both (van Albada, Helias & Diesmann 2015, *PLoS Comput Biol* 11:e1004490). The options choose what to keep:
 
 | `scaling.yaml` | Weights | DC added | Mean $\mu$ | Fluctuations $\sigma^2$ |
 |---|---|---|---|---|
@@ -254,7 +259,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 | `preserve_variance: false` | $J/k$ | none | kept | larger: $\sigma^2/k$ |
 
 - The DC is added to each population's `I_e`, so the `I_e` in a run's saved `config.yaml` is the one you wrote plus the DC.
-- The DC needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`. Without them, use `compensate_recurrent_input: false`.
+- The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input: false` compensates the background input only, and needs no rates.
 - With `background_mode: mean_current`, the background current is already that of the full-scale network, so only the recurrent input is compensated.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
 - These are the mean and variance only. A scaled network is close to the full one, not equal: PD14 at $k = 0.1$ has most rates within 10–20 %, and L2/3 E lower (0.5 instead of 0.9 spikes/s).
@@ -307,7 +312,7 @@ write_network_directory(
 - `builder_tools` also has `num_synapses_from_conn_prob` and `psp_to_psc_iaf_psc_exp`.
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
-- A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/discovery.py`).
+- A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
 ## Analysing a run
 
@@ -360,7 +365,7 @@ python my_analysis.py output/toy/<timestamp>
 
 - Read data through `simulation` (`backend.get_spike_events`, `network`, `simulation_config`).
 - Keep the script anywhere, e.g. in `experiments/`. In `analyses/`, put its work under `if __name__ == "__main__":`, because `microcircuit-lab run` imports every file there.
-- To list a file you saved in the run's `metadata.json`: `register_artifact(simulation.output_dir, "plots", path)` from `microcircuit_lab.runs`.
+- To list a file you saved in the run's `metadata.json`: `register_artifact(simulation.output_dir, "plots", path)` from `microcircuit_lab.run_folder`.
 
 ### Optional: let `microcircuit-lab run` make your plot
 
@@ -402,7 +407,7 @@ The figure is saved in `plots/`, one per area with `--area all`, and listed in `
 - Any other parameter needs a default.
 - The plot is off by default: pass `--rate-bars`, or set `enabled: true` in its section of the analysis file.
 - A name already taken (`raster`, ...) raises an error.
-- A package can provide such plots through the `microcircuit_lab.analyses` entry-point group (see `microcircuit_lab/analysis/registry.py`).
+- A package can provide such plots through the `microcircuit_lab.analyses` entry-point group (see `microcircuit_lab/analysis/run_command_plots.py`).
 
 ## Experiments
 
@@ -430,7 +435,7 @@ output/<network>/<timestamp>/
 ├── recordings/     spikes (and voltages), written by NEST during the run
 ├── plots/          made by microcircuit-lab run
 ├── config.yaml     the prepared network and the simulation settings used
-└── metadata.json   versions, git commits, spike counts, list of files
+└── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one.
@@ -477,13 +482,13 @@ Change the core when an idea doesn't fit what the config files can say (a new st
 microcircuit_lab/
 ├── config/            what each YAML file may contain (one module per file)
 ├── network/           reading, checking and preparing a network
-├── simulation/        Simulation: load, run, reopen a run
+├── simulation.py      Simulation: load, run, reopen a run
 ├── backends/          the simulators (NEST), and reading back a saved run
 ├── analysis/          measures and plots
 ├── cli/               the microcircuit-lab command
 ├── builder_tools.py   what a builder needs, in one import
-├── runs.py            run folders and their metadata
-├── discovery.py       finds the builders/ and analyses/ of a project
+├── run_folder.py      run folders and their metadata
+├── project_code.py    finds the builders/ and analyses/ of a project
 └── yaml_files.py      reading and writing YAML
 ```
 
@@ -500,8 +505,8 @@ register_plot("spectrogram", plot_spectrogram,
 
 ## Adding a backend
 
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/base.py`) in `microcircuit_lab/backends/<name>/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know.
-2. Register it in `get_backend` (`microcircuit_lab/backends/__init__.py`).
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
+2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
 3. Select it with `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; `backend_options` go to its constructor unchanged.
 
 ## Testing

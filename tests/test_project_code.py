@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from microcircuit_lab import discovery as builders_module
-from microcircuit_lab.discovery import discover_builders
+from microcircuit_lab import project_code as builders_module
+from microcircuit_lab.project_code import discover_builders
 
 BUILDER = """\
 import argparse

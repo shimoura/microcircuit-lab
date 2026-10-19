@@ -1,40 +1,30 @@
 """
-Simulation orchestration.
+The ``Simulation`` class: loads the config files, builds the network in a
+backend, runs it and saves the results.
 
-This module coordinates configuration loading,
-parameter derivation, network construction and
-simulation execution.
-
-It intentionally contains no neuroscience
-mathematics and no simulator-specific code.
+It holds no neuroscience maths and no simulator-specific code.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
-from microcircuit_lab.backends.post_hoc import PostHocBackend
-
-from microcircuit_lab.network.load import load_network
-
+from microcircuit_lab.backends.run_folder_reader import RunFolderReader
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-
+from microcircuit_lab.network.load import load_network
+from microcircuit_lab.run_folder import save_run_outputs, share_run_directory
 from microcircuit_lab.yaml_files import read_yaml
-from microcircuit_lab.runs import save_run_outputs, share_run_directory
-
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
 class Simulation:
-    """
-    High-level simulation orchestrator.
-    """
+    """A network and its simulation settings, run on a backend."""
 
     def __init__(
         self,
@@ -65,7 +55,7 @@ class Simulation:
         simulation_name: str | None = None,
         backend: BackendName = "nest",
         backend_options: dict[str, Any] | None = None,
-    ) -> "Simulation":
+    ) -> Simulation:
         """
         Build a simulation from the config files.
 
@@ -119,14 +109,14 @@ class Simulation:
         )
 
     @classmethod
-    def from_run_dir(cls, run_dir: str | Path) -> "Simulation":
+    def from_run_dir(cls, run_dir: str | Path) -> Simulation:
         """
         Open a finished run to analyse or re-plot it, without simulating again.
 
         The run's ``config.yaml`` already holds the prepared network, so it is not
         prepared a second time (that would apply the scaling twice). The returned
         simulation reads its spikes from ``<run_dir>/recordings`` (a
-        ``PostHocBackend``), and its ``output_dir`` is ``run_dir``, so new plots
+        ``RunFolderReader``), and its ``output_dir`` is ``run_dir``, so new plots
         land in that run's ``plots/`` folder.
 
         Parameters
@@ -141,25 +131,28 @@ class Simulation:
 
         Raises
         ------
+        FileNotFoundError
+            If ``run_dir`` does not exist.
         ValueError
             If the run has no ``config.yaml`` (it was saved with
             ``save_config: false``), or its ``metadata.json`` lacks the
-            ``first_gid`` of each population (a run saved before this
-            existed).
+            ``first_gid`` of each population (simulate the run again).
         """
 
         run_dir = Path(run_dir)
+        if not run_dir.is_dir():
+            raise FileNotFoundError(f"No run folder at {run_dir}.")
         config_path = run_dir / "config.yaml"
         if not config_path.exists():
             raise ValueError(
-                f"No config.yaml in {run_dir} -- was this run saved with "
-                "output.save_config=False? Simulation.from_run_dir needs it."
+                f"No config.yaml in {run_dir}: the run was saved with "
+                "output.save_config: false, so it cannot be re-plotted."
             )
 
         resolved = read_yaml(config_path)
         network = NetworkConfig.model_validate(resolved["network"])
         simulation_config = SimulationConfig.model_validate(resolved["simulation"])
-        backend = PostHocBackend(run_dir)
+        backend = RunFolderReader(run_dir)
 
         network_name, simulation_name, backend_name = run_dir.name, run_dir.name, "nest"
         metadata_path = run_dir / "metadata.json"
@@ -186,7 +179,7 @@ class Simulation:
 
         What is saved (recordings, the prepared config, metadata) is set by the
         ``recording`` and ``output`` sections of the simulation config; see
-        :func:`microcircuit_lab.runs.save_run_outputs`. ``output_dir`` points to the
+        :func:`microcircuit_lab.run_folder.save_run_outputs`. ``output_dir`` points to the
         run folder afterwards. With several MPI processes, only the first prints and
         saves; the others have ``is_main_process`` False.
         """

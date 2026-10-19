@@ -31,10 +31,9 @@ from .power_spectrum import (
 )
 from .raster import plot_raster
 
-# Imported after the four plot modules above, whose module-level
-# register_plot(...) calls populate PLOT_REGISTRY as a side effect of
-# the imports already happening here.
-from .registry import (
+# Imported after the four plot modules above: importing them registers
+# their plots in PLOT_REGISTRY.
+from .run_command_plots import (
     PLOT_REGISTRY,
     PlotSpec,
     call_plot,

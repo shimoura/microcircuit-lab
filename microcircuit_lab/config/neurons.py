@@ -8,41 +8,28 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt
 
-from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.distributions import PerNeuronValue
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class NeuronParams(BaseModel):
     """
-    Parameters for a neuron model, passed through to the simulator backend
-    as-is.
+    Parameters of a neuron model, passed to the simulator as given.
 
-    Deliberately open-ended rather than a fixed field list: neuron models
-    differ in what they accept (a current-based integrate-and-fire model,
-    a conductance-based one, an adaptive-exponential one, ...), so
-    hard-coding one parameter set here would only ever fit a subset of
-    them. Whatever keys you supply (besides `I_e`, see below) are set on
-    the simulator-side neuron exactly as given. The simulator backend is
-    the source of truth for which names a given model accepts, and it is
-    the one that raises an error if given a name it doesn't recognize.
-    This layer stays simulator-independent and does not duplicate that
-    check.
+    The keys are not fixed, because neuron models differ in the parameters they
+    accept. The simulator raises an error for a name it does not know.
 
-    A parameter can also differ from neuron to neuron: write a distribution
-    instead of a number (see config.distributions), e.g.
+    A parameter can differ from neuron to neuron: write a distribution instead
+    of a number (see ``config/distributions.py``), for example
     ``V_th: {distribution: uniform, min: -52, max: -48}``.
 
-    `I_e` (constant input current, pA) is the one field this package reads
-    back directly, since DC-compensation (see network/prepare.py)
-    adds to it when scaling the network. It's declared explicitly here and
-    defaults to 0.0, since a constant input current at zero is the common
-    starting point across point-neuron models generally. It is always a
-    number.
+    ``I_e`` (constant input current, pA) is the one parameter read back here,
+    because scaling adds a compensation current to it (see
+    ``network/compensation.py``). It defaults to 0.0 and is always a number.
 
-    Values must be numbers, lists of numbers (a parameter with one entry per
-    receptor port, e.g. ``tau_syn: [0.5, 5.0]``) or distributions; anything
-    else (a string, ...) is rejected here rather than surfacing as a
-    confusing simulator-side error.
+    Values must be numbers, lists of numbers (one entry per receptor port, for
+    example ``tau_syn: [0.5, 5.0]``) or distributions. Anything else is rejected
+    here instead of causing a confusing error in the simulator.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
@@ -61,13 +48,11 @@ class NeuronParams(BaseModel):
 
     def require(self, *names: str) -> dict[str, float]:
         """
-        Return the named parameters, or raise a clear error if any weren't
-        provided.
+        Return the named parameters, or raise an error if any is missing or
+        drawn per neuron.
 
-        Parameters are open-ended here, so this is the only way for code
-        that needs specific parameters by name (e.g. a PSP-to-PSC
-        conversion formula tied to one neuron model) to know whether what
-        it needs is actually present.
+        Code that needs specific parameters (the PSP-to-PSC conversion, for
+        example) uses this to check that they are present.
         """
 
         values = self.model_dump()
@@ -118,18 +103,13 @@ class NeuronsFile(FrozenConfig):
 
 class NeuronConfig(FrozenConfig):
     """
-    Configuration for a neuron model.
-    This is a pure data container for the parameters of a neuron model.
+    A neuron model: its name, the simulator's model name and its parameters.
 
-    psp_conversion_aliases:
-        Only relevant to connections that use ``unit: PSP``. Maps a
-        canonical name the conversion needs ("C_m", "tau_m",
-        "tau_syn_ex", "tau_syn_in") to whatever `parameters` actually
-        calls it, for a model that names them differently (e.g. a
-        NESTML model with its own naming convention). Empty by default,
-        meaning `parameters` already uses those names directly (NEST's
-        iaf_psc_exp and its usual variants). See
-        network.units.convert_psp_to_psc.
+    ``psp_conversion_aliases`` matters only for connections with ``unit: PSP``.
+    It maps a name the conversion needs (``C_m``, ``tau_m``, ``tau_syn_ex``,
+    ``tau_syn_in``) to what ``parameters`` calls it, for a model that names them
+    differently. If empty, ``parameters`` uses those names. See
+    ``network.psp_psc_conversion.convert_psp_to_psc``.
     """
 
     name: str

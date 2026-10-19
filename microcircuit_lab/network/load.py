@@ -3,12 +3,12 @@ Load a network from its folder, ``configs/network/<name>/``.
 
 Two functions, for the two things you may want:
 
-* :func:`read_network` -- the network exactly as written in its files, checked
+* :func:`read_network`: the network exactly as written in its files, checked
   (every field against the models in :mod:`microcircuit_lab.config`, and the
   references between files: a population names an existing neuron, a
   connection names existing populations). Use it to inspect or change a
   network before it is prepared, e.g. to set another scaling.
-* :func:`load_network` -- the same network prepared for the simulation (see
+* :func:`load_network`: the same network prepared for the simulation (see
   :func:`microcircuit_lab.network.prepare.prepare_network`). This is what
   ``Simulation.from_yaml`` and ``microcircuit-lab run`` use, and what a builder
   can call to check what it wrote.
@@ -25,10 +25,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from microcircuit_lab.config.network import NetworkConfig, NetworkDirectory, NetworkManifest
-
+from microcircuit_lab.config.network import (
+    NetworkConfig,
+    NetworkDirectory,
+    NetworkManifest,
+)
 from microcircuit_lab.config.neurons import NeuronConfig
-
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.yaml_files import read_yaml
@@ -85,6 +87,8 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
     """
 
     folder = Path(folder)
+    if not (folder / "network.yaml").is_file():
+        raise FileNotFoundError(_missing_network_message(folder))
     manifest = NetworkManifest.model_validate(read_yaml(folder / "network.yaml"))
 
     parts: dict[str, Any] = {
@@ -107,6 +111,20 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         return NetworkDirectory.model_validate(parts)
     except ValidationError as error:
         raise ValueError(_describe_problems(folder, manifest, error)) from error
+
+
+def _missing_network_message(folder: Path) -> str:
+    """One line: the missing folder, and the networks found next to it."""
+    message = f"No network at {folder} (no network.yaml)."
+    parent = folder.parent
+    found = (
+        sorted(p.name for p in parent.iterdir() if (p / "network.yaml").is_file())
+        if parent.is_dir()
+        else []
+    )
+    if found:
+        message += f" Networks in {parent}: {', '.join(found)}"
+    return message
 
 
 def _describe_problems(folder: Path, manifest: NetworkManifest, error: ValidationError) -> str:

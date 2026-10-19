@@ -10,32 +10,26 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class WeightDistribution(FrozenConfig):
     """
-    Distribution describing synaptic weights.
+    Distribution of synaptic weights.
 
-    The interpretation of `mean` depends on `unit`, which is required --
-    deliberately no default, so a config can't silently run with the
-    wrong conversion just because a field was left out:
+    ``unit`` is required and has no default, so a forgotten field cannot run with
+    the wrong conversion. It sets what ``mean`` means:
 
-    - "PSP": biological post-synaptic potential amplitude (mV). Converted
-      by prepare_network to a current amplitude, which only makes
-      sense for a current-based LIF neuron with single-exponential
-      synaptic currents; see network.units.convert_psp_to_psc for
-      exactly what that requires from the target population's neuron
-      parameters.
-    - "PSC": post-synaptic current amplitude (pA), already in the form a
-      current-based simulator backend consumes directly. Used as-is, no
-      conversion.
-    - "native": used exactly as given, with no interpretation at all.
-      The right choice for a neuron model with no PSP/PSC conversion
-      formula implemented -- e.g. a conductance-based model (nS weights)
-      or anything else -- so adding a new neuron model never requires
-      adding new conversion code, only picking the right unit. Its mean
-      current is unknown, so the scaling compensation leaves it out.
+    - "PSP": amplitude of the post-synaptic potential (mV). ``prepare_network``
+      converts it to a current amplitude. This only makes sense for a
+      current-based integrate-and-fire neuron with exponential synaptic
+      currents; ``network.psp_psc_conversion.convert_psp_to_psc`` lists the neuron parameters
+      it needs.
+    - "PSC": amplitude of the post-synaptic current (pA), used as given.
+    - "native": used exactly as given, in the unit of the neuron model (for
+      example nS for a conductance-based model). Use it when no PSP conversion
+      exists for the neuron. Its mean current is unknown, so the scaling
+      compensation leaves it out.
     """
 
     mean: float = Field(
@@ -45,8 +39,8 @@ class WeightDistribution(FrozenConfig):
     rel_std: float = Field(ge=0.0, examples=[0.1], description="standard deviation / |mean|")
 
     # To add a distribution: list it here (and in DelayDistribution below if it
-    # applies to delays) and draw it in NestBackend.create_weight_spec /
-    # create_delay_parameter (backends/nest/backend.py).
+    # applies to delays) and draw it in create_weight_spec /
+    # create_delay_parameter (backends/nest/distributions.py).
     distribution: Literal[
         "normal",
         "uniform",
@@ -107,7 +101,7 @@ class ConnectionConfig(FrozenConfig):
       probability ``p``.
 
     The core computes with the expected number of synapses
-    (``network.quantities.expected_synapses``) and scales the given number
+    (``network.mean_input.expected_synapses``) and scales the given number
     with the network (``network.scaling.scale_rule_number``).
     """
 
@@ -155,7 +149,7 @@ class ConnectionConfig(FrozenConfig):
     delay: DelayDistribution = Field(description="delay of each synapse")
 
     @model_validator(mode="after")
-    def _check_number_matches_rule(self) -> "ConnectionConfig":
+    def _check_number_matches_rule(self) -> ConnectionConfig:
         needed = RULE_NUMBER[self.rule]
         others = [
             name for name in RULE_NUMBER.values() if name != needed and getattr(self, name) is not None

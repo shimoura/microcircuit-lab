@@ -1,8 +1,6 @@
-"""What the DC compensation of a scaled network needs, and what it says when it is missing."""
+"""What the DC compensation of a scaled network needs, and the error when it is missing."""
 
 from __future__ import annotations
-
-import logging
 
 import pytest
 
@@ -30,19 +28,39 @@ def test_no_compensation_needs_no_reference_rates() -> None:
     prepare_network(_toy(K_scaling=0.5, preserve_mean_input=False))
 
 
-def test_no_reference_at_all_warns_instead_of_silently_skipping(caplog) -> None:
+def test_no_reference_at_all_is_an_error_naming_the_populations() -> None:
     network = _toy(K_scaling=0.5).model_copy(update={"reference": None})
 
-    with caplog.at_level(logging.WARNING):
+    with pytest.raises(ValueError, match=r"has no rate for population\(s\) \['E', 'I'\]"):
         prepare_network(network)
 
-    assert "no DC compensation" in caplog.text
+
+def test_background_only_compensation_works_without_reference() -> None:
+    network = _toy(K_scaling=0.5, compensate_recurrent_input=False)
+    without = network.model_copy(update={"reference": None})
+
+    I_e = {
+        name: population.neuron.parameters.I_e
+        for name, population in prepare_network(without).populations.items()
+    }
+    assert I_e == {
+        name: population.neuron.parameters.I_e
+        for name, population in prepare_network(network).populations.items()
+    }
+    assert I_e["E"] > 0
 
 
-def test_an_unscaled_network_does_not_warn(caplog) -> None:
-    network = _toy().model_copy(update={"reference": None})
+def test_a_population_without_background_input_gets_no_background_current() -> None:
+    network = _toy(K_scaling=0.5, compensate_recurrent_input=False)
+    network = network.model_copy(
+        update={"background_inputs": {"E": network.background_inputs["E"]}}
+    )
 
-    with caplog.at_level(logging.WARNING):
-        prepare_network(network)
+    scaled = prepare_network(network)
+    mean_current = prepare_network(
+        network.model_copy(update={"scaling": ScalingConfig(), "background_mode": "mean_current"})
+    )
 
-    assert "no DC compensation" not in caplog.text
+    for prepared in (scaled, mean_current):
+        assert prepared.populations["E"].neuron.parameters.I_e > 0
+        assert prepared.populations["I"].neuron.parameters.I_e == 0

@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 
-from microcircuit_lab.analysis import compute_population_firing_rates
 from microcircuit_lab import Simulation, prepare_network, read_network
+from microcircuit_lab.analysis import compute_population_firing_rates
 from microcircuit_lab.config.simulation import SimulationConfig
 
 BACKGROUND_INDEGREES = [200, 500, 1000, 2000, 4000]

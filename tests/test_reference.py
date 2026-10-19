@@ -2,16 +2,16 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.quantities import (
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.mean_input import (
+    background_indegrees,
+    background_weights,
+    full_mean_rates,
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,
-    full_mean_rates,
-    background_indegrees,
-    background_weights,
 )
-from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
 
 
 def test_reference_matrices():
@@ -52,13 +52,13 @@ def test_prepare_network_keeps_the_original_network():
 
     original = original.model_copy(
         update={
-            # No published reference rates to compensate against here --
-            # this test is only about N/K scaling arithmetic.
+            # This test is only about N/K scaling arithmetic: no compensation.
             "reference": None,
             "scaling": original.scaling.model_copy(
                 update={
                     "N_scaling": 0.2,
                     "K_scaling": 0.2,
+                    "preserve_mean_input": False,
                 }
             ),
         }
