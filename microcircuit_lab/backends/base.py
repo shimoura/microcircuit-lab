@@ -35,6 +35,10 @@ class SimulationBackend(Protocol):
 
     # MPI processes (without MPI: one process, rank 0, nothing to wait for)
 
+    def version(self) -> str | None:
+        """The simulator's version, for the run's metadata."""
+        ...
+
     def num_processes(self) -> int: ...
 
     def rank(self) -> int: ...

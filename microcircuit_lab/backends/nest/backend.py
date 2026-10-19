@@ -1,21 +1,21 @@
 """
-NEST backend.
+NEST backend: creates and connects the network and runs the simulation.
 
-This module contains the first implementation of the simulator backend.
+Weights, delays and per-neuron values are built in ``parameters.py``; spike
+files are read in ``recordings.py``.
 """
 
 from __future__ import annotations
 
-import inspect
 import logging
 from collections.abc import Sequence
 from pathlib import Path
 
 import nest
 import numpy as np
-import pandas as pd
 
-from microcircuit_lab.config.distributions import DrawnValue
+from microcircuit_lab.backends import spikes
+from microcircuit_lab.backends.nest import parameters, recordings
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
@@ -61,6 +61,9 @@ class NestBackend:
         self.multimeter: nest.NodeCollection | None = None
         self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
+
+    def version(self) -> str:
+        return nest.__version__
 
     def num_processes(self) -> int:
         return nest.NumProcesses()
@@ -168,29 +171,8 @@ class NestBackend:
 
         for values in (dict(pop_cfg.neuron.parameters), pop_cfg.initial_state):
             nodes.set(
-                {name: self.per_neuron_value(value) for name, value in values.items()}
+                {name: parameters.per_neuron_value(value) for name, value in values.items()}
             )
-
-    @staticmethod
-    def per_neuron_value(value):
-        """
-        A number as given, or a NEST parameter drawing one value per neuron.
-        """
-
-        if not isinstance(value, DrawnValue):
-            return value
-
-        draw = getattr(nest.random, value.distribution, None)
-        if not inspect.isfunction(draw):
-            available = [name for name, item in vars(nest.random).items() if inspect.isfunction(item)]
-            raise ValueError(
-                f"NEST has no distribution '{value.distribution}'; nest.random has {available}."
-            )
-        # NEST would fill in a left-out argument with its default.
-        missing = [name for name in inspect.signature(draw).parameters if name not in value.model_extra]
-        if missing:
-            raise ValueError(f"Distribution '{value.distribution}' needs {missing}.")
-        return draw(**value.model_extra)
 
     def create_synapse_models(self) -> None:
         """
@@ -207,9 +189,10 @@ class NestBackend:
         synapse model and receptor port if it names a synapses.yaml entry.
         """
 
+        bound_mode = self._network.bound_mode
         spec = {
-            "weight": self.create_weight_spec(weight),
-            "delay": self.create_delay_parameter(delay),
+            "weight": parameters.create_weight_spec(weight, bound_mode),
+            "delay": parameters.create_delay_parameter(delay, bound_mode),
         }
         if synapse is not None:
             spec["synapse_model"] = synapse
@@ -383,8 +366,8 @@ class NestBackend:
     def create_stimuli(self) -> None:
         """
         Create one device per configured stimulus, dispatching on the
-        stimulus's concrete type the same way create_weight_spec/
-        create_delay_parameter dispatch on `distribution`. Each branch
+        stimulus's concrete type the way weights and delays are
+        built from their `distribution`. Each branch
         narrows to one StimulusConfig subtype, so only the fields that
         subtype actually declares are touched.
         """
@@ -473,147 +456,33 @@ class NestBackend:
                 mean_rate,
             )
 
-    def create_weight_spec(self, weight):
-        """
-        Create a NEST weight parameter.
-
-        A weight without spread (fixed, or ``rel_std`` 0) is returned as
-        given. Every distribution has the given mean and standard deviation;
-        a uniform one spans mean ± sqrt(3) * std. A lognormal weight has the
-        sign of its mean. A normal or uniform weight of the other sign is
-        redrawn or clipped to 0, as set by the network's ``bound_mode``.
-        """
-
-        if weight.distribution == "fixed" or weight.rel_std == 0.0:
-            return weight.mean
-
-        std = abs(weight.mean * weight.rel_std)
-
-        if weight.distribution in ("normal", "uniform"):
-            if weight.distribution == "normal":
-                distribution = nest.random.normal(mean=weight.mean, std=std)
-            else:
-                half_width = np.sqrt(3.0) * std
-                distribution = nest.random.uniform(
-                    min=weight.mean - half_width, max=weight.mean + half_width
-                )
-            clip = self._network.bound_mode == "clip"
-
-            if weight.mean >= 0:
-                if clip:
-                    return nest.math.max(distribution, 0.0)
-                return nest.math.redraw(distribution, min=0.0, max=float("inf"))
-
-            if clip:
-                return nest.math.min(distribution, 0.0)
-            return nest.math.redraw(distribution, min=-float("inf"), max=0.0)
-
-        if weight.distribution == "lognormal":
-            variance = (weight.mean * weight.rel_std) ** 2
-            sigma2 = np.log(1.0 + variance / weight.mean**2)
-            sigma = np.sqrt(sigma2)
-            mu = np.log(abs(weight.mean)) - sigma2 / 2.0
-
-            distribution = nest.random.lognormal(mean=mu, std=sigma)
-            return distribution if weight.mean > 0 else -1.0 * distribution
-
-        raise NotImplementedError(f"Unsupported distribution: {weight.distribution}")
-
-    def create_delay_parameter(self, delay):
-        """
-        Create a NEST delay parameter.
-
-        A drawn delay below the minimum (``delay.minimum``, or half the
-        simulation step if not set) is redrawn or clipped to the minimum,
-        as set by the network's ``bound_mode``. The minimum is never below
-        half the simulation step, which NEST would round to a delay of 0.
-        A fixed delay is returned as given; a uniform one is drawn from
-        mean ± sqrt(3) * std, which has that mean and standard deviation.
-        """
-
-        if delay.distribution == "fixed" or delay.rel_std == 0.0:
-            return delay.mean
-
-        std = delay.mean * delay.rel_std
-        min_delay = 0.5 * nest.resolution
-        if delay.minimum is not None:
-            min_delay = max(delay.minimum, min_delay)
-
-        if delay.distribution == "normal":
-            distribution = nest.random.normal(
-                mean=delay.mean,
-                std=std,
-            )
-
-        elif delay.distribution == "uniform":
-            half_width = np.sqrt(3.0) * std
-            distribution = nest.random.uniform(
-                min=delay.mean - half_width, max=delay.mean + half_width
-            )
-
-        elif delay.distribution == "lognormal":
-            variance = std**2
-            sigma_squared = np.log1p(variance / delay.mean**2)
-            sigma = np.sqrt(sigma_squared)
-            mu = np.log(delay.mean) - 0.5 * sigma_squared
-
-            distribution = nest.random.lognormal(
-                mean=mu,
-                std=sigma,
-            )
-
-        else:
-            raise ValueError(f"Unsupported delay distribution: {delay.distribution!r}")
-
-        if self._network.bound_mode == "clip":
-            return nest.math.max(distribution, min_delay)
-
-        return nest.math.redraw(
-            distribution,
-            min=min_delay,
-            max=float("inf"),
-        )
-
     def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Load all spike events from disk (ascii mode) or NEST memory (memory mode),
-        returning (sorted_senders, sorted_times) sorted by sender GID.
-        Cached on self._cached_spikes.
+        All spikes of the run as (senders, times), sorted by sender: read from
+        the ascii files NEST wrote, or taken from the recorder's memory.
+        Kept until the next simulate().
         """
+
         if self._cached_spikes is not None:
             return self._cached_spikes
 
         if self.spike_recorder is None:
-            self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))
-            return self._cached_spikes
-
-        if self.spike_recorder.get("record_to") == "ascii":
-            senders_list: list[np.ndarray] = []
-            times_list: list[np.ndarray] = []
-
-            for path in sorted(self._recordings_dir.glob("spikes-*.dat")):
-                data = pd.read_csv(path, sep="\t", comment="#")
-                senders_list.append(data["sender"].to_numpy())
-                times_list.append(data["time_ms"].to_numpy())
-
-            if not senders_list:
-                senders = np.array([], dtype=int)
-                times = np.array([], dtype=float)
-            else:
-                senders = np.concatenate(senders_list).astype(int)
-                times = np.concatenate(times_list).astype(float)
+            self._cached_spikes = spikes.empty_spikes()
+        elif self.spike_recorder.get("record_to") == "ascii":
+            paths = recordings.ascii_spike_files(self._recordings_dir)
+            self._cached_spikes = recordings.read_ascii_spikes(paths)
         else:
-            events = self.spike_recorder.get("events")
-            senders = np.asarray(events["senders"], dtype=int)
-            times = np.asarray(events["times"], dtype=float)
-
-        if len(senders) > 0:
-            order = np.argsort(senders, kind="stable")
-            self._cached_spikes = (senders[order], times[order])
-        else:
-            self._cached_spikes = (np.array([], dtype=int), np.array([], dtype=float))
+            self._cached_spikes = self._memory_spikes()
 
         return self._cached_spikes
+
+    def _memory_spikes(self) -> tuple[np.ndarray, np.ndarray]:
+        """The spikes the recorder kept in memory, sorted by sender."""
+
+        events = self.spike_recorder.get("events")
+        senders = np.asarray(events["senders"], dtype=int)
+        times = np.asarray(events["times"], dtype=float)
+        return spikes.sort_by_sender(senders, times)
 
     def get_spike_events(
         self,
@@ -622,25 +491,13 @@ class NestBackend:
         """
         Return spike events for one population as {"senders": ..., "times": ...}.
 
-        Filters the shared spike events by sender GID against this population's
-        node collection.
+        Takes the spikes of the node IDs of this population from the shared
+        spike events.
         """
-        sorted_senders, sorted_times = self._load_spikes()
-        if len(sorted_senders) == 0:
-            return {"senders": np.array([], dtype=int), "times": np.array([], dtype=float)}
 
-        nodes = self.get_population(population)
-        node_ids = nodes.tolist()
-        min_gid = int(node_ids[0])
-        max_gid = int(node_ids[-1])
-
-        left = np.searchsorted(sorted_senders, min_gid, side="left")
-        right = np.searchsorted(sorted_senders, max_gid + 1, side="left")
-
-        return {
-            "senders": sorted_senders[left:right],
-            "times": sorted_times[left:right],
-        }
+        senders, times = self._load_spikes()
+        node_ids = self.get_population(population).tolist()
+        return spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
@@ -675,28 +532,6 @@ class NestBackend:
         recordings_dir.mkdir(parents=True, exist_ok=True)
         path = recordings_dir / "spikes.csv"
 
-        if self.spike_recorder is None:
-            np.savetxt(
-                path,
-                np.empty((0, 2)),
-                delimiter=",",
-                header="sender,time_ms",
-                comments="",
-                fmt=["%d", "%.3f"],
-            )
-            return path
-
-        events = self.spike_recorder.get("events")
-        senders = np.asarray(events["senders"], dtype=int)
-        times = np.asarray(events["times"], dtype=float)
-        order = np.argsort(times)
-
-        np.savetxt(
-            path,
-            np.column_stack([senders[order], times[order]]),
-            delimiter=",",
-            header="sender,time_ms",
-            comments="",
-            fmt=["%d", "%.3f"],
-        )
+        senders, times = self._memory_spikes()
+        recordings.write_csv_spikes(path, senders, times)
         return path

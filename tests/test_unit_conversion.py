@@ -41,12 +41,15 @@ from microcircuit_lab.config.reference import ReferenceConfig
 
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.network.quantities import (
-    convert_network_psp_to_psc,
     background_psc_weights,
     mean_psc_matrix,
 )
 from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.units import psc_to_psp, psp_to_psc_iaf_psc_exp
+from microcircuit_lab.network.units import (
+    convert_network_psp_to_psc,
+    psc_to_psp,
+    psp_to_psc_iaf_psc_exp,
+)
 
 NEURON_PARAMS = NeuronParams(
     C_m=250.0,
@@ -207,7 +210,7 @@ def test_psc_unit_skips_the_required_parameters_check():
 
 
 # mean_psc_matrix / background_psc_weights: used by the scaling-compensation
-# DC-current calculation (prepare.py::_compensate_lost_mean_input),
+# DC-current calculation (compensation.py::compensate_lost_mean_input),
 # which is a *separate* call site from convert_network_psp_to_psc and
 # needs its own unit.PSC / required-parameters guard.
 

@@ -16,7 +16,7 @@ from microcircuit_lab.runs import (
     save_run_outputs,
 )
 from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.backend import NestBackend
 
 
 def _toy_network() -> NetworkConfig:

@@ -15,7 +15,10 @@ from collections.abc import Mapping
 
 import numpy as np
 
+from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronParams
+from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.stimuli import DcStimulusConfig
 
 
 def psc_over_psp(
@@ -195,4 +198,91 @@ def psc_to_psp(
         C_m=C_m,
         tau_m=tau_m,
         tau_syn=tau_syn,
+    )
+
+
+def convert_psp_weight(population: PopulationConfig, psp: float) -> float:
+    """
+    Convert one PSP-unit weight (mV) to PSC (pA) for `population`.
+
+    Any error from convert_psp_to_psc() is re-raised with the population
+    name added, so a failure points at which population caused it.
+    """
+
+    try:
+        return convert_psp_to_psc(
+            population.neuron.model,
+            psp,
+            population.neuron.parameters,
+            aliases=population.neuron.psp_conversion_aliases,
+        )
+    except ValueError as exc:
+        raise ValueError(f"Population {population.name!r}: {exc}") from exc
+
+
+def convert_network_psp_to_psc(network: NetworkConfig) -> NetworkConfig:
+    """
+    Convert synaptic weights stored as PSP amplitudes (``unit: PSP``) into
+    PSC amplitudes. Any other unit (``PSC``, ``native``, ...) is left
+    untouched; it is not reinterpreted as PSP.
+
+    The conversion is performed independently for each target population
+    using its neuron parameters, via :func:`convert_psp_to_psc`;
+    see that function for what it requires. A population whose neuron
+    parameters don't support it raises ValueError; give its connections
+    ``unit: native`` (or ``PSC`` if the weights are genuinely already
+    current amplitudes in pA) instead.
+    """
+
+    connections = []
+    for connection in network.connections:
+        if connection.weight.unit != "PSP":
+            connections.append(connection)
+            continue
+
+        target = network.populations[connection.target]
+        mean = convert_psp_weight(target, connection.weight.mean)
+        weight = connection.weight.model_copy(update={"mean": mean, "unit": "PSC"})
+        connections.append(connection.model_copy(update={"weight": weight}))
+
+    background_inputs = {}
+    for pop_name, input_cfg in network.background_inputs.items():
+        if input_cfg.weight.unit != "PSP":
+            background_inputs[pop_name] = input_cfg
+            continue
+
+        target = network.populations[pop_name]
+        mean = convert_psp_weight(target, input_cfg.weight.mean)
+        weight = input_cfg.weight.model_copy(update={"mean": mean, "unit": "PSC"})
+        background_inputs[pop_name] = input_cfg.model_copy(update={"weight": weight})
+
+    stimuli = []
+    for stimulus in network.stimuli:
+        if isinstance(stimulus, DcStimulusConfig) or stimulus.weight.unit != "PSP":
+            stimuli.append(stimulus)
+            continue
+
+        # A stimulus has one weight shared across all its targets, so a PSP
+        # amplitude only maps onto a single PSC amplitude if every target
+        # converts it the same way. This is checked by converting for each
+        # target and comparing the results, rather than by comparing which
+        # neuron parameters happen to be involved.
+        converted = {
+            convert_psp_weight(network.populations[t], stimulus.weight.mean)
+            for t in stimulus.targets
+        }
+        if len(converted) > 1:
+            raise ValueError(
+                f"Cannot convert a unit: PSP stimulus weight shared across "
+                f"targets {stimulus.targets!r}: those populations don't "
+                "convert it to the same PSC amplitude. Split into separate "
+                "stimuli (one per distinct neuron type), or give the weight "
+                "as unit: PSC/native instead."
+            )
+
+        weight = stimulus.weight.model_copy(update={"mean": converted.pop(), "unit": "PSC"})
+        stimuli.append(stimulus.model_copy(update={"weight": weight}))
+
+    return network.model_copy(
+        update={"connections": connections, "background_inputs": background_inputs, "stimuli": stimuli}
     )

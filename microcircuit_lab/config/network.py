@@ -93,7 +93,7 @@ class NetworkConfig(FrozenConfig):
         comparison of Poisson vs. DC background input (their Fig. 5).
         The `background_inputs` rate/weight/delay are still the source
         of truth for computing that mean (see
-        prepare_network (step _replace_background_by_mean_current)); no Poisson
+        prepare_network (step replace_background_by_mean_current)); no Poisson
         generator is created in this mode.
 
     bound_mode:

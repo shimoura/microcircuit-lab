@@ -24,7 +24,7 @@ flowchart TD
   B --> T["tests/test_stimuli.py"]
 ```
 
-Anything that changes numbers before the simulation (units, scaling, compensation) is a step of `prepare_network` in `network/prepare.py`.
+Anything that changes numbers before the simulation (units, scaling, compensation) is a step of `prepare_network` in `network/prepare.py`; the steps that add currents are in `network/compensation.py`.
 
 ### Does your idea fit what already exists?
 
@@ -56,7 +56,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <summary><b>A weight or delay distribution</b></summary>
 
 1. `config/connectivity.py`: add its name to the `distribution` list of `WeightDistribution` or `DelayDistribution`.
-2. `backends/nest/backend.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
+2. `backends/nest/parameters.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
 3. Test in `tests/test_bound_mode_and_tau_syn.py`.
 </details>
 
@@ -75,7 +75,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 1. `config/connectivity.py`: add it to `ConnectionConfig`.
 2. `backends/nest/backend.py`: use it in `create_connections`.
 3. If scaling or the indegrees depend on it: `network/quantities.py` and `network/prepare.py`.
-4. Test in `tests/test_builder_tools.py`, or a new test file.
+4. Test in `tests/test_connection_rules.py`.
 </details>
 
 <details>
@@ -83,7 +83,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 
 1. `config/scaling.py`: the option.
 2. `network/scaling.py`: the formula.
-3. `network/prepare.py`: use it in the right step of `prepare_network`.
+3. `network/prepare.py` (or `network/compensation.py`, for a compensation current): use it in the right step of `prepare_network`.
 4. Test in `tests/test_scaling.py` or `tests/test_scaling_compensation.py`, and in `tests/test_heterogeneous_areas.py` if it depends on cell types.
 </details>
 
@@ -151,4 +151,4 @@ When a stimulus `type` or a `distribution` is not known, the error message point
 - Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks, together with a `description` (with its unit) and, for a required field, `examples=[...]`: [docs/config_files.md](docs/config_files.md) is written from them.
 - Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `runs.register_artifact`, `network/units.py`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
-- Keep the field names of the config models stable (`populations`, `size`, `background_indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason.
+- From the first release (v0.1.0) on, keep the field names of the config models stable (`populations`, `size`, `background_indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason.

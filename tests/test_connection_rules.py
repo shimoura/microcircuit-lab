@@ -6,7 +6,7 @@ import nest
 import numpy as np
 import pytest
 
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.backend import NestBackend
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,

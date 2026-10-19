@@ -45,8 +45,8 @@ class WeightDistribution(FrozenConfig):
     rel_std: float = Field(ge=0.0, examples=[0.1], description="standard deviation / |mean|")
 
     # To add a distribution: list it here (and in DelayDistribution below if it
-    # applies to delays) and draw it in NestBackend.create_weight_spec /
-    # create_delay_parameter (backends/nest/backend.py).
+    # applies to delays) and draw it in create_weight_spec /
+    # create_delay_parameter (backends/nest/parameters.py).
     distribution: Literal[
         "normal",
         "uniform",

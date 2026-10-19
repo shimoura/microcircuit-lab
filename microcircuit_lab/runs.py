@@ -247,6 +247,8 @@ def write_run_metadata(
         "network_name": network_name,
         "simulation_name": simulation_name,
         "backend": backend_name,
+        "simulator_version": backend.version(),
+        "num_processes": backend.num_processes(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "microcircuit_lab_version": _package_version(),
         "git": _git_provenance(Path.cwd()),

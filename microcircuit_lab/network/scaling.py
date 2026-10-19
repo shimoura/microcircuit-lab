@@ -10,7 +10,9 @@ or indegrees according to analytically derived relationships.
 """
 
 from __future__ import annotations
+
 import math
+
 import numpy as np
 
 from microcircuit_lab.config.network import NetworkConfig
@@ -92,7 +94,7 @@ def scale_weight_sqrt(
         w -> w / sqrt(K_scaling)
 
     Used by scale_weights() when ScalingConfig.preserve_variance is
-    True (the default). prepare_network (step _compensate_lost_mean_input)
+    True (the default). prepare_network (step compensate_lost_mean_input)
     is what actually restores the mean input this rule doesn't preserve
     on its own, via DC current injection, when preserve_mean_input is
     also True.
@@ -157,7 +159,7 @@ def background_dc_current(
     Used to replace the background Poisson generator entirely with DC
     input, per Potjans & Diesmann (2014)'s comparison of the two drive
     types (their Fig. 5) -- see
-    prepare_network (step _replace_background_by_mean_current). Always computed
+    prepare_network (step replace_background_by_mean_current). Always computed
     from the original (unscaled) network, independent of K_scaling,
     since the target mean is the full biological background input
     regardless of any N/K scaling applied to the recurrent network.
@@ -176,7 +178,7 @@ def scale_weights(
 
     - True (default): w -> w / sqrt(K_scaling) (scale_weight_sqrt).
       Preserves input fluctuations; biases mean input, which
-      prepare_network (step _compensate_lost_mean_input) corrects for via DC
+      prepare_network (step compensate_lost_mean_input) corrects for via DC
       current injection when scaling.preserve_mean_input is also True.
     - False: w -> w / K_scaling (scale_weight). Preserves mean input
       directly (indegree * weight is invariant under this law), at the
@@ -193,23 +195,9 @@ def scale_weights(
     connections = []
 
     for connection in network.connections:
-
-        weight = connection.weight.model_copy(
-            update={
-                "mean": weight_scaler(
-                    connection.weight.mean,
-                    scaling.K_scaling,
-                )
-            }
-        )
-
-        connections.append(
-            connection.model_copy(
-                update={
-                    "weight": weight,
-                }
-            )
-        )
+        mean = weight_scaler(connection.weight.mean, scaling.K_scaling)
+        weight = connection.weight.model_copy(update={"mean": mean})
+        connections.append(connection.model_copy(update={"weight": weight}))
 
     #
     # background
@@ -217,25 +205,10 @@ def scale_weights(
     background_inputs = {}
 
     for pop_name, input_cfg in network.background_inputs.items():
-
-        weight = input_cfg.weight.model_copy(
-            update={
-                "mean": weight_scaler(
-                    input_cfg.weight.mean,
-                    scaling.K_scaling,
-                )
-            }
-        )
-
-        background_inputs[pop_name] = input_cfg.model_copy(
-            update={
-                "weight": weight,
-            }
-        )
+        mean = weight_scaler(input_cfg.weight.mean, scaling.K_scaling)
+        weight = input_cfg.weight.model_copy(update={"mean": mean})
+        background_inputs[pop_name] = input_cfg.model_copy(update={"weight": weight})
 
     return network.model_copy(
-        update={
-            "connections": connections,
-            "background_inputs": background_inputs,
-        }
+        update={"connections": connections, "background_inputs": background_inputs}
     )
