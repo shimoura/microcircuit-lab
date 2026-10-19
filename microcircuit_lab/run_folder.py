@@ -1,6 +1,6 @@
 """Write the outputs of a run: recordings, config and metadata.
 
-It uses only the :class:`~microcircuit_lab.backends.base.SimulationBackend`
+It uses only the :class:`~microcircuit_lab.backends.interface.SimulationBackend`
 interface, so it works with any backend.
 """
 
@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-from microcircuit_lab.backends.base import SimulationBackend
+from microcircuit_lab.backends.interface import SimulationBackend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.yaml_files import flow_records, write_yaml
@@ -218,7 +218,7 @@ def write_run_metadata(
     which :func:`register_artifact` adds.
 
     ``first_gid`` and ``size`` give the node IDs of each population, which are
-    one contiguous block. :class:`~microcircuit_lab.backends.post_hoc.PostHocBackend`
+    one contiguous block. :class:`~microcircuit_lab.backends.run_folder_reader.RunFolderReader`
     uses them to read a saved run without simulating it again.
     """
 

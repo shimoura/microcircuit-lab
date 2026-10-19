@@ -3,7 +3,7 @@
 To add a stimulus type: write its class here (a subclass of ``StimulusBase``
 with its own ``type``), add it to ``StimulusConfig`` at the end of this file,
 and create its device in ``NestBackend.create_stimuli``
-(``backends/nest.py``). See "Changing the core" in CONTRIBUTING.md.
+(``backends/nest/simulator.py``). See "Changing the core" in CONTRIBUTING.md.
 """
 
 from __future__ import annotations
@@ -12,8 +12,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class StimulusBase(FrozenConfig):

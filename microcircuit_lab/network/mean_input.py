@@ -11,7 +11,7 @@ import numpy as np
 
 from microcircuit_lab.config.connectivity import ConnectionConfig
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.units import convert_psp_weight
+from microcircuit_lab.network.psp_psc_conversion import convert_psp_weight
 
 
 def full_num_neurons(network: NetworkConfig) -> np.ndarray:
@@ -137,7 +137,7 @@ def background_psc_weights(
     population without background input.
 
     Only ``unit: PSP`` weights are converted, and only for a population
-    whose neuron parameters support it (see network.units.convert_psp_to_psc);
+    whose neuron parameters support it (see network.psp_psc_conversion.convert_psp_to_psc);
     any other unit (``PSC``, ``native``, ...) is returned unchanged.
     """
 
@@ -166,7 +166,7 @@ def mean_psc_matrix(
 
     Only ``unit: PSP`` connections are converted, and only for a target
     population whose neuron parameters support it (see
-    network.units.convert_psp_to_psc); any other unit (``PSC``,
+    network.psp_psc_conversion.convert_psp_to_psc); any other unit (``PSC``,
     ``native``, ...) is used unchanged. A pair connected through several
     synapses gets the mean over all its synapses.
     """

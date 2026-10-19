@@ -33,7 +33,7 @@ from .raster import plot_raster
 
 # Imported after the four plot modules above: importing them registers
 # their plots in PLOT_REGISTRY.
-from .registry import (
+from .run_command_plots import (
     PLOT_REGISTRY,
     PlotSpec,
     call_plot,

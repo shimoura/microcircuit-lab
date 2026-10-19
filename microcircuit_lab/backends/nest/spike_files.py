@@ -6,7 +6,7 @@ NEST writes spikes to ascii files (``spikes-*.dat``, columns ``sender`` and
 ``spikes.csv`` with the same two columns. This module reads both. It does not
 import ``nest``, so a saved run can be analysed without a simulator.
 
-Spikes are returned as in ``backends/spikes.py``: ``senders`` and ``times``,
+Spikes are returned as in ``backends/population_spikes.py``: ``senders`` and ``times``,
 sorted by sender.
 """
 
@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from microcircuit_lab.backends.spikes import empty_spikes, sort_by_sender
+from microcircuit_lab.backends.population_spikes import empty_spikes, sort_by_sender
 
 
 def ascii_spike_files(recordings_dir: Path) -> list[Path]:

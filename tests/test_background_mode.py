@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import yaml
 
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
@@ -19,14 +19,14 @@ from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.network.compensation import background_dc_current
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.quantities import (
+from microcircuit_lab.network.mean_input import (
     background_indegrees,
     background_psc_weights,
     tau_syn_ex,
 )
-from microcircuit_lab.network.scaling import background_dc_current
+from microcircuit_lab.network.prepare import prepare_network
 
 
 def _neuron(**overrides) -> NeuronConfig:

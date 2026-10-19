@@ -17,8 +17,8 @@ from microcircuit_lab.config.background_inputs import (
     BackgroundInputConfig,
     BackgroundInputsFile,
 )
-from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.connectivity import ConnectionConfig, ConnectivityFile
+from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig

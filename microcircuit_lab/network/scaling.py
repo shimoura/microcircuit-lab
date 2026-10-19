@@ -1,13 +1,12 @@
 """
-Formulas for scaling the number of neurons, synapses and weights, and for the
-constant currents that make up for the mean input scaling removes.
+Formulas for scaling the number of neurons, synapses and weights. The constant
+currents that make up for the mean input scaling removes are in
+``compensation.py``.
 """
 
 from __future__ import annotations
 
 import math
-
-import numpy as np
 
 from microcircuit_lab.config.network import NetworkConfig
 
@@ -90,66 +89,6 @@ def scale_weight_sqrt(
     """
 
     return weight / math.sqrt(K_scaling)
-
-
-def network_compensation_current(
-    network_input: np.ndarray,
-    tau_syn: float,
-    K_scaling: float,
-) -> np.ndarray:
-    """
-    Compute input compensation due to network scaling.
-
-    Parameters
-    ----------
-    network_input
-        Mean input to each population from the recurrent network (pA).
-
-    tau_syn
-        Synaptic time constant (ms).
-
-    K_scaling
-        Indegree scaling factor.
-
-    Returns
-    -------
-    np.ndarray
-        DC compensation current.
-    """
-
-    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * network_input
-
-
-def background_compensation_current(
-    PSC_ext: np.ndarray,
-    K_ext: np.ndarray,
-    bg_rate: np.ndarray,
-    tau_syn: np.ndarray,
-    K_scaling: float,
-) -> np.ndarray:
-    """
-    Compute the background input compensation due to network scaling.
-    """
-
-    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate
-
-
-def background_dc_current(
-    PSC_ext: np.ndarray,
-    K_ext: np.ndarray,
-    bg_rate: np.ndarray,
-    tau_syn: np.ndarray,
-) -> np.ndarray:
-    """
-    Constant current (pA) with the same mean as the background Poisson input:
-    ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude ``PSC_ext`` (pA),
-    with synaptic time constant ``tau_syn`` (ms).
-
-    The step ``replace_background_by_mean_current`` uses it. It is computed for
-    the original, unscaled network, so ``K_scaling`` does not change it.
-    """
-
-    return 0.001 * tau_syn * PSC_ext * K_ext * bg_rate
 
 
 def scale_weights(

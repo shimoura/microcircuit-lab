@@ -11,7 +11,7 @@ from microcircuit_lab.analysis import (
     cached_population_firing_rates,
     cached_power_spectrum,
 )
-from microcircuit_lab.analysis.cache import load_measures
+from microcircuit_lab.analysis.measure_files import load_measures
 
 
 def _run_toy_simulation(tmp_path: Path) -> Simulation:

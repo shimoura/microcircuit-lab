@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import Field
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class RecordingConfig(FrozenConfig):

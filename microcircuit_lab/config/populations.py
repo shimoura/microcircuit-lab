@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.distributions import PerNeuronValue
+from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronConfig
 
 

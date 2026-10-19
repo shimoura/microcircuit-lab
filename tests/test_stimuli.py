@@ -6,7 +6,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
@@ -21,7 +21,7 @@ from microcircuit_lab.config.stimuli import (
 )
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.units import psp_to_psc_iaf_psc_exp
+from microcircuit_lab.network.psp_psc_conversion import psp_to_psc_iaf_psc_exp
 
 
 def _neuron(**overrides) -> NeuronConfig:

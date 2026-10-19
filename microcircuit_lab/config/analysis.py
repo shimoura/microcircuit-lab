@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import ConfigDict, Field
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.yaml_files import read_yaml
 
 ColorMode = Literal["layer", "cell_type", "population", "custom"]
@@ -180,7 +180,7 @@ class AnalysisConfig(FrozenConfig):
     ``begin``, ``end``, ``area``, ``show_reference`` and ``style`` are the only
     fixed fields. Any other top-level key (``raster``, ``firing_rates``,
     ``power_spectrum``, ``isi_cv``, or a plot you register yourself, see
-    ``microcircuit_lab.analysis.registry``) is kept as written and read with
+    ``microcircuit_lab.analysis.run_command_plots``) is kept as written and read with
     :meth:`plot_config`. So a new plot needs no change to this class.
     """
 

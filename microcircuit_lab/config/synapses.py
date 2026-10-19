@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pydantic import Field, StrictBool, StrictFloat, StrictInt
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class SynapseEntry(FrozenConfig):

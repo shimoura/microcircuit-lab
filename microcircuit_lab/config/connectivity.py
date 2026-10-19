@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class WeightDistribution(FrozenConfig):
@@ -23,7 +23,7 @@ class WeightDistribution(FrozenConfig):
     - "PSP": amplitude of the post-synaptic potential (mV). ``prepare_network``
       converts it to a current amplitude. This only makes sense for a
       current-based integrate-and-fire neuron with exponential synaptic
-      currents; ``network.units.convert_psp_to_psc`` lists the neuron parameters
+      currents; ``network.psp_psc_conversion.convert_psp_to_psc`` lists the neuron parameters
       it needs.
     - "PSC": amplitude of the post-synaptic current (pA), used as given.
     - "native": used exactly as given, in the unit of the neuron model (for
@@ -40,7 +40,7 @@ class WeightDistribution(FrozenConfig):
 
     # To add a distribution: list it here (and in DelayDistribution below if it
     # applies to delays) and draw it in create_weight_spec /
-    # create_delay_parameter (backends/nest_parameters.py).
+    # create_delay_parameter (backends/nest/distributions.py).
     distribution: Literal[
         "normal",
         "uniform",
@@ -101,7 +101,7 @@ class ConnectionConfig(FrozenConfig):
       probability ``p``.
 
     The core computes with the expected number of synapses
-    (``network.quantities.expected_synapses``) and scales the given number
+    (``network.mean_input.expected_synapses``) and scales the given number
     with the network (``network.scaling.scale_rule_number``).
     """
 

@@ -9,7 +9,7 @@ DC-current calculation, which runs whenever a network is scaled --
 including any network with N_scaling/K_scaling below 1).
 
 The conversion doesn't look at the neuron's `model` name at all, only at
-which parameters are present -- see network.units.convert_psp_to_psc.
+which parameters are present -- see network.psp_psc_conversion.convert_psp_to_psc.
 CONDUCTANCE_NEURON_PARAMS stands in for a real conductance-based model
 (no tau_m; a leak conductance g_L instead, matching e.g. NEST's
 aeif_cond_exp/iaf_cond_exp/iaf_cond_alpha) to exercise that missing-parameter
@@ -30,12 +30,12 @@ from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.quantities import (
+from microcircuit_lab.network.mean_input import (
     background_psc_weights,
     mean_psc_matrix,
 )
-from microcircuit_lab.network.units import (
+from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.psp_psc_conversion import (
     convert_network_psp_to_psc,
     psc_to_psp,
     psp_to_psc_iaf_psc_exp,

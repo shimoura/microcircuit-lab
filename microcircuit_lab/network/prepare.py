@@ -17,12 +17,12 @@ from microcircuit_lab.network.compensation import (
     compensate_lost_mean_input,
     replace_background_by_mean_current,
 )
+from microcircuit_lab.network.psp_psc_conversion import convert_network_psp_to_psc
 from microcircuit_lab.network.scaling import (
     scale_neuron_number,
     scale_rule_number,
     scale_weights,
 )
-from microcircuit_lab.network.units import convert_network_psp_to_psc
 
 
 def prepare_network(config: NetworkConfig) -> NetworkConfig:

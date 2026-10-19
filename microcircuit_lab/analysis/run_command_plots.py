@@ -32,8 +32,8 @@ from importlib.metadata import entry_points
 from pathlib import Path
 
 from microcircuit_lab.config.analysis import AnalysisConfig
-from microcircuit_lab.config.base import FrozenConfig
-from microcircuit_lab.discovery import import_folder_modules
+from microcircuit_lab.config.frozen_config import FrozenConfig
+from microcircuit_lab.project_code import import_folder_modules
 
 #: Marks an argument that was not passed, so the plot falls back to its config.
 #: An explicit None is a real value (``xlim=None`` means the full range).

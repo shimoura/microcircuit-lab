@@ -23,7 +23,7 @@ from .plot_styles import (
     population_color,
     population_label,
 )
-from .registry import UNSET, register_plot
+from .run_command_plots import UNSET, register_plot
 
 
 def compute_neuron_isi_cv(

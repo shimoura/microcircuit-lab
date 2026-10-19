@@ -312,7 +312,7 @@ write_network_directory(
 - `builder_tools` also has `num_synapses_from_conn_prob` and `psp_to_psc_iaf_psc_exp`.
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
-- A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/discovery.py`).
+- A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
 ## Analysing a run
 
@@ -365,7 +365,7 @@ python my_analysis.py output/toy/<timestamp>
 
 - Read data through `simulation` (`backend.get_spike_events`, `network`, `simulation_config`).
 - Keep the script anywhere, e.g. in `experiments/`. In `analyses/`, put its work under `if __name__ == "__main__":`, because `microcircuit-lab run` imports every file there.
-- To list a file you saved in the run's `metadata.json`: `register_artifact(simulation.output_dir, "plots", path)` from `microcircuit_lab.runs`.
+- To list a file you saved in the run's `metadata.json`: `register_artifact(simulation.output_dir, "plots", path)` from `microcircuit_lab.run_folder`.
 
 ### Optional: let `microcircuit-lab run` make your plot
 
@@ -407,7 +407,7 @@ The figure is saved in `plots/`, one per area with `--area all`, and listed in `
 - Any other parameter needs a default.
 - The plot is off by default: pass `--rate-bars`, or set `enabled: true` in its section of the analysis file.
 - A name already taken (`raster`, ...) raises an error.
-- A package can provide such plots through the `microcircuit_lab.analyses` entry-point group (see `microcircuit_lab/analysis/registry.py`).
+- A package can provide such plots through the `microcircuit_lab.analyses` entry-point group (see `microcircuit_lab/analysis/run_command_plots.py`).
 
 ## Experiments
 
@@ -482,13 +482,13 @@ Change the core when an idea doesn't fit what the config files can say (a new st
 microcircuit_lab/
 ├── config/            what each YAML file may contain (one module per file)
 ├── network/           reading, checking and preparing a network
-├── simulation/        Simulation: load, run, reopen a run
+├── simulation.py      Simulation: load, run, reopen a run
 ├── backends/          the simulators (NEST), and reading back a saved run
 ├── analysis/          measures and plots
 ├── cli/               the microcircuit-lab command
 ├── builder_tools.py   what a builder needs, in one import
-├── runs.py            run folders and their metadata
-├── discovery.py       finds the builders/ and analyses/ of a project
+├── run_folder.py      run folders and their metadata
+├── project_code.py    finds the builders/ and analyses/ of a project
 └── yaml_files.py      reading and writing YAML
 ```
 
@@ -505,8 +505,8 @@ register_plot("spectrogram", plot_spectrogram,
 
 ## Adding a backend
 
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/base.py`) in `microcircuit_lab/backends/<name>.py`, like `nest.py`; helpers go in `<name>_*.py`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
-2. Register it in `get_backend`, and its file reader (like `nest_files.read_saved_spikes`, without importing the simulator) in `read_saved_spikes`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
+2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
 3. Select it with `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; `backend_options` go to its constructor unchanged.
 
 ## Testing

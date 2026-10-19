@@ -15,10 +15,10 @@ from pathlib import Path
 
 import numpy as np
 
-from microcircuit_lab.backends import read_saved_spikes, spikes
+from microcircuit_lab.backends import population_spikes, read_saved_spikes
 
 
-class PostHocBackend:
+class RunFolderReader:
     """Replays the spikes of a saved run. Methods that would run a simulation raise."""
 
     def __init__(self, run_dir: str | Path) -> None:
@@ -29,7 +29,7 @@ class PostHocBackend:
         if not metadata_path.exists():
             raise ValueError(
                 f"No metadata.json in {self.run_dir} -- was this run saved with "
-                "output.save_metadata=False? PostHocBackend needs it to recover "
+                "output.save_metadata=False? RunFolderReader needs it to recover "
                 "each population's node-ID range."
             )
         self._metadata = json.loads(metadata_path.read_text())
@@ -70,7 +70,7 @@ class PostHocBackend:
         senders, times = self._load_spikes()
         stats = self._metadata["populations"][population]
         first_gid = stats["first_gid"]
-        return spikes.spikes_in_id_range(senders, times, first_gid, first_gid + stats["size"] - 1)
+        return population_spikes.spikes_in_id_range(senders, times, first_gid, first_gid + stats["size"] - 1)
 
     def version(self) -> str | None:
         """The simulator version recorded in metadata.json, if the run has one."""
@@ -87,16 +87,16 @@ class PostHocBackend:
         pass
 
     def prepare_output(self, run_dir: Path) -> None:
-        raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
+        raise NotImplementedError("RunFolderReader is read-only; it replays a finished run.")
 
     def build(self) -> None:
-        raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
+        raise NotImplementedError("RunFolderReader is read-only; it replays a finished run.")
 
     def simulate(self) -> None:
-        raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
+        raise NotImplementedError("RunFolderReader is read-only; it replays a finished run.")
 
     def print_statistics(self) -> None:
-        raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
+        raise NotImplementedError("RunFolderReader is read-only; it replays a finished run.")
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
-        raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
+        raise NotImplementedError("RunFolderReader is read-only; it replays a finished run.")

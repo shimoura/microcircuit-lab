@@ -1,5 +1,5 @@
 """
-NEST parameters for weights, delays and per-neuron values.
+Weights, delays and per-neuron values drawn from their distributions in NEST.
 
 A value given as a distribution becomes a NEST parameter that draws one value
 per neuron or synapse; a plain number is passed on as it is.

@@ -13,7 +13,7 @@ builder owns its own argument parsing. Run it from the project root.
 
 import sys
 
-from microcircuit_lab.discovery import discover_builders
+from microcircuit_lab.project_code import discover_builders
 
 
 def main(argv: list[str] | None = None) -> None:

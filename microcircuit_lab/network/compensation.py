@@ -4,7 +4,8 @@ The steps of :func:`prepare_network` that add constant currents to ``I_e``.
 ``compensate_lost_mean_input`` replaces the mean input that scaling removes;
 ``replace_background_by_mean_current`` replaces the background Poisson input by
 a constant current. Both take the full-scale network (``original``), because the
-currents are those of the biological input, whatever the scaling.
+currents are those of the biological input, whatever the scaling. The formulas
+of these currents are at the end of the file.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import logging
 import numpy as np
 
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.quantities import (
+from microcircuit_lab.network.mean_input import (
     background_indegrees,
     background_psc_weights,
     background_rates,
@@ -25,11 +26,6 @@ from microcircuit_lab.network.quantities import (
     synaptic_tau,
     tau_syn_ex,
     tau_syn_in,
-)
-from microcircuit_lab.network.scaling import (
-    background_compensation_current,
-    background_dc_current,
-    network_compensation_current,
 )
 
 logger = logging.getLogger(__name__)
@@ -226,3 +222,68 @@ def _background_without_known_current(network: NetworkConfig) -> list[str]:
         for name, input_cfg in network.background_inputs.items()
         if not _mean_current_is_known(network, input_cfg)
     ]
+
+
+def network_compensation_current(
+    network_input: np.ndarray,
+    tau_syn: np.ndarray,
+    K_scaling: float,
+) -> np.ndarray:
+    """
+    The constant current (pA) that replaces the mean recurrent input lost by
+    scaling: weights times 1/sqrt(K_scaling) and indegrees times K_scaling keep
+    sqrt(K_scaling) of the mean, so (1 - sqrt(K_scaling)) of it is added back.
+
+    Parameters
+    ----------
+    network_input
+        Mean input to each population from the recurrent network (pA).
+
+    tau_syn
+        Synaptic time constant of each population (ms).
+
+    K_scaling
+        Indegree scaling factor.
+
+    Returns
+    -------
+    np.ndarray
+        The current for each population (pA).
+    """
+
+    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * network_input
+
+
+def background_compensation_current(
+    PSC_ext: np.ndarray,
+    K_ext: np.ndarray,
+    bg_rate: np.ndarray,
+    tau_syn: np.ndarray,
+    K_scaling: float,
+) -> np.ndarray:
+    """
+    The constant current (pA) that replaces the mean background input lost by
+    scaling, as :func:`network_compensation_current` does for the recurrent
+    input: ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude
+    ``PSC_ext`` (pA), with synaptic time constant ``tau_syn`` (ms).
+    """
+
+    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate
+
+
+def background_dc_current(
+    PSC_ext: np.ndarray,
+    K_ext: np.ndarray,
+    bg_rate: np.ndarray,
+    tau_syn: np.ndarray,
+) -> np.ndarray:
+    """
+    Constant current (pA) with the same mean as the background Poisson input:
+    ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude ``PSC_ext`` (pA),
+    with synaptic time constant ``tau_syn`` (ms).
+
+    The step ``replace_background_by_mean_current`` uses it. It is computed for
+    the original, unscaled network, so ``K_scaling`` does not change it.
+    """
+
+    return 0.001 * tau_syn * PSC_ext * K_ext * bg_rate

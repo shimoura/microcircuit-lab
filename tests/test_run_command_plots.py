@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from microcircuit_lab.analysis import call_plot, discover_plots, register_plot
-from microcircuit_lab.analysis import registry as registry_module
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.analysis import run_command_plots as registry_module
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 PLOT_MODULE = """\
 from microcircuit_lab.analysis import register_plot

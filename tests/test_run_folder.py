@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.runs import (
+from microcircuit_lab.run_folder import (
     register_artifact,
     resolve_run_directory,
     save_run_outputs,
@@ -206,15 +206,15 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
 
 
 def test_core_git_provenance_only_for_a_clone_of_the_core(tmp_path: Path, monkeypatch) -> None:
-    from microcircuit_lab import runs
+    from microcircuit_lab import run_folder
 
     # The test suite runs from a clone of the repository.
-    assert len(runs._core_git_provenance()["commit"]) == 40
+    assert len(run_folder._core_git_provenance()["commit"]) == 40
 
     # An installed copy (no .git next to the package) has no commit of its own.
-    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "runs.py"
-    monkeypatch.setattr(runs, "__file__", str(package_file))
-    assert runs._core_git_provenance() is None
+    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "run_folder.py"
+    monkeypatch.setattr(run_folder, "__file__", str(package_file))
+    assert run_folder._core_git_provenance() is None
 
 
 def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
@@ -314,8 +314,8 @@ def test_voltage_recording_subsampling(tmp_path: Path) -> None:
     assert senders == {1, 2, 3, 801, 802, 803}
 
 
-def test_post_hoc_backend_reads_consolidated_spikes(tmp_path: Path) -> None:
-    from microcircuit_lab.simulation.runner import Simulation
+def test_a_run_folder_is_read_back(tmp_path: Path) -> None:
+    from microcircuit_lab.simulation import Simulation
 
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
@@ -339,9 +339,9 @@ def test_post_hoc_backend_reads_consolidated_spikes(tmp_path: Path) -> None:
     live_e_spikes = sim.backend.get_spike_events("E")
     live_i_spikes = sim.backend.get_spike_events("I")
 
-    post_hoc_sim = Simulation.from_run_dir(tmp_path)
-    post_e_spikes = post_hoc_sim.backend.get_spike_events("E")
-    post_i_spikes = post_hoc_sim.backend.get_spike_events("I")
+    reopened = Simulation.from_run_dir(tmp_path)
+    post_e_spikes = reopened.backend.get_spike_events("E")
+    post_i_spikes = reopened.backend.get_spike_events("I")
 
     assert len(post_e_spikes["times"]) == len(live_e_spikes["times"])
     assert len(post_i_spikes["times"]) == len(live_i_spikes["times"])
@@ -353,8 +353,8 @@ def test_post_hoc_backend_reads_consolidated_spikes(tmp_path: Path) -> None:
 def test_only_the_first_mpi_process_saves(tmp_path: Path, monkeypatch) -> None:
     """A second MPI process takes the run folder process 0 wrote to ``.run_dir/path``,
     simulates, and writes nothing (no folder of its own, no metadata, no config)."""
-    import microcircuit_lab.simulation.runner as runner_module
-    from microcircuit_lab.simulation.runner import Simulation
+    import microcircuit_lab.simulation as runner_module
+    from microcircuit_lab.simulation import Simulation
 
     class _SecondProcess(NestBackend):
         def num_processes(self):

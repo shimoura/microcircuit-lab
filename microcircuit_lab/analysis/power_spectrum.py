@@ -14,7 +14,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from microcircuit_lab.analysis.cache import load_or_compute
+from microcircuit_lab.analysis.measure_files import load_or_compute
 
 from .areas import select_populations
 from .plot_styles import (
@@ -26,7 +26,7 @@ from .plot_styles import (
     population_label,
     population_metadata,
 )
-from .registry import UNSET, register_plot
+from .run_command_plots import UNSET, register_plot
 
 PowerSpectrumEstimator = Callable[..., tuple[np.ndarray, np.ndarray]]
 
@@ -246,7 +246,7 @@ def cached_power_spectrum(
 ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
     """
     Like :func:`compute_power_spectrum`, but saved in the run folder and read
-    back the next time (see :mod:`microcircuit_lab.analysis.cache`).
+    back the next time (see :mod:`microcircuit_lab.analysis.measure_files`).
 
     The saved result does not know which settings it was computed with: pass
     ``recompute=True`` after changing them.

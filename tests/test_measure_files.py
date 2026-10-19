@@ -1,10 +1,10 @@
-"""Tests for saving/loading computed analysis results (analysis.cache)."""
+"""Tests for saving/loading computed analysis results (analysis/measure_files.py)."""
 
 from pathlib import Path
 
 import numpy as np
 
-from microcircuit_lab.analysis.cache import (
+from microcircuit_lab.analysis.measure_files import (
     load_measures,
     load_or_compute,
     save_measures,

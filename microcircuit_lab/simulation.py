@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
-from microcircuit_lab.backends.post_hoc import PostHocBackend
+from microcircuit_lab.backends.run_folder_reader import RunFolderReader
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import load_network
-from microcircuit_lab.runs import save_run_outputs, share_run_directory
+from microcircuit_lab.run_folder import save_run_outputs, share_run_directory
 from microcircuit_lab.yaml_files import read_yaml
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class Simulation:
         The run's ``config.yaml`` already holds the prepared network, so it is not
         prepared a second time (that would apply the scaling twice). The returned
         simulation reads its spikes from ``<run_dir>/recordings`` (a
-        ``PostHocBackend``), and its ``output_dir`` is ``run_dir``, so new plots
+        ``RunFolderReader``), and its ``output_dir`` is ``run_dir``, so new plots
         land in that run's ``plots/`` folder.
 
         Parameters
@@ -148,7 +148,7 @@ class Simulation:
         resolved = read_yaml(config_path)
         network = NetworkConfig.model_validate(resolved["network"])
         simulation_config = SimulationConfig.model_validate(resolved["simulation"])
-        backend = PostHocBackend(run_dir)
+        backend = RunFolderReader(run_dir)
 
         network_name, simulation_name, backend_name = run_dir.name, run_dir.name, "nest"
         metadata_path = run_dir / "metadata.json"
@@ -175,7 +175,7 @@ class Simulation:
 
         What is saved (recordings, the prepared config, metadata) is set by the
         ``recording`` and ``output`` sections of the simulation config; see
-        :func:`microcircuit_lab.runs.save_run_outputs`. ``output_dir`` points to the
+        :func:`microcircuit_lab.run_folder.save_run_outputs`. ``output_dir`` points to the
         run folder afterwards. With several MPI processes, only the first prints and
         saves; the others have ``is_main_process`` False.
         """

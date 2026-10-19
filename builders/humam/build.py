@@ -276,7 +276,7 @@ def _compute_missing_area_dc(
     if not other_areas:
         return {}
 
-    from microcircuit_lab.network.scaling import network_compensation_current
+    from microcircuit_lab.network.compensation import network_compensation_current
 
     compensation: dict[str, float] = {}
 

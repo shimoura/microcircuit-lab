@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt
 
-from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.distributions import PerNeuronValue
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class NeuronParams(BaseModel):
@@ -109,7 +109,7 @@ class NeuronConfig(FrozenConfig):
     It maps a name the conversion needs (``C_m``, ``tau_m``, ``tau_syn_ex``,
     ``tau_syn_in``) to what ``parameters`` calls it, for a model that names them
     differently. If empty, ``parameters`` uses those names. See
-    ``network.units.convert_psp_to_psc``.
+    ``network.psp_psc_conversion.convert_psp_to_psc``.
     """
 
     name: str

@@ -2,7 +2,7 @@
 Find the code of the project you run from: its builders and its analyses.
 
 :func:`discover_builders` finds what ``microcircuit-lab generate`` can run;
-:func:`microcircuit_lab.analysis.registry.discover_plots` finds the plots in
+:func:`microcircuit_lab.analysis.run_command_plots.discover_plots` finds the plots in
 ``analyses/``. Both import a folder of the project with
 :func:`import_folder_modules`.
 

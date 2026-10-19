@@ -1,8 +1,8 @@
 """
 NEST backend: creates and connects the network and runs the simulation.
 
-Weights, delays and per-neuron values are built in ``nest_parameters.py``;
-NEST's spike files are read in ``nest_files.py``, which does not import NEST.
+Weights, delays and per-neuron values are built in ``distributions.py``;
+NEST's spike files are read in ``spike_files.py``, which does not import NEST.
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from pathlib import Path
 import nest
 import numpy as np
 
-from microcircuit_lab.backends import nest_files, nest_parameters, spikes
+from microcircuit_lab.backends import population_spikes
+from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -169,7 +170,7 @@ class NestBackend:
 
         for values in (dict(pop_cfg.neuron.parameters), pop_cfg.initial_state):
             nodes.set(
-                {name: nest_parameters.per_neuron_value(value) for name, value in values.items()}
+                {name: distributions.per_neuron_value(value) for name, value in values.items()}
             )
 
     def create_synapse_models(self) -> None:
@@ -189,8 +190,8 @@ class NestBackend:
 
         bound_mode = self._network.bound_mode
         spec = {
-            "weight": nest_parameters.create_weight_spec(weight, bound_mode),
-            "delay": nest_parameters.create_delay_parameter(delay, bound_mode),
+            "weight": distributions.create_weight_spec(weight, bound_mode),
+            "delay": distributions.create_delay_parameter(delay, bound_mode),
         }
         if synapse is not None:
             spec["synapse_model"] = synapse
@@ -461,10 +462,10 @@ class NestBackend:
             return self._cached_spikes
 
         if self.spike_recorder is None:
-            self._cached_spikes = spikes.empty_spikes()
+            self._cached_spikes = population_spikes.empty_spikes()
         elif self.spike_recorder.get("record_to") == "ascii":
-            paths = nest_files.ascii_spike_files(self._recordings_dir)
-            self._cached_spikes = nest_files.read_ascii_spikes(paths)
+            paths = spike_files.ascii_spike_files(self._recordings_dir)
+            self._cached_spikes = spike_files.read_ascii_spikes(paths)
         else:
             self._cached_spikes = self._memory_spikes()
 
@@ -476,7 +477,7 @@ class NestBackend:
         events = self.spike_recorder.get("events")
         senders = np.asarray(events["senders"], dtype=int)
         times = np.asarray(events["times"], dtype=float)
-        return spikes.sort_by_sender(senders, times)
+        return population_spikes.sort_by_sender(senders, times)
 
     def get_spike_events(
         self,
@@ -491,7 +492,7 @@ class NestBackend:
 
         senders, times = self._load_spikes()
         node_ids = self.get_population(population).tolist()
-        return spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
+        return population_spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
@@ -525,5 +526,5 @@ class NestBackend:
         path = recordings_dir / "spikes.csv"
 
         senders, times = self._memory_spikes()
-        nest_files.write_csv_spikes(path, senders, times)
+        spike_files.write_csv_spikes(path, senders, times)
         return path

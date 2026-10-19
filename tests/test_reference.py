@@ -3,8 +3,7 @@ import pytest
 
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.quantities import (
+from microcircuit_lab.network.mean_input import (
     background_indegrees,
     background_weights,
     full_mean_rates,
@@ -12,6 +11,7 @@ from microcircuit_lab.network.quantities import (
     full_num_synapses,
     indegree_matrix,
 )
+from microcircuit_lab.network.prepare import prepare_network
 
 
 def test_reference_matrices():

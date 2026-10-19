@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
 class ScalingConfig(FrozenConfig):
