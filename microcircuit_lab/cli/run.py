@@ -128,7 +128,10 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
 
     if args.run_dir is not None:
-        simulation = Simulation.from_run_dir(args.run_dir)
+        try:
+            simulation = Simulation.from_run_dir(args.run_dir)
+        except (FileNotFoundError, ValueError) as error:
+            sys.exit(str(error))
         network_name = simulation.network_name
     else:
         backend_options = (

@@ -196,7 +196,7 @@ neurons:
     psp_conversion_aliases: {C_m: Cm, tau_m: tau_membrane, tau_syn_ex: tau_exc, tau_syn_in: tau_inh}
 ```
 
-- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`.
+- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the PSP conversion and the scaling compensation use that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
 
 ### Connection rules and synapses

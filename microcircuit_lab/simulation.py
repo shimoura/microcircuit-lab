@@ -131,6 +131,8 @@ class Simulation:
 
         Raises
         ------
+        FileNotFoundError
+            If ``run_dir`` does not exist.
         ValueError
             If the run has no ``config.yaml`` (it was saved with
             ``save_config: false``), or its ``metadata.json`` lacks the
@@ -138,11 +140,13 @@ class Simulation:
         """
 
         run_dir = Path(run_dir)
+        if not run_dir.is_dir():
+            raise FileNotFoundError(f"No run folder at {run_dir}.")
         config_path = run_dir / "config.yaml"
         if not config_path.exists():
             raise ValueError(
-                f"No config.yaml in {run_dir} -- was this run saved with "
-                "output.save_config=False? Simulation.from_run_dir needs it."
+                f"No config.yaml in {run_dir}: the run was saved with "
+                "output.save_config: false, so it cannot be re-plotted."
             )
 
         resolved = read_yaml(config_path)

@@ -38,3 +38,10 @@ def test_missing_network_names_the_folder_and_the_networks_next_to_it(tmp_path):
         read_network_files(tmp_path / "toyy")
     assert f"No network at {tmp_path / 'toyy'} (no network.yaml)." in str(error.value)
     assert f"Networks in {tmp_path}: toy" in str(error.value)
+
+
+def test_a_missing_run_folder_exits_with_one_line(tmp_path):
+    from microcircuit_lab.cli import run
+
+    with pytest.raises(SystemExit, match="No run folder at"):
+        run.main(["--run-dir", str(tmp_path / "missing")])
