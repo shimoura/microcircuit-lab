@@ -40,8 +40,7 @@ class NeuronParams(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="allow")
 
-    I_e: float = 0.0
-
+    I_e: float = Field(default=0.0, description="constant input current (pA)")
     @model_validator(mode="after")
     def _check_extra_params_are_numeric(self) -> "NeuronParams":
         non_numeric = {
@@ -77,9 +76,14 @@ class NeuronEntry(FrozenConfig):
     """One entry of ``neurons.yaml`` (the file key is the neuron's name)."""
 
     model: str = Field(
-        description="the simulator's neuron model name, e.g. iaf_psc_exp"
+        examples=["iaf_psc_exp"],
+        description="the simulator's neuron model name, e.g. iaf_psc_exp",
     )
     parameters: NeuronParams = Field(
+        examples=[
+            {"C_m": 250.0, "tau_m": 10.0, "tau_syn_ex": 0.5, "tau_syn_in": 0.5,
+             "E_L": -65.0, "V_th": -50.0, "V_reset": -65.0, "t_ref": 2.0}
+        ],
         description="parameters passed to that model as-is; keys are "
         "model-specific and the backend validates them (I_e defaults to 0.0)"
     )
@@ -93,7 +97,9 @@ class NeuronEntry(FrozenConfig):
 class NeuronsFile(FrozenConfig):
     """``neurons.yaml``."""
 
-    neurons: dict[str, NeuronEntry]
+    neurons: dict[str, NeuronEntry] = Field(
+        description="one entry per neuron, keyed by any name; populations refer to it by that name",
+    )
 
 
 class NeuronConfig(FrozenConfig):

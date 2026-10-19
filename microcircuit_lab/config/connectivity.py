@@ -37,9 +37,11 @@ class WeightDistribution(FrozenConfig):
       adding new conversion code, only picking the right unit.
     """
 
-    mean: float = Field(description="amplitude; its meaning is set by `unit`")
-
-    rel_std: float = Field(ge=0.0, description="standard deviation / |mean|")
+    mean: float = Field(
+        examples=[0.15],
+        description="amplitude, in the unit set by `unit`; a negative weight is inhibitory",
+    )
+    rel_std: float = Field(ge=0.0, examples=[0.1], description="standard deviation / |mean|")
 
     # To add a distribution: list it here (and in DelayDistribution below if it
     # applies to delays) and draw it in NestBackend.create_weight_spec /
@@ -48,26 +50,30 @@ class WeightDistribution(FrozenConfig):
         "normal",
         "lognormal",
         "fixed",
-    ] = Field(default="normal", description="normal | lognormal | fixed")
+    ] = Field(default="normal", description="how each weight is drawn")
 
     unit: Literal[
         "PSC",
         "PSP",
         "native",
-    ] = Field(description="PSP (mV, converted) | PSC (pA, as-is) | native (as-is)")
+    ] = Field(
+        examples=["PSP"],
+        description="PSP: mV, converted to pA; PSC: pA, used as given; native: used as given (e.g. nS)",
+    )
 
 
 class DelayDistribution(FrozenConfig):
     """Distribution describing synaptic delays."""
 
-    mean: float = Field(gt=0.0, description="mean delay (ms)")
-    rel_std: float = Field(ge=0.0, description="standard deviation / mean")
+    mean: float = Field(gt=0.0, examples=[1.5], description="mean delay (ms)")
+    rel_std: float = Field(ge=0.0, examples=[0.5], description="standard deviation / mean")
     distribution: Literal["normal", "lognormal", "fixed"] = Field(
-        default="normal", description="normal | lognormal | fixed"
+        default="normal", description="how each delay is drawn"
     )
     minimum: float | None = Field(
         default=None,
         gt=0.0,
+        examples=[0.1],
         description="smallest allowed delay (ms) of a drawn delay, never below half the "
         "simulation step; omit for half the simulation step",
     )
@@ -76,11 +82,13 @@ class DelayDistribution(FrozenConfig):
 class ConnectionConfig(FrozenConfig):
     """Description of one projection between two populations."""
 
-    source: str = Field(description="source population name")
-    target: str = Field(description="target population name")
-    n_synapses: int = Field(ge=0, description="total number of synapses in the projection")
-    weight: WeightDistribution
-    delay: DelayDistribution
+    source: str = Field(examples=["L4_E"], description="source population name")
+    target: str = Field(examples=["L23_E"], description="target population name")
+    n_synapses: int = Field(
+        ge=0, examples=[1440000], description="total number of synapses in the projection"
+    )
+    weight: WeightDistribution = Field(description="weight of each synapse")
+    delay: DelayDistribution = Field(description="delay of each synapse")
 
 
 class ConnectivityFile(FrozenConfig):
@@ -88,11 +96,13 @@ class ConnectivityFile(FrozenConfig):
 
     Each row is a :class:`ConnectionConfig` -- already the on-disk shape:
     string ``source``/``target`` names, ``n_synapses`` (int >= 0), and a
-    ``weight`` / ``delay`` distribution (see ``config/network.py`` for
-    those fields). Omit a pair entirely rather than writing ``n_synapses: 0``.
+    ``weight`` / ``delay`` distribution (above). Omit a pair entirely rather than writing ``n_synapses: 0``.
     """
 
-    connections: list[ConnectionConfig]
+    connections: list[ConnectionConfig] = Field(
+        description="one entry per (source, target) pair; leave a pair out rather than "
+        "writing n_synapses: 0"
+    )
     bound_mode: Literal["redraw", "clip"] = Field(
         default="redraw",
         description="what to do with a drawn weight or delay outside its allowed "

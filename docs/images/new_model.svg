@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="414" viewBox="0 0 900 414" role="img" aria-label="Two ways to add a model: write the YAML files, or write a builder that writes them">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#59636e"/></marker></defs>
+<rect width="900" height="414" rx="12" fill="#f6f8fa"/>
+<text x="20" y="38" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#1a5fb4" text-anchor="start" xml:space="preserve">A. Write the YAML yourself</text>
+<text x="20" y="58" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">for a new idea, or a small model</text>
+<rect x="20" y="74" width="420" height="58" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="32" y="97" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">configs/network/my_model/</text>
+<text x="32" y="118" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">a copy of configs/network/toy/ to start from</text>
+<path d="M50 132 L50 158" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<rect x="20" y="158" width="420" height="58" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="32" y="181" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">configs/network/my_model/*.yaml</text>
+<text x="32" y="202" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">edit it; every field: docs/config_files.md</text>
+<text x="460" y="38" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#1a5fb4" text-anchor="start" xml:space="preserve">B. Write a builder</text>
+<text x="460" y="58" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">when the parameters come from data</text>
+<rect x="460" y="74" width="420" height="58" rx="8" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="472" y="97" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">$ microcircuit-lab new-builder my_model</text>
+<text x="472" y="118" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">creates builders/my_model/, with a working example</text>
+<path d="M490 132 L490 158" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<rect x="460" y="158" width="420" height="58" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="472" y="181" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">builders/my_model/__init__.py</text>
+<text x="472" y="202" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">put your data in; write_network_directory(...)</text>
+<path d="M490 216 L490 242" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<rect x="460" y="242" width="420" height="58" rx="8" fill="#ffffff" stroke="#1f2328" stroke-width="1.2"/>
+<text x="472" y="265" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">$ microcircuit-lab generate my_model</text>
+<text x="472" y="286" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">writes configs/network/my_model/</text>
+<path d="M230 216 L360 335" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<path d="M670 300 L540 335" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<rect x="230" y="336" width="440" height="58" rx="8" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
+<text x="242" y="359" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">$ microcircuit-lab run --network my_model</text>
+<text x="242" y="380" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">checks the files, simulates, saves output/my_model/&lt;date_time&gt;/</text>
+</svg>

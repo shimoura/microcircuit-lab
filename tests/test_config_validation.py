@@ -152,6 +152,15 @@ def test_validate_catches_a_connection_to_an_undefined_population(network_dir: P
         load_network(network_dir)
 
 
+def test_validate_catches_two_entries_for_the_same_pair(network_dir: Path) -> None:
+    _edit_yaml(
+        network_dir / "connectivity.yaml",
+        lambda d: d["connections"].append(d["connections"][0]),
+    )
+    with pytest.raises(ValueError, match="more than one entry"):
+        load_network(network_dir)
+
+
 def test_validate_catches_a_background_input_for_an_undefined_population(
     network_dir: Path,
 ) -> None:

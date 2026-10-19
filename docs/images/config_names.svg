@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="564" viewBox="0 0 880 564" role="img" aria-label="The config files of a network refer to each other by name">
+<rect width="880" height="564" rx="12" fill="#f6f8fa"/>
+<text x="20" y="36" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328">Files refer to each other <tspan font-weight="700">by name</tspan>. Same color = same name:</text>
+<text x="20" y="60" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328"><tspan fill="#1a5fb4" font-weight="700">E, I</tspan> population names   ·   <tspan fill="#c64600" font-weight="700">excitatory, inhibitory</tspan> neuron names</text>
+<rect x="20" y="90" width="266.667" height="217" rx="8" fill="#ffffff" stroke="#c64600" stroke-width="2.5"/>
+<path d="M20 142h266.667" stroke="#c64600" stroke-width="1"/>
+<text x="34" y="112" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">neurons.yaml</text>
+<text x="34" y="131" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#c64600">defines the neuron names</text>
+<text x="34" y="164" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">neurons:</text>
+<text x="34" y="185" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  <tspan fill="#c64600" font-weight="700">excitatory</tspan>:</text>
+<text x="34" y="206" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    model: iaf_psc_exp</text>
+<text x="34" y="227" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    parameters: …</text>
+<text x="34" y="248" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  <tspan fill="#c64600" font-weight="700">inhibitory</tspan>:</text>
+<text x="34" y="269" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    model: iaf_psc_exp</text>
+<text x="34" y="290" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    parameters: …</text>
+<rect x="306.667" y="90" width="266.667" height="217" rx="8" fill="#ffffff" stroke="#1a5fb4" stroke-width="2.5"/>
+<path d="M306.667 142h266.667" stroke="#1a5fb4" stroke-width="1"/>
+<text x="320.667" y="112" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">populations.yaml</text>
+<text x="320.667" y="131" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#1a5fb4">defines the population names</text>
+<text x="320.667" y="164" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">populations:</text>
+<text x="320.667" y="185" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  - name: <tspan fill="#1a5fb4" font-weight="700">E</tspan></text>
+<text x="320.667" y="206" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    size: 800</text>
+<text x="320.667" y="227" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    neuron: <tspan fill="#c64600" font-weight="700">excitatory</tspan></text>
+<text x="320.667" y="248" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  - name: <tspan fill="#1a5fb4" font-weight="700">I</tspan></text>
+<text x="320.667" y="269" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    size: 200</text>
+<text x="320.667" y="290" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    neuron: <tspan fill="#c64600" font-weight="700">inhibitory</tspan></text>
+<rect x="593.333" y="90" width="266.667" height="217" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<path d="M593.333 142h266.667" stroke="#8c959f" stroke-width="1"/>
+<text x="607.333" y="112" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">connectivity.yaml</text>
+<text x="607.333" y="131" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#59636e">uses population names</text>
+<text x="607.333" y="164" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">connections:</text>
+<text x="607.333" y="185" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  - source: <tspan fill="#1a5fb4" font-weight="700">E</tspan></text>
+<text x="607.333" y="206" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    target: <tspan fill="#1a5fb4" font-weight="700">I</tspan></text>
+<text x="607.333" y="227" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    n_synapses: 64000</text>
+<text x="607.333" y="248" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    weight: …</text>
+<text x="607.333" y="269" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    delay: …</text>
+<rect x="20" y="327" width="266.667" height="217" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<path d="M20 379h266.667" stroke="#8c959f" stroke-width="1"/>
+<text x="34" y="349" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">background_inputs.yaml</text>
+<text x="34" y="368" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#59636e">uses population names</text>
+<text x="34" y="401" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">background_inputs:</text>
+<text x="34" y="422" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  <tspan fill="#1a5fb4" font-weight="700">E</tspan>:</text>
+<text x="34" y="443" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    rate: 8.0</text>
+<text x="34" y="464" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    weight: …</text>
+<text x="34" y="485" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  <tspan fill="#1a5fb4" font-weight="700">I</tspan>:</text>
+<text x="34" y="506" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    rate: 8.0</text>
+<text x="34" y="527" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    weight: …</text>
+<rect x="306.667" y="327" width="266.667" height="217" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<path d="M306.667 379h266.667" stroke="#8c959f" stroke-width="1"/>
+<text x="320.667" y="349" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">stimuli.yaml</text>
+<text x="320.667" y="368" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#59636e">uses population names</text>
+<text x="320.667" y="401" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">stimuli:</text>
+<text x="320.667" y="422" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  - type: dc</text>
+<text x="320.667" y="443" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    targets: [<tspan fill="#1a5fb4" font-weight="700">E</tspan>]</text>
+<text x="320.667" y="464" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    amplitude: 200.0</text>
+<text x="320.667" y="485" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    start: 500.0</text>
+<text x="320.667" y="506" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    stop: 600.0</text>
+<rect x="593.333" y="327" width="266.667" height="217" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<path d="M593.333 379h266.667" stroke="#8c959f" stroke-width="1"/>
+<text x="607.333" y="349" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">reference.yaml</text>
+<text x="607.333" y="368" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#59636e">uses population names</text>
+<text x="607.333" y="401" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">full_mean_rates:</text>
+<text x="607.333" y="422" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  <tspan fill="#1a5fb4" font-weight="700">E</tspan>: 20.0</text>
+<text x="607.333" y="443" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">  <tspan fill="#1a5fb4" font-weight="700">I</tspan>: 20.0</text>
+</svg>

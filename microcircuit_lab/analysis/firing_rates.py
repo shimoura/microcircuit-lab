@@ -11,7 +11,6 @@ import numpy as np
 from microcircuit_lab.analysis.cache import load_or_compute
 
 from .areas import select_populations
-from .registry import UNSET
 from .plot_styles import (
     DEFAULT_FIRING_RATE_CONFIG,
     DEFAULT_PLOT_STYLE,
@@ -290,7 +289,7 @@ def plot_firing_rates(
     *,
     populations: Sequence[str] | None = None,
     area: str | None = None,
-    show_reference: bool = UNSET,
+    show_reference: bool = False,
     style: PlotStyle | None = None,
     config: FiringRatePlotConfig | None = None,
     save_path: str | Path | None = None,
@@ -311,7 +310,7 @@ def plot_firing_rates(
     area
         For a multi-area network, use only the populations of this area.
     show_reference
-        Overlay the reference rates; by default as set in ``config``.
+        Overlay the reference rates (``reference.yaml``) as markers.
     style
         The shared plot style (:class:`~microcircuit_lab.config.PlotStyle`).
     config
@@ -331,8 +330,6 @@ def plot_firing_rates(
     """
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_FIRING_RATE_CONFIG
-    if show_reference is UNSET:
-        show_reference = config.show_reference
     rates = compute_neuron_firing_rates(
         simulation, begin, end, populations=populations, area=area
     )

@@ -40,7 +40,7 @@ A new concept touches every step and raises scientific questions to answer befor
 
 ### Recipes
 
-Click the kind of change. Each recipe ends with a test and a line in the README.
+Click the kind of change. Each recipe ends with a test and a line in the README. A change in `config/` also needs `python docs/write_config_files.py`, which rewrites [docs/config_files.md](docs/config_files.md); a test fails until you do.
 
 <details>
 <summary><b>A stimulus type</b></summary>
@@ -148,7 +148,7 @@ When a stimulus `type` or a `distribution` is not known, the error message point
 ## Code style
 
 - Use plain names close to the papers and reference codes (`N_scaling`, `K_ext`, `tau_syn_ex`), no extra layers, no logic written twice.
-- Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks.
+- Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks, together with a `description` (with its unit) and, for a required field, `examples=[...]`: [docs/config_files.md](docs/config_files.md) is written from them.
 - Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `runs.register_artifact`, `network/units.py`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
 - Keep the field names of the config models stable (`populations`, `size`, `background_indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason.

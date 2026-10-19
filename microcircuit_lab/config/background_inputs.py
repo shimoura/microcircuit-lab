@@ -21,9 +21,11 @@ class BackgroundInputConfig(FrozenConfig):
     time-limited experimental perturbations instead.
     """
 
-    rate: float = Field(ge=0.0, description="background Poisson rate per connection (spikes/s)")
-    weight: WeightDistribution
-    delay: DelayDistribution
+    rate: float = Field(
+        ge=0.0, examples=[8.0], description="background Poisson rate per connection (spikes/s)"
+    )
+    weight: WeightDistribution = Field(description="weight of each background connection")
+    delay: DelayDistribution = Field(description="delay of each background connection")
 
 
 class BackgroundInputsFile(FrozenConfig):
@@ -33,7 +35,9 @@ class BackgroundInputsFile(FrozenConfig):
     ``weight`` / ``delay`` with the same shape as in ``connectivity.yaml``).
     """
 
-    background_inputs: dict[str, BackgroundInputConfig]
+    background_inputs: dict[str, BackgroundInputConfig] = Field(
+        description="one entry per population, keyed by its name; a population left out gets none",
+    )
     background_mode: Literal["poisson", "dc"] = Field(
         default="poisson",
         description="'dc' replaces the Poisson drive network-wide with a "

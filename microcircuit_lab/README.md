@@ -42,13 +42,7 @@ simulation.run()
 
 ## How it works
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
-flowchart TD
-  D["your data"] -->|builder| F["configs/network/&lt;name&gt;/<br/>YAML files"]
-  F -->|"microcircuit-lab run"| S["check, prepare,<br/>simulate in NEST"]
-  S --> R["output/&lt;name&gt;/&lt;timestamp&gt;/<br/>spikes, config, plots"]
-```
+![What you write, what the core does when you run it, and what you get](../docs/images/how_it_works.svg)
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
@@ -137,7 +131,7 @@ configs/
 └── analysis/<name>.yaml         optional: which plots, time window, style
 ```
 
-- **The fields** of each file are listed in its module in `microcircuit_lab/config/` (`populations.yaml` → `config/populations.py`), with types, limits and defaults. `configs/network/toy/` is a small working example to copy.
+- **The fields** of every file, with units, limits and defaults: [docs/config_files.md](../docs/config_files.md), one commented example per file. `configs/network/toy/` is a small working example to copy.
 - **Checks.** A mistake fails at once, naming the file and the field:
   ```text
   populations.yaml: populations.0.size: Input should be greater than 0
@@ -164,7 +158,7 @@ stimuli:
     delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
 ```
 
-- Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). `config/stimuli.py` lists their fields.
+- Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). [docs/config_files.md](../docs/config_files.md#stimuliyaml) lists their fields.
 - Stimuli are applied exactly as written: not scaled, not compensated.
 - Add `stimuli: stimuli.yaml` to `network.yaml`. A runnable example: `microcircuit-lab run --network toy_stimulated`.
 
@@ -228,13 +222,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 
 ## Adding a new model
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
-flowchart LR
-  A["Option A:<br/>copy configs/network/toy/<br/>and edit the YAML"] --> F["configs/network/&lt;model&gt;/"]
-  B["Option B:<br/>a builder turns your data<br/>into the files"] --> F
-  F --> R["microcircuit-lab run --network &lt;model&gt;"]
-```
+![Two ways to add a model: write the YAML files, or write a builder that writes them](../docs/images/new_model.svg)
 
 The core never changes for a new model.
 
@@ -291,6 +279,8 @@ microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 ```
 
 `--run-dir` takes the same flags as `--network`. The plots go back into the run's `plots/`.
+
+Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
 
 ### Use the bundled functions
 

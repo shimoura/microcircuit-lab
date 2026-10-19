@@ -3,8 +3,7 @@
 # assuming iaf_psc_exp neurons. If your neuron model has no PSP
 # conversion formula (e.g. conductance-based), set weight.unit to PSC
 # (already a current amplitude in pA) or native (used exactly as given,
-# no interpretation) instead; see WeightDistribution in
-# microcircuit_lab/config/connectivity.py.
+# no interpretation) instead; see the core's docs/config_files.md.
 connections:
 
   - source: E
@@ -62,8 +61,7 @@ connections:
   # E_adex/I_adex use aeif_cond_exp, a conductance-based model with no
   # PSP-to-PSC conversion implemented, so their weights are unit: native:
   # NEST reads them directly as synaptic conductances (nS). The sign
-  # still selects excitatory vs inhibitory (see WeightDistribution in
-  # microcircuit_lab/config/connectivity.py).
+  # still selects excitatory vs inhibitory.
   #
   # 0.6 nS excitatory / -2.4 nS inhibitory (same 4x ratio as E/I above)
   # is sized, not guessed: for a Poisson drive at rate R (Hz) with

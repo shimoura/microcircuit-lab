@@ -5,8 +5,7 @@
 # (already a current amplitude in pA) or native (used exactly as given,
 # no interpretation) instead. A distribution is optional (default: normal).
 #
-# Fields: ConnectionConfig / WeightDistribution / DelayDistribution in
-# microcircuit_lab/config/connectivity.py.
+# All fields: the core's docs/config_files.md.
 connections:
 
   - source: E

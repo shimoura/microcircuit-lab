@@ -77,6 +77,8 @@ def _fake_clone(monkeypatch):
         (core / "microcircuit_lab").mkdir()
         (core / "microcircuit_lab" / "__init__.py").write_text("core code")
         (core / "pyproject.toml").write_text("[project]")
+        (core / "docs").mkdir()
+        (core / "docs" / "config_files.md").write_text("fields")
         (core / "tests").mkdir()
         (core / "builders" / "demo").mkdir(parents=True)
         (core / "builders" / "__init__.py").write_text("")
@@ -99,7 +101,7 @@ def test_with_core_copies_the_core_without_its_git_history(tmp_path, monkeypatch
     core = tmp_path / init.CORE_FOLDER
     assert (core / "microcircuit_lab" / "__init__.py").read_text() == "core code"
     assert (core / "pyproject.toml").is_file()
-    assert sorted(p.name for p in core.iterdir()) == ["microcircuit_lab", "pyproject.toml"]
+    assert sorted(p.name for p in core.iterdir()) == ["docs", "microcircuit_lab", "pyproject.toml"]
 
 
 def test_with_core_keeps_an_existing_copy(tmp_path, monkeypatch, capsys):

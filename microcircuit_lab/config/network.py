@@ -25,16 +25,18 @@ from microcircuit_lab.config.stimuli import StimuliFile, StimulusConfig
 class NetworkManifest(FrozenConfig):
     """``network.yaml`` -- maps each part of the network to its file name."""
 
-    populations: str = Field(description="file holding the populations list")
-    neurons: str = Field(description="file holding the neuron definitions")
-    connectivity: str = Field(description="file holding the connection list")
+    populations: str = Field(examples=["populations.yaml"], description="file holding the populations list")
+    neurons: str = Field(examples=["neurons.yaml"], description="file holding the neuron definitions")
+    connectivity: str = Field(examples=["connectivity.yaml"], description="file holding the connection list")
     background_inputs: str = Field(
+        examples=["background_inputs.yaml"],
         description="file holding the background-input entries"
     )
-    scaling: str = Field(description="file holding the scaling parameters")
-    reference: str = Field(description="file holding the reference rates")
+    scaling: str = Field(examples=["scaling.yaml"], description="file holding the scaling parameters")
+    reference: str = Field(examples=["reference.yaml"], description="file holding the reference rates")
     stimuli: str | None = Field(
         default=None,
+        examples=["stimuli.yaml"],
         description="file holding targeted stimuli; omit the key for none",
     )
 
@@ -104,4 +106,18 @@ class NetworkConfig(FrozenConfig):
                     f"Stimulus of type {stimulus.type!r} targets unknown "
                     f"population(s): {unknown}."
                 )
+        return self
+
+    @model_validator(mode="after")
+    def _check_one_connection_per_pair(self) -> "NetworkConfig":
+        # The scaling compensation keeps one number per (source, target), so a
+        # second entry for the same pair would be simulated but not compensated.
+        pairs = [(c.source, c.target) for c in self.connections]
+        repeated = sorted({pair for pair in pairs if pairs.count(pair) > 1})
+        if repeated:
+            raise ValueError(
+                f"connectivity.yaml has more than one entry for (source, target) {repeated}. "
+                "Each pair takes one entry: several synapse models, receptors or connection "
+                "rules for the same pair are not supported yet."
+            )
         return self
