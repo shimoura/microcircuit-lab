@@ -347,3 +347,43 @@ def test_post_hoc_backend_reads_consolidated_spikes(tmp_path: Path) -> None:
     assert len(post_i_spikes["times"]) == len(live_i_spikes["times"])
     np.testing.assert_array_equal(post_e_spikes["senders"], live_e_spikes["senders"])
     np.testing.assert_array_equal(post_e_spikes["times"], live_e_spikes["times"])
+
+
+
+def test_only_the_first_mpi_process_saves(tmp_path: Path, monkeypatch) -> None:
+    """A second MPI process takes the run folder process 0 wrote to ``.run_dir/path``,
+    simulates, and writes nothing (no folder of its own, no metadata, no config)."""
+    import microcircuit_lab.simulation.runner as runner_module
+    from microcircuit_lab.simulation.runner import Simulation
+
+    class _SecondProcess(NestBackend):
+        def num_processes(self):
+            return 2
+
+        def rank(self):
+            return 1
+
+        def sync_processes(self):
+            pass
+
+    base = tmp_path / "output"
+    shared_dir = base / "chosen_by_process_0"
+    shared_dir.mkdir(parents=True)
+    (base / ".run_dir").mkdir()
+    (base / ".run_dir" / "path").write_text(str(shared_dir))
+    monkeypatch.setattr(runner_module, "get_backend", lambda name: _SecondProcess)
+    simulation_config = SimulationConfig.model_validate(
+        {
+            "t_sim": 50.0,
+            "print_time": False,
+            "output": {"output_dir": str(base), "overwrite": False},
+        }
+    )
+    sim = Simulation(network=_toy_network(), simulation_config=simulation_config)
+    sim.run()
+
+    assert not sim.is_main_process
+    assert sim.output_dir == shared_dir
+    assert sorted(path.name for path in base.iterdir()) == [".run_dir", "chosen_by_process_0"]
+    assert not (shared_dir / "metadata.json").exists()
+    assert not (shared_dir / "config.yaml").exists()

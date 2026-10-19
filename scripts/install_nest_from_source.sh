@@ -5,8 +5,9 @@ set -euo pipefail
 python -m venv .venv
 source .venv/bin/activate
 
-# Install NEST from source
+# Install NEST from source; NEST_WITH_MPI=ON for several MPI processes
 NEST_VERSION="${NEST_VERSION:-v3.10}"
+NEST_WITH_MPI="${NEST_WITH_MPI:-OFF}"
 
 git clone https://github.com/nest/nest-simulator.git --single-branch --branch "$NEST_VERSION" --depth 1
 pip install -r nest-simulator/requirements_pynest.txt
@@ -15,7 +16,7 @@ mkdir build_dir
 cd build_dir
 
 cmake -Dwith-ltdl=ON \
-      -Dwith-mpi=OFF \
+      -Dwith-mpi="$NEST_WITH_MPI" \
       -Dwith-boost=ON \
       ../nest-simulator
 

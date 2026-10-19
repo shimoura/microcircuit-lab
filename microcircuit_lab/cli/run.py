@@ -137,6 +137,9 @@ def main(argv: list[str] | None = None) -> None:
             backend_options=backend_options,
         )
         simulation.run()
+        # With MPI, the first process alone plots.
+        if not simulation.is_main_process:
+            return
         network_name = args.network
 
     analysis_config = AnalysisConfig.from_yaml(

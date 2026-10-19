@@ -23,7 +23,7 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 
 from microcircuit_lab.yaml_files import read_yaml
-from microcircuit_lab.runs import resolve_run_directory, save_run_outputs
+from microcircuit_lab.runs import save_run_outputs, share_run_directory
 
 from pathlib import Path
 
@@ -51,6 +51,8 @@ class Simulation:
         self.simulation_name = simulation_name
         self.backend: SimulationBackend | None = None
         self.output_dir: Path | None = None
+        # False on every MPI process but the first, which alone saves and plots.
+        self.is_main_process = True
 
     @classmethod
     def from_yaml(
@@ -178,7 +180,8 @@ class Simulation:
         What is saved (recordings, the prepared config, metadata) is set by the
         ``recording`` and ``output`` sections of the simulation config; see
         :func:`microcircuit_lab.runs.save_run_outputs`. ``output_dir`` points to the
-        run folder afterwards.
+        run folder afterwards. With several MPI processes, only the first prints and
+        saves; the others have ``is_main_process`` False.
         """
 
         backend_class = get_backend(self.backend_name)
@@ -187,17 +190,24 @@ class Simulation:
             simulation_config=self.simulation_config,
             **(self.backend_options or {}),
         )
-
-        self.output_dir = resolve_run_directory(
+        self.is_main_process = self.backend.rank() == 0
+        self.output_dir = share_run_directory(
             self.simulation_config.output,
             network_name=self.network_name,
             simulation_name=self.simulation_name,
+            backend=self.backend,
         )
         self.backend.prepare_output(self.output_dir)
 
         self.backend.build()
 
         self.backend.simulate()
+
+        # Each process writes its own recording files; they are complete only
+        # once every process has finished simulating.
+        self.backend.sync_processes()
+        if not self.is_main_process:
+            return
 
         self.backend.print_statistics()
 

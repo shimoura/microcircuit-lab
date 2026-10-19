@@ -130,6 +130,15 @@ class PostHocBackend:
             "times": sorted_times[left:right],
         }
 
+    def num_processes(self) -> int:
+        return 1
+
+    def rank(self) -> int:
+        return 0
+
+    def sync_processes(self) -> None:
+        pass
+
     def prepare_output(self, run_dir: Path) -> None:
         raise NotImplementedError("PostHocBackend is read-only; it replays a finished run.")
 

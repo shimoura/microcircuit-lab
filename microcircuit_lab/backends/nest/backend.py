@@ -60,6 +60,15 @@ class NestBackend:
         self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
+    def num_processes(self) -> int:
+        return nest.NumProcesses()
+
+    def rank(self) -> int:
+        return nest.Rank()
+
+    def sync_processes(self) -> None:
+        nest.SyncProcesses()
+
     def prepare_output(self, run_dir: Path) -> None:
         """
         Point NEST's own ascii recording backend at ``run_dir/recordings``.

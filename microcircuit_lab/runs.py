@@ -8,7 +8,10 @@ contract, never on a specific backend, so it works for any simulator.
 from __future__ import annotations
 
 import json
+import logging
+import shutil
 import subprocess
+import time
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -17,6 +20,81 @@ from microcircuit_lab.backends.base import SimulationBackend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.yaml_files import flow_records, write_yaml
+
+logger = logging.getLogger(__name__)
+
+# A .run_dir older than this was left by a run that crashed.
+STALE_HANDOFF_SECONDS = 60.0
+
+
+def _base_directory(output: OutputConfig, network_name: str) -> Path:
+    return Path(output.output_dir) if output.output_dir else Path("output") / network_name
+
+
+def share_run_directory(
+    output: OutputConfig,
+    *,
+    network_name: str,
+    simulation_name: str,
+    backend: SimulationBackend,
+) -> Path:
+    """
+    The run folder, the same on every MPI process.
+
+    With ``overwrite: true`` the folder is fixed, so every process resolves it
+    itself. Otherwise process 0 resolves it (:func:`resolve_run_directory`) and
+    writes its path to ``<output_dir>/.run_dir/path``; the others read it there
+    once all processes have met, and process 0 then deletes ``.run_dir``. The
+    simulator provides the meeting point, so no MPI package for Python is needed.
+
+    ``.run_dir`` is made with ``mkdir``, which fails if it exists, also on network
+    file systems: a second run into the same ``output_dir`` waits until the first
+    has handed its folder over. One older than ``STALE_HANDOFF_SECONDS`` was left
+    by a crashed run and is replaced.
+    """
+
+    if backend.num_processes() == 1 or output.overwrite:
+        return resolve_run_directory(
+            output, network_name=network_name, simulation_name=simulation_name
+        )
+
+    handoff = _base_directory(output, network_name) / ".run_dir"
+    if backend.rank() == 0:
+        _claim(handoff)
+        run_dir = resolve_run_directory(
+            output, network_name=network_name, simulation_name=simulation_name
+        )
+        (handoff / "path").write_text(str(run_dir), encoding="utf-8")
+    backend.sync_processes()
+    run_dir = Path((handoff / "path").read_text(encoding="utf-8"))
+    backend.sync_processes()
+    if backend.rank() == 0:
+        shutil.rmtree(handoff)
+    return run_dir
+
+
+def _claim(handoff: Path) -> None:
+    """Make the folder ``handoff``, waiting while another run holds it."""
+
+    handoff.parent.mkdir(parents=True, exist_ok=True)
+    waited = False
+    while True:
+        try:
+            handoff.mkdir()
+            return
+        except FileExistsError:
+            try:
+                age = time.time() - handoff.stat().st_mtime
+            except FileNotFoundError:
+                continue
+            if age > STALE_HANDOFF_SECONDS:
+                logger.warning("Removing %s, left by a run that did not finish.", handoff)
+                shutil.rmtree(handoff, ignore_errors=True)
+                continue
+            if not waited:
+                logger.info("Waiting for another run to hand over its folder (%s).", handoff)
+                waited = True
+            time.sleep(0.1)
 
 
 def resolve_run_directory(
@@ -35,20 +113,23 @@ def resolve_run_directory(
     overwritten. Without an ``output_dir``, it is ``output/<network_name>``.
     """
 
-    base = Path(output.output_dir) if output.output_dir else Path("output") / network_name
-
+    base = _base_directory(output, network_name)
+    base.mkdir(parents=True, exist_ok=True)
     if output.overwrite:
-        run_dir = base
-    else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_dir = base / timestamp
-        suffix = 1
-        while run_dir.exists():
+        return base
+
+    # mkdir fails if the folder exists, so two runs started in the same second
+    # never share one.
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = base / timestamp
+    suffix = 1
+    while True:
+        try:
+            run_dir.mkdir()
+            return run_dir
+        except FileExistsError:
             run_dir = base / f"{timestamp}_{suffix}"
             suffix += 1
-
-    run_dir.mkdir(parents=True, exist_ok=True)
-    return run_dir
 
 
 def save_run_config(
