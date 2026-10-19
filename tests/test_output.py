@@ -351,7 +351,7 @@ def test_post_hoc_backend_reads_consolidated_spikes(tmp_path: Path) -> None:
 
 
 def test_only_the_first_mpi_process_saves(tmp_path: Path, monkeypatch) -> None:
-    """A second MPI process takes the run folder process 0 wrote to ``.run_dir``,
+    """A second MPI process takes the run folder process 0 wrote to ``.run_dir/path``,
     simulates, and writes nothing (no folder of its own, no metadata, no config)."""
     import microcircuit_lab.simulation.runner as runner_module
     from microcircuit_lab.simulation.runner import Simulation
@@ -369,7 +369,8 @@ def test_only_the_first_mpi_process_saves(tmp_path: Path, monkeypatch) -> None:
     base = tmp_path / "output"
     shared_dir = base / "chosen_by_process_0"
     shared_dir.mkdir(parents=True)
-    (base / ".run_dir").write_text(str(shared_dir))
+    (base / ".run_dir").mkdir()
+    (base / ".run_dir" / "path").write_text(str(shared_dir))
     monkeypatch.setattr(runner_module, "get_backend", lambda name: _SecondProcess)
     simulation_config = SimulationConfig.model_validate(
         {
