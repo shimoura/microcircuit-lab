@@ -9,15 +9,19 @@ Writes the network files of the Potjans & Diesmann (2014) cortical microcircuit.
 
 ## Generate and run
 
-The bundled `configs/network/pd14/` and `configs/network/pd14_dc/` were written by this builder. Write them again after changing `data.py`:
+The bundled `configs/network/pd14/` was written by this builder. Write it again after changing `data.py`:
 
 ```bash
 microcircuit-lab generate pd14
-microcircuit-lab generate pd14 --network-name pd14_dc --background-mode dc
 microcircuit-lab run --network pd14
 ```
 
-`--background-mode dc` replaces the Poisson background by a constant current of the same mean (the comparison of the publication's Fig. 5).
+For the publication's Fig. 5, which replaces the Poisson background by a constant current of the same mean, write a second network:
+
+```bash
+microcircuit-lab generate pd14 --network-name pd14_dc --background-mode dc
+microcircuit-lab run --network pd14_dc
+```
 
 The full network has 77,169 neurons and about 300 million synapses; building it needs about 15 GB of memory. For a quick check, set `N_scaling` and `K_scaling` below 1 in `configs/network/pd14/scaling.yaml` (see "Scaling a network" in `microcircuit_lab/README.md`).
 

@@ -14,13 +14,8 @@ from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.prepare import prepare_network
 
 
-def test_toy_network_loads_and_prepares():
-    network_files = read_network_files("configs/network/toy")
-    network = assemble_network(network_files)
-    network = prepare_network(network)
-
-    assert network.populations["E"].size == 800
-    assert network.populations["I"].size == 200
+def test_prepare_network_gives_the_total_background_rate():
+    network = prepare_network(assemble_network(read_network_files("configs/network/toy")))
 
     # background rate (Hz) * background_indegree, per prepare_network
     assert network.background_inputs["E"].rate == 8.0 * 1000

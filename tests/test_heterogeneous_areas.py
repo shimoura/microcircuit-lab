@@ -73,6 +73,12 @@ def test_area_selection_finds_each_area():
     assert len(select_populations(simulation, None, "B")) == 12
 
 
+def test_a_single_area_network_has_no_areas():
+    simulation = SimpleNamespace(network=assemble_network(read_network_files("configs/network/toy")))
+
+    assert list_areas(simulation) == []
+
+
 def test_psp_weights_are_converted_with_each_target_neuron():
     """A__L23_PV and A__L5_PV use different neuron entries that differ only
     in C_m, so the same PSP gives PSCs in the ratio of their capacitances."""

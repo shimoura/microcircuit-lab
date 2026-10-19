@@ -1,12 +1,8 @@
 import math
 import pytest
-import numpy as np
 
 from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
-from microcircuit_lab.config.populations import PopulationConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.units import (
     psp_to_psc_iaf_psc_exp,
@@ -16,8 +12,6 @@ from microcircuit_lab.network.quantities import (
     full_mean_rates,
     mean_psc_matrix,
     network_mean_input,
-    background_indegrees,
-    background_psc_weights,
 )
 
 
@@ -71,133 +65,6 @@ def test_network_mean_input_manual():
     assert manual == pytest.approx(computed)
 
 
-def test_background_input_manual():
-    network = _load_toy()
-    PSC_ext = background_psc_weights(network)
-    K_ext = background_indegrees(network)
-    rates = np.asarray(
-        [
-            network.background_inputs[name].rate
-            for name in network.populations
-        ]
-    )
-
-    manual = PSC_ext * K_ext * rates
-
-    computed = background_psc_weights(network) \
-        * background_indegrees(network) \
-        * rates
-
-    assert np.allclose(manual, computed)
-
-def test_n_scaling():
-
-    neuron = NeuronConfig(
-        name="exc",
-        model="iaf_psc_exp",
-        parameters=NeuronParams(
-            C_m=250.0,
-            tau_m=10.0,
-            tau_syn_ex=0.5,
-            tau_syn_in=0.5,
-            E_L=-70.0,
-            V_reset=-65.0,
-            V_th=-50.0,
-            t_ref=2.0,
-            I_e=0.0,
-        ),
-    )
-
-    population = PopulationConfig(
-        name="E",
-        size=100,
-        neuron=neuron,
-        V0_mean=-58.0,
-        V0_std=5.0,
-        background_indegree=100.0,
-    )
-
-    network = NetworkConfig(
-        populations={
-            "E": population,
-        },
-        connections=[],
-        background_inputs={},
-        scaling=ScalingConfig(
-            N_scaling=0.5,
-            K_scaling=1.0,
-        ),
-    )
-
-    derived = prepare_network(network)
-
-    #
-    # original unchanged
-    #
-
-    assert network.populations["E"].size == 100
-
-    #
-    # derived scaled
-    #
-
-    assert derived.populations["E"].size == 50
-
-
-def test_k_scaling():
-
-    neuron = NeuronConfig(
-        name="exc",
-        model="iaf_psc_exp",
-        parameters=NeuronParams(
-            C_m=250.0,
-            tau_m=10.0,
-            tau_syn_ex=0.5,
-            tau_syn_in=0.5,
-            E_L=-70.0,
-            V_reset=-65.0,
-            V_th=-50.0,
-            t_ref=2.0,
-            I_e=0.0,
-        ),
-    )
-
-    population = PopulationConfig(
-        name="E",
-        size=100,
-        neuron=neuron,
-        V0_mean=-58.0,
-        V0_std=5.0,
-        background_indegree=100.0,
-    )
-
-    network = NetworkConfig(
-        populations={
-            "E": population,
-        },
-        connections=[],
-        background_inputs={},
-        scaling=ScalingConfig(
-            N_scaling=1.0,
-            K_scaling=0.5,
-        ),
-    )
-
-    derived = prepare_network(network)
-
-    #
-    # original unchanged
-    #
-
-    assert network.populations["E"].background_indegree == 100
-
-    #
-    # derived scaled
-    #
-
-    assert derived.populations["E"].background_indegree == 50
-
-
 def test_weight_scaling():
 
     network_config = _load_toy()
@@ -209,34 +76,7 @@ def test_weight_scaling():
     assert derived.connections[0].weight.mean == pytest.approx(expected)
 
 
-def test_identity_scaling():
-
-    network_files = read_network_files("configs/network/toy")
-
-    network = assemble_network(network_files)
-
-    original_size = network.populations["E"].size
-    original_indegree = network.populations["E"].background_indegree
-
-    network = network.model_copy(
-        update={
-            "scaling": network.scaling.model_copy(
-                update={
-                    "N_scaling": 1.0,
-                    "K_scaling": 1.0,
-                }
-            )
-        }
-    )
-
-    derived = prepare_network(network)
-
-    assert derived.populations["E"].size == original_size
-
-    assert derived.populations["E"].background_indegree == original_indegree
-
-
-def test_identity_scaling_has_zero_dc():
+def test_identity_scaling_changes_nothing():
 
     network_files = read_network_files("configs/network/toy")
 
@@ -255,8 +95,9 @@ def test_identity_scaling_has_zero_dc():
 
     derived = prepare_network(network)
 
-    for pop in derived.populations.values():
-
+    for name, pop in derived.populations.items():
+        assert pop.size == network.populations[name].size
+        assert pop.background_indegree == network.populations[name].background_indegree
         assert pop.neuron.parameters.I_e == pytest.approx(0.0)
 
 

@@ -61,7 +61,7 @@ flowchart TD
 |---|---|
 | `toy`, `toy_stimulated` | two populations (E and I), with and without stimuli; the smallest example |
 | `toy_two_areas` | a made-up two-area network with different layers and cell types (E, PV, SOM, VIP) |
-| `pd14`, `pd14_dc` | the Potjans & Diesmann (2014) microcircuit, with Poisson or DC background |
+| `pd14` | the Potjans & Diesmann (2014) microcircuit |
 | `humam_single`, `humam_all` | the human multi-area model (Pronold et al. 2024): one area, or all 34 |
 
 `pd14` is full scale (77,169 neurons, about 15 GB of memory) and runs for 11 s; for a quick look, scale it down first (see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
@@ -170,7 +170,7 @@ stimuli:
 
 ### Background input
 
-`background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`). `background_mode: dc` at the top of the file replaces it by a constant current of the same mean, as in Potjans & Diesmann (2014), Fig. 5; `pd14_dc` is an example.
+`background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`). `background_mode: dc` at the top of the file replaces it by a constant current of the same mean, as in Potjans & Diesmann (2014), Fig. 5; `microcircuit-lab generate pd14 --network-name pd14_dc --background-mode dc` writes an example.
 
 ### Weights and delays
 

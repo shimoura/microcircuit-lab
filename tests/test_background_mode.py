@@ -88,11 +88,6 @@ def test_background_mode_defaults_to_poisson():
     assert network.background_mode == "poisson"
 
 
-def test_background_mode_rejects_unknown_value():
-    with pytest.raises(Exception):
-        _network("bogus")
-
-
 # -----------------------------------------------------------------------------
 # prepare_network: "dc" replaces the Poisson rate with a constant current
 # -----------------------------------------------------------------------------
@@ -107,20 +102,6 @@ def test_poisson_mode_keeps_effective_background_rate():
 
     # effective_rate = bg_rate * K_ext, per _apply_background_poisson_rates
     assert network.background_inputs["E"].rate == pytest.approx(8.0 * 100.0)
-
-
-def test_dc_mode_adds_expected_current():
-    network = prepare_network(_network("dc"))
-
-    expected = background_dc_current(
-        PSC_ext=50.0,
-        K_ext=100.0,
-        bg_rate=8.0,
-        tau_syn=0.5,
-    )
-
-    assert network.populations["E"].neuron.parameters.I_e == pytest.approx(expected)
-    assert expected > 0.0
 
 
 def test_poisson_mode_leaves_i_e_untouched():

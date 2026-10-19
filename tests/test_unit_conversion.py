@@ -16,6 +16,7 @@ aeif_cond_exp/iaf_cond_exp/iaf_cond_alpha) to exercise that missing-parameter
 path realistically.
 """
 
+import numpy as np
 import pytest
 
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
@@ -45,6 +46,7 @@ from microcircuit_lab.network.quantities import (
     mean_psc_matrix,
 )
 from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.units import psc_to_psp, psp_to_psc_iaf_psc_exp
 
 NEURON_PARAMS = NeuronParams(
     C_m=250.0,
@@ -310,3 +312,36 @@ def test_native_unit_skips_neuron_model_check_everywhere():
     assert convert_network_psp_to_psc(network).connections[0].weight.mean == 0.15
     assert mean_psc_matrix(network)[0, 0] == 0.15
     assert background_psc_weights(network)[0] == 0.15
+
+
+def test_psp_psc_roundtrip():
+
+    psp = 0.15
+
+    psc = psp_to_psc_iaf_psc_exp(
+        psp=psp,
+        C_m=250.0,
+        tau_m=10.0,
+        tau_syn=0.5,
+    )
+
+    recovered = psc_to_psp(
+        psc=psc,
+        C_m=250.0,
+        tau_m=10.0,
+        tau_syn=0.5,
+    )
+
+    assert np.isclose(psp, recovered)
+
+
+def test_psp_to_psc_known_value():
+
+    psc = psp_to_psc_iaf_psc_exp(
+        psp=0.15,
+        C_m=250.0,
+        tau_m=10.0,
+        tau_syn=0.5,
+    )
+
+    assert abs(psc - 87.80849352920844) < 1e-12

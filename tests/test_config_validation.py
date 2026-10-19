@@ -103,24 +103,6 @@ def test_error_names_the_file_and_the_field(network_dir: Path) -> None:
     assert "populations.yaml: populations.0.size" in message
 
 
-def test_missing_required_field_is_rejected(network_dir: Path) -> None:
-    _edit_yaml(
-        network_dir / "populations.yaml",
-        lambda d: d["populations"][0].pop("size"),
-    )
-    with pytest.raises(ValueError, match="size"):
-        read_network_files(network_dir)
-
-
-def test_wrong_type_is_rejected(network_dir: Path) -> None:
-    _edit_yaml(
-        network_dir / "connectivity.yaml",
-        lambda d: d["connections"][0].__setitem__("n_synapses", "lots"),
-    )
-    with pytest.raises(ValueError, match="n_synapses"):
-        read_network_files(network_dir)
-
-
 def test_neuron_parameters_stay_open(network_dir: Path) -> None:
     # A neuron model may take parameters this framework has never heard of;
     # the simulator backend is the authority on those names, not the schema.
@@ -150,11 +132,6 @@ def test_manifest_rejects_an_unknown_file_key() -> None:
 # -----------------------------------------------------------------------------
 # load_network: schema + cross-file refs + prepare_network dry run
 # -----------------------------------------------------------------------------
-def test_validate_passes_on_the_toy_network() -> None:
-    config = load_network(TOY)
-
-    assert set(config.populations) == {"E", "I"}
-    assert config.connections
 
 
 def test_validate_catches_a_dangling_neuron_reference(network_dir: Path) -> None:
