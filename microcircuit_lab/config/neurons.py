@@ -6,9 +6,10 @@ the simulator's model name and its parameters.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.distributions import PerNeuronValue
 
 
 class NeuronParams(BaseModel):
@@ -27,32 +28,27 @@ class NeuronParams(BaseModel):
     This layer stays simulator-independent and does not duplicate that
     check.
 
+    A parameter can also differ from neuron to neuron: write a distribution
+    instead of a number (see config.distributions), e.g.
+    ``V_th: {distribution: uniform, min: -52, max: -48}``.
+
     `I_e` (constant input current, pA) is the one field this package reads
     back directly, since DC-compensation (see network/prepare.py)
     adds to it when scaling the network. It's declared explicitly here and
     defaults to 0.0, since a constant input current at zero is the common
-    starting point across point-neuron models generally.
+    starting point across point-neuron models generally. It is always a
+    number.
 
-    Values must be numeric; anything else (a string, a list, ...) is
-    rejected here rather than surfacing as a confusing simulator-side
-    error.
+    Values must be numbers or distributions; anything else (a string, a
+    list, ...) is rejected here rather than surfacing as a confusing
+    simulator-side error.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
 
+    __pydantic_extra__: dict[str, PerNeuronValue] = Field(init=False)
+
     I_e: float = Field(default=0.0, description="constant input current (pA)")
-    @model_validator(mode="after")
-    def _check_extra_params_are_numeric(self) -> "NeuronParams":
-        non_numeric = {
-            key: value
-            for key, value in (self.__pydantic_extra__ or {}).items()
-            if not isinstance(value, (int, float))
-        }
-        if non_numeric:
-            raise ValueError(
-                f"Neuron parameters must be numeric, got non-numeric values: {non_numeric!r}."
-            )
-        return self
 
     def require(self, *names: str) -> dict[str, float]:
         """
@@ -69,6 +65,12 @@ class NeuronParams(BaseModel):
         missing = [name for name in names if name not in values]
         if missing:
             raise KeyError(f"Missing neuron parameters: {missing}.")
+        drawn = [name for name in names if isinstance(values[name], dict)]
+        if drawn:
+            raise ValueError(
+                f"Neuron parameters {drawn} are drawn per neuron; this needs one value "
+                "for the whole population (e.g. the PSP-to-PSC conversion)."
+            )
         return {name: values[name] for name in names}
 
 
@@ -85,7 +87,9 @@ class NeuronEntry(FrozenConfig):
              "E_L": -65.0, "V_th": -50.0, "V_reset": -65.0, "t_ref": 2.0}
         ],
         description="parameters passed to that model as-is; keys are "
-        "model-specific and the backend validates them (I_e defaults to 0.0)"
+        "model-specific and the backend validates them (I_e defaults to 0.0); a value is a "
+        "number, or a distribution drawn per neuron like in initial_state "
+        "(I_e and the parameters a PSP weight is converted with must be numbers)"
     )
     psp_conversion_aliases: dict[str, str] = Field(
         default_factory=dict,

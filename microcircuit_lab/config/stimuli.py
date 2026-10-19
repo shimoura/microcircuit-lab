@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Union
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
@@ -38,12 +38,6 @@ class StimulusBase(FrozenConfig):
         examples=[600.0],
         description="when it stops (ms); omit to keep it on until the end",
     )
-
-    @model_validator(mode="after")
-    def _check_window(self) -> "StimulusBase":
-        if self.stop is not None and self.stop <= self.start:
-            raise ValueError(f"stop ({self.stop}) must be greater than start ({self.start}).")
-        return self
 
 
 class DcStimulusConfig(StimulusBase):
@@ -76,14 +70,6 @@ class InhomogeneousPoissonStimulusConfig(StimulusBase):
     )
     weight: WeightDistribution = Field(description="weight of each stimulus connection")
     delay: DelayDistribution = Field(description="delay of each stimulus connection")
-
-    @model_validator(mode="after")
-    def _check_rate_profile(self) -> "InhomogeneousPoissonStimulusConfig":
-        if len(self.rate_times) != len(self.rate_values):
-            raise ValueError("'rate_times' and 'rate_values' must be the same length.")
-        if any(a >= b for a, b in zip(self.rate_times, self.rate_times[1:])):
-            raise ValueError("'rate_times' must be strictly increasing.")
-        return self
 
 
 # Discriminated union: the `type` field selects which subtype a YAML/dict

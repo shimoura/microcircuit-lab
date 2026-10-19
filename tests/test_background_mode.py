@@ -50,8 +50,7 @@ def _population(name: str, neuron: NeuronConfig, background_indegree: float = 10
         name=name,
         size=10,
         neuron=neuron,
-        V0_mean=-65.0,
-        V0_std=1.0,
+        initial_state={"V_m": {"distribution": "normal", "mean": -65.0, "std": 1.0}},
         background_indegree=background_indegree,
     )
 

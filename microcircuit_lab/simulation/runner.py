@@ -12,6 +12,7 @@ mathematics and no simulator-specific code.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
@@ -26,6 +27,8 @@ from microcircuit_lab.yaml_files import read_yaml
 from microcircuit_lab.runs import save_run_outputs, share_run_directory
 
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class Simulation:
@@ -75,8 +78,9 @@ class Simulation:
         simulation_name
             The simulation profile, ``<config_dir>/simulation/<simulation_name>.yaml``.
             By default the same name as the network. If that default file doesn't
-            exist, the defaults of ``SimulationConfig()`` are used, so a new network
-            runs before it has a profile; a profile named explicitly must exist.
+            exist, the defaults of ``SimulationConfig()`` are used (with a warning), so
+            a new network runs before it has a profile; a profile named explicitly
+            must exist.
         backend
             The simulator, ``"nest"``.
         backend_options
@@ -100,6 +104,9 @@ class Simulation:
         elif profile_is_explicit:
             raise FileNotFoundError(f"No simulation profile at {simulation_path}.")
         else:
+            logger.warning(
+                "No simulation profile at %s; using the default settings.", simulation_path
+            )
             simulation_config = SimulationConfig()
 
         return cls(

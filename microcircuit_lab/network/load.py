@@ -163,8 +163,7 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             name=entry.name,
             size=entry.size,
             neuron=neurons[entry.neuron],
-            V0_mean=entry.V0_mean,
-            V0_std=entry.V0_std,
+            initial_state=entry.initial_state,
             background_indegree=entry.background_indegree,
         )
 

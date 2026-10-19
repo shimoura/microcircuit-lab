@@ -46,14 +46,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--config-dir", default="configs")
     args = parser.parse_args(argv)
 
-    # populations.yaml: one dict per population. V0_mean / V0_std are the
-    # mean and spread of the initial membrane potential (mV);
+    # populations.yaml: one dict per population. initial_state: each neuron's
+    # starting membrane potential (mV), drawn from a normal distribution;
     # background_indegree is optional (default 0.0).
+    initial_state = {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}
     populations = [
         {"name": "E", "size": 800, "neuron": "lif",
-         "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
+         "initial_state": initial_state, "background_indegree": 1000},
         {"name": "I", "size": 200, "neuron": "lif",
-         "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 1000},
+         "initial_state": initial_state, "background_indegree": 1000},
     ]
 
     # neurons.yaml: neuron name -> simulator model + its parameters. The

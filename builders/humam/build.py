@@ -161,8 +161,9 @@ def _build_population_entries(
                         "name": label,
                         "size": n,
                         "neuron": pop,
-                        "V0_mean": V0_MEAN,
-                        "V0_std": V0_SD,
+                        "initial_state": {
+                            "V_m": {"distribution": "normal", "mean": V0_MEAN, "std": V0_SD}
+                        },
                         "background_indegree": k_ext,
                     }
                 )

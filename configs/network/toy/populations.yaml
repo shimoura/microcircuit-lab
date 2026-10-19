@@ -14,13 +14,13 @@ populations:
   - name: E
     size: 800
     neuron: excitatory
-    V0_mean: -65.0
-    V0_std: 5.0
+    initial_state:
+      V_m: {distribution: normal, mean: -65.0, std: 5.0}
     background_indegree: 1000
 
   - name: I
     size: 200
     neuron: inhibitory
-    V0_mean: -65.0
-    V0_std: 5.0
+    initial_state:
+      V_m: {distribution: normal, mean: -65.0, std: 5.0}
     background_indegree: 1000
