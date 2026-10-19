@@ -85,7 +85,7 @@ def weight(
     rel_std
         Standard deviation divided by ``|mean|``; 0 for a fixed weight.
     distribution
-        ``"fixed"``, ``"normal"`` or ``"lognormal"``. By default ``fixed`` when
+        ``"fixed"``, ``"normal"``, ``"uniform"`` or ``"lognormal"``. By default ``fixed`` when
         ``rel_std`` is 0 and ``normal`` otherwise.
 
     Returns
@@ -146,11 +146,12 @@ def write_network_directory(
     neurons: Mapping[str, Mapping[str, Any]],
     connections: Iterable[Mapping[str, Any]],
     background_inputs: Mapping[str, Mapping[str, Any]],
-    background_mode: Literal["poisson", "dc"] = "poisson",
+    background_mode: Literal["poisson", "mean_current"] = "poisson",
     bound_mode: Literal["redraw", "clip"] = "redraw",
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
     stimuli: Iterable[Mapping[str, Any]] | None = None,
+    synapses: Mapping[str, Mapping[str, Any]] | None = None,
     compact: bool = True,
 ) -> NetworkConfig:
     """
@@ -170,20 +171,26 @@ def write_network_directory(
     neurons
         ``{neuron name: {"model": ..., "parameters": {...}}}``.
     connections
-        One dict per projection (``source``, ``target``, ``n_synapses``,
-        ``weight``, ``delay``).
+        One dict per projection (``source``, ``target``, ``n_synapses`` or
+        another ``rule`` with its number, ``weight``, ``delay``, optionally
+        ``synapse``).
     background_inputs
         ``{population name: {"rate": ..., "weight": ..., "delay": ...}}``.
     background_mode
-        ``"poisson"`` or ``"dc"``; written only when ``"dc"``.
+        ``"poisson"`` or ``"mean_current"``; written only when ``"mean_current"``.
     bound_mode
         ``"redraw"`` or ``"clip"``; written only when ``"clip"``.
     scaling
-        The fields of ``scaling.yaml``; ``None`` writes the defaults (no scaling).
+        The fields of ``scaling.yaml``; ``None`` writes no ``scaling.yaml`` (the
+        network runs at full scale).
     reference
-        ``{population name: full-scale mean rate}``; ``None`` writes no rates.
+        ``{population name: full-scale mean rate}``; ``None`` writes no
+        ``reference.yaml``.
     stimuli
         The list of stimuli; ``None`` writes no ``stimuli.yaml``.
+    synapses
+        ``{synapse name: {"model": ..., "parameters": {...}, "receptor_port": ...}}``;
+        ``None`` writes no ``synapses.yaml``.
     compact
         Connections are always written one per line. ``True`` writes populations
         and background inputs the same way; ``False`` writes them in block
@@ -205,11 +212,17 @@ def write_network_directory(
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
         "background_inputs": "background_inputs.yaml",
-        "scaling": "scaling.yaml",
-        "reference": "reference.yaml",
     }
-    if stimuli is not None:
-        file_names["stimuli"] = "stimuli.yaml"
+    # The optional files, written only when given.
+    optional = {
+        "scaling": None if scaling is None else dict(scaling),
+        "reference": None if reference is None else {"full_mean_rates": dict(reference)},
+        "stimuli": None if stimuli is None else {"stimuli": list(stimuli)},
+        "synapses": None if synapses is None else {"synapses": dict(synapses)},
+    }
+    for part, payload in optional.items():
+        if payload is not None:
+            file_names[part] = f"{part}.yaml"
 
     table = flow_records if compact else (lambda records: records)
 
@@ -233,13 +246,10 @@ def write_network_directory(
         "neurons.yaml": {"neurons": dict(neurons)},
         "connectivity.yaml": connectivity_payload,
         "background_inputs.yaml": background_payload,
-        "scaling.yaml": dict(scaling) if scaling is not None else {},
-        "reference.yaml": {
-            "full_mean_rates": dict(reference) if reference is not None else {}
-        },
     }
-    if stimuli is not None:
-        payloads["stimuli.yaml"] = {"stimuli": list(stimuli)}
+    for part, payload in optional.items():
+        if payload is not None:
+            payloads[f"{part}.yaml"] = payload
 
     for name, payload in payloads.items():
         write_yaml(directory / name, payload)

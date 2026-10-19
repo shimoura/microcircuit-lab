@@ -26,6 +26,11 @@ class BackgroundInputConfig(FrozenConfig):
     )
     weight: WeightDistribution = Field(description="weight of each background connection")
     delay: DelayDistribution = Field(description="delay of each background connection")
+    synapse: str | None = Field(
+        default=None,
+        examples=["depressing"],
+        description="name of an entry in synapses.yaml; omit for the default synapse",
+    )
 
 
 class BackgroundInputsFile(FrozenConfig):
@@ -38,8 +43,9 @@ class BackgroundInputsFile(FrozenConfig):
     background_inputs: dict[str, BackgroundInputConfig] = Field(
         description="one entry per population, keyed by its name; a population left out gets none",
     )
-    background_mode: Literal["poisson", "dc"] = Field(
+    background_mode: Literal["poisson", "mean_current"] = Field(
         default="poisson",
-        description="'dc' replaces the Poisson drive network-wide with a "
-        "constant current of the same mean",
+        description="'mean_current' replaces each population's Poisson input by its mean, "
+        "a constant current (Potjans & Diesmann 2014, Fig. 5); for a constant input of your "
+        "own, use I_e in neurons.yaml or a dc stimulus",
     )

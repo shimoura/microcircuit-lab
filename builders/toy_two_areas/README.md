@@ -5,6 +5,7 @@ A small synthetic multi-area network (24 populations, about 1,600 neurons) that 
 ```bash
 microcircuit-lab run --network toy_two_areas     # plots for each area under plots/A and plots/B
 microcircuit-lab generate toy_two_areas          # rewrite configs/network/toy_two_areas/ from data.py
+microcircuit-lab run --network toy_two_areas_advanced   # the same network with optional features on (below)
 ```
 
 ## Areas and populations
@@ -61,7 +62,21 @@ All are `iaf_psc_exp`; the base neuron is that of PD14.
 
 The reference rates in `reference.yaml` are the mean of four 2 s runs of this network; they are needed for the DC compensation when the network is scaled.
 
+## Advanced variant
+
+`microcircuit-lab generate toy_two_areas --advanced` writes `configs/network/toy_two_areas_advanced/`: the same areas, populations and probabilities, with the optional features of the config files turned on, as an example to copy:
+
+| Feature | Where | In this network |
+| :--- | :--- | :--- |
+| Values drawn per neuron | `neurons.yaml`, `populations.yaml` | each neuron's `V_th` (normal, 1 mV spread); starting `V_m` uniform between `V_reset` and `V_th` |
+| Connection rules | `connectivity.yaml` | `pairwise_bernoulli` with the probability within an area (no neuron connected to itself); `fixed_indegree` between areas |
+| Synapse models | `synapses.yaml` | between areas, a depressing `tsodyks2_synapse`, with lognormal delays |
+| Receptor ports | `synapses.yaml`, `neurons.yaml` | `B__L23_E` is an `iaf_psc_exp_multisynapse` neuron with a port for excitatory (2 ms), inhibitory (4 ms) and input from the other area (20 ms, depressing); its weights are in pA, since PSP weights are converted for the default port only, and its background input names a port too |
+
+Its rates differ from those above. It has no `scaling.yaml` (it runs at full scale) and no reference rates, so a scaled copy is not compensated.
+
 ## Files
 
 - `data.py`: every number above, as small tables.
 - `build.py`: turns the tables into `configs/network/toy_two_areas/` (`main(argv)` is the entry point `microcircuit-lab generate` calls).
+- `advanced.py`: the advanced variant, built from the same tables and functions.

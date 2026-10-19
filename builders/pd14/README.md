@@ -19,8 +19,8 @@ microcircuit-lab run --network pd14
 For the publication's Fig. 5, which replaces the Poisson background by a constant current of the same mean, write a second network:
 
 ```bash
-microcircuit-lab generate pd14 --network-name pd14_dc --background-mode dc
-microcircuit-lab run --network pd14_dc
+microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current
+microcircuit-lab run --network pd14_mean_current
 ```
 
 The full network has 77,169 neurons and about 300 million synapses; building it needs about 15 GB of memory. For a quick check, set `N_scaling` and `K_scaling` below 1 in `configs/network/pd14/scaling.yaml` (see "Scaling a network" in `microcircuit_lab/README.md`).

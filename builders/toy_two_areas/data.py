@@ -133,3 +133,22 @@ FULL_MEAN_RATES = {
     "B__L6_SOM": 14.5,
     "B__L6_VIP": 6.528,
 }
+
+# --- Only for toy_two_areas_advanced (advanced.py) ---------------------------
+
+# Each neuron's threshold is drawn around its entry's V_th, with this spread (mV).
+V_TH_STD = 1.0
+
+# The connections between areas use a depressing synapse (tsodyks2_synapse).
+DEPRESSING_SYNAPSE = {"U": 0.5, "tau_rec": 200.0, "tau_fac": 0.0}
+
+# B__L23_E gets a neuron with one receptor port per kind of input, each with its
+# own synaptic time constant (ms). Ports 1 and 2 have the time constants of its
+# entry B_E_upper (tau_syn_ex 2, tau_syn_in 4); port 3 is slow, for the input
+# from the other area. Written in port order: the neuron's tau_syn list is the
+# values of RECEPTOR_PORT_TAU_SYN in this order.
+RECEPTOR_PORT_POPULATION = "B__L23_E"
+RECEPTOR_PORT_NEURON = "B_E_upper"
+RECEPTOR_PORT_MODEL = "iaf_psc_exp_multisynapse"
+RECEPTOR_PORTS = {"excitatory": 1, "inhibitory": 2, "other_area": 3}
+RECEPTOR_PORT_TAU_SYN = {"excitatory": 2.0, "inhibitory": 4.0, "other_area": 20.0}

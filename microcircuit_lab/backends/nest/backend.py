@@ -116,6 +116,7 @@ class NestBackend:
 
         self.initialize()
 
+        self.create_synapse_models()
         self.create_populations()
 
         if self._simulation_config.recording.spike_recording:
@@ -191,6 +192,32 @@ class NestBackend:
             raise ValueError(f"Distribution '{value.distribution}' needs {missing}.")
         return draw(**value.model_extra)
 
+    def create_synapse_models(self) -> None:
+        """
+        Make each entry of synapses.yaml a NEST synapse model of that name,
+        a copy of its ``model`` with its ``parameters``.
+        """
+
+        for name, entry in self._network.synapses.items():
+            nest.CopyModel(entry.model, name, entry.parameters)
+
+    def synapse_spec(self, weight, delay, synapse: str | None) -> dict:
+        """
+        The ``syn_spec`` of a connection: its weight and delay, and its
+        synapse model and receptor port if it names a synapses.yaml entry.
+        """
+
+        spec = {
+            "weight": self.create_weight_spec(weight),
+            "delay": self.create_delay_parameter(delay),
+        }
+        if synapse is not None:
+            spec["synapse_model"] = synapse
+            receptor_port = self._network.receptor_port(synapse)
+            if receptor_port is not None:
+                spec["receptor_type"] = receptor_port
+        return spec
+
     def create_connections(self) -> None:
         """
         Connect populations according to the connectivity configuration.
@@ -198,30 +225,42 @@ class NestBackend:
 
         logger.info("Creating recurrent connections:")
 
+        # NEST's name for the number each rule takes
+        nest_number = {
+            "fixed_total_number": "N",
+            "fixed_indegree": "indegree",
+            "fixed_outdegree": "outdegree",
+            "pairwise_bernoulli": "p",
+        }
+
         for connection in self._network.connections:
             source = self.get_population(connection.source)
             target = self.get_population(connection.target)
 
             logger.info(
-                "Connecting %s -> %s (N=%d, weight=%g, delay=%g)",
+                "Connecting %s -> %s (%s=%g, synapse=%s, weight=%g, delay=%g)",
                 connection.source,
                 connection.target,
-                connection.n_synapses,
+                nest_number[connection.rule],
+                connection.number,
+                connection.synapse or "default",
                 connection.weight.mean,
                 connection.delay.mean,
             )
 
+            conn_spec = {
+                "rule": connection.rule,
+                nest_number[connection.rule]: connection.number,
+            }
+            for option in ("allow_autapses", "allow_multapses"):
+                if getattr(connection, option) is not None:
+                    conn_spec[option] = getattr(connection, option)
+
             nest.Connect(
                 source,
                 target,
-                conn_spec={
-                    "rule": "fixed_total_number",
-                    "N": connection.n_synapses,
-                },
-                syn_spec={
-                    "weight": self.create_weight_spec(connection.weight),
-                    "delay": self.create_delay_parameter(connection.delay),
-                },
+                conn_spec=conn_spec,
+                syn_spec=self.synapse_spec(connection.weight, connection.delay, connection.synapse),
             )
 
     def get_population(
@@ -299,15 +338,15 @@ class NestBackend:
         """
         Create one background Poisson generator per configured population.
 
-        No-op when background_mode is "dc": the background drive was
+        No-op when background_mode is "mean_current": the background drive was
         already injected as constant current onto each neuron's I_e by
         prepare_network, so no generator is created at all (see
         NetworkConfig.background_mode).
         """
 
-        if self._network.background_mode == "dc":
+        if self._network.background_mode == "mean_current":
             logger.info(
-                "background_mode='dc': background drive is constant current "
+                "background_mode='mean_current': background drive is constant current "
                 "(I_e), skipping Poisson generators."
             )
             return
@@ -338,10 +377,7 @@ class NestBackend:
             nest.Connect(
                 self.background_generators[pop_name],
                 self.get_population(pop_name),
-                syn_spec={
-                    "weight": self.create_weight_spec(input_cfg.weight),
-                    "delay": self.create_delay_parameter(input_cfg.delay),
-                },
+                syn_spec=self.synapse_spec(input_cfg.weight, input_cfg.delay, input_cfg.synapse),
             )
 
     def create_stimuli(self) -> None:
@@ -390,16 +426,13 @@ class NestBackend:
 
         `dc` devices are connected with the default synapse (weight 1.0
         per pA of amplitude); `poisson`/`inhomogeneous_poisson` devices
-        use the configured weight/delay, same as background input.
+        use the configured weight, delay and synapse, same as background input.
         """
 
         for stimulus, device in self.stimulus_generators:
             syn_spec = None
             if not isinstance(stimulus, DcStimulusConfig):
-                syn_spec = {
-                    "weight": self.create_weight_spec(stimulus.weight),
-                    "delay": self.create_delay_parameter(stimulus.delay),
-                }
+                syn_spec = self.synapse_spec(stimulus.weight, stimulus.delay, stimulus.synapse)
 
             for target in stimulus.targets:
                 nest.Connect(device, self.get_population(target), syn_spec=syn_spec)

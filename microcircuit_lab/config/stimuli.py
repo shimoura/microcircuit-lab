@@ -41,7 +41,7 @@ class StimulusBase(FrozenConfig):
 
 
 class DcStimulusConfig(StimulusBase):
-    """Constant-current pulse. Current is injected directly; no weight/delay."""
+    """A constant current from ``start`` to ``stop``, injected directly (no weight or delay)."""
 
     type: Literal["dc"] = "dc"
     amplitude: float = Field(examples=[200.0], description="current (pA)")
@@ -54,6 +54,11 @@ class PoissonStimulusConfig(StimulusBase):
     rate: float = Field(ge=0.0, examples=[50.0], description="spike rate (spikes/s)")
     weight: WeightDistribution = Field(description="weight of each stimulus connection")
     delay: DelayDistribution = Field(description="delay of each stimulus connection")
+    synapse: str | None = Field(
+        default=None,
+        examples=["depressing"],
+        description="name of an entry in synapses.yaml; omit for the default synapse",
+    )
 
 
 class InhomogeneousPoissonStimulusConfig(StimulusBase):
@@ -70,6 +75,11 @@ class InhomogeneousPoissonStimulusConfig(StimulusBase):
     )
     weight: WeightDistribution = Field(description="weight of each stimulus connection")
     delay: DelayDistribution = Field(description="delay of each stimulus connection")
+    synapse: str | None = Field(
+        default=None,
+        examples=["depressing"],
+        description="name of an entry in synapses.yaml; omit for the default synapse",
+    )
 
 
 # Discriminated union: the `type` field selects which subtype a YAML/dict

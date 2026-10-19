@@ -122,11 +122,12 @@ configs/
 │   ├── network.yaml             names the other files
 │   ├── populations.yaml         sizes, neuron of each population
 │   ├── neurons.yaml             neuron models and parameters
-│   ├── connectivity.yaml        synapse numbers, weights, delays
+│   ├── connectivity.yaml        rules, synapse numbers, weights, delays
+│   ├── synapses.yaml            optional: synapse models, receptor ports
 │   ├── background_inputs.yaml   background Poisson input
 │   ├── stimuli.yaml             optional: inputs for experiments
-│   ├── scaling.yaml             N_scaling, K_scaling
-│   └── reference.yaml           reference rates
+│   ├── scaling.yaml             optional: N_scaling, K_scaling
+│   └── reference.yaml           optional: reference rates
 ├── simulation/<name>.yaml       duration, seed, threads, what to record
 └── analysis/<name>.yaml         optional: which plots, time window, style
 ```
@@ -143,7 +144,7 @@ configs/
 
 ```yaml
 stimuli:
-  - type: dc                 # a current pulse
+  - type: dc                 # a constant current, from start to stop
     targets: [E]
     amplitude: 200.0         # pA
     start: 500.0             # ms
@@ -160,11 +161,15 @@ stimuli:
 
 - Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). [docs/config_files.md](../docs/config_files.md#stimuliyaml) lists their fields.
 - Stimuli are applied exactly as written: not scaled, not compensated.
+- They add to the background input and to each other: several entries give several pulses, with their own targets and times. Without `stop`, a stimulus lasts until the end of the run.
 - Add `stimuli: stimuli.yaml` to `network.yaml`. A runnable example: `microcircuit-lab run --network toy_stimulated`.
 
 ### Background input
 
-`background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`). `background_mode: dc` at the top of the file replaces it by a constant current of the same mean, as in Potjans & Diesmann (2014), Fig. 5; `microcircuit-lab generate pd14 --network-name pd14_dc --background-mode dc` writes an example.
+`background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`).
+
+- **`background_mode: mean_current`** (at the top of the file) replaces that Poisson input by its mean, a constant current: the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs current weights (`PSP` or `PSC`) on the default receptor port. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current`.
+- **A constant current of your own** is not a background mode; it adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
 
 ### Weights and delays
 
@@ -188,6 +193,39 @@ neurons:
 
 - **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
+
+### Connection rules and synapses
+
+Each connection has a `rule` and the number that rule takes:
+
+| `rule` | number | |
+|---|---|---|
+| `fixed_total_number` (default) | `n_synapses` | that many synapses in total |
+| `fixed_indegree` | `indegree` | that many onto each target neuron |
+| `fixed_outdegree` | `outdegree` | that many from each source neuron |
+| `pairwise_bernoulli` | `p` | each pair connected with probability `p` |
+
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). `allow_autapses` and `allow_multapses` are passed to NEST if given.
+
+A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses NEST's `static_synapse` on the default port:
+
+```yaml
+synapses:
+  ampa: {model: static_synapse, receptor_port: 1}
+  nmda: {model: static_synapse, receptor_port: 2}
+  depressing: {model: tsodyks2_synapse, parameters: {U: 0.5, tau_rec: 800.0}}
+```
+
+```yaml
+connections:
+  - {source: E, target: E, rule: pairwise_bernoulli, p: 0.1, synapse: ampa, weight: {...}, delay: {...}}
+  - {source: E, target: E, rule: pairwise_bernoulli, p: 0.1, synapse: nmda, weight: {...}, delay: {...}}
+```
+
+- A pair can have one entry per synapse, as above.
+- The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). On another port, weights must be `PSC` or `native`. The input lost by scaling is compensated only for current weights (`PSP`, `PSC`) on the default port, not for `native` weights (e.g. conductances) or other ports; a warning lists those connections. A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
+- With a plastic synapse, the PSP conversion and the scaling compensation use the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a `PSP` weight is the amplitude at u·x = 1: with U = 0.5 the first spike gives half of it.
+- A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
 
 ### Large files
 
@@ -215,7 +253,9 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 | `preserve_mean_input: false` | $J/\sqrt{k}$ | none | lower: $\sqrt{k}\,\mu$ | kept |
 | `preserve_variance: false` | $J/k$ | none | kept | larger: $\sigma^2/k$ |
 
+- The DC is added to each population's `I_e`, so the `I_e` in a run's saved `config.yaml` is the one you wrote plus the DC.
 - The DC needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`. Without them, use `compensate_recurrent_input: false`.
+- With `background_mode: mean_current`, the background current is already that of the full-scale network, so only the recurrent input is compensated.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
 - These are the mean and variance only. A scaled network is close to the full one, not equal: PD14 at $k = 0.1$ has most rates within 10–20 %, and L2/3 E lower (0.5 instead of 0.9 spikes/s).
 - A connection left with less than one synapse is dropped.

@@ -1,6 +1,6 @@
-"""Tests for background_mode ("poisson" vs "dc" background input).
+"""Tests for background_mode ("poisson" vs "mean_current" background input).
 
-"dc" reproduces Potjans & Diesmann (2014)'s comparison of Poisson vs.
+"mean_current" reproduces Potjans & Diesmann (2014)'s comparison of Poisson vs.
 constant-current background drive (their Fig. 5): the background Poisson
 generator is replaced network-wide by a constant current of equal mean.
 """
@@ -88,10 +88,10 @@ def test_background_mode_defaults_to_poisson():
 
 
 # -----------------------------------------------------------------------------
-# prepare_network: "dc" replaces the Poisson rate with a constant current
+# prepare_network: "mean_current" replaces the Poisson rate with a constant current
 # -----------------------------------------------------------------------------
 def test_dc_mode_zeros_background_rate():
-    network = prepare_network(_network("dc"))
+    network = prepare_network(_network("mean_current"))
 
     assert network.background_inputs["E"].rate == 0.0
 
@@ -113,12 +113,12 @@ def test_dc_current_independent_of_k_scaling():
     """The DC replacement targets the full biological background input,
     so it must not depend on N/K scaling of the recurrent network."""
 
-    scaled = _network("dc").model_copy(
+    scaled = _network("mean_current").model_copy(
         update={
             "scaling": ScalingConfig(N_scaling=0.5, K_scaling=0.5),
         }
     )
-    unscaled = prepare_network(_network("dc"))
+    unscaled = prepare_network(_network("mean_current"))
     rescaled = prepare_network(scaled)
 
     assert rescaled.populations["E"].neuron.parameters.I_e == pytest.approx(
@@ -127,10 +127,10 @@ def test_dc_current_independent_of_k_scaling():
 
 
 # -----------------------------------------------------------------------------
-# NEST backend: no Poisson generator is created for "dc"
+# NEST backend: no Poisson generator is created for "mean_current"
 # -----------------------------------------------------------------------------
 def test_dc_mode_creates_no_poisson_generator():
-    network = prepare_network(_network("dc"))
+    network = prepare_network(_network("mean_current"))
     simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
 
     backend = NestBackend(network=network, simulation_config=simulation_config)
@@ -157,7 +157,7 @@ def test_dc_mode_network_still_spikes():
     # DC current (400 pA) clears this neuron's rheobase (~375 pA); the
     # small values used elsewhere in this file are for formula checks only
     # and are far too weak to make anything spike.
-    strong_network = _network("dc").model_copy(
+    strong_network = _network("mean_current").model_copy(
         update={
             "populations": {"E": _population("E", _neuron(), background_indegree=1000.0)},
             "background_inputs": {"E": _background(rate=8.0, mean=100.0)},
@@ -185,13 +185,13 @@ def test_loader_reads_background_mode_from_yaml(tmp_path: Path) -> None:
 
     background_path = network_dir / "background_inputs.yaml"
     data = yaml.safe_load(background_path.read_text())
-    data["background_mode"] = "dc"
+    data["background_mode"] = "mean_current"
     background_path.write_text(yaml.safe_dump(data))
 
     network_files = read_network_files(network_dir)
     network = assemble_network(network_files)
 
-    assert network.background_mode == "dc"
+    assert network.background_mode == "mean_current"
 
 
 def test_dc_matches_poisson_mean_input():
@@ -200,7 +200,7 @@ def test_dc_matches_poisson_mean_input():
     from the same rate/weight/indegree."""
 
     bio = _network("poisson")
-    dc = prepare_network(_network("dc"))
+    dc = prepare_network(_network("mean_current"))
 
     expected = background_dc_current(
         PSC_ext=background_psc_weights(bio),

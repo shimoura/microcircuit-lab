@@ -5,9 +5,9 @@ Turns the Potjans & Diesmann (2014) parameters in ``data.py`` into a full
 (connection probabilities converted to absolute synapse numbers), background
 inputs, scaling and reference rates.
 
-``--background-mode dc`` replaces the Poisson background by a constant current
+``--background-mode mean_current`` replaces the Poisson background by a constant current
 of equal mean, the comparison of the publication's Fig. 5
-(``microcircuit-lab generate pd14 --network-name pd14_dc --background-mode dc``).
+(``microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current``).
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network-name", default="pd14")
-    parser.add_argument("--background-mode", choices=("poisson", "dc"), default="poisson")
+    parser.add_argument("--background-mode", choices=("poisson", "mean_current"), default="poisson")
     args = parser.parse_args(argv)
 
     generate_pd14(

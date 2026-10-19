@@ -1,0 +1,217 @@
+populations:
+- name: A__L23_E
+  size: 200
+  neuron: A_E
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: A__L23_PV
+  size: 25
+  neuron: A_PV_upper
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: A__L23_SOM
+  size: 15
+  neuron: A_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: A__L4_E
+  size: 200
+  neuron: A_E
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: A__L4_PV
+  size: 25
+  neuron: A_PV_upper
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: A__L4_SOM
+  size: 15
+  neuron: A_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: A__L5_E
+  size: 200
+  neuron: A_E
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: A__L5_PV
+  size: 25
+  neuron: A_PV_deep
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: A__L5_SOM
+  size: 15
+  neuron: A_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: A__L6_E
+  size: 200
+  neuron: A_E
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: A__L6_PV
+  size: 25
+  neuron: A_PV_deep
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: A__L6_SOM
+  size: 15
+  neuron: A_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: B__L23_E
+  size: 200
+  neuron: B_E_upper
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: B__L23_PV
+  size: 25
+  neuron: B_PV
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: B__L23_SOM
+  size: 15
+  neuron: B_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: B__L23_VIP
+  size: 10
+  neuron: B_VIP
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 710
+- name: B__L5_E
+  size: 200
+  neuron: B_E_deep
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: B__L5_PV
+  size: 25
+  neuron: B_PV
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: B__L5_SOM
+  size: 15
+  neuron: B_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: B__L5_VIP
+  size: 10
+  neuron: B_VIP
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 710
+- name: B__L6_E
+  size: 200
+  neuron: B_E_deep
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 850
+- name: B__L6_PV
+  size: 25
+  neuron: B_PV
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 1390
+- name: B__L6_SOM
+  size: 15
+  neuron: B_SOM
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 520
+- name: B__L6_VIP
+  size: 10
+  neuron: B_VIP
+  initial_state:
+    V_m:
+      distribution: uniform
+      min: -65.0
+      max: -50.0
+  background_indegree: 710

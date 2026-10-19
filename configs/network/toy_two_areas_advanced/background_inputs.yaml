@@ -1,0 +1,266 @@
+background_inputs:
+  A__L23_E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L23_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L23_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L4_E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L4_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L4_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L5_E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L5_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L5_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L6_E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L6_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  A__L6_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L23_E:
+    rate: 8.0
+    weight:
+      mean: 28.03778964789788
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSC
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+    synapse: excitatory_port
+  B__L23_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L23_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L23_VIP:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L5_E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L5_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L5_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L5_VIP:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L6_E:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L6_PV:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L6_SOM:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  B__L6_VIP:
+    rate: 8.0
+    weight:
+      mean: 0.15
+      rel_std: 0.0
+      distribution: fixed
+      unit: PSP
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed

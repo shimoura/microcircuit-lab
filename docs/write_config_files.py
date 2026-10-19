@@ -39,6 +39,7 @@ from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import StimuliFile
+from microcircuit_lab.config.synapses import SynapsesFile
 
 PAGE = Path(__file__).resolve().parent / "config_files.md"
 IMAGE = PAGE.parent / "images" / "config_names.svg"
@@ -49,17 +50,18 @@ FILES = [
     ("network.yaml", NetworkManifest, "Names the file of each part. The names below are the usual ones."),
     ("populations.yaml", PopulationsFile, "The populations: size, neuron and initial state."),
     ("neurons.yaml", NeuronsFile, "The neuron models, by name. Several populations can share one."),
+    ("synapses.yaml", SynapsesFile, "Optional: synapse models and receptor ports, by name. Without it, every connection uses the default synapse."),
     ("connectivity.yaml", ConnectivityFile, "The connections between populations."),
     ("background_inputs.yaml", BackgroundInputsFile, "The always-on Poisson input of each population."),
     ("stimuli.yaml", StimuliFile, "Optional: inputs for an experiment, applied as written (never scaled)."),
-    ("scaling.yaml", ScalingConfig, "How to downscale the network; see \"Scaling a network\" in the README."),
-    ("reference.yaml", ReferenceConfig, "Published values to compare with, and to compensate a scaled network."),
+    ("scaling.yaml", ScalingConfig, "Optional: how to downscale the network; see \"Scaling a network\" in the README. Without it, the network runs at full scale."),
+    ("reference.yaml", ReferenceConfig, "Optional: published values to compare with, and to compensate a scaled network."),
 ]
 SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration, seed, threads, what to record and save.")
 ANALYSIS = ("analysis/<name>.yaml", AnalysisConfig, "Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.")
 
 # An example key for the fields that are a mapping keyed by name.
-KEY_EXAMPLES = {"neurons": "excitatory", "background_inputs": "L23_E"}
+KEY_EXAMPLES = {"neurons": "excitatory", "synapses": "depressing", "background_inputs": "L23_E"}
 
 # The picture: excerpts of the toy network, population names in blue and
 # neuron names in orange. In the lines, [E] marks a population name, {excitatory}
@@ -367,11 +369,12 @@ def render() -> str:
             "`neurons.yaml`, a starting value in `initial_state`): those are drawn for each "
             "neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in "
             "`nest.random` works, with its arguments as keys.",
-            "- **Connections are set per pair of populations**: one entry for each source and "
-            "target, with the number of synapses and the distributions their weights and delays "
-            "are drawn from. Every connection uses the same rule (a fixed total number of "
-            "synapses) and NEST's default synapse and receptor; several synapse models, "
-            "receptors or rules for one pair (e.g. AMPA and NMDA) are not supported yet.",
+            "- **Connections are set per pair of populations**: an entry for each source and "
+            "target, with a rule and its number (`n_synapses` in total, an `indegree`, an "
+            "`outdegree` or a probability `p`) and the distributions the weights and delays are "
+            "drawn from. A pair can have several entries, one per synapse in `synapses.yaml` "
+            "(e.g. AMPA and NMDA on their own receptor ports). PSP weights and the scaling "
+            "compensation are only computed for the default receptor port.",
             "- **So, for neurons with another model or other parameters, or wired differently, make "
             "a separate population.** In `configs/network/toy_stimulated/`, `E` (`iaf_psc_exp`) "
             "and `E_adex` (`aeif_cond_exp`) are two populations, each with its own connections.",

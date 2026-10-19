@@ -93,11 +93,15 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         "neurons": read_yaml(folder / manifest.neurons),
         "connectivity": read_yaml(folder / manifest.connectivity),
         "background_inputs": read_yaml(folder / manifest.background_inputs),
-        "scaling": read_yaml(folder / manifest.scaling),
-        "reference": read_yaml(folder / manifest.reference),
     }
+    if manifest.scaling is not None:
+        parts["scaling"] = read_yaml(folder / manifest.scaling)
+    if manifest.reference is not None:
+        parts["reference"] = read_yaml(folder / manifest.reference)
     if manifest.stimuli is not None:
         parts["stimuli"] = read_yaml(folder / manifest.stimuli)
+    if manifest.synapses is not None:
+        parts["synapses"] = read_yaml(folder / manifest.synapses)
 
     try:
         return NetworkDirectory.model_validate(parts)
@@ -137,7 +141,8 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
     them separately to change the files' content in memory in between.
 
     A population's neuron is looked up by name and stored in the population;
-    connections, background inputs and stimuli must name existing populations.
+    connections, background inputs and stimuli must name existing populations (and
+    synapses, checked by :class:`NetworkConfig`).
     """
 
     neurons = {
@@ -190,4 +195,5 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
         stimuli=directory.stimuli.stimuli,
         scaling=directory.scaling,
         reference=directory.reference,
+        synapses=dict(directory.synapses.synapses),
     )

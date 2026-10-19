@@ -49,7 +49,16 @@ class FlowRecord(dict):
     """Marker: dump this mapping in YAML flow style (one line) via write_yaml."""
 
 
-yaml.SafeDumper.add_representer(
+class _Dumper(yaml.SafeDumper):
+    """The YAML writer of :func:`write_yaml`: one-line ``FlowRecord`` mappings,
+    and a value used twice written out twice, never as an anchor (``&id001``)
+    and its alias, which people reading the file would not expect."""
+
+    def ignore_aliases(self, data: Any) -> bool:
+        return True
+
+
+_Dumper.add_representer(
     FlowRecord,
     lambda dumper, data: dumper.represent_mapping(
         "tag:yaml.org,2002:map", data, flow_style=True
@@ -114,7 +123,9 @@ def write_yaml(
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    text = yaml.safe_dump(data, sort_keys=False, default_flow_style=False, width=100_000)
+    text = yaml.dump(
+        data, Dumper=_Dumper, sort_keys=False, default_flow_style=False, width=100_000
+    )
     if header_comment:
         prefixed = "\n".join(f"# {line}" if line else "#" for line in header_comment.splitlines())
         text = f"{prefixed}\n{text}"

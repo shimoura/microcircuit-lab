@@ -1,0 +1,138 @@
+neurons:
+  A_E:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 250.0
+      tau_m: 10.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 2.0
+      I_e: 0.0
+  A_PV_upper:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 100.0
+      tau_m: 5.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 1.0
+      I_e: 0.0
+  A_PV_deep:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 150.0
+      tau_m: 5.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 1.0
+      I_e: 0.0
+  A_SOM:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 200.0
+      tau_m: 15.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 1.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 2.0
+      I_e: 0.0
+  B_E_upper:
+    model: iaf_psc_exp_multisynapse
+    parameters:
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 2.0
+      I_e: 0.0
+      tau_syn:
+      - 2.0
+      - 4.0
+      - 20.0
+  B_E_deep:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 300.0
+      tau_m: 12.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 2.0
+      I_e: 0.0
+  B_PV:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 100.0
+      tau_m: 5.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 1.0
+      I_e: 0.0
+  B_SOM:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 200.0
+      tau_m: 15.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 2.0
+      I_e: 0.0
+  B_VIP:
+    model: iaf_psc_exp
+    parameters:
+      C_m: 150.0
+      tau_m: 12.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+      E_L: -65.0
+      V_reset: -65.0
+      V_th:
+        distribution: normal
+        mean: -50.0
+        std: 1.0
+      t_ref: 2.0
+      I_e: 0.0

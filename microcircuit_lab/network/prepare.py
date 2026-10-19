@@ -14,11 +14,12 @@ import logging
 
 import numpy as np
 
+from microcircuit_lab.config.connectivity import RULE_NUMBER
 from microcircuit_lab.config.network import NetworkConfig
 
 from microcircuit_lab.network.scaling import (
     scale_neuron_number,
-    scale_synapse_number,
+    scale_rule_number,
     scale_weights,
     background_compensation_current,
     background_dc_current,
@@ -52,10 +53,12 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
        population's own neuron parameters;
     2. if ``scaling`` asks for it: scale the neuron numbers (``N_scaling``),
        the indegrees (``K_scaling``) and the weights, then add the DC current
-       that compensates the mean input lost by scaling;
+       that compensates the mean input lost by scaling (for current weights,
+       PSP or PSC, on the default receptor port: the only input whose mean
+       current is known);
     3. turn each population's background rate per synapse into the rate of
        its Poisson generator (rate x indegree);
-    4. with ``background_mode: dc``, replace the background input by a
+    4. with ``background_mode: mean_current``, replace the background input by a
        constant current of the same mean.
 
     Parameters
@@ -80,7 +83,7 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
         network = _compensate_lost_mean_input(network, original=config)
 
     network = _background_rate_per_neuron(network)
-    network = _replace_background_by_dc(network, original=config)
+    network = _replace_background_by_mean_current(network, original=config)
 
     return network
 
@@ -124,7 +127,7 @@ def _scale_indegrees(
     Apply indegree scaling.
 
     Currently scales:
-        - recurrent synapse numbers
+        - the number each connection rule takes (see scale_rule_number)
         - background indegrees
 
     Synaptic weights and DC compensation are intentionally
@@ -144,18 +147,27 @@ def _scale_indegrees(
             }
         )
 
-    # Scale recurrent synapse numbers
+    # Scale the number each connection rule takes (n_synapses, indegree, ...)
     connections = []
     for connection in network.connections:
-        scaled_n_synapses = scale_synapse_number(
-            connection.n_synapses,
-            scaling.N_scaling * scaling.K_scaling,
+        scaled = scale_rule_number(
+            connection.number,
+            connection.rule,
+            scaling.N_scaling,
+            scaling.K_scaling,
         )
-        if scaled_n_synapses < 1:
+        if scaled == 0:
             continue
+        if connection.rule == "pairwise_bernoulli" and scaled > 1.0:
+            raise ValueError(
+                f"Connection {connection.source} -> {connection.target}: with N_scaling="
+                f"{scaling.N_scaling} and K_scaling={scaling.K_scaling}, p={connection.p} "
+                f"becomes {scaled:.3g}, above 1. Keeping the indegree in smaller populations "
+                "needs a higher probability; increase N_scaling or lower K_scaling."
+            )
 
         connections.append(
-            connection.model_copy(update={"n_synapses": scaled_n_synapses})
+            connection.model_copy(update={RULE_NUMBER[connection.rule]: scaled})
         )
 
     return network.model_copy(
@@ -182,7 +194,7 @@ def _compensate_lost_mean_input(
     additionally includes/excludes just the recurrent contribution.
 
     The background contribution is skipped when background_mode is
-    "dc": _replace_background_by_dc replaces the background
+    "mean_current": _replace_background_by_mean_current replaces the background
     Poisson drive entirely with a DC current sized for the full
     (unscaled) biological input, so no separate scaling-bias
     correction for it is needed -- adding both would double-count.
@@ -203,67 +215,15 @@ def _compensate_lost_mean_input(
         )
         return network
 
-    # Connection indegrees for recurrent and background connections
-    indegrees = indegree_matrix(original)
-    K_ext = background_indegrees(original)
-
-    # Mean PSC amplitudes (pA) for recurrent and background connections
-    PSC_ext = background_psc_weights(original)
-    PSC_matrix = mean_psc_matrix(original)
-
-    # Synaptic time constant (ms) of the background input of each
-    # population: tau_syn_ex if its weight is excitatory, tau_syn_in if
-    # it is inhibitory.
-    tau_ext = synaptic_tau(original, PSC_ext)
-
-    # Compute recurrent contribution when requested.
     network_current = np.zeros(len(original.populations))
-
     if scaling.compensate_recurrent_input:
-        mean_rates = full_mean_rates(original)
+        network_current = _recurrent_compensation(original)
 
-        # Excitatory and inhibitory input have different synaptic time
-        # constants, so each kind is compensated with its own.
-        excitatory_PSC = np.where(PSC_matrix > 0, PSC_matrix, 0.0)
-        inhibitory_PSC = np.where(PSC_matrix < 0, PSC_matrix, 0.0)
-
-        network_current = network_compensation_current(
-            network_input=network_mean_input(
-                mean_PSC_matrix=excitatory_PSC,
-                indegree_matrix=indegrees,
-                mean_rates=mean_rates,
-            ),
-            tau_syn=tau_syn_ex(original),
-            K_scaling=scaling.K_scaling,
-        )
-
-        if inhibitory_PSC.any():
-            network_current += network_compensation_current(
-                network_input=network_mean_input(
-                    mean_PSC_matrix=inhibitory_PSC,
-                    indegree_matrix=indegrees,
-                    mean_rates=mean_rates,
-                ),
-                tau_syn=tau_syn_in(original),
-                K_scaling=scaling.K_scaling,
-            )
-
-    # Compute background contribution to DC compensation from biological network quantities
-    pop_names = list(original.populations.keys())
     background_current = np.zeros(len(original.populations))
+    if original.background_mode != "mean_current":
+        background_current = _background_compensation(original)
 
-    if original.background_mode != "dc":
-        bg_rates = np.asarray(
-            [original.background_inputs[name].rate for name in pop_names],
-            dtype=float,
-        )
-        background_current = background_compensation_current(
-            PSC_ext=PSC_ext,
-            K_ext=K_ext,
-            bg_rate=bg_rates,
-            tau_syn=tau_ext,
-            K_scaling=scaling.K_scaling,
-        )
+    pop_names = list(original.populations.keys())
 
     # Apply the compensation currents to neurons
     populations = {}
@@ -298,6 +258,86 @@ def _compensate_lost_mean_input(
     )
 
 
+def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
+    """
+    The DC current (pA) per population that replaces the mean recurrent input
+    lost by scaling, from the full-scale network ``original``.
+
+    Only connections whose mean current is known are compensated (see
+    _mean_current_is_known).
+    """
+
+    known = [c for c in original.connections if _mean_current_is_known(original, c)]
+    unknown = [
+        f"{c.source} -> {c.target}"
+        for c in original.connections
+        if not _mean_current_is_known(original, c)
+    ]
+    if unknown:
+        logger.warning(
+            "The input lost by scaling is not compensated for %s: their weights are "
+            "native (e.g. conductances) or reach another receptor port than the default.",
+            ", ".join(unknown),
+        )
+
+    mean_rates = full_mean_rates(original)
+    current = np.zeros(len(original.populations))
+
+    # Excitatory and inhibitory input have different synaptic time
+    # constants, so each kind is compensated with its own.
+    excitatory = [c for c in known if c.weight.mean > 0]
+    inhibitory = [c for c in known if c.weight.mean < 0]
+    for connections, tau_syn in ((excitatory, tau_syn_ex), (inhibitory, tau_syn_in)):
+        if not connections:
+            continue
+        part = original.model_copy(update={"connections": connections})
+        network_input = network_mean_input(
+            mean_PSC_matrix=mean_psc_matrix(part),
+            indegree_matrix=indegree_matrix(part),
+            mean_rates=mean_rates,
+        )
+        current += network_compensation_current(
+            network_input=network_input,
+            tau_syn=tau_syn(original, needed=network_input != 0),
+            K_scaling=original.scaling.K_scaling,
+        )
+
+    return current
+
+
+def _background_compensation(original: NetworkConfig) -> np.ndarray:
+    """
+    The DC current (pA) per population that replaces the mean background
+    input lost by scaling, from the full-scale network ``original``; 0 for a
+    population whose background input has no known mean current (see
+    _mean_current_is_known).
+    """
+
+    pop_names = list(original.populations.keys())
+    PSC_ext = background_psc_weights(original)
+
+    unknown = _background_without_known_current(original)
+    if unknown:
+        logger.warning(
+            "The background input lost by scaling is not compensated for %s: its weight "
+            "is native (e.g. a conductance) or reaches another receptor port than the default.",
+            ", ".join(unknown),
+        )
+        PSC_ext = np.where(np.isin(pop_names, unknown), 0.0, PSC_ext)
+
+    bg_rates = np.asarray(
+        [original.background_inputs[name].rate for name in pop_names],
+        dtype=float,
+    )
+    return background_compensation_current(
+        PSC_ext=PSC_ext,
+        K_ext=background_indegrees(original),
+        bg_rate=bg_rates,
+        tau_syn=synaptic_tau(original, PSC_ext),
+        K_scaling=original.scaling.K_scaling,
+    )
+
+
 def _background_rate_per_neuron(
     network: NetworkConfig,
 ) -> NetworkConfig:
@@ -328,7 +368,7 @@ def _background_rate_per_neuron(
     )
 
 
-def _replace_background_by_dc(
+def _replace_background_by_mean_current(
     network: NetworkConfig,
     original: NetworkConfig,
 ) -> NetworkConfig:
@@ -336,7 +376,7 @@ def _replace_background_by_dc(
     Replace the background Poisson drive with an equivalent constant
     current, per Potjans & Diesmann (2014)'s comparison of Poisson vs.
     DC background input (their Fig. 5). No-op unless background_mode
-    is "dc".
+    is "mean_current".
 
     The DC amplitude is the mean current a full-strength (unscaled)
     background Poisson process would deliver on average -- computed
@@ -347,8 +387,16 @@ def _replace_background_by_dc(
     generator ends up created for them (see NestBackend).
     """
 
-    if network.background_mode != "dc":
+    if network.background_mode != "mean_current":
         return network
+
+    unknown = _background_without_known_current(original)
+    if unknown:
+        raise ValueError(
+            f"background_mode: mean_current needs the mean background current, which is only known "
+            f"for current weights (PSP or PSC) on the default receptor port; the background "
+            f"input of {unknown} is native or uses another port. Use background_mode: poisson."
+        )
 
     K_ext = background_indegrees(original)
     PSC_ext = background_psc_weights(original)
@@ -400,3 +448,25 @@ def _replace_background_by_dc(
             "background_inputs": background_inputs,
         }
     )
+
+
+def _mean_current_is_known(network: NetworkConfig, item) -> bool:
+    """
+    Whether the core knows the mean current of a connection, background input
+    or stimulus: its weight is a current (PSP, converted, or PSC) and it reaches
+    the default receptor port, whose synaptic time constants are tau_syn_ex
+    and tau_syn_in. A native weight (e.g. a conductance in nS) or another port
+    has no current the core can compute.
+    """
+
+    return item.weight.unit != "native" and network.receptor_port(item.synapse) is None
+
+
+def _background_without_known_current(network: NetworkConfig) -> list[str]:
+    """The populations whose background input has no known mean current."""
+
+    return [
+        name
+        for name, input_cfg in network.background_inputs.items()
+        if not _mean_current_is_known(network, input_cfg)
+    ]
