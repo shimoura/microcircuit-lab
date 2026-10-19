@@ -1,6 +1,6 @@
 # Microcircuit Lab
 
-Build, simulate and analyse spiking network models of cortex, from a single microcircuit to multi-area models. A network is a folder of YAML files; the same core checks it, runs it in NEST and plots the result, whatever model it came from.
+Build, simulate and analyse spiking neural network models, from a single microcircuit to multi-area models. A network is a folder of YAML files; the same core checks it, runs it in NEST and plots the result, whatever model it came from.
 
 ## Contents
 
@@ -55,10 +55,11 @@ simulation.run()
 |---|---|
 | `toy`, `toy_stimulated` | two populations (E and I), with and without stimuli; the smallest example |
 | `toy_two_areas` | a made-up two-area network with different layers and cell types (E, PV, SOM, VIP) |
+| `toy_two_areas_advanced` | the same network with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
 | `humam_single`, `humam_all` | the human multi-area model (Pronold et al. 2024): one area, or all 34 |
 
-`pd14` is full scale (77,169 neurons, about 15 GB of memory) and runs for 11 s; for a quick look, scale it down first (see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
+`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, scale it down first (see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
 
 ## Starting a project
 
@@ -106,7 +107,11 @@ Use the version you want in place of `v0.1.0`. Only NEST built from source runs 
 - conda-forge: `mamba install -c conda-forge nest-simulator`
 - from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh` (`NEST_WITH_MPI=ON` for MPI)
 
-All that matters is that `import nest` works. To work on the core itself, clone the repository and install it editable:
+All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
+
+The power spectrum with `method: multitaper` needs `mne`: `pip install "microcircuit_lab[multitaper]"`.
+
+To work on the core itself, clone the repository and install it editable:
 
 ```bash
 python -m venv .venv
@@ -430,7 +435,7 @@ output/<network>/<timestamp>/
 ├── recordings/     spikes (and voltages), written by NEST during the run
 ├── plots/          made by microcircuit-lab run
 ├── config.yaml     the prepared network and the simulation settings used
-└── metadata.json   versions, git commits, spike counts, list of files
+└── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one.
@@ -500,7 +505,7 @@ register_plot("spectrogram", plot_spectrogram,
 
 ## Adding a backend
 
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/base.py`) in `microcircuit_lab/backends/<name>/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know.
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/base.py`) in `microcircuit_lab/backends/<name>/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
 2. Register it in `get_backend` (`microcircuit_lab/backends/__init__.py`).
 3. Select it with `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; `backend_options` go to its constructor unchanged.
 

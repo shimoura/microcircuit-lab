@@ -85,6 +85,8 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
     """
 
     folder = Path(folder)
+    if not (folder / "network.yaml").is_file():
+        raise FileNotFoundError(_missing_network_message(folder))
     manifest = NetworkManifest.model_validate(read_yaml(folder / "network.yaml"))
 
     parts: dict[str, Any] = {
@@ -107,6 +109,20 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         return NetworkDirectory.model_validate(parts)
     except ValidationError as error:
         raise ValueError(_describe_problems(folder, manifest, error)) from error
+
+
+def _missing_network_message(folder: Path) -> str:
+    """One line: the missing folder, and the networks found next to it."""
+    message = f"No network at {folder} (no network.yaml)."
+    parent = folder.parent
+    found = (
+        sorted(p.name for p in parent.iterdir() if (p / "network.yaml").is_file())
+        if parent.is_dir()
+        else []
+    )
+    if found:
+        message += f" Networks in {parent}: {', '.join(found)}"
+    return message
 
 
 def _describe_problems(folder: Path, manifest: NetworkManifest, error: ValidationError) -> str:

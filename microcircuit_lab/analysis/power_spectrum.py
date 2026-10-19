@@ -104,7 +104,8 @@ def _multitaper(
         from mne.time_frequency import psd_array_multitaper
     except ImportError as exc:
         raise ImportError(
-            "method='multitaper' requires mne. Install it with e.g. `pip install mne`."
+            "method='multitaper' requires mne. Install it with "
+            '`pip install "microcircuit_lab[multitaper]"`.'
         ) from exc
 
     power, freqs = psd_array_multitaper(

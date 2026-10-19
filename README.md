@@ -1,6 +1,6 @@
 # Microcircuit Lab
 
-Microcircuit Lab builds, simulates and analyses spiking network models of cortex, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
+Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
 
 The full documentation is in [`microcircuit_lab/README.md`](microcircuit_lab/README.md).
 

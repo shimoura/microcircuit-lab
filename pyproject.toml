@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "microcircuit_lab"
 version = "0.1.0"
-description = "A flexible framework for building, simulating, and analyzing biologically inspired neural microcircuit models."
+description = "Build, simulate and analyse spiking neural network models, from a single microcircuit to multi-area models."
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
@@ -37,7 +37,6 @@ dependencies = [
     "PyYAML>=6.0",
     "pandas>=2.0",
     "matplotlib>=3.10",
-    "mne",
 ]
 
 [project.urls]
@@ -57,6 +56,10 @@ include = ["microcircuit_lab*"]
 dev = [
     "pytest",
     "ruff",
+    "mne",
+]
+multitaper = [
+    "mne",
 ]
 nest = [
     "nest-simulator>=3.0",
