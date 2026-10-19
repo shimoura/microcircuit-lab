@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="482" viewBox="0 0 920 482" role="img" aria-label="What you write, what the core does when you run it, and what you get">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#59636e"/></marker></defs>
+<rect width="920" height="482" rx="12" fill="#f6f8fa"/>
+<rect x="20" y="184" width="292" height="200" rx="8" fill="#ffffff" stroke="#1a5fb4" stroke-width="2"/>
+<text x="20" y="38" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#1a5fb4" text-anchor="start" xml:space="preserve">You write</text>
+<text x="20" y="58" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">in your project</text>
+<text x="352" y="38" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#6e40c9" text-anchor="start" xml:space="preserve">The core does</text>
+<text x="352" y="58" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">microcircuit_lab/</text>
+<text x="649" y="38" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#1a7f37" text-anchor="start" xml:space="preserve">You get</text>
+<text x="649" y="58" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">a run folder</text>
+<rect x="32" y="76" width="268" height="52" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="44" y="97" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">builders/&lt;model&gt;/</text>
+<text x="44" y="116" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">optional: your code, data → YAML</text>
+<path d="M72 129 L72 173" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<text x="84" y="147" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">microcircuit-lab generate</text>
+<text x="84" y="164" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">writes configs/network/&lt;name&gt;/</text>
+<rect x="32" y="196" width="268" height="52" rx="8" fill="#ffffff" stroke="#1a5fb4" stroke-width="1.2"/>
+<text x="44" y="217" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">configs/network/&lt;name&gt;/</text>
+<text x="44" y="236" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">the network, as YAML files</text>
+<rect x="32" y="258" width="268" height="52" rx="8" fill="#ffffff" stroke="#1a5fb4" stroke-width="1.2"/>
+<text x="44" y="279" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">configs/simulation/&lt;name&gt;.yaml</text>
+<text x="44" y="298" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">how long, threads, what to record</text>
+<rect x="32" y="320" width="268" height="52" rx="8" fill="#ffffff" stroke="#1a5fb4" stroke-width="1.2"/>
+<text x="44" y="341" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">configs/analysis/&lt;name&gt;.yaml</text>
+<text x="44" y="360" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">which plots, how they look</text>
+<rect x="32" y="406" width="268" height="52" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="44" y="427" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">analyses/</text>
+<text x="44" y="446" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">optional: your own plots</text>
+<rect x="352" y="76" width="261" height="382" rx="8" fill="#ffffff" stroke="#6e40c9" stroke-width="2"/>
+<text x="482.5" y="96" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#6e40c9" text-anchor="middle" xml:space="preserve">microcircuit-lab run</text>
+<rect x="366" y="108" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="378" y="127" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">1  check</text>
+<text x="587" y="127" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">config/</text>
+<text x="378" y="145" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">every file and field</text>
+<rect x="366" y="181.5" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="378" y="200.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">2  prepare</text>
+<text x="587" y="200.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">network/</text>
+<text x="378" y="218.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">PSP → pA, scaling, compensation</text>
+<rect x="366" y="255" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="378" y="274" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">3  simulate</text>
+<text x="587" y="274" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">backends/nest/</text>
+<text x="378" y="292" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">in NEST, per configs/simulation</text>
+<rect x="366" y="328.5" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="378" y="347.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">4  save</text>
+<text x="587" y="347.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">runs.py</text>
+<text x="378" y="365.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">spikes, config, metadata</text>
+<rect x="366" y="402" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
+<text x="378" y="421" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">5  plot</text>
+<text x="587" y="421" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">analysis/</text>
+<text x="378" y="439" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">per configs/analysis, and analyses/</text>
+<path d="M313 284 L351 284" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+<rect x="649" y="76" width="255" height="382" rx="8" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
+<text x="663" y="104" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">output/&lt;name&gt;/&lt;date_time&gt;/</text>
+<text x="663" y="140" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">spikes</text>
+<text x="663" y="159" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">spike times, per population</text>
+<text x="663" y="192" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">config.yaml</text>
+<text x="663" y="211" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">the prepared network, settings</text>
+<text x="663" y="244" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">metadata.json</text>
+<text x="663" y="263" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">versions, counts, files</text>
+<text x="663" y="296" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">plots/</text>
+<text x="663" y="315" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">raster, rates, spectra, CV</text>
+<path d="M663 400h227" stroke="#8c959f" stroke-width="1"/>
+<text x="663" y="422" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">re-plot without simulating:</text>
+<text x="663" y="442" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#1a7f37" text-anchor="start" xml:space="preserve">run --run-dir &lt;folder&gt;</text>
+<path d="M614 267 L648 267" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
+</svg>

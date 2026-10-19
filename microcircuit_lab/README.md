@@ -42,13 +42,7 @@ simulation.run()
 
 ## How it works
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
-flowchart TD
-  D["your data"] -->|builder| F["configs/network/&lt;name&gt;/<br/>YAML files"]
-  F -->|"microcircuit-lab run"| S["check, prepare,<br/>simulate in NEST"]
-  S --> R["output/&lt;name&gt;/&lt;timestamp&gt;/<br/>spikes, config, plots"]
-```
+![What you write, what the core does when you run it, and what you get](../docs/images/how_it_works.svg)
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
@@ -228,13 +222,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 
 ## Adding a new model
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 400}}}%%
-flowchart LR
-  A["Option A:<br/>copy configs/network/toy/<br/>and edit the YAML"] --> F["configs/network/&lt;model&gt;/"]
-  B["Option B:<br/>a builder turns your data<br/>into the files"] --> F
-  F --> R["microcircuit-lab run --network &lt;model&gt;"]
-```
+![Two ways to add a model: write the YAML files, or write a builder that writes them](../docs/images/new_model.svg)
 
 The core never changes for a new model.
 
