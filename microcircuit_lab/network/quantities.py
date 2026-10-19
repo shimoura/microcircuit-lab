@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from microcircuit_lab.config.connectivity import ConnectionConfig
 from microcircuit_lab.config.network import NetworkConfig
 
 from microcircuit_lab.config.populations import PopulationConfig
@@ -36,11 +37,26 @@ def full_num_neurons(network: NetworkConfig) -> np.ndarray:
     )
 
 
+def expected_synapses(connection: ConnectionConfig, n_source: int, n_target: int) -> float:
+    """The expected number of synapses of a connection between populations of
+    these sizes, whatever its rule."""
+
+    if connection.rule == "fixed_total_number":
+        return float(connection.n_synapses)
+    if connection.rule == "fixed_indegree":
+        return float(connection.indegree * n_target)
+    if connection.rule == "fixed_outdegree":
+        return float(connection.outdegree * n_source)
+    return connection.p * n_source * n_target
+
+
 def full_num_synapses(network: NetworkConfig) -> np.ndarray:
     """
-    Return the full synapse numbers as a matrix.
+    Return the full synapse numbers as a matrix (target x source).
 
-    These correspond to the biological (unscaled) network.
+    These correspond to the biological (unscaled) network. Each entry is the
+    expected number of synapses of the pair, summed over its connections
+    (several when a pair is connected through several synapses).
     """
 
     pop_names = list(network.populations.keys())
@@ -55,7 +71,11 @@ def full_num_synapses(network: NetworkConfig) -> np.ndarray:
         i = name_to_index[connection.target]
         j = name_to_index[connection.source]
 
-        matrix[i, j] = connection.n_synapses
+        matrix[i, j] += expected_synapses(
+            connection,
+            network.populations[connection.source].size,
+            network.populations[connection.target].size,
+        )
 
     return matrix
 
@@ -160,12 +180,13 @@ def mean_psc_matrix(
     network: NetworkConfig,
 ) -> np.ndarray:
     """
-    Return the biological mean PSC matrix (pA).
+    Return the biological mean PSC matrix (pA, target x source).
 
     Only ``unit: PSP`` connections are converted, and only for a target
     population whose neuron parameters support it (see
     network.units.convert_psp_to_psc); any other unit (``PSC``,
-    ``native``, ...) is used unchanged.
+    ``native``, ...) is used unchanged. A pair connected through several
+    synapses gets the mean over all its synapses.
     """
 
     pop_names = list(network.populations.keys())
@@ -173,31 +194,49 @@ def mean_psc_matrix(
 
     n = len(pop_names)
 
-    matrix = np.zeros((n, n), dtype=float)
+    # (weight, expected number of synapses) of each connection, per pair
+    entries: dict[tuple[int, int], list[tuple[float, float]]] = {}
 
     for connection in network.connections:
 
         i = name_to_index[connection.target]
         j = name_to_index[connection.source]
 
-        if connection.weight.unit != "PSP":
-            matrix[i, j] = connection.weight.mean
-            continue
+        weight = connection.weight.mean
+        if connection.weight.unit == "PSP":
+            weight = _convert_psp_weight(network.populations[connection.target], weight)
 
-        target = network.populations[connection.target]
-        matrix[i, j] = _convert_psp_weight(target, connection.weight.mean)
+        count = expected_synapses(
+            connection,
+            network.populations[connection.source].size,
+            network.populations[connection.target].size,
+        )
+        entries.setdefault((i, j), []).append((weight, count))
+
+    matrix = np.zeros((n, n), dtype=float)
+    for (i, j), pair in entries.items():
+        weights, counts = zip(*pair)
+        if len(pair) == 1:
+            matrix[i, j] = weights[0]
+        else:
+            matrix[i, j] = np.average(weights, weights=counts if sum(counts) else None)
 
     return matrix
 
 
-def _tau_syn(network: NetworkConfig, parameter: str) -> np.ndarray:
+def _tau_syn(network: NetworkConfig, parameter: str, needed=None) -> np.ndarray:
     """Return neuron parameter ``parameter`` (a synaptic time constant) for
     each population. A population whose neuron parameters don't include it
     raises a clear error naming that population, instead of a bare
-    AttributeError."""
+    AttributeError. With ``needed`` (one bool per population), the others
+    get 0 and are not read: a neuron with only other receptor ports has no
+    ``tau_syn_ex``."""
 
     values = []
-    for name, population in network.populations.items():
+    for index, (name, population) in enumerate(network.populations.items()):
+        if needed is not None and not needed[index]:
+            values.append(0.0)
+            continue
         try:
             values.append(population.neuron.parameters.require(parameter)[parameter])
         except KeyError as exc:
@@ -208,24 +247,28 @@ def _tau_syn(network: NetworkConfig, parameter: str) -> np.ndarray:
 
 def tau_syn_ex(
     network: NetworkConfig,
+    needed=None,
 ) -> np.ndarray:
     """
-    Return the excitatory synaptic time constant for each population.
+    Return the excitatory synaptic time constant for each population
+    (only for those ``needed``, if given; 0 for the others).
 
     Used by DC-current scaling compensation, which shares the same
     current-based-synapse assumption as the PSP-to-PSC conversion; see
     _convert_psp_weight.
     """
 
-    return _tau_syn(network, "tau_syn_ex")
+    return _tau_syn(network, "tau_syn_ex", needed)
 
 
 def tau_syn_in(
     network: NetworkConfig,
+    needed=None,
 ) -> np.ndarray:
-    """Return the inhibitory synaptic time constant for each population."""
+    """Return the inhibitory synaptic time constant for each population
+    (only for those ``needed``, if given; 0 for the others)."""
 
-    return _tau_syn(network, "tau_syn_in")
+    return _tau_syn(network, "tau_syn_in", needed)
 
 
 def synaptic_tau(
@@ -236,15 +279,13 @@ def synaptic_tau(
     Return the synaptic time constant (ms) of the input of each population,
     given its mean PSC (one value per population): the population's
     ``tau_syn_ex`` for a positive PSC and its ``tau_syn_in`` for a negative
-    one, the same sign rule the PSP-to-PSC conversion uses. ``tau_syn_in``
-    is only read when some PSC is negative.
+    one, the same sign rule the PSP-to-PSC conversion uses. A population
+    without input (PSC 0) gets 0, and its time constants are not read.
     """
 
-    tau = tau_syn_ex(network)
-    if (mean_PSC < 0).any():
-        tau = np.where(mean_PSC < 0, tau_syn_in(network), tau)
-
-    return tau
+    excitatory = tau_syn_ex(network, needed=mean_PSC > 0)
+    inhibitory = tau_syn_in(network, needed=mean_PSC < 0)
+    return np.where(mean_PSC < 0, inhibitory, excitatory)
 
 
 def convert_network_psp_to_psc(

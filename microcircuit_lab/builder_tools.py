@@ -85,7 +85,7 @@ def weight(
     rel_std
         Standard deviation divided by ``|mean|``; 0 for a fixed weight.
     distribution
-        ``"fixed"``, ``"normal"`` or ``"lognormal"``. By default ``fixed`` when
+        ``"fixed"``, ``"normal"``, ``"uniform"`` or ``"lognormal"``. By default ``fixed`` when
         ``rel_std`` is 0 and ``normal`` otherwise.
 
     Returns
@@ -151,6 +151,7 @@ def write_network_directory(
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
     stimuli: Iterable[Mapping[str, Any]] | None = None,
+    synapses: Mapping[str, Mapping[str, Any]] | None = None,
     compact: bool = True,
 ) -> NetworkConfig:
     """
@@ -170,8 +171,9 @@ def write_network_directory(
     neurons
         ``{neuron name: {"model": ..., "parameters": {...}}}``.
     connections
-        One dict per projection (``source``, ``target``, ``n_synapses``,
-        ``weight``, ``delay``).
+        One dict per projection (``source``, ``target``, ``n_synapses`` or
+        another ``rule`` with its number, ``weight``, ``delay``, optionally
+        ``synapse``).
     background_inputs
         ``{population name: {"rate": ..., "weight": ..., "delay": ...}}``.
     background_mode
@@ -184,6 +186,9 @@ def write_network_directory(
         ``{population name: full-scale mean rate}``; ``None`` writes no rates.
     stimuli
         The list of stimuli; ``None`` writes no ``stimuli.yaml``.
+    synapses
+        ``{synapse name: {"model": ..., "parameters": {...}, "receptor_port": ...}}``;
+        ``None`` writes no ``synapses.yaml``.
     compact
         Connections are always written one per line. ``True`` writes populations
         and background inputs the same way; ``False`` writes them in block
@@ -210,6 +215,8 @@ def write_network_directory(
     }
     if stimuli is not None:
         file_names["stimuli"] = "stimuli.yaml"
+    if synapses is not None:
+        file_names["synapses"] = "synapses.yaml"
 
     table = flow_records if compact else (lambda records: records)
 
@@ -240,6 +247,8 @@ def write_network_directory(
     }
     if stimuli is not None:
         payloads["stimuli.yaml"] = {"stimuli": list(stimuli)}
+    if synapses is not None:
+        payloads["synapses.yaml"] = {"synapses": dict(synapses)}
 
     for name, payload in payloads.items():
         write_yaml(directory / name, payload)

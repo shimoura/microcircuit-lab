@@ -6,7 +6,7 @@ the simulator's model name and its parameters.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt
 
 from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.distributions import PerNeuronValue
@@ -39,14 +39,19 @@ class NeuronParams(BaseModel):
     starting point across point-neuron models generally. It is always a
     number.
 
-    Values must be numbers or distributions; anything else (a string, a
-    list, ...) is rejected here rather than surfacing as a confusing
-    simulator-side error.
+    Values must be numbers, lists of numbers (a parameter with one entry per
+    receptor port, e.g. ``tau_syn: [0.5, 5.0]``) or distributions; anything
+    else (a string, ...) is rejected here rather than surfacing as a
+    confusing simulator-side error.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
 
-    __pydantic_extra__: dict[str, PerNeuronValue] = Field(init=False)
+    # A list is one value with several entries, the same for every neuron,
+    # e.g. the time constant of each receptor port: tau_syn: [0.5, 5.0].
+    __pydantic_extra__: dict[str, PerNeuronValue | list[StrictInt | StrictFloat]] = Field(
+        init=False
+    )
 
     I_e: float = Field(default=0.0, description="constant input current (pA)")
 
@@ -88,7 +93,8 @@ class NeuronEntry(FrozenConfig):
         ],
         description="parameters passed to that model as-is; keys are "
         "model-specific and the backend validates them (I_e defaults to 0.0); a value is a "
-        "number, or a distribution drawn per neuron like in initial_state "
+        "number, a list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a "
+        "distribution drawn per neuron like in initial_state "
         "(I_e and the parameters a PSP weight is converted with must be numbers)"
     )
     psp_conversion_aliases: dict[str, str] = Field(

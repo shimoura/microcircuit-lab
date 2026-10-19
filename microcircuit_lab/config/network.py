@@ -19,7 +19,8 @@ from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
-from microcircuit_lab.config.stimuli import StimuliFile, StimulusConfig
+from microcircuit_lab.config.stimuli import DcStimulusConfig, StimuliFile, StimulusConfig
+from microcircuit_lab.config.synapses import SynapseEntry, SynapsesFile
 
 
 class NetworkManifest(FrozenConfig):
@@ -38,6 +39,12 @@ class NetworkManifest(FrozenConfig):
         default=None,
         examples=["stimuli.yaml"],
         description="file holding targeted stimuli; omit the key for none",
+    )
+    synapses: str | None = Field(
+        default=None,
+        examples=["synapses.yaml"],
+        description="file holding the synapse definitions; omit the key to use the "
+        "default synapse everywhere",
     )
 
 
@@ -58,6 +65,7 @@ class NetworkDirectory(FrozenConfig):
     scaling: ScalingConfig
     reference: ReferenceConfig
     stimuli: StimuliFile = Field(default_factory=StimuliFile)
+    synapses: SynapsesFile = Field(default_factory=SynapsesFile)
 
 
 class NetworkConfig(FrozenConfig):
@@ -96,6 +104,7 @@ class NetworkConfig(FrozenConfig):
     scaling: ScalingConfig
 
     reference: ReferenceConfig | None = None
+    synapses: dict[str, SynapseEntry] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check_stimulus_targets_exist(self) -> "NetworkConfig":
@@ -109,15 +118,45 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
-    def _check_one_connection_per_pair(self) -> "NetworkConfig":
-        # The scaling compensation keeps one number per (source, target), so a
-        # second entry for the same pair would be simulated but not compensated.
-        pairs = [(c.source, c.target) for c in self.connections]
-        repeated = sorted({pair for pair in pairs if pairs.count(pair) > 1})
+    def _check_one_connection_per_synapse(self) -> "NetworkConfig":
+        keys = [(c.source, c.target, c.synapse) for c in self.connections]
+        repeated = sorted({key for key in keys if keys.count(key) > 1}, key=str)
         if repeated:
             raise ValueError(
-                f"connectivity.yaml has more than one entry for (source, target) {repeated}. "
-                "Each pair takes one entry: several synapse models, receptors or connection "
-                "rules for the same pair are not supported yet."
+                f"connectivity.yaml has more than one entry for (source, target, synapse) "
+                f"{repeated}. A pair takes one entry per synapse; to connect it twice "
+                "(e.g. AMPA and NMDA), give each entry its own synapse."
             )
         return self
+
+    @model_validator(mode="after")
+    def _check_synapses(self) -> "NetworkConfig":
+        users = [(f"connection {c.source} -> {c.target}", c) for c in self.connections]
+        users += [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users += [
+            (f"stimulus of {s.targets}", s)
+            for s in self.stimuli
+            if not isinstance(s, DcStimulusConfig)
+        ]
+        for user, item in users:
+            if item.synapse is None:
+                continue
+            if item.synapse not in self.synapses:
+                raise ValueError(
+                    f"The {user} uses synapse {item.synapse!r}, which is not defined in "
+                    "synapses.yaml."
+                )
+            # The PSP-to-PSC conversion uses tau_syn_ex/tau_syn_in, the time
+            # constants of the default port; another port has its own.
+            if self.synapses[item.synapse].receptor_port is not None and item.weight.unit == "PSP":
+                raise ValueError(
+                    f"The {user} has a unit: PSP weight on receptor port "
+                    f"{self.synapses[item.synapse].receptor_port} (synapse {item.synapse!r}). "
+                    "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
+                    "default port only; give this weight as unit: PSC or native."
+                )
+        return self
+
+    def receptor_port(self, synapse: str | None) -> int | None:
+        """The receptor port of a synapse name (``None``: the default port)."""
+        return None if synapse is None else self.synapses[synapse].receptor_port

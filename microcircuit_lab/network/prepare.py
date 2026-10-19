@@ -14,11 +14,12 @@ import logging
 
 import numpy as np
 
+from microcircuit_lab.config.connectivity import RULE_NUMBER
 from microcircuit_lab.config.network import NetworkConfig
 
 from microcircuit_lab.network.scaling import (
     scale_neuron_number,
-    scale_synapse_number,
+    scale_rule_number,
     scale_weights,
     background_compensation_current,
     background_dc_current,
@@ -52,7 +53,8 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
        population's own neuron parameters;
     2. if ``scaling`` asks for it: scale the neuron numbers (``N_scaling``),
        the indegrees (``K_scaling``) and the weights, then add the DC current
-       that compensates the mean input lost by scaling;
+       that compensates the mean input lost by scaling (for input to the
+       default receptor port, the only one whose time constants are known);
     3. turn each population's background rate per synapse into the rate of
        its Poisson generator (rate x indegree);
     4. with ``background_mode: dc``, replace the background input by a
@@ -124,7 +126,7 @@ def _scale_indegrees(
     Apply indegree scaling.
 
     Currently scales:
-        - recurrent synapse numbers
+        - the number each connection rule takes (see scale_rule_number)
         - background indegrees
 
     Synaptic weights and DC compensation are intentionally
@@ -144,18 +146,27 @@ def _scale_indegrees(
             }
         )
 
-    # Scale recurrent synapse numbers
+    # Scale the number each connection rule takes (n_synapses, indegree, ...)
     connections = []
     for connection in network.connections:
-        scaled_n_synapses = scale_synapse_number(
-            connection.n_synapses,
-            scaling.N_scaling * scaling.K_scaling,
+        scaled = scale_rule_number(
+            connection.number,
+            connection.rule,
+            scaling.N_scaling,
+            scaling.K_scaling,
         )
-        if scaled_n_synapses < 1:
+        if scaled == 0:
             continue
+        if connection.rule == "pairwise_bernoulli" and scaled > 1.0:
+            raise ValueError(
+                f"Connection {connection.source} -> {connection.target}: with N_scaling="
+                f"{scaling.N_scaling} and K_scaling={scaling.K_scaling}, p={connection.p} "
+                f"becomes {scaled:.3g}, above 1. Keeping the indegree in smaller populations "
+                "needs a higher probability; increase N_scaling or lower K_scaling."
+            )
 
         connections.append(
-            connection.model_copy(update={"n_synapses": scaled_n_synapses})
+            connection.model_copy(update={RULE_NUMBER[connection.rule]: scaled})
         )
 
     return network.model_copy(
@@ -203,67 +214,15 @@ def _compensate_lost_mean_input(
         )
         return network
 
-    # Connection indegrees for recurrent and background connections
-    indegrees = indegree_matrix(original)
-    K_ext = background_indegrees(original)
-
-    # Mean PSC amplitudes (pA) for recurrent and background connections
-    PSC_ext = background_psc_weights(original)
-    PSC_matrix = mean_psc_matrix(original)
-
-    # Synaptic time constant (ms) of the background input of each
-    # population: tau_syn_ex if its weight is excitatory, tau_syn_in if
-    # it is inhibitory.
-    tau_ext = synaptic_tau(original, PSC_ext)
-
-    # Compute recurrent contribution when requested.
     network_current = np.zeros(len(original.populations))
-
     if scaling.compensate_recurrent_input:
-        mean_rates = full_mean_rates(original)
+        network_current = _recurrent_compensation(original)
 
-        # Excitatory and inhibitory input have different synaptic time
-        # constants, so each kind is compensated with its own.
-        excitatory_PSC = np.where(PSC_matrix > 0, PSC_matrix, 0.0)
-        inhibitory_PSC = np.where(PSC_matrix < 0, PSC_matrix, 0.0)
-
-        network_current = network_compensation_current(
-            network_input=network_mean_input(
-                mean_PSC_matrix=excitatory_PSC,
-                indegree_matrix=indegrees,
-                mean_rates=mean_rates,
-            ),
-            tau_syn=tau_syn_ex(original),
-            K_scaling=scaling.K_scaling,
-        )
-
-        if inhibitory_PSC.any():
-            network_current += network_compensation_current(
-                network_input=network_mean_input(
-                    mean_PSC_matrix=inhibitory_PSC,
-                    indegree_matrix=indegrees,
-                    mean_rates=mean_rates,
-                ),
-                tau_syn=tau_syn_in(original),
-                K_scaling=scaling.K_scaling,
-            )
-
-    # Compute background contribution to DC compensation from biological network quantities
-    pop_names = list(original.populations.keys())
     background_current = np.zeros(len(original.populations))
-
     if original.background_mode != "dc":
-        bg_rates = np.asarray(
-            [original.background_inputs[name].rate for name in pop_names],
-            dtype=float,
-        )
-        background_current = background_compensation_current(
-            PSC_ext=PSC_ext,
-            K_ext=K_ext,
-            bg_rate=bg_rates,
-            tau_syn=tau_ext,
-            K_scaling=scaling.K_scaling,
-        )
+        background_current = _background_compensation(original)
+
+    pop_names = list(original.populations.keys())
 
     # Apply the compensation currents to neurons
     populations = {}
@@ -295,6 +254,85 @@ def _compensate_lost_mean_input(
         update={
             "populations": populations,
         }
+    )
+
+
+def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
+    """
+    The DC current (pA) per population that replaces the mean recurrent input
+    lost by scaling, from the full-scale network ``original``.
+
+    Only input to the default receptor port is compensated: its synaptic time
+    constants (tau_syn_ex, tau_syn_in) are the only ones known.
+    """
+
+    default_port = [c for c in original.connections if original.receptor_port(c.synapse) is None]
+    other_ports = [
+        f"{c.source} -> {c.target} ({c.synapse})"
+        for c in original.connections
+        if original.receptor_port(c.synapse) is not None
+    ]
+    if other_ports:
+        logger.warning(
+            "The input lost by scaling is not compensated for connections to other "
+            "receptor ports than the default: %s.",
+            ", ".join(other_ports),
+        )
+
+    mean_rates = full_mean_rates(original)
+    current = np.zeros(len(original.populations))
+
+    # Excitatory and inhibitory input have different synaptic time
+    # constants, so each kind is compensated with its own.
+    excitatory = [c for c in default_port if c.weight.mean > 0]
+    inhibitory = [c for c in default_port if c.weight.mean < 0]
+    for connections, tau_syn in ((excitatory, tau_syn_ex), (inhibitory, tau_syn_in)):
+        if not connections:
+            continue
+        part = original.model_copy(update={"connections": connections})
+        network_input = network_mean_input(
+            mean_PSC_matrix=mean_psc_matrix(part),
+            indegree_matrix=indegree_matrix(part),
+            mean_rates=mean_rates,
+        )
+        current += network_compensation_current(
+            network_input=network_input,
+            tau_syn=tau_syn(original, needed=network_input != 0),
+            K_scaling=original.scaling.K_scaling,
+        )
+
+    return current
+
+
+def _background_compensation(original: NetworkConfig) -> np.ndarray:
+    """
+    The DC current (pA) per population that replaces the mean background
+    input lost by scaling, from the full-scale network ``original``; 0 for a
+    population whose background input reaches another receptor port.
+    """
+
+    pop_names = list(original.populations.keys())
+    PSC_ext = background_psc_weights(original)
+
+    other_ports = _background_on_other_ports(original)
+    if other_ports:
+        logger.warning(
+            "The background input lost by scaling is not compensated for %s: it "
+            "reaches another receptor port than the default.",
+            ", ".join(other_ports),
+        )
+        PSC_ext = np.where(np.isin(pop_names, other_ports), 0.0, PSC_ext)
+
+    bg_rates = np.asarray(
+        [original.background_inputs[name].rate for name in pop_names],
+        dtype=float,
+    )
+    return background_compensation_current(
+        PSC_ext=PSC_ext,
+        K_ext=background_indegrees(original),
+        bg_rate=bg_rates,
+        tau_syn=synaptic_tau(original, PSC_ext),
+        K_scaling=original.scaling.K_scaling,
     )
 
 
@@ -350,6 +388,14 @@ def _replace_background_by_dc(
     if network.background_mode != "dc":
         return network
 
+    other_ports = _background_on_other_ports(original)
+    if other_ports:
+        raise ValueError(
+            f"background_mode: dc needs the mean background current, which is only "
+            f"computed for the default receptor port; the background input of "
+            f"{other_ports} uses another port. Use background_mode: poisson."
+        )
+
     K_ext = background_indegrees(original)
     PSC_ext = background_psc_weights(original)
     tau_syn = synaptic_tau(original, PSC_ext)
@@ -400,3 +446,14 @@ def _replace_background_by_dc(
             "background_inputs": background_inputs,
         }
     )
+
+
+def _background_on_other_ports(network: NetworkConfig) -> list[str]:
+    """The populations whose background input reaches a receptor port other
+    than the default, so its mean current is not known."""
+
+    return [
+        name
+        for name, input_cfg in network.background_inputs.items()
+        if network.receptor_port(input_cfg.synapse) is not None
+    ]

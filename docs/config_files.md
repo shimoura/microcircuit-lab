@@ -13,7 +13,7 @@ One folder per network, one file per part. A population is named once, in `popul
 What this means for a model:
 
 - **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in `nest.random` works, with its arguments as keys.
-- **Connections are set per pair of populations**: one entry for each source and target, with the number of synapses and the distributions their weights and delays are drawn from. Every connection uses the same rule (a fixed total number of synapses) and NEST's default synapse and receptor; several synapse models, receptors or rules for one pair (e.g. AMPA and NMDA) are not supported yet.
+- **Connections are set per pair of populations**: an entry for each source and target, with a rule and its number (`n_synapses` in total, an `indegree`, an `outdegree` or a probability `p`) and the distributions the weights and delays are drawn from. A pair can have several entries, one per synapse in `synapses.yaml` (e.g. AMPA and NMDA on their own receptor ports). PSP weights and the scaling compensation are only computed for the default receptor port.
 - **So, for neurons with another model or other parameters, or wired differently, make a separate population.** In `configs/network/toy_stimulated/`, `E` (`iaf_psc_exp`) and `E_adex` (`aeif_cond_exp`) are two populations, each with its own connections.
 - **Several populations can share one neuron entry**, e.g. one `excitatory` entry for the excitatory populations of every layer.
 - **Names are only labels.** `E` does not make a population excitatory: the sign of its outgoing weights does.
@@ -39,6 +39,9 @@ scaling: scaling.yaml
 reference: reference.yaml
 # optional · text · file holding targeted stimuli; omit the key for none
 stimuli: stimuli.yaml
+# optional · text · file holding the synapse definitions; omit the key to use the
+#   default synapse everywhere
+synapses: synapses.yaml
 ```
 
 ### populations.yaml
@@ -80,9 +83,10 @@ neurons:
     # required · text · the simulator's neuron model name, e.g. iaf_psc_exp
     model: iaf_psc_exp
     # required · parameters passed to that model as-is; keys are model-specific and the
-    #   backend validates them (I_e defaults to 0.0); a value is a number, or a
-    #   distribution drawn per neuron like in initial_state (I_e and the parameters a
-    #   PSP weight is converted with must be numbers)
+    #   backend validates them (I_e defaults to 0.0); a value is a number, a list of
+    #   numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a distribution
+    #   drawn per neuron like in initial_state (I_e and the parameters a PSP weight is
+    #   converted with must be numbers)
     parameters:
       C_m: 250.0
       tau_m: 10.0
@@ -97,20 +101,63 @@ neurons:
     psp_conversion_aliases: {}
 ```
 
+### synapses.yaml
+
+Optional: synapse models and receptor ports, by name. Without it, every connection uses the default synapse.
+
+```yaml
+# optional, default empty · mapping · one entry per synapse, keyed by any name;
+#   connections, background inputs and stimuli refer to it by that name
+synapses:
+  depressing:
+    # required · text · the simulator's synapse model name, e.g. static_synapse or
+    #   stdp_synapse
+    model: tsodyks2_synapse
+    # optional, default empty · mapping · parameters passed to that model as-is; the
+    #   backend validates them
+    parameters:
+      U: 0.5
+      tau_rec: 800.0
+    # optional · integer ≥ 1 · receptor port of the target neuron (e.g. 1 for AMPA in a
+    #   multisynapse model); omit for the default port (0). PSP weights and the scaling
+    #   compensation are only computed for the default port
+    receptor_port: 1
+```
+
 ### connectivity.yaml
 
 The connections between populations.
 
 ```yaml
-# required · list of entries · one entry per (source, target) pair; leave a pair out
+# required · list of entries · one entry per (source, target, synapse); leave a pair out
 #   rather than writing n_synapses: 0
 connections:
   # required · text · source population name
   - source: L4_E
     # required · text · target population name
     target: L23_E
-    # required · integer ≥ 0 · total number of synapses in the projection
+    # optional, default fixed_total_number · one of fixed_total_number | fixed_indegree
+    #   | fixed_outdegree | pairwise_bernoulli · how the synapses are placed; each rule
+    #   takes its own number (n_synapses, indegree, outdegree or p)
+    rule: fixed_total_number
+    # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
+    #   projection
     n_synapses: 1440000
+    # optional · integer ≥ 0 · fixed_indegree: synapses onto each target neuron
+    indegree:
+    # optional · integer ≥ 0 · fixed_outdegree: synapses from each source neuron
+    outdegree:
+    # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
+    #   pair is connected
+    p:
+    # optional · true or false · whether a neuron may connect to itself; omit for the
+    #   simulator's default
+    allow_autapses:
+    # optional · true or false · whether a pair may have several synapses; omit for the
+    #   simulator's default
+    allow_multapses:
+    # optional · text · name of an entry in synapses.yaml; omit for the default synapse
+    synapse: depressing
     # required · weight of each synapse
     weight:
       # required · number · amplitude, in the unit set by `unit`; a negative weight is
@@ -157,6 +204,8 @@ background_inputs:
     weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
     # required · delay of each background connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    # optional · text · name of an entry in synapses.yaml; omit for the default synapse
+    synapse: depressing
 # optional, default poisson · one of poisson | dc · 'dc' replaces the Poisson drive
 #   network-wide with a constant current of the same mean
 background_mode: poisson
@@ -198,6 +247,8 @@ stimuli:
     weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    # optional · text · name of an entry in synapses.yaml; omit for the default synapse
+    synapse: depressing
   # Poisson spike train with a piecewise-constant rate profile.
   # required · selects the fields below
   - type: inhomogeneous_poisson
@@ -217,6 +268,8 @@ stimuli:
     weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    # optional · text · name of an entry in synapses.yaml; omit for the default synapse
+    synapse: depressing
 ```
 
 ### scaling.yaml

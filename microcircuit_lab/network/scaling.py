@@ -37,6 +37,29 @@ def scale_synapse_number(
     return int(round(value * factor))
 
 
+def scale_rule_number(
+    value: int | float,
+    rule: str,
+    N_scaling: float,
+    K_scaling: float,
+) -> int | float:
+    """
+    Scale the number a connection rule takes (see ``ConnectionConfig``) so
+    that every neuron keeps ``K_scaling`` times its synapses.
+
+    The total number of synapses scales with ``N_scaling * K_scaling``, the
+    indegree and outdegree with ``K_scaling``, and the connection
+    probability with ``K_scaling / N_scaling``, since both populations
+    shrink by ``N_scaling``.
+    """
+
+    if rule == "pairwise_bernoulli":
+        return value * K_scaling / N_scaling
+    if rule == "fixed_total_number":
+        return scale_synapse_number(value, N_scaling * K_scaling)
+    return scale_synapse_number(value, K_scaling)
+
+
 def scale_weight(
     value: float,
     factor: float,

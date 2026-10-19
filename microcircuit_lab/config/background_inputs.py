@@ -26,6 +26,11 @@ class BackgroundInputConfig(FrozenConfig):
     )
     weight: WeightDistribution = Field(description="weight of each background connection")
     delay: DelayDistribution = Field(description="delay of each background connection")
+    synapse: str | None = Field(
+        default=None,
+        examples=["depressing"],
+        description="name of an entry in synapses.yaml; omit for the default synapse",
+    )
 
 
 class BackgroundInputsFile(FrozenConfig):

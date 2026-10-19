@@ -122,7 +122,8 @@ configs/
 │   ├── network.yaml             names the other files
 │   ├── populations.yaml         sizes, neuron of each population
 │   ├── neurons.yaml             neuron models and parameters
-│   ├── connectivity.yaml        synapse numbers, weights, delays
+│   ├── connectivity.yaml        rules, synapse numbers, weights, delays
+│   ├── synapses.yaml            optional: synapse models, receptor ports
 │   ├── background_inputs.yaml   background Poisson input
 │   ├── stimuli.yaml             optional: inputs for experiments
 │   ├── scaling.yaml             N_scaling, K_scaling
@@ -188,6 +189,39 @@ neurons:
 
 - **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
+
+### Connection rules and synapses
+
+Each connection has a `rule` and the number that rule takes:
+
+| `rule` | number | |
+|---|---|---|
+| `fixed_total_number` (default) | `n_synapses` | that many synapses in total |
+| `fixed_indegree` | `indegree` | that many onto each target neuron |
+| `fixed_outdegree` | `outdegree` | that many from each source neuron |
+| `pairwise_bernoulli` | `p` | each pair connected with probability `p` |
+
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). `allow_autapses` and `allow_multapses` are passed to NEST if given.
+
+A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses NEST's `static_synapse` on the default port:
+
+```yaml
+synapses:
+  ampa: {model: static_synapse, receptor_port: 1}
+  nmda: {model: static_synapse, receptor_port: 2}
+  depressing: {model: tsodyks2_synapse, parameters: {U: 0.5, tau_rec: 800.0}}
+```
+
+```yaml
+connections:
+  - {source: E, target: E, rule: pairwise_bernoulli, p: 0.1, synapse: ampa, weight: {...}, delay: {...}}
+  - {source: E, target: E, rule: pairwise_bernoulli, p: 0.1, synapse: nmda, weight: {...}, delay: {...}}
+```
+
+- A pair can have one entry per synapse, as above.
+- The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). On another port, weights must be `PSC` or `native`, and the input lost by scaling is not compensated (a warning lists those connections). A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
+- With a plastic synapse, the PSP conversion and the scaling compensation use the initial weights.
+- A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
 
 ### Large files
 

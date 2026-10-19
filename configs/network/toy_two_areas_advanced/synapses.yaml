@@ -1,0 +1,20 @@
+synapses:
+  excitatory_port:
+    model: static_synapse
+    receptor_port: 1
+  inhibitory_port:
+    model: static_synapse
+    receptor_port: 2
+  depressing_slow_port:
+    model: tsodyks2_synapse
+    parameters:
+      U: 0.5
+      tau_rec: 200.0
+      tau_fac: 0.0
+    receptor_port: 3
+  depressing:
+    model: tsodyks2_synapse
+    parameters:
+      U: 0.5
+      tau_rec: 200.0
+      tau_fac: 0.0
