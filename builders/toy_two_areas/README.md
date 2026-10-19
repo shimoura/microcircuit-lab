@@ -73,7 +73,7 @@ The reference rates in `reference.yaml` are the mean of four 2 s runs of this ne
 | Synapse models | `synapses.yaml` | between areas, a depressing `tsodyks2_synapse`, with lognormal delays |
 | Receptor ports | `synapses.yaml`, `neurons.yaml` | `B__L23_E` is an `iaf_psc_exp_multisynapse` neuron with a port for excitatory (2 ms), inhibitory (4 ms) and input from the other area (20 ms, depressing); its weights are in pA, since PSP weights are converted for the default port only, and its background input names a port too |
 
-Its rates differ from those above, and it has no reference rates, so a scaled copy is not compensated.
+Its rates differ from those above. It has no `scaling.yaml` (it runs at full scale) and no reference rates, so a scaled copy is not compensated.
 
 ## Files
 

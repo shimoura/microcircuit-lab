@@ -41,7 +41,7 @@ class StimulusBase(FrozenConfig):
 
 
 class DcStimulusConfig(StimulusBase):
-    """Constant-current pulse. Current is injected directly; no weight/delay."""
+    """A constant current from ``start`` to ``stop``, injected directly (no weight or delay)."""
 
     type: Literal["dc"] = "dc"
     amplitude: float = Field(examples=[200.0], description="current (pA)")

@@ -53,11 +53,12 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
        population's own neuron parameters;
     2. if ``scaling`` asks for it: scale the neuron numbers (``N_scaling``),
        the indegrees (``K_scaling``) and the weights, then add the DC current
-       that compensates the mean input lost by scaling (for input to the
-       default receptor port, the only one whose time constants are known);
+       that compensates the mean input lost by scaling (for current weights,
+       PSP or PSC, on the default receptor port: the only input whose mean
+       current is known);
     3. turn each population's background rate per synapse into the rate of
        its Poisson generator (rate x indegree);
-    4. with ``background_mode: dc``, replace the background input by a
+    4. with ``background_mode: mean_current``, replace the background input by a
        constant current of the same mean.
 
     Parameters
@@ -82,7 +83,7 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
         network = _compensate_lost_mean_input(network, original=config)
 
     network = _background_rate_per_neuron(network)
-    network = _replace_background_by_dc(network, original=config)
+    network = _replace_background_by_mean_current(network, original=config)
 
     return network
 
@@ -193,7 +194,7 @@ def _compensate_lost_mean_input(
     additionally includes/excludes just the recurrent contribution.
 
     The background contribution is skipped when background_mode is
-    "dc": _replace_background_by_dc replaces the background
+    "mean_current": _replace_background_by_mean_current replaces the background
     Poisson drive entirely with a DC current sized for the full
     (unscaled) biological input, so no separate scaling-bias
     correction for it is needed -- adding both would double-count.
@@ -219,7 +220,7 @@ def _compensate_lost_mean_input(
         network_current = _recurrent_compensation(original)
 
     background_current = np.zeros(len(original.populations))
-    if original.background_mode != "dc":
+    if original.background_mode != "mean_current":
         background_current = _background_compensation(original)
 
     pop_names = list(original.populations.keys())
@@ -262,21 +263,21 @@ def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
     The DC current (pA) per population that replaces the mean recurrent input
     lost by scaling, from the full-scale network ``original``.
 
-    Only input to the default receptor port is compensated: its synaptic time
-    constants (tau_syn_ex, tau_syn_in) are the only ones known.
+    Only connections whose mean current is known are compensated (see
+    _mean_current_is_known).
     """
 
-    default_port = [c for c in original.connections if original.receptor_port(c.synapse) is None]
-    other_ports = [
-        f"{c.source} -> {c.target} ({c.synapse})"
+    known = [c for c in original.connections if _mean_current_is_known(original, c)]
+    unknown = [
+        f"{c.source} -> {c.target}"
         for c in original.connections
-        if original.receptor_port(c.synapse) is not None
+        if not _mean_current_is_known(original, c)
     ]
-    if other_ports:
+    if unknown:
         logger.warning(
-            "The input lost by scaling is not compensated for connections to other "
-            "receptor ports than the default: %s.",
-            ", ".join(other_ports),
+            "The input lost by scaling is not compensated for %s: their weights are "
+            "native (e.g. conductances) or reach another receptor port than the default.",
+            ", ".join(unknown),
         )
 
     mean_rates = full_mean_rates(original)
@@ -284,8 +285,8 @@ def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
 
     # Excitatory and inhibitory input have different synaptic time
     # constants, so each kind is compensated with its own.
-    excitatory = [c for c in default_port if c.weight.mean > 0]
-    inhibitory = [c for c in default_port if c.weight.mean < 0]
+    excitatory = [c for c in known if c.weight.mean > 0]
+    inhibitory = [c for c in known if c.weight.mean < 0]
     for connections, tau_syn in ((excitatory, tau_syn_ex), (inhibitory, tau_syn_in)):
         if not connections:
             continue
@@ -308,20 +309,21 @@ def _background_compensation(original: NetworkConfig) -> np.ndarray:
     """
     The DC current (pA) per population that replaces the mean background
     input lost by scaling, from the full-scale network ``original``; 0 for a
-    population whose background input reaches another receptor port.
+    population whose background input has no known mean current (see
+    _mean_current_is_known).
     """
 
     pop_names = list(original.populations.keys())
     PSC_ext = background_psc_weights(original)
 
-    other_ports = _background_on_other_ports(original)
-    if other_ports:
+    unknown = _background_without_known_current(original)
+    if unknown:
         logger.warning(
-            "The background input lost by scaling is not compensated for %s: it "
-            "reaches another receptor port than the default.",
-            ", ".join(other_ports),
+            "The background input lost by scaling is not compensated for %s: its weight "
+            "is native (e.g. a conductance) or reaches another receptor port than the default.",
+            ", ".join(unknown),
         )
-        PSC_ext = np.where(np.isin(pop_names, other_ports), 0.0, PSC_ext)
+        PSC_ext = np.where(np.isin(pop_names, unknown), 0.0, PSC_ext)
 
     bg_rates = np.asarray(
         [original.background_inputs[name].rate for name in pop_names],
@@ -366,7 +368,7 @@ def _background_rate_per_neuron(
     )
 
 
-def _replace_background_by_dc(
+def _replace_background_by_mean_current(
     network: NetworkConfig,
     original: NetworkConfig,
 ) -> NetworkConfig:
@@ -374,7 +376,7 @@ def _replace_background_by_dc(
     Replace the background Poisson drive with an equivalent constant
     current, per Potjans & Diesmann (2014)'s comparison of Poisson vs.
     DC background input (their Fig. 5). No-op unless background_mode
-    is "dc".
+    is "mean_current".
 
     The DC amplitude is the mean current a full-strength (unscaled)
     background Poisson process would deliver on average -- computed
@@ -385,15 +387,15 @@ def _replace_background_by_dc(
     generator ends up created for them (see NestBackend).
     """
 
-    if network.background_mode != "dc":
+    if network.background_mode != "mean_current":
         return network
 
-    other_ports = _background_on_other_ports(original)
-    if other_ports:
+    unknown = _background_without_known_current(original)
+    if unknown:
         raise ValueError(
-            f"background_mode: dc needs the mean background current, which is only "
-            f"computed for the default receptor port; the background input of "
-            f"{other_ports} uses another port. Use background_mode: poisson."
+            f"background_mode: mean_current needs the mean background current, which is only known "
+            f"for current weights (PSP or PSC) on the default receptor port; the background "
+            f"input of {unknown} is native or uses another port. Use background_mode: poisson."
         )
 
     K_ext = background_indegrees(original)
@@ -448,12 +450,23 @@ def _replace_background_by_dc(
     )
 
 
-def _background_on_other_ports(network: NetworkConfig) -> list[str]:
-    """The populations whose background input reaches a receptor port other
-    than the default, so its mean current is not known."""
+def _mean_current_is_known(network: NetworkConfig, item) -> bool:
+    """
+    Whether the core knows the mean current of a connection, background input
+    or stimulus: its weight is a current (PSP, converted, or PSC) and it reaches
+    the default receptor port, whose synaptic time constants are tau_syn_ex
+    and tau_syn_in. A native weight (e.g. a conductance in nS) or another port
+    has no current the core can compute.
+    """
+
+    return item.weight.unit != "native" and network.receptor_port(item.synapse) is None
+
+
+def _background_without_known_current(network: NetworkConfig) -> list[str]:
+    """The populations whose background input has no known mean current."""
 
     return [
         name
         for name, input_cfg in network.background_inputs.items()
-        if network.receptor_port(input_cfg.synapse) is not None
+        if not _mean_current_is_known(network, input_cfg)
     ]

@@ -53,7 +53,11 @@ class NeuronParams(BaseModel):
         init=False
     )
 
-    I_e: float = Field(default=0.0, description="constant input current (pA)")
+    I_e: float = Field(
+        default=0.0,
+        description="constant input current (pA) of every neuron, for the whole run; a scaled "
+        "network adds its compensation current to it",
+    )
 
     def require(self, *names: str) -> dict[str, float]:
         """

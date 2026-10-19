@@ -34,7 +34,8 @@ class WeightDistribution(FrozenConfig):
       The right choice for a neuron model with no PSP/PSC conversion
       formula implemented -- e.g. a conductance-based model (nS weights)
       or anything else -- so adding a new neuron model never requires
-      adding new conversion code, only picking the right unit.
+      adding new conversion code, only picking the right unit. Its mean
+      current is unknown, so the scaling compensation leaves it out.
     """
 
     mean: float = Field(

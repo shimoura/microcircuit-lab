@@ -173,7 +173,7 @@ def test_receptor_ports(caplog):
     scaled = network.model_copy(update={"scaling": ScalingConfig(K_scaling=0.5)})
     with caplog.at_level(logging.WARNING):
         prepared = prepare_network(scaled)
-    assert "not compensated for connections to other receptor ports" in caplog.text
+    assert "not compensated for S -> T, S -> T" in caplog.text
     assert "background input lost by scaling is not compensated for T" in caplog.text
     # S's background input is on the default port, so S alone is compensated
     assert prepared.populations["S"].neuron.parameters.I_e > 0
@@ -183,8 +183,8 @@ def test_receptor_ports(caplog):
 def test_background_on_another_port():
     synapses = {"fast": SynapseEntry(model="static_synapse", receptor_port=1)}
     network = _network([_connection(n_synapses=10)], synapses, background_synapse="fast")
-    dc = network.model_copy(update={"background_mode": "dc"})
-    with pytest.raises(ValueError, match="background_mode: dc needs the mean background current"):
+    dc = network.model_copy(update={"background_mode": "mean_current"})
+    with pytest.raises(ValueError, match="background_mode: mean_current needs the mean background current"):
         prepare_network(dc)
 
 
@@ -198,3 +198,24 @@ def test_advanced_example_uses_every_feature():
     assert {entry.model for entry in network.synapses.values()} == {"static_synapse", "tsodyks2_synapse"}
     assert any(entry.receptor_port for entry in network.synapses.values())
     prepare_network(network)
+
+
+def test_native_weights_are_not_compensated(caplog):
+    """A native weight (e.g. nS) is not a current: compensating it would add a
+    current computed from conductances."""
+    native = _connection(n_synapses=1000, weight=1.0, unit="native")
+    scaled = _network([native], scaling=ScalingConfig(K_scaling=0.5))
+    background = {
+        name: input_cfg.model_copy(
+            update={"weight": input_cfg.weight.model_copy(update={"unit": "native"})}
+        )
+        for name, input_cfg in scaled.background_inputs.items()
+    }
+    scaled = scaled.model_copy(update={"background_inputs": background})
+
+    with caplog.at_level(logging.WARNING):
+        prepared = prepare_network(scaled)
+    assert "not compensated for S -> T" in caplog.text
+    assert all(p.neuron.parameters.I_e == 0 for p in prepared.populations.values())
+    with pytest.raises(ValueError, match="native or uses another port"):
+        prepare_network(scaled.model_copy(update={"background_mode": "mean_current"}))

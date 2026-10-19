@@ -33,9 +33,10 @@ neurons: neurons.yaml
 connectivity: connectivity.yaml
 # required · text · file holding the background-input entries
 background_inputs: background_inputs.yaml
-# required · text · file holding the scaling parameters
+# optional · text · file holding the scaling parameters; omit the key to run the network
+#   at full scale
 scaling: scaling.yaml
-# required · text · file holding the reference rates
+# optional · text · file holding the reference rates; omit the key for none
 reference: reference.yaml
 # optional · text · file holding targeted stimuli; omit the key for none
 stimuli: stimuli.yaml
@@ -206,8 +207,10 @@ background_inputs:
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
-# optional, default poisson · one of poisson | dc · 'dc' replaces the Poisson drive
-#   network-wide with a constant current of the same mean
+# optional, default poisson · one of poisson | mean_current · 'mean_current' replaces
+#   each population's Poisson input by its mean, a constant current (Potjans & Diesmann
+#   2014, Fig. 5); for a constant input of your own, use I_e in neurons.yaml or a dc
+#   stimulus
 background_mode: poisson
 ```
 
@@ -219,7 +222,8 @@ Optional: inputs for an experiment, applied as written (never scaled).
 # optional, default empty · list of entries · one entry per stimulus; `type` selects its
 #   fields
 stimuli:
-  # Constant-current pulse. Current is injected directly; no weight/delay.
+  # A constant current from ``start`` to ``stop``, injected directly (no weight or
+  #   delay).
   # required · selects the fields below
   - type: dc
     # required · list of names, at least 1 · population names to stimulate; one device,
@@ -274,7 +278,7 @@ stimuli:
 
 ### scaling.yaml
 
-How to downscale the network; see "Scaling a network" in the README.
+Optional: how to downscale the network; see "Scaling a network" in the README. Without it, the network runs at full scale.
 
 ```yaml
 # optional, default 1.0 · number > 0 · multiplies the number of neurons
@@ -295,7 +299,7 @@ compensate_recurrent_input: true
 
 ### reference.yaml
 
-Published values to compare with, and to compensate a scaled network.
+Optional: published values to compare with, and to compensate a scaled network.
 
 ```yaml
 # optional, default empty · mapping · mean rate (spikes/s) of each population at full

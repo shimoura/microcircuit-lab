@@ -338,15 +338,15 @@ class NestBackend:
         """
         Create one background Poisson generator per configured population.
 
-        No-op when background_mode is "dc": the background drive was
+        No-op when background_mode is "mean_current": the background drive was
         already injected as constant current onto each neuron's I_e by
         prepare_network, so no generator is created at all (see
         NetworkConfig.background_mode).
         """
 
-        if self._network.background_mode == "dc":
+        if self._network.background_mode == "mean_current":
             logger.info(
-                "background_mode='dc': background drive is constant current "
+                "background_mode='mean_current': background drive is constant current "
                 "(I_e), skipping Poisson generators."
             )
             return

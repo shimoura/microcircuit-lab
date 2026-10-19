@@ -156,7 +156,7 @@ def background_dc_current(
     Used to replace the background Poisson generator entirely with DC
     input, per Potjans & Diesmann (2014)'s comparison of the two drive
     types (their Fig. 5) -- see
-    prepare_network (step _replace_background_by_dc). Always computed
+    prepare_network (step _replace_background_by_mean_current). Always computed
     from the original (unscaled) network, independent of K_scaling,
     since the target mean is the full biological background input
     regardless of any N/K scaling applied to the recurrent network.

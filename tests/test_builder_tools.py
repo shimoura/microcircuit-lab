@@ -57,12 +57,14 @@ def _load(tmp_path: Path, name: str) -> dict:
 def test_writes_every_file_and_returns_the_validated_config(tmp_path: Path) -> None:
     config = write_network_directory(**_parts(tmp_path))
 
+    # scaling, reference, stimuli and synapses are optional: not given, not written
     assert {p.name for p in (tmp_path / "net").glob("*.yaml")} == {
         "network.yaml", "populations.yaml", "neurons.yaml", "connectivity.yaml",
-        "background_inputs.yaml", "scaling.yaml", "reference.yaml",
+        "background_inputs.yaml",
     }
     assert set(config.populations) == {"E", "I"}
     assert config.populations["E"].size == 8
+    assert not config.scaling.is_scaled and config.reference is None
 
 
 def test_manifest_uses_the_conventional_names(tmp_path: Path) -> None:
@@ -73,8 +75,6 @@ def test_manifest_uses_the_conventional_names(tmp_path: Path) -> None:
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
         "background_inputs": "background_inputs.yaml",
-        "scaling": "scaling.yaml",
-        "reference": "reference.yaml",
     }
 
 
@@ -82,8 +82,8 @@ def test_background_mode_is_written_only_when_not_poisson(tmp_path: Path) -> Non
     write_network_directory(**_parts(tmp_path))
     assert "background_mode" not in _load(tmp_path, "background_inputs.yaml")
 
-    write_network_directory(**_parts(tmp_path, background_mode="dc"))
-    assert _load(tmp_path, "background_inputs.yaml")["background_mode"] == "dc"
+    write_network_directory(**_parts(tmp_path, background_mode="mean_current"))
+    assert _load(tmp_path, "background_inputs.yaml")["background_mode"] == "mean_current"
 
 
 def test_stimuli_adds_both_the_file_and_the_manifest_key(tmp_path: Path) -> None:

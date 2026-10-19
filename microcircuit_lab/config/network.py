@@ -33,8 +33,17 @@ class NetworkManifest(FrozenConfig):
         examples=["background_inputs.yaml"],
         description="file holding the background-input entries"
     )
-    scaling: str = Field(examples=["scaling.yaml"], description="file holding the scaling parameters")
-    reference: str = Field(examples=["reference.yaml"], description="file holding the reference rates")
+    scaling: str | None = Field(
+        default=None,
+        examples=["scaling.yaml"],
+        description="file holding the scaling parameters; omit the key to run the network "
+        "at full scale",
+    )
+    reference: str | None = Field(
+        default=None,
+        examples=["reference.yaml"],
+        description="file holding the reference rates; omit the key for none",
+    )
     stimuli: str | None = Field(
         default=None,
         examples=["stimuli.yaml"],
@@ -62,8 +71,8 @@ class NetworkDirectory(FrozenConfig):
     neurons: NeuronsFile
     connectivity: ConnectivityFile
     background_inputs: BackgroundInputsFile
-    scaling: ScalingConfig
-    reference: ReferenceConfig
+    scaling: ScalingConfig = Field(default_factory=ScalingConfig)
+    reference: ReferenceConfig | None = None
     stimuli: StimuliFile = Field(default_factory=StimuliFile)
     synapses: SynapsesFile = Field(default_factory=SynapsesFile)
 
@@ -78,12 +87,12 @@ class NetworkConfig(FrozenConfig):
     background_mode:
         "poisson" (default): each population's background_inputs entry
         drives it through an independent Poisson generator, as usual.
-        "dc": replaces that Poisson drive network-wide with a constant
+        "mean_current": replaces that Poisson drive network-wide with a constant
         current of the same mean, per Potjans & Diesmann (2014)'s
         comparison of Poisson vs. DC background input (their Fig. 5).
         The `background_inputs` rate/weight/delay are still the source
         of truth for computing that mean (see
-        prepare_network (step _replace_background_by_dc)); no Poisson
+        prepare_network (step _replace_background_by_mean_current)); no Poisson
         generator is created in this mode.
 
     bound_mode:
@@ -98,7 +107,7 @@ class NetworkConfig(FrozenConfig):
     connections: list[ConnectionConfig]
 
     background_inputs: dict[str, BackgroundInputConfig]
-    background_mode: Literal["poisson", "dc"] = "poisson"
+    background_mode: Literal["poisson", "mean_current"] = "poisson"
     bound_mode: Literal["redraw", "clip"] = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     scaling: ScalingConfig

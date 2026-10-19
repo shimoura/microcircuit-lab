@@ -17,8 +17,9 @@ neuron entries and connection probabilities of ``toy_two_areas`` (see
   time constant. Its weights are written in pA (``unit: PSC``): the core
   converts PSP weights only for the default port.
 
-The rates differ from ``toy_two_areas``, and no reference rates are written,
-so a scaled copy of this network is not compensated.
+The rates differ from ``toy_two_areas``. No ``scaling.yaml`` is written (it
+runs at full scale) and no reference rates, so a scaled copy of this network
+is not compensated.
 """
 
 from __future__ import annotations
@@ -188,6 +189,5 @@ def generate_toy_two_areas_advanced(
         synapses=synapses(),
         connections=connections(),
         background_inputs=background_inputs(),
-        scaling={"N_scaling": 1.0, "K_scaling": 1.0},
         compact=False,
     )

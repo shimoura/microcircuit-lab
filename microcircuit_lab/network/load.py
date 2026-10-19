@@ -93,9 +93,11 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         "neurons": read_yaml(folder / manifest.neurons),
         "connectivity": read_yaml(folder / manifest.connectivity),
         "background_inputs": read_yaml(folder / manifest.background_inputs),
-        "scaling": read_yaml(folder / manifest.scaling),
-        "reference": read_yaml(folder / manifest.reference),
     }
+    if manifest.scaling is not None:
+        parts["scaling"] = read_yaml(folder / manifest.scaling)
+    if manifest.reference is not None:
+        parts["reference"] = read_yaml(folder / manifest.reference)
     if manifest.stimuli is not None:
         parts["stimuli"] = read_yaml(folder / manifest.stimuli)
     if manifest.synapses is not None:

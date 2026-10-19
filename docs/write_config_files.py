@@ -54,8 +54,8 @@ FILES = [
     ("connectivity.yaml", ConnectivityFile, "The connections between populations."),
     ("background_inputs.yaml", BackgroundInputsFile, "The always-on Poisson input of each population."),
     ("stimuli.yaml", StimuliFile, "Optional: inputs for an experiment, applied as written (never scaled)."),
-    ("scaling.yaml", ScalingConfig, "How to downscale the network; see \"Scaling a network\" in the README."),
-    ("reference.yaml", ReferenceConfig, "Published values to compare with, and to compensate a scaled network."),
+    ("scaling.yaml", ScalingConfig, "Optional: how to downscale the network; see \"Scaling a network\" in the README. Without it, the network runs at full scale."),
+    ("reference.yaml", ReferenceConfig, "Optional: published values to compare with, and to compensate a scaled network."),
 ]
 SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration, seed, threads, what to record and save.")
 ANALYSIS = ("analysis/<name>.yaml", AnalysisConfig, "Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.")
