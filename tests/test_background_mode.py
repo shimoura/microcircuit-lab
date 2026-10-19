@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import yaml
 
-from microcircuit_lab.backends.nest.backend import NestBackend
+from microcircuit_lab.backends.nest import NestBackend
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig

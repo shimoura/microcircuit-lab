@@ -20,8 +20,6 @@ import pandas as pd
 from microcircuit_lab.backends.spikes import empty_spikes, sort_by_sender
 
 
-
-
 def ascii_spike_files(recordings_dir: Path) -> list[Path]:
     """The spike files NEST wrote to ``recordings_dir``, one per process or thread."""
 

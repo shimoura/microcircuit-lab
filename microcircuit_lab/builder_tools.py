@@ -41,7 +41,6 @@ from typing import Any, Literal
 import numpy as np
 
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
-
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.load import load_network
 from microcircuit_lab.network.units import psp_to_psc_iaf_psc_exp

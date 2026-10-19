@@ -20,31 +20,21 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
-
 from microcircuit_lab.config.connectivity import (
-
     ConnectionConfig,
-
     DelayDistribution,
-
     WeightDistribution,
-
 )
-
 from microcircuit_lab.config.network import NetworkConfig
-
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
-
 from microcircuit_lab.config.populations import PopulationConfig
-
 from microcircuit_lab.config.reference import ReferenceConfig
-
 from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.network.quantities import (
     background_psc_weights,
     mean_psc_matrix,
 )
-from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.network.units import (
     convert_network_psp_to_psc,
     psc_to_psp,

@@ -40,21 +40,18 @@ def compensate_lost_mean_input(
     original: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Apply constant current compensation to account for the change in mean synaptic
-    input due to synapse scaling.
+    Add the constant currents that replace the mean input lost by scaling.
 
-    Only meaningful when scale_weights() used the variance-preserving
-    (sqrt) law -- the mean-preserving (linear) law introduces no bias
-    to compensate for in the first place. Governed by
-    scaling.preserve_variance and scaling.preserve_mean_input (the
-    master switch for compensation); scaling.compensate_recurrent_input
-    additionally includes/excludes just the recurrent contribution.
+    Needed only for variance-preserving (square-root) weight scaling; linear
+    scaling keeps the mean. Whether it runs is set by ``scaling.preserve_variance``
+    and ``scaling.preserve_mean_input`` (the latter turns compensation on or off);
+    ``scaling.compensate_recurrent_input`` decides whether the recurrent input
+    is compensated too.
 
-    The background contribution is skipped when background_mode is
-    "mean_current": replace_background_by_mean_current replaces the background
-    Poisson drive entirely with a DC current sized for the full
-    (unscaled) biological input, so no separate scaling-bias
-    correction for it is needed -- adding both would double-count.
+    With ``background_mode: mean_current`` the background input is not
+    compensated here, because ``replace_background_by_mean_current`` already
+    replaces it by a current for the full-scale input. Doing both would count it
+    twice.
     """
     scaling = original.scaling
 
@@ -156,18 +153,15 @@ def replace_background_by_mean_current(
     original: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Replace the background Poisson drive with an equivalent constant
-    current, per Potjans & Diesmann (2014)'s comparison of Poisson vs.
-    DC background input (their Fig. 5). No-op unless background_mode
-    is "mean_current".
+    Replace the background Poisson input by a constant current of the same mean.
 
-    The DC amplitude is the mean current a full-strength (unscaled)
-    background Poisson process would deliver on average -- computed
-    from the original biological network, exactly like the
-    compensation currents in compensate_lost_mean_input, so the
-    result is independent of any N/K scaling applied to the recurrent
-    network. Background rates are zeroed out afterwards so no Poisson
-    generator ends up created for them (the backend skips them).
+    Does nothing unless ``background_mode`` is "mean_current" (see Potjans &
+    Diesmann 2014, Fig. 5).
+
+    The current is the mean that the full-strength background input delivers.
+    It is computed from the original network, as in ``compensate_lost_mean_input``,
+    so scaling does not change it. The background rates are then set to 0, so
+    the backend creates no Poisson generator for them.
     """
 
     if network.background_mode != "mean_current":
@@ -201,8 +195,7 @@ def replace_background_by_mean_current(
 
 
 def _add_to_I_e(network: NetworkConfig, current: np.ndarray) -> NetworkConfig:
-    """Add ``current`` (pA, one value per population, in order) to the
-    ``I_e`` of each population's neuron."""
+    """Add ``current`` (pA, one value per population, in order) to the ``I_e`` of its neuron."""
 
     populations = {}
     for added, (name, population) in zip(current, network.populations.items()):

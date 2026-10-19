@@ -1,8 +1,9 @@
 """From a network folder to the network the simulator builds.
 
-``load.py`` reads and checks the files, ``prepare.py`` gets the network ready
-for the simulation (units, scaling, compensation), and ``scaling.py``,
-``units.py`` and ``quantities.py`` hold the formulas those steps use.
+``load.py`` reads and checks the files and ``prepare.py`` gets the network
+ready for the simulation (units, scaling, compensation). ``compensation.py``
+holds the steps that add constant currents, and ``scaling.py``, ``units.py``
+and ``quantities.py`` hold the formulas the steps use.
 """
 
 from .load import load_network, read_network

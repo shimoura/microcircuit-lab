@@ -4,7 +4,11 @@ from pathlib import Path
 
 import numpy as np
 
-from microcircuit_lab.analysis.cache import load_measures, load_or_compute, save_measures
+from microcircuit_lab.analysis.cache import (
+    load_measures,
+    load_or_compute,
+    save_measures,
+)
 
 
 def test_scalar_measures_roundtrip(tmp_path: Path) -> None:

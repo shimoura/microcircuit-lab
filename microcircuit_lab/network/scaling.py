@@ -1,12 +1,6 @@
 """
-Utilities related to scaling transformations.
-
-This module provides generic scaling laws and transformations that
-modify network or synaptic quantities while preserving specified
-statistical or dynamical properties.
-
-Typical examples include scaling of neuron numbers, synaptic weights,
-or indegrees according to analytically derived relationships.
+Formulas for scaling the number of neurons, synapses and weights, and for the
+constant currents that make up for the mean input scaling removes.
 """
 
 from __future__ import annotations
@@ -16,6 +10,7 @@ import math
 import numpy as np
 
 from microcircuit_lab.config.network import NetworkConfig
+
 
 def scale_neuron_number(
     value: int,
@@ -47,7 +42,7 @@ def scale_rule_number(
 ) -> int | float:
     """
     Scale the number a connection rule takes (see ``ConnectionConfig``) so
-    that every neuron keeps ``K_scaling`` times its synapses.
+    that every neuron has ``K_scaling`` times as many synapses.
 
     The total number of synapses scales with ``N_scaling * K_scaling``, the
     indegree and outdegree with ``K_scaling``, and the connection
@@ -67,14 +62,11 @@ def scale_weight(
     factor: float,
 ) -> float:
     """
-    Scale synaptic weight linearly: preserves mean input, not variance.
+    Scale a weight linearly, ``J -> J / K``. This keeps the mean input but not
+    its variance.
 
-        J -> J / K
-
-    Used by scale_weights() when ScalingConfig.preserve_variance is
-    False. No DC compensation is needed (or applied) in that case,
-    since this law introduces no mean-input bias to correct for. See
-    scale_weight_sqrt's docstring for the alternative (default) law.
+    ``scale_weights`` uses it when ``preserve_variance`` is false. No
+    compensation current is needed then, because the mean does not change.
     """
 
     return value / factor
@@ -88,16 +80,13 @@ def scale_weight_sqrt(
     Scale synaptic weights as in van Albada, Helias & Diesmann (2015), PLoS
     Comput Biol 11:e1004490 (also used by Potjans & Diesmann 2014's code).
 
-    Scaling preserves input fluctuations (variance), not mean input,
-    by applying
+    This keeps the fluctuations of the input (its variance) but not its mean::
 
         w -> w / sqrt(K_scaling)
 
-    Used by scale_weights() when ScalingConfig.preserve_variance is
-    True (the default). prepare_network (step compensate_lost_mean_input)
-    is what actually restores the mean input this rule doesn't preserve
-    on its own, via DC current injection, when preserve_mean_input is
-    also True.
+    ``scale_weights`` uses it when ``preserve_variance`` is true (the default).
+    The step ``compensate_lost_mean_input`` then restores the mean with a
+    constant current, if ``preserve_mean_input`` is also true.
     """
 
     return weight / math.sqrt(K_scaling)
@@ -152,17 +141,12 @@ def background_dc_current(
     tau_syn: np.ndarray,
 ) -> np.ndarray:
     """
-    Compute the constant current equivalent to the mean of a full-strength
-    background Poisson drive (bg_rate spikes/s onto K_ext synapses of
-    amplitude PSC_ext, pA, with synaptic time constant tau_syn, ms).
+    Constant current (pA) with the same mean as the background Poisson input:
+    ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude ``PSC_ext`` (pA),
+    with synaptic time constant ``tau_syn`` (ms).
 
-    Used to replace the background Poisson generator entirely with DC
-    input, per Potjans & Diesmann (2014)'s comparison of the two drive
-    types (their Fig. 5) -- see
-    prepare_network (step replace_background_by_mean_current). Always computed
-    from the original (unscaled) network, independent of K_scaling,
-    since the target mean is the full biological background input
-    regardless of any N/K scaling applied to the recurrent network.
+    The step ``replace_background_by_mean_current`` uses it. It is computed for
+    the original, unscaled network, so ``K_scaling`` does not change it.
     """
 
     return 0.001 * tau_syn * PSC_ext * K_ext * bg_rate
@@ -172,26 +156,24 @@ def scale_weights(
     network: NetworkConfig,
 ) -> NetworkConfig:
     """
-    Scale all recurrent and external synaptic weights for K_scaling.
+    Scale the weights of all recurrent connections and background inputs for
+    ``K_scaling``.
 
-    ``scaling.preserve_variance`` selects which law is applied:
+    ``scaling.preserve_variance`` selects the law:
 
-    - True (default): w -> w / sqrt(K_scaling) (scale_weight_sqrt).
-      Preserves input fluctuations; biases mean input, which
-      prepare_network (step compensate_lost_mean_input) corrects for via DC
-      current injection when scaling.preserve_mean_input is also True.
-    - False: w -> w / K_scaling (scale_weight). Preserves mean input
-      directly (indegree * weight is invariant under this law), at the
-      cost of fluctuations -- no compensation is applied or needed for
-      the mean in this case.
+    - True (default): ``w / sqrt(K_scaling)`` (``scale_weight_sqrt``). This keeps
+      the fluctuations of the input but changes its mean. The step
+      ``compensate_lost_mean_input`` restores the mean with a constant current
+      if ``scaling.preserve_mean_input`` is also true.
+    - False: ``w / K_scaling`` (``scale_weight``). This keeps the mean input
+      (indegree times weight does not change) but not the fluctuations, and
+      needs no compensation.
     """
 
     scaling = network.scaling
     weight_scaler = scale_weight_sqrt if scaling.preserve_variance else scale_weight
 
-    #
-    # recurrent
-    #
+    # Recurrent connections.
     connections = []
 
     for connection in network.connections:
@@ -199,9 +181,7 @@ def scale_weights(
         weight = connection.weight.model_copy(update={"mean": mean})
         connections.append(connection.model_copy(update={"weight": weight}))
 
-    #
-    # background
-    #
+    # Background inputs.
     background_inputs = {}
 
     for pop_name, input_cfg in network.background_inputs.items():

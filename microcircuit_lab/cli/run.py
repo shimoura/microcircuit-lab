@@ -1,12 +1,10 @@
-"""Run a generated network configuration, or re-plot an existing run,
-with optional diagnostics.
+"""
+``microcircuit-lab run``: simulate a network and plot the results, or plot a
+finished run again with ``--run-dir``.
 
-Which diagnostics exist at all -- and their CLI flags -- come from
-microcircuit_lab.analysis.PLOT_REGISTRY, not this script: adding a new
-bundled diagnostic (microcircuit_lab.analysis.register_plot) makes it
-show up here automatically, no changes needed in this file. A project's
-own plots in its ``analyses/`` folder are found the same way (see
-microcircuit_lab.analysis.discover_plots), so run this from the project root.
+The plots (raster, firing rates, ...) and their ``--<plot>`` flags come from
+the plot registry. Plots of your own in the ``analyses/`` folder of your
+project are included, so run the command from the project folder.
 """
 
 import argparse

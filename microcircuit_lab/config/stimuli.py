@@ -3,12 +3,12 @@
 To add a stimulus type: write its class here (a subclass of ``StimulusBase``
 with its own ``type``), add it to ``StimulusConfig`` at the end of this file,
 and create its device in ``NestBackend.create_stimuli``
-(``backends/nest/backend.py``). See "Changing the core" in CONTRIBUTING.md.
+(``backends/nest.py``). See "Changing the core" in CONTRIBUTING.md.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -18,14 +18,12 @@ from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistri
 
 class StimulusBase(FrozenConfig):
     """
-    Fields shared by every targeted, time-limited stimulation device.
+    Fields shared by every stimulus.
 
-    Distinct from `background_inputs` (the always-on background drive tied
-    to `background_indegree`, subject to K-scaling and DC compensation):
-    stimuli are not touched by network scaling and are applied exactly
-    as configured, on top of whatever background drive and recurrent
-    activity is already there. Intended for experimental perturbations
-    (a current pulse, a burst of input for part of a run, ...).
+    A stimulus is applied to some populations during part of the run, exactly as
+    configured and on top of the background input and the recurrent activity.
+    Scaling does not change it. A ``background_inputs`` entry is the always-on
+    input instead.
     """
 
     targets: list[str] = Field(
@@ -82,12 +80,10 @@ class InhomogeneousPoissonStimulusConfig(StimulusBase):
     )
 
 
-# Discriminated union: the `type` field selects which subtype a YAML/dict
-# stimulus entry is validated against, so each type only ever requires the
-# fields it actually uses. Adding a new stimulus type means adding a new
-# subtype here, not another branch in a shared validator.
+# The "type" field selects which class a stimulus entry is checked against, so
+# each type requires only its own fields. A new type is a new class in this union.
 StimulusConfig = Annotated[
-    Union[DcStimulusConfig, PoissonStimulusConfig, InhomogeneousPoissonStimulusConfig],
+    DcStimulusConfig | PoissonStimulusConfig | InhomogeneousPoissonStimulusConfig,
     Field(discriminator="type"),
 ]
 
@@ -95,8 +91,8 @@ StimulusConfig = Annotated[
 class StimuliFile(FrozenConfig):
     """``stimuli.yaml`` (optional; only read when ``network.yaml`` names it).
 
-    Each entry is a :data:`StimulusConfig` -- a ``dc`` / ``poisson`` /
-    ``inhomogeneous_poisson`` device selected by its ``type`` field, with
+    Each entry is a :data:`StimulusConfig`: a ``dc``, ``poisson`` or
+    ``inhomogeneous_poisson`` stimulus, chosen by its ``type`` field and with
     the fields of that type (above).
     """
 

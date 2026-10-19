@@ -9,7 +9,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from microcircuit_lab.backends.nest.backend import NestBackend
+from microcircuit_lab.backends.nest import NestBackend
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
@@ -22,7 +23,6 @@ from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
 from microcircuit_lab.network.load import load_network
 from microcircuit_lab.network.prepare import prepare_network
 

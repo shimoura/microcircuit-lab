@@ -36,7 +36,12 @@ from builders.toy_two_areas.build import (
     delay_mean,
     population_name,
 )
-from microcircuit_lab.builder_tools import delay, psp_to_psc_iaf_psc_exp, weight, write_network_directory
+from microcircuit_lab.builder_tools import (
+    delay,
+    psp_to_psc_iaf_psc_exp,
+    weight,
+    write_network_directory,
+)
 from microcircuit_lab.config.network import NetworkConfig
 
 # The synapse of each kind of input to data.RECEPTOR_PORT_POPULATION (see synapses()).

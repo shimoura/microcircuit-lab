@@ -1,6 +1,7 @@
 """Shared base class for configuration models."""
 
 from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict
 
 

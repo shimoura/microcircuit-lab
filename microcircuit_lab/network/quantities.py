@@ -1,14 +1,8 @@
 """
-Utilities operating on complete network descriptions.
+Quantities derived from a whole network, as matrices and vectors: indegrees,
+mean weights, background input and so on.
 
-This module provides functions that derive matrices or vectors from a
-NetworkConfig representation without modifying its underlying biological
-meaning. These quantities are commonly used by builders and analytical
-routines.
-
-Typical examples include indegree matrices, background indegree vectors,
-mean synaptic weight matrices, and other derived network-level
-representations.
+Builders and the scaling steps use them. They do not change the network.
 """
 
 from __future__ import annotations

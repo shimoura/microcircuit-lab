@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import numpy as np
+from matplotlib.lines import Line2D
 
 from .areas import select_populations
-from .registry import UNSET
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
     DEFAULT_RASTER_CONFIG,
@@ -18,7 +18,7 @@ from .plot_styles import (
     population_color,
     population_label,
 )
-from .registry import register_plot
+from .registry import UNSET, register_plot
 
 
 def plot_raster(

@@ -1,15 +1,13 @@
 """
-Saving/loading computed analysis results tied to a run directory, so a
-later process (a re-plot, a comparison across runs) can reuse them
-instead of recomputing from spikes.
+Save and load analysis results in a run directory, so a re-plot or a
+comparison across runs can reuse them instead of recomputing from the spikes.
 
-Saved as .npz -- these are numeric arrays, not the relational spike-event
-data microcircuit_lab.backends.post_hoc uses CSV for.
+They are saved as ``.npz`` files, because they are numeric arrays (the spike
+events themselves are stored as CSV).
 
-Generic over shape: each value in `measures` is either a scalar (e.g.
-compute_population_firing_rates's per-population rate) or a (freqs, power)
-array pair (e.g. compute_power_spectrum's), with freqs assumed identical
-across populations.
+Each value in ``measures`` is either a scalar (for example the firing rate of
+a population) or a ``(freqs, power)`` pair of arrays (a power spectrum), with
+the same ``freqs`` for all populations.
 """
 
 from __future__ import annotations

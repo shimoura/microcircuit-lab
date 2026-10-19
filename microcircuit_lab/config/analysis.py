@@ -1,15 +1,4 @@
-"""
-Analysis/plot configuration models.
-
-This module defines immutable configuration objects describing how
-analysis plots (raster, firing rates, power spectrum, ISI CV) should be
-selected and presented. Mirrors the network/simulation config pattern:
-pydantic models, validated, loadable from YAML.
-
-No plotting/matplotlib code belongs here -- see
-microcircuit_lab.analysis.plot_styles for the functions that consume
-these models.
-"""
+"""What the analysis file may contain: which plots to make and how they look."""
 
 from __future__ import annotations
 
@@ -27,9 +16,6 @@ ColorMode = Literal["layer", "cell_type", "population", "custom"]
 logger = logging.getLogger(__name__)
 
 
-# -----------------------------------------------------------------------------
-# Style
-# -----------------------------------------------------------------------------
 class PlotStyle(FrozenConfig):
     """Shared visual settings used across analysis plots."""
 
@@ -72,9 +58,6 @@ class PlotStyle(FrozenConfig):
     dpi: int = Field(default=300, description="resolution of the saved figures")
 
 
-# -----------------------------------------------------------------------------
-# Per-plot presentation settings
-# -----------------------------------------------------------------------------
 class RasterPlotConfig(FrozenConfig):
     """Raster-specific presentation settings."""
 
@@ -157,12 +140,11 @@ class IsiCvPlotConfig(_DistributionPlotConfig):
 
 
 class PowerSpectrumPlotConfig(FrozenConfig):
-    """Power-spectrum presentation settings (grid: one subplot per population,
-    grouped into rows by layer -- see analysis.power_spectrum._grid_layout).
+    """Power-spectrum settings: one subplot per population, in rows by layer.
 
-    method_kwargs are forwarded to the chosen estimator (see
-    analysis.power_spectrum.POWER_SPECTRUM_METHODS), e.g. {"bandwidth": 4.0}
-    for method="multitaper".
+    ``method_kwargs`` are passed to the chosen method (see
+    ``analysis.power_spectrum.POWER_SPECTRUM_METHODS``), for example
+    ``{"bandwidth": 4.0}`` for ``method="multitaper"``.
     """
 
     enabled: bool = Field(default=True, description="make this plot")
@@ -191,24 +173,15 @@ class PowerSpectrumPlotConfig(FrozenConfig):
     )
 
 
-# -----------------------------------------------------------------------------
-# Analysis
-# -----------------------------------------------------------------------------
 class AnalysisConfig(FrozenConfig):
     """
-    Complete analysis/plotting configuration.
+    The analysis file: settings shared by all plots, plus one section per plot.
 
-    ``begin``/``end``/``area``/``show_reference``/``style`` are the only
-    fixed fields -- true cross-plot defaults, shared by every diagnostic.
-    Everything else is open-ended: any other top-level key (``raster``,
-    ``firing_rates``, ``power_spectrum``, ``isi_cv``, or a plot your own
-    code registers -- see ``microcircuit_lab.analysis.registry``) is kept
-    as-is and resolved on demand through :meth:`plot_config`. This is
-    what lets a new diagnostic be added without ever touching this class:
-    its YAML section just needs a name, not a pre-declared field.
-
-    Contains no biological network or execution parameters -- those
-    belong to NetworkConfig/SimulationConfig respectively.
+    ``begin``, ``end``, ``area``, ``show_reference`` and ``style`` are the only
+    fixed fields. Any other top-level key (``raster``, ``firing_rates``,
+    ``power_spectrum``, ``isi_cv``, or a plot you register yourself, see
+    ``microcircuit_lab.analysis.registry``) is kept as written and read with
+    :meth:`plot_config`. So a new plot needs no change to this class.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")
@@ -235,10 +208,8 @@ class AnalysisConfig(FrozenConfig):
         self, name: str, config_cls: type[FrozenConfig] | None
     ) -> FrozenConfig | dict:
         """
-        Validate this config's ``name`` section (or ``{}`` if absent)
-        against ``config_cls`` -- how a specific plot's own settings are
-        pulled out of the open-ended extra fields above. Without a
-        ``config_cls`` the section is returned as a plain dict.
+        Read the ``name`` section (``{}`` if absent) as a ``config_cls``.
+        Without a ``config_cls`` the section is returned as a plain dict.
         """
 
         raw = (self.model_extra or {}).get(name, {})
@@ -252,15 +223,14 @@ class AnalysisConfig(FrozenConfig):
         config_dir: str | Path = "configs",
         network_name: str = "toy",
         analysis_name: str | None = None,
-    ) -> "AnalysisConfig":
+    ) -> AnalysisConfig:
         """
-        Build an AnalysisConfig from ``configs/analysis/<analysis_name or
-        network_name>.yaml``.
+        Read ``configs/analysis/<analysis_name>.yaml``.
 
-        ``analysis_name`` defaults to ``network_name`` when omitted, same
-        convention as ``Simulation.from_yaml``'s ``simulation_name``. If
-        that default file doesn't exist, the defaults of ``AnalysisConfig()``
-        are used, with a warning; a file named explicitly must exist.
+        ``analysis_name`` defaults to ``network_name``, as ``simulation_name``
+        does in ``Simulation.from_yaml``. If that default file doesn't exist, the
+        defaults of ``AnalysisConfig()`` are used, with a warning; a file named
+        explicitly must exist.
         """
 
         name_is_explicit = analysis_name is not None

@@ -1,11 +1,9 @@
 """Population rate power-spectrum analysis and visualization.
 
-Spectral estimation is pluggable: POWER_SPECTRUM_METHODS maps a method
-name to an estimator function, the same registry pattern used for
-simulator backends (microcircuit_lab.backends.get_backend) and model
-builders (microcircuit_lab.discovery.discover_builders). Add a new method
-by registering it here; compute_power_spectrum/plot_power_spectrum never
-need to change.
+The spectral method can be chosen by name: ``POWER_SPECTRUM_METHODS`` maps a
+method name to an estimator function. To add a method, add it to that
+dictionary; ``compute_power_spectrum`` and ``plot_power_spectrum`` stay as
+they are.
 """
 
 from __future__ import annotations
@@ -19,7 +17,6 @@ import numpy as np
 from microcircuit_lab.analysis.cache import load_or_compute
 
 from .areas import select_populations
-from .registry import UNSET
 from .plot_styles import (
     DEFAULT_PLOT_STYLE,
     DEFAULT_POWER_SPECTRUM_CONFIG,
@@ -29,20 +26,21 @@ from .plot_styles import (
     population_label,
     population_metadata,
 )
-from .registry import register_plot
+from .registry import UNSET, register_plot
 
 PowerSpectrumEstimator = Callable[..., tuple[np.ndarray, np.ndarray]]
 
 
 def _periodogram(signal: np.ndarray, fs: float) -> tuple[np.ndarray, np.ndarray]:
-    """Single-window FFT periodogram (no averaging -- noisiest, cheapest, highest resolution)."""
+    """Single-window FFT periodogram: no averaging, so the noisiest but the cheapest, with the highest resolution."""
 
     signal = signal - signal.mean()
     n = len(signal)
     freqs = np.fft.rfftfreq(n, d=1.0 / fs)
     power = np.abs(np.fft.rfft(signal)) ** 2 / (fs * n)
     if n > 1:
-        power[1:-1] *= 2.0  # one-sided spectrum: fold negative frequencies in, DC/Nyquist excluded
+        # One-sided spectrum: fold the negative frequencies in, leaving DC and Nyquist as they are.
+        power[1:-1] *= 2.0
     return freqs, power
 
 
@@ -94,9 +92,9 @@ def _multitaper(
 
     Lower variance than a single periodogram or Welch's method, without
     cutting the signal into shorter segments. `bandwidth` (Hz) trades
-    frequency resolution for variance -- wider means more, lower-variance
-    tapers at the cost of a wider smoothing kernel; defaults to MNE's own
-    ``8 * fs / n_samples``. `adaptive` uses adaptive taper weighting
+    frequency resolution for variance: a wider bandwidth uses more tapers
+    and gives a lower variance, but smooths over a wider range of
+    frequencies. It defaults to MNE's own ``8 * fs / n_samples``. `adaptive` uses adaptive taper weighting
     instead of a plain average (slower, generally more accurate).
     """
 
@@ -425,7 +423,8 @@ def plot_power_spectrum(
 
         for pop_name in cell_names:
             freqs, power = spectra[pop_name]
-            freqs, power = freqs[1:], power[1:]  # drop DC: meaningless after detrending
+            # Drop the DC bin: it carries no information after detrending.
+            freqs, power = freqs[1:], power[1:]
             color = population_color(pop_name, names.index(pop_name), style)
             label = population_label(pop_name, style, strip_area=area is not None)
             ax.plot(freqs, power, color=color, linewidth=config.linewidth, label=label)

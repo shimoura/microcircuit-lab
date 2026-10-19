@@ -1,8 +1,7 @@
-"""Writing simulation run outputs (recordings, config, metadata).
+"""Write the outputs of a run: recordings, config and metadata.
 
-This is the write-side counterpart to :mod:`microcircuit_lab.yaml_files`. It
-depends only on the generic :class:`~microcircuit_lab.backends.base.SimulationBackend`
-contract, never on a specific backend, so it works for any simulator.
+It uses only the :class:`~microcircuit_lab.backends.base.SimulationBackend`
+interface, so it works with any backend.
 """
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ import logging
 import shutil
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -104,13 +103,12 @@ def resolve_run_directory(
     simulation_name: str,
 ) -> Path:
     """
-    Resolve and create the directory a simulation run should write to.
+    Create the folder a run writes to, and return it.
 
-    If ``output.overwrite`` is True, every run reuses
-    ``output.output_dir`` directly -- convenient while iterating on a
-    model. Otherwise each run gets its own ``<output_dir>/<timestamp>``
-    subdirectory, so results from different runs are never silently
-    overwritten. Without an ``output_dir``, it is ``output/<network_name>``.
+    With ``output.overwrite`` true, every run uses ``output.output_dir`` itself,
+    which is convenient while you are still changing the model. Otherwise each
+    run gets its own ``<output_dir>/<timestamp>`` folder, so earlier results are
+    not overwritten. Without an ``output_dir`` it is ``output/<network_name>``.
     """
 
     base = _base_directory(output, network_name)
@@ -159,10 +157,9 @@ def save_run_config(
 
 def _git_provenance(cwd: Path) -> dict[str, object] | None:
     """
-    Best-effort git commit/dirty-tree info for whatever repository ``cwd``
-    is in (git searches upward for ``.git`` itself, same as running `git`
-    by hand). Returns None if git isn't available or cwd isn't a repo --
-    this must never fail a run just because provenance can't be determined.
+    The git commit and whether the working tree has uncommitted changes, for
+    the repository that contains ``cwd``. Returns None if git is not available
+    or ``cwd`` is not in a repository, so that a run never fails because of it.
     """
 
     try:
@@ -216,15 +213,13 @@ def write_run_metadata(
     simulation_name: str,
     backend_name: str,
 ) -> Path:
-    """Write ``metadata.json``: run identity, per-population spike statistics
-    (if spike_recording was enabled), and an ``artifacts`` manifest that
-    :func:`register_artifact` appends to.
+    """Write ``metadata.json``: the run's identity, the spike statistics of each
+    population (if spikes were recorded) and a list of the files of the run, to
+    which :func:`register_artifact` adds.
 
-    ``first_gid`` anchors each population's node-ID range (the backend
-    creates each population's neurons as one contiguous block, so
-    ``first_gid`` + ``size`` fully recovers it) -- this is what lets
-    :class:`~microcircuit_lab.backends.post_hoc.PostHocBackend` reconstruct
-    ``get_population`` from a saved run without re-simulating.
+    ``first_gid`` and ``size`` give the node IDs of each population, which are
+    one contiguous block. :class:`~microcircuit_lab.backends.post_hoc.PostHocBackend`
+    uses them to read a saved run without simulating it again.
     """
 
     t_sim_s = simulation_config.t_sim / 1000.0
@@ -249,7 +244,7 @@ def write_run_metadata(
         "backend": backend_name,
         "simulator_version": backend.version(),
         "num_processes": backend.num_processes(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "microcircuit_lab_version": _package_version(),
         "git": _git_provenance(Path.cwd()),
         "core_git": _core_git_provenance(),
@@ -307,12 +302,12 @@ def save_run_outputs(
     backend_name: str,
 ) -> None:
     """
-    Save whatever the simulation config requests (recordings, resolved
-    config, metadata) into an already-resolved ``run_dir``.
+    Save what the simulation config asks for (recordings, config, metadata)
+    in ``run_dir``.
 
-    ``run_dir`` must come from :func:`resolve_run_directory`, called
-    *before* ``backend.build()`` so backends that record straight to disk
-    (e.g. NEST) can be pointed at it via ``backend.prepare_output()``.
+    ``run_dir`` comes from :func:`resolve_run_directory`, which is called before
+    ``backend.build()`` so that a backend that records straight to disk (NEST)
+    can be pointed at it with ``backend.prepare_output()``.
     """
 
     output = simulation_config.output

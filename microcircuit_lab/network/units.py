@@ -1,12 +1,6 @@
 """
-Utilities related to synaptic parameters and transformations.
-
-This module provides operations on individual synapses, independent
-of the network topology or a particular reference model.
-
-Typical examples include conversions between postsynaptic potentials
-(PSPs) and postsynaptic currents (PSCs), as well as other synapse-level
-transformations and parameter conversions.
+Unit conversions for single synapses, such as post-synaptic potentials (PSPs)
+to post-synaptic currents (PSCs).
 """
 
 from __future__ import annotations

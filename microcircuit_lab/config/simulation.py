@@ -1,27 +1,16 @@
-"""
-Simulation configuration models.
-
-This module defines immutable configuration objects describing how a
-simulation should be executed.
-
-The parameters describe execution settings such as simulation time, random seeds,
-recording options and output locations.
-"""
+"""What the simulation file may contain: run time, seeds, recording and output."""
 
 from __future__ import annotations
+
 from pathlib import Path
+
 from pydantic import Field
 
 from microcircuit_lab.config.base import FrozenConfig
 
-# -----------------------------------------------------------------------------
-# Recording
-# -----------------------------------------------------------------------------
+
 class RecordingConfig(FrozenConfig):
-    """
-    Configuration of recording devices.
-    Individual simulator backends decide how these requests are implemented.
-    """
+    """What to record. The backend decides how."""
 
     spike_recording: bool = Field(default=True, description="record the spikes of every neuron")
     voltage_recording: bool = Field(default=False, description="record membrane potentials")
@@ -35,11 +24,8 @@ class RecordingConfig(FrozenConfig):
     )
 
 
-# -----------------------------------------------------------------------------
-# Output
-# -----------------------------------------------------------------------------
 class OutputConfig(FrozenConfig):
-    """Configuration of simulation output.
+    """Where and what to save.
 
     ``output_dir`` defaults to ``output/<network name>``, so runs of different
     networks never share a folder.
@@ -66,16 +52,8 @@ class OutputConfig(FrozenConfig):
     )
 
 
-# -----------------------------------------------------------------------------
-# Simulation
-# -----------------------------------------------------------------------------
 class SimulationConfig(FrozenConfig):
-    """
-    Complete simulation configuration.
-
-    Contains execution parameters only.
-    No biological network parameters belong here.
-    """
+    """How to run the simulation. The network itself is not described here."""
 
     t_sim: float = Field(default=100.0, gt=0.0, description="simulated time (ms)")
     resolution: float = Field(default=0.1, gt=0.0, description="simulation time step (ms)")

@@ -6,13 +6,11 @@ Find the code of the project you run from: its builders and its analyses.
 ``analyses/``. Both import a folder of the project with
 :func:`import_folder_modules`.
 
-Find the model builders that ``microcircuit-lab generate`` can run.
+A builder is any package with a callable ``main(argv=None)``. That is all the
+shared command needs; how ``main`` reads its arguments or splits its code up
+is the builder's business. Builders are looked up in two places:
 
-A builder is any package with a callable ``main(argv=None)``; ``main`` is
-all the shared CLI needs, and how it parses its arguments or splits its
-code up is the builder's business. Builders are looked up in two places:
-
-* the ``builders/`` folder of the repository you run from -- every
+* the ``builders/`` folder of the repository you run from: every
   subpackage with a ``main`` is found, so adding a model means adding a
   folder and nothing else;
 * installed packages that register a ``main`` under the

@@ -1,28 +1,17 @@
 """
-Registry of analysis diagnostics: the bundled ones (raster, firing rates, ...)
-and a project's own.
+Registry of analysis plots: the bundled ones (raster, firing rates, ...) and a
+project's own.
 
-Same registry pattern already used elsewhere in this package for
-"pluggable, named thing" problems -- simulator backends
-(microcircuit_lab.backends.get_backend), model builders
-(microcircuit_lab.discovery.discover_builders), spectral estimators
-(power_spectrum.POWER_SPECTRUM_METHODS). Applied to plots: adding a new
-bundled diagnostic means writing its plot function + config class (the
-actual work, same as today) plus one register_plot(...) call -- no
-AnalysisConfig edits, no CLI hand-writing, no extra __init__.py exports
-required for it to be usable through microcircuit-lab run.
+Adding a plot means writing its plot function and config class and calling
+``register_plot`` once. Each bundled plot module does this at import, so
+importing ``microcircuit_lab.analysis`` fills ``PLOT_REGISTRY``.
 
-Each of raster.py/firing_rates.py/power_spectrum.py/isi_cv.py
-calls register_plot() once at module level, so importing
-microcircuit_lab.analysis (which already imports all four) populates
-this registry as a side effect.
+A project's own plots live outside this package. :func:`discover_plots`, which
+``microcircuit-lab run`` calls before it builds its command-line flags, finds
+them in two places:
 
-A project's own diagnostics live outside this package and are found by
-:func:`discover_plots`, which microcircuit-lab run calls before it
-builds its command-line flags. It looks in two places:
-
-* the ``analyses/`` folder of the project you run from -- every module or
-  package in it is imported, and its register_plot() call runs on import;
+* the ``analyses/`` folder of the project you run from: every module or
+  package in it is imported, and its ``register_plot`` call runs on import;
 * installed packages that list a module under the
   ``microcircuit_lab.analyses`` entry-point group in their
   ``pyproject.toml``::
@@ -30,11 +19,8 @@ builds its command-line flags. It looks in two places:
       [project.entry-points."microcircuit_lab.analyses"]
       my_plots = "my_package.plots"
 
-So a project adds a plot without editing this package at all.
-
-PLOT_REGISTRY is shared state: it is filled as modules are imported, so
-what it holds depends on which modules have been imported so far. Tests
-that register plots work on a copy of it.
+``PLOT_REGISTRY`` is filled as modules are imported, so what it holds depends
+on what has been imported so far. Tests that register plots work on a copy.
 """
 
 from __future__ import annotations
@@ -49,13 +35,8 @@ from microcircuit_lab.config.analysis import AnalysisConfig
 from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.discovery import import_folder_modules
 
-#: Sentinel distinguishing "this argument wasn't passed at all" (fall back
-#: to the plot's config object) from an explicit value -- including an
-#: explicit None, which is itself a meaningful choice for some fields
-#: (e.g. xlim=None means "full range", not "unset"). Python has no
-#: cleaner built-in way to get this 3-state default; shared here so every
-#: plot module uses the same sentinel instead of a differently-named
-#: local one each.
+#: Marks an argument that was not passed, so the plot falls back to its config.
+#: An explicit None is a real value (``xlim=None`` means the full range).
 UNSET = object()
 
 PLOT_ENTRY_POINT_GROUP = "microcircuit_lab.analyses"
@@ -86,8 +67,8 @@ class PlotSpec:
     (``--area all`` calls the function once per area), and the plot is
     saved to ``save_path``. ``config`` is an instance of config_cls, or
     the plain dict from the plot's YAML section when config_cls is None.
-    Anything plot-specific belongs in that config, not as an extra argument
-    -- that's what keeps the dispatch in microcircuit-lab run generic.
+    Anything plot-specific belongs in that config, not as an extra argument,
+    so that ``microcircuit-lab run`` can call every plot the same way.
     """
 
     plot_fn: Callable[..., object]
@@ -217,12 +198,10 @@ def check_unknown_plot_sections(analysis_config: AnalysisConfig) -> None:
     Raise if `analysis_config` has a top-level section that doesn't match
     any registered plot name.
 
-    AnalysisConfig itself (microcircuit_lab.config, which has no
-    dependency on matplotlib or this analysis package) accepts any extra
-    top-level key without validation, so a typo'd YAML section (e.g.
-    `rastr:` instead of `raster:`) would otherwise be silently ignored
-    instead of raising. Call this once after loading an AnalysisConfig,
-    before using it to drive plots.
+    ``AnalysisConfig`` accepts any extra top-level key, so a misspelled
+    section (``rastr:`` instead of ``raster:``) would otherwise be ignored
+    silently. Call this once after loading an ``AnalysisConfig``, before
+    using it to draw plots.
     """
 
     unknown = set(analysis_config.model_extra or {}) - set(PLOT_REGISTRY)

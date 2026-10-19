@@ -17,10 +17,13 @@ from pathlib import Path
 from typing import Any
 
 from builders.pd14 import data
+from microcircuit_lab.builder_tools import (
+    delay,
+    num_synapses_from_conn_prob,
+    weight,
+    write_network_directory,
+)
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.builder_tools import delay, weight
-from microcircuit_lab.builder_tools import write_network_directory
-from microcircuit_lab.builder_tools import num_synapses_from_conn_prob
 
 
 def _neuron_type(population: str) -> str:

@@ -7,16 +7,16 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
+from microcircuit_lab.backends.nest import NestBackend
 from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.runs import (
     register_artifact,
     resolve_run_directory,
     save_run_outputs,
 )
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.backends.nest.backend import NestBackend
 
 
 def _toy_network() -> NetworkConfig:

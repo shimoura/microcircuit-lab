@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 def list_areas(simulation):
     """
     The areas of a multi-area network, in population order.

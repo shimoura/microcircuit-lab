@@ -505,8 +505,8 @@ register_plot("spectrogram", plot_spectrogram,
 
 ## Adding a backend
 
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/base.py`) in `microcircuit_lab/backends/<name>/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
-2. Register it in `get_backend` (`microcircuit_lab/backends/__init__.py`).
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/base.py`) in `microcircuit_lab/backends/<name>.py`, like `nest.py`; helpers go in `<name>_*.py`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
+2. Register it in `get_backend`, and its file reader (like `nest_files.read_saved_spikes`, without importing the simulator) in `read_saved_spikes`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
 3. Select it with `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; `backend_options` go to its constructor unchanged.
 
 ## Testing

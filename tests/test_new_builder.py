@@ -9,6 +9,7 @@ from pathlib import Path
 from microcircuit_lab.cli.new_builder import render_stub
 from microcircuit_lab.network.load import load_network
 
+
 def _load_module(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)

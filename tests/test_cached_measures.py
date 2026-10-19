@@ -7,7 +7,10 @@ import pytest
 
 import microcircuit_lab.analysis.firing_rates as firing_rates_module
 from microcircuit_lab import Simulation
-from microcircuit_lab.analysis import cached_population_firing_rates, cached_power_spectrum
+from microcircuit_lab.analysis import (
+    cached_population_firing_rates,
+    cached_power_spectrum,
+)
 from microcircuit_lab.analysis.cache import load_measures
 
 

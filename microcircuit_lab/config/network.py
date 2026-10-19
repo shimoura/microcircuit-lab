@@ -2,8 +2,8 @@
 
 ``NetworkDirectory`` is the folder as written on disk, validated at once so an
 error names the file and the field. ``NetworkConfig`` is the network after
-reading, the single description every later step uses (preparing it for the
-simulation, the simulator backend, the analysis).
+reading. Preparing it for the simulation, the simulator backend and the
+analysis all use it.
 """
 
 from __future__ import annotations
@@ -13,19 +13,26 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from microcircuit_lab.config.background_inputs import BackgroundInputConfig, BackgroundInputsFile
+from microcircuit_lab.config.background_inputs import (
+    BackgroundInputConfig,
+    BackgroundInputsFile,
+)
 from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.config.connectivity import ConnectionConfig, ConnectivityFile
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
-from microcircuit_lab.config.stimuli import DcStimulusConfig, StimuliFile, StimulusConfig
+from microcircuit_lab.config.stimuli import (
+    DcStimulusConfig,
+    StimuliFile,
+    StimulusConfig,
+)
 from microcircuit_lab.config.synapses import SynapseEntry, SynapsesFile
 
 
 class NetworkManifest(FrozenConfig):
-    """``network.yaml`` -- maps each part of the network to its file name."""
+    """``network.yaml``: maps each part of the network to its file name."""
 
     populations: str = Field(examples=["populations.yaml"], description="file holding the populations list")
     neurons: str = Field(examples=["neurons.yaml"], description="file holding the neuron definitions")
@@ -80,21 +87,16 @@ class NetworkDirectory(FrozenConfig):
 
 class NetworkConfig(FrozenConfig):
     """
-    Complete biological network description.
-
-    This object is the single source of truth describing the network model.
-    It is assembled from the YAML files under configs/network/.
+    The whole network, read from the YAML files in ``configs/network/``.
 
     background_mode:
-        "poisson" (default): each population's background_inputs entry
-        drives it through an independent Poisson generator, as usual.
-        "mean_current": replaces that Poisson drive network-wide with a constant
-        current of the same mean, per Potjans & Diesmann (2014)'s
-        comparison of Poisson vs. DC background input (their Fig. 5).
-        The `background_inputs` rate/weight/delay are still the source
-        of truth for computing that mean (see
-        prepare_network (step replace_background_by_mean_current)); no Poisson
-        generator is created in this mode.
+        "poisson" (default): each population gets its background input from
+        independent Poisson generators.
+        "mean_current": the Poisson input of every population is replaced by a
+        constant current of the same mean (Potjans & Diesmann 2014, Fig. 5).
+        The rate, weight and delay in ``background_inputs`` are used to compute
+        that mean (step ``replace_background_by_mean_current`` in
+        ``network/compensation.py``). No Poisson generator is created.
 
     bound_mode:
         What to do with a drawn weight or delay that falls outside its
@@ -117,7 +119,7 @@ class NetworkConfig(FrozenConfig):
     synapses: dict[str, SynapseEntry] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _check_stimulus_targets_exist(self) -> "NetworkConfig":
+    def _check_stimulus_targets_exist(self) -> NetworkConfig:
         for stimulus in self.stimuli:
             unknown = [t for t in stimulus.targets if t not in self.populations]
             if unknown:
@@ -128,7 +130,7 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
-    def _check_one_connection_per_synapse(self) -> "NetworkConfig":
+    def _check_one_connection_per_synapse(self) -> NetworkConfig:
         counts = Counter((c.source, c.target, c.synapse) for c in self.connections)
         repeated = sorted((key for key, count in counts.items() if count > 1), key=str)
         if repeated:
@@ -140,7 +142,7 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
-    def _check_synapses(self) -> "NetworkConfig":
+    def _check_synapses(self) -> NetworkConfig:
         users = [(f"connection {c.source} -> {c.target}", c) for c in self.connections]
         users += [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
         users += [

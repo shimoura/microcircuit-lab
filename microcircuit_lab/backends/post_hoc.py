@@ -1,17 +1,11 @@
 """
-Read-only backend for post-hoc analysis: re-analyzing a saved run's
-spikes after the fact, without re-simulating.
+Read-only backend that replays the spikes of a saved run, so the run can be
+analysed again without simulating.
 
-Reconstructs the read side of the SimulationBackend contract
-(get_population/get_spike_events) from files a run already wrote
-(metadata.json, recordings/) instead of a live simulator. See
-Simulation.from_run_dir, the only place this is meant to be constructed.
-
-This is deliberately not registered in backends.get_backend/BackendName:
-it never drives a simulation, so it isn't a choice one makes for
-Simulation.from_yaml the way a simulator is. The spike files are read by
-the backend that wrote them (its name is in metadata.json), see
-backends.read_saved_spikes.
+It reads ``metadata.json`` and the ``recordings/`` folder that the run wrote.
+Build it with ``Simulation.from_run_dir``. It is not listed in ``get_backend``,
+because it cannot run a simulation. The spike files are read as the backend that
+wrote them does (its name is in ``metadata.json``); see ``read_saved_spikes``.
 """
 
 from __future__ import annotations
@@ -25,9 +19,7 @@ from microcircuit_lab.backends import read_saved_spikes, spikes
 
 
 class PostHocBackend:
-    """Replays spikes recorded by a previous run, for post-hoc analysis.
-    Read-only: every method that would drive a simulation
-    (build/simulate/...) raises."""
+    """Replays the spikes of a saved run. Methods that would run a simulation raise."""
 
     def __init__(self, run_dir: str | Path) -> None:
         self.run_dir = Path(run_dir)
@@ -54,8 +46,7 @@ class PostHocBackend:
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
     def get_population(self, name: str) -> np.ndarray:
-        """Return this population's node IDs as a contiguous range, anchored
-        at metadata.json's 'first_gid' (see write_run_metadata)."""
+        """Return the node IDs of a population: a range starting at its ``first_gid`` in ``metadata.json``."""
 
         stats = self._metadata["populations"][name]
         first_gid = stats["first_gid"]
@@ -71,8 +62,7 @@ class PostHocBackend:
         return self._cached_spikes
 
     def get_spike_events(self, population: str) -> dict:
-        """Return {"senders": ..., "times": ...} read back from whatever
-        this run wrote for `population`."""
+        """Return the spikes of ``population`` as ``{"senders": ..., "times": ...}``."""
 
         if population not in self._metadata.get("populations", {}):
             raise ValueError(f"Unknown population {population!r} in metadata.")

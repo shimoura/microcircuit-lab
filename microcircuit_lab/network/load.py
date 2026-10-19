@@ -3,12 +3,12 @@ Load a network from its folder, ``configs/network/<name>/``.
 
 Two functions, for the two things you may want:
 
-* :func:`read_network` -- the network exactly as written in its files, checked
+* :func:`read_network`: the network exactly as written in its files, checked
   (every field against the models in :mod:`microcircuit_lab.config`, and the
   references between files: a population names an existing neuron, a
   connection names existing populations). Use it to inspect or change a
   network before it is prepared, e.g. to set another scaling.
-* :func:`load_network` -- the same network prepared for the simulation (see
+* :func:`load_network`: the same network prepared for the simulation (see
   :func:`microcircuit_lab.network.prepare.prepare_network`). This is what
   ``Simulation.from_yaml`` and ``microcircuit-lab run`` use, and what a builder
   can call to check what it wrote.
@@ -25,10 +25,12 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from microcircuit_lab.config.network import NetworkConfig, NetworkDirectory, NetworkManifest
-
+from microcircuit_lab.config.network import (
+    NetworkConfig,
+    NetworkDirectory,
+    NetworkManifest,
+)
 from microcircuit_lab.config.neurons import NeuronConfig
-
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.yaml_files import read_yaml

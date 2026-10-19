@@ -1,10 +1,12 @@
-"""Create builders/<name>/ with a runnable main() example.
+"""
+``microcircuit-lab new-builder <name>``: create ``builders/<name>/``, a model
+builder with a small example network to edit.
 
-A builder is any code that writes a network folder, configs/network/<name>/,
-which passes the usual checks when loaded. This makes the package that
-`microcircuit-lab generate` finds, with a main() that already writes a small
-example network: change its values to your model's. builders/toy_two_areas is
-a readable mid-size example; builders/pd14 and builders/humam are full ones.
+A builder is code that writes a network folder, ``configs/network/<name>/``,
+which passes the usual checks when loaded. The new ``main()`` already writes an
+example network; change its values to your model's. ``builders/toy_two_areas``
+is a readable mid-size example, and ``builders/pd14`` and ``builders/humam`` are
+full ones.
 
 Usage: microcircuit-lab new-builder <name>
 """
@@ -16,11 +18,11 @@ from pathlib import Path
 BUILDERS_DIR = Path("builders")
 
 STUB = '''\
-"""{title} model -- writes configs/network/{name}/ from this model's parameters.
+"""{title} model: writes configs/network/{name}/ from the parameters of the model.
 
-main() below builds a small example network to edit. When it outgrows one
-file, move the logic into a build.py and keep this __init__.py a one-line
-re-export, like builders/pd14 and builders/humam.
+main() below builds a small example network to edit. When it grows too large
+for one file, move the code into a build.py and keep this __init__.py as a
+one-line re-export, like builders/pd14 and builders/humam.
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ def main(argv: list[str] | None = None) -> None:
 
     The four blocks below are the contents of the files in
     configs/network/{name}/, without the key that opens each file
-    (write_network_directory adds it) -- replace the example values with this
+    (write_network_directory adds it). Replace the example values with this
     model's numbers. Every field, with units and defaults: docs/config_files.md.
     """
     parser = argparse.ArgumentParser(

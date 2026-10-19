@@ -1,40 +1,30 @@
 """
-Simulation orchestration.
+The ``Simulation`` class: loads the config files, builds the network in a
+backend, runs it and saves the results.
 
-This module coordinates configuration loading,
-parameter derivation, network construction and
-simulation execution.
-
-It intentionally contains no neuroscience
-mathematics and no simulator-specific code.
+It holds no neuroscience maths and no simulator-specific code.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
 from microcircuit_lab.backends.post_hoc import PostHocBackend
-
-from microcircuit_lab.network.load import load_network
-
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-
-from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.network.load import load_network
 from microcircuit_lab.runs import save_run_outputs, share_run_directory
-
-from pathlib import Path
+from microcircuit_lab.yaml_files import read_yaml
 
 logger = logging.getLogger(__name__)
 
 
 class Simulation:
-    """
-    High-level simulation orchestrator.
-    """
+    """A network and its simulation settings, run on a backend."""
 
     def __init__(
         self,
@@ -65,7 +55,7 @@ class Simulation:
         simulation_name: str | None = None,
         backend: BackendName = "nest",
         backend_options: dict[str, Any] | None = None,
-    ) -> "Simulation":
+    ) -> Simulation:
         """
         Build a simulation from the config files.
 
@@ -119,7 +109,7 @@ class Simulation:
         )
 
     @classmethod
-    def from_run_dir(cls, run_dir: str | Path) -> "Simulation":
+    def from_run_dir(cls, run_dir: str | Path) -> Simulation:
         """
         Open a finished run to analyse or re-plot it, without simulating again.
 
@@ -144,8 +134,7 @@ class Simulation:
         ValueError
             If the run has no ``config.yaml`` (it was saved with
             ``save_config: false``), or its ``metadata.json`` lacks the
-            ``first_gid`` of each population (a run saved before this
-            existed).
+            ``first_gid`` of each population (simulate the run again).
         """
 
         run_dir = Path(run_dir)

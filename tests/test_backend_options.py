@@ -4,16 +4,16 @@ NEST/NESTML models before the network is built).
 
 nest's module object rejects attribute assignment (nest.Install = ...
 raises), so NestBackend's own use of nest.Install() is tested by
-monkeypatching the `nest` name inside microcircuit_lab.backends.nest.backend
+monkeypatching the `nest` name inside microcircuit_lab.backends.nest
 (a plain module, not the real nest package) instead of the real nest module.
 """
 
 import numpy as np
 
-import microcircuit_lab.backends.nest.backend as nest_backend_module
+import microcircuit_lab.backends.nest as nest_backend_module
 import microcircuit_lab.simulation.runner as runner_module
 from microcircuit_lab import Simulation
-from microcircuit_lab.backends.nest.backend import NestBackend
+from microcircuit_lab.backends.nest import NestBackend
 
 
 class _FakeBackend:

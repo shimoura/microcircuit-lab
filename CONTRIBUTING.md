@@ -20,7 +20,7 @@ A concept keeps its name from the YAML file to the test. To change something, st
 %%{init: {"flowchart": {"wrappingWidth": 400}}}%%
 flowchart TD
   Y["configs/network/toy_stimulated/stimuli.yaml"] --> C["config/stimuli.py<br/>what the file may contain"]
-  C --> B["backends/nest/backend.py<br/>create_stimuli: builds it in NEST"]
+  C --> B["backends/nest.py<br/>create_stimuli: builds it in NEST"]
   B --> T["tests/test_stimuli.py"]
 ```
 
@@ -46,7 +46,7 @@ Click the kind of change. Each recipe ends with a test and a line in the README.
 <summary><b>A stimulus type</b></summary>
 
 1. `config/stimuli.py`: add a class next to the others, and add it to `StimulusConfig` at the end of the file.
-2. `backends/nest/backend.py`, `create_stimuli`: create its NEST device. Change `connect_stimuli` only if it connects differently.
+2. `backends/nest.py`, `create_stimuli`: create its NEST device. Change `connect_stimuli` only if it connects differently.
 3. Test in `tests/test_stimuli.py`.
 
 The [worked example](#an-example-a-single-spike-stimulus) below does exactly this.
@@ -56,7 +56,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <summary><b>A weight or delay distribution</b></summary>
 
 1. `config/connectivity.py`: add its name to the `distribution` list of `WeightDistribution` or `DelayDistribution`.
-2. `backends/nest/parameters.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
+2. `backends/nest_parameters.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
 3. Test in `tests/test_bound_mode_and_tau_syn.py`.
 </details>
 
@@ -65,7 +65,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 
 1. `config/populations.py`: add it to `PopulationEntry` (the file) and `PopulationConfig` (the network).
 2. `network/load.py`, `assemble_network`: copy it from one to the other.
-3. `backends/nest/backend.py`: use it in `create_populations` or `initialize_population`.
+3. `backends/nest.py`: use it in `create_populations` or `initialize_population`.
 4. Test in `tests/test_config_validation.py`.
 </details>
 
@@ -73,7 +73,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <summary><b>A field on a connection, or a connection rule</b></summary>
 
 1. `config/connectivity.py`: add it to `ConnectionConfig`.
-2. `backends/nest/backend.py`: use it in `create_connections`.
+2. `backends/nest.py`: use it in `create_connections`.
 3. If scaling or the indegrees depend on it: `network/quantities.py` and `network/prepare.py`.
 4. Test in `tests/test_connection_rules.py`.
 </details>
@@ -91,7 +91,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <summary><b>Something to record</b></summary>
 
 1. `config/simulation.py`: add it to `RecordingConfig`.
-2. `backends/nest/backend.py`: a `create_*`/`connect_*` pair, and reading it back.
+2. `backends/nest.py`: a `create_*`/`connect_*` pair, and reading it back.
 3. `runs.py`, if it is saved in the run folder.
 4. Test in `tests/test_output.py`.
 </details>
@@ -107,7 +107,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A simulator</b></summary>
 
-A new package `backends/<name>/` and a line in `get_backend`; see "Adding a backend" in the README.
+A module `backends/<name>.py` (with `<name>_*.py` helpers if needed) and a line in `get_backend` and `read_saved_spikes`; see "Adding a backend" in the README.
 </details>
 
 **No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too) or for a new model (a network folder or a builder; see "Adding a new model" in the README).
