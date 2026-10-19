@@ -5,45 +5,50 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Protocol
 
-from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.simulation import SimulationConfig
 
 
 class SimulationBackend(Protocol):
     """
-    Minimal contract required by the simulation orchestrator.
+    What ``Simulation.run()`` needs from a simulator.
 
-    A concrete backend's ``__init__`` may accept additional keyword-only
-    arguments beyond the two declared here, for whatever that backend
-    alone needs (e.g. NestBackend's ``extension_modules``, for loading
-    compiled NEST/NESTML extensions). Simulation.run() forwards its
-    ``backend_options`` dict as ``**kwargs`` without interpreting it, so
-    those arguments are entirely between the caller and the chosen
-    backend; this Protocol, and the rest of microcircuit_lab, never
-    needs to know about them.
+    ``__init__`` may take extra keyword-only arguments that only that backend
+    uses (e.g. NestBackend's ``extension_modules``); ``Simulation`` passes its
+    ``backend_options`` through unchanged.
     """
 
     def __init__(self, network: NetworkConfig, simulation_config: SimulationConfig) -> None: ...
 
-    def prepare_output(self, run_dir: Path) -> None:
-        """
-        Called before :meth:`build`, if the simulation will save outputs.
+    # Running
 
-        Backends that can record directly to disk (e.g. NEST's native
-        ascii recording backend) should configure that here, so recording
-        never has to buffer the full spike history in Python memory.
-        Backends without that capability may no-op and fall back to
-        writing recordings from memory in :meth:`save_recordings`.
-        """
+    def prepare_output(self, run_dir: Path) -> None:
+        """Called before ``build()`` when outputs are saved: a backend that can
+        record straight to disk sets that up here; others may do nothing."""
         ...
 
     def build(self) -> None: ...
+
     def simulate(self) -> None: ...
+
     def print_statistics(self) -> None: ...
 
+    # MPI processes (without MPI: one process, rank 0, nothing to wait for)
+
+    def num_processes(self) -> int: ...
+
+    def rank(self) -> int: ...
+
+    def sync_processes(self) -> None:
+        """Wait until every process gets here."""
+        ...
+
+    # Results
+
     def get_population(self, name: str) -> Any: ...
+
     def get_spike_events(self, population: str) -> dict: ...
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
-        """Persist recordings under ``run_dir`` and return the files written."""
+        """Save the recordings under ``run_dir`` and return the files."""
         ...

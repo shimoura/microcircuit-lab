@@ -24,6 +24,15 @@ class _FakeBackend:
     def __init__(self, network, simulation_config, **kwargs):
         _FakeBackend.last_kwargs = kwargs
 
+    def num_processes(self):
+        return 1
+
+    def rank(self):
+        return 0
+
+    def sync_processes(self):
+        pass
+
     def prepare_output(self, run_dir):
         pass
 

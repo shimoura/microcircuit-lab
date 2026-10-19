@@ -19,6 +19,46 @@ from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.yaml_files import flow_records, write_yaml
 
 
+def _base_directory(output: OutputConfig, network_name: str) -> Path:
+    return Path(output.output_dir) if output.output_dir else Path("output") / network_name
+
+
+def share_run_directory(
+    output: OutputConfig,
+    *,
+    network_name: str,
+    simulation_name: str,
+    backend: SimulationBackend,
+) -> Path:
+    """
+    The run folder, the same on every MPI process.
+
+    Process 0 resolves it (:func:`resolve_run_directory`) and writes its path to
+    ``<output_dir>/.run_dir``; the others read it there once all processes have
+    met. The simulator itself provides the meeting point, so no MPI package for
+    Python is needed. Two runs started at the same moment into the same
+    ``output_dir`` could read each other's file; give them different ``output_dir``.
+    """
+
+    if backend.num_processes() == 1:
+        return resolve_run_directory(
+            output, network_name=network_name, simulation_name=simulation_name
+        )
+
+    handoff = _base_directory(output, network_name) / ".run_dir"
+    if backend.rank() == 0:
+        run_dir = resolve_run_directory(
+            output, network_name=network_name, simulation_name=simulation_name
+        )
+        handoff.write_text(str(run_dir), encoding="utf-8")
+    backend.sync_processes()
+    run_dir = Path(handoff.read_text(encoding="utf-8"))
+    backend.sync_processes()
+    if backend.rank() == 0:
+        handoff.unlink()
+    return run_dir
+
+
 def resolve_run_directory(
     output: OutputConfig,
     *,
@@ -35,7 +75,7 @@ def resolve_run_directory(
     overwritten. Without an ``output_dir``, it is ``output/<network_name>``.
     """
 
-    base = Path(output.output_dir) if output.output_dir else Path("output") / network_name
+    base = _base_directory(output, network_name)
 
     if output.overwrite:
         run_dir = base

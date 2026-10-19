@@ -101,10 +101,10 @@ Good to know:
 pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
 ```
 
-Use the version you want in place of `v0.1.0`. Drop `[nest]` if you get NEST another way:
+Use the version you want in place of `v0.1.0`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
 
 - conda-forge: `mamba install -c conda-forge nest-simulator`
-- from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh`
+- from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh` (`NEST_WITH_MPI=ON` for MPI)
 
 All that matters is that `import nest` works. To work on the core itself, clone the repository and install it editable:
 
@@ -396,6 +396,17 @@ output/<network>/<timestamp>/
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one.
 - NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; `simulation.backend.get_spike_events(population)` reads them back.
 - Voltages (`recording.voltage_recording: true`) are recorded for 5 neurons per population by default (`recording.voltage_sample_size`; `null` for all).
+
+### Several MPI processes
+
+```bash
+mpirun -n 4 microcircuit-lab run --network pd14
+```
+
+- Needs NEST built from source with MPI (above), on a cluster against the cluster's MPI.
+- NEST spreads the neurons over the processes. Each process writes its own spike files into the same `recordings/` folder, so the processes must share a file system.
+- The first process picks the run folder; when all have finished simulating, it alone prints the rates and writes `config.yaml`, `metadata.json` and the plots.
+- In your own script, save or plot only where `simulation.is_main_process` is true.
 
 ## Using a NESTML model
 
