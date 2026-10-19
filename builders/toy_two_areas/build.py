@@ -29,8 +29,9 @@ def _build_populations() -> list[dict[str, Any]]:
             "name": population_name(area, layer, cell_type),
             "size": size,
             "neuron": neuron,
-            "V0_mean": data.V0_MEAN,
-            "V0_std": data.V0_STD,
+            "initial_state": {
+                "V_m": {"distribution": "normal", "mean": data.V0_MEAN, "std": data.V0_STD}
+            },
             "background_indegree": data.K_EXT[cell_type],
         }
         for area, layer, cell_type, size, neuron in data.POPULATIONS

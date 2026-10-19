@@ -142,12 +142,22 @@ def plot_raster(
             )
         offset += n_rows
 
-    ax.set(xlim=(begin, end), xlabel="Time (ms)", ylabel="Population")
-    ax.set_yticks(yticks, ylabels)
-    ax.tick_params(
-        axis="both",
-        labelsize=style.tick_label_size,
-    )
+    margin = 0.05 * max(offset, 1)
+    low, high = -0.5 - margin, offset - 0.5 + margin
+    ax.set(xlim=(begin, end), ylim=(low, high), xlabel="Time (ms)", ylabel="Population")
+    # A small population's band can be thinner than its label: move crowded
+    # labels apart and join each to its band with a short line.
+    axes_height_pt = fig.get_figheight() * ax.get_position().height * 72
+    gap = 1.3 * style.tick_label_size * (high - low) / axes_height_pt
+    label_positions = _spread(yticks, gap, low, high)
+    ax.set_yticks(label_positions, ylabels)
+    ax.tick_params(axis="both", labelsize=style.tick_label_size)
+    ax.tick_params(axis="y", length=0)
+    for band, label_y in zip(yticks, label_positions):
+        ax.plot(
+            [-0.015, 0.0], [label_y, band], transform=ax.get_yaxis_transform(),
+            color="black", linewidth=0.6, clip_on=False,
+        )
     ax.xaxis.label.set_size(style.axis_label_size)
     ax.yaxis.label.set_size(style.axis_label_size)
 
@@ -169,6 +179,34 @@ def plot_raster(
     if show:
         plt.show()
     return fig, ax
+
+
+def _spread(positions: list[float], gap: float, low: float, high: float) -> list[float]:
+    """Move sorted ``positions`` as little as possible so that neighbours are at
+    least ``gap`` apart, staying within ``[low, high]`` where there is room."""
+
+    groups: list[list[float]] = []
+    for position in positions:
+        groups.append([position])
+        while len(groups) > 1:
+            first, second = groups[-2], groups[-1]
+            if _group_start(first, gap) + gap * len(first) <= _group_start(second, gap):
+                break
+            groups[-2:] = [first + second]
+
+    spread = []
+    for group in groups:
+        start = _group_start(group, gap)
+        spread.extend(start + gap * index for index in range(len(group)))
+    shift = max(0.0, low - spread[0]) if spread else 0.0
+    shift -= max(0.0, spread[-1] + shift - high) if spread else 0.0
+    return [position + shift for position in spread]
+
+
+def _group_start(group: list[float], gap: float) -> float:
+    """Where a group of labels ``gap`` apart starts when centred on its members."""
+
+    return sum(group) / len(group) - gap * (len(group) - 1) / 2
 
 
 register_plot("raster", config_cls=RasterPlotConfig, plot_fn=plot_raster, filename="raster.png")

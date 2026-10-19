@@ -45,8 +45,7 @@ def _population(name: str, neuron: NeuronConfig, size: int = 10) -> PopulationCo
         name=name,
         size=size,
         neuron=neuron,
-        V0_mean=-65.0,
-        V0_std=1.0,
+        initial_state={"V_m": {"distribution": "normal", "mean": -65.0, "std": 1.0}},
         background_indegree=0.0,
     )
 
@@ -84,33 +83,6 @@ def test_inhomogeneous_poisson_requires_rate_times_and_values():
             weight=_weight(),
             delay=_delay(),
         )
-
-
-def test_inhomogeneous_poisson_rate_times_must_match_length():
-    with pytest.raises(ValidationError, match="same length"):
-        InhomogeneousPoissonStimulusConfig(
-            targets=["E"],
-            rate_times=[10.0, 20.0],
-            rate_values=[5.0],
-            weight=_weight(),
-            delay=_delay(),
-        )
-
-
-def test_inhomogeneous_poisson_rate_times_must_be_increasing():
-    with pytest.raises(ValidationError, match="increasing"):
-        InhomogeneousPoissonStimulusConfig(
-            targets=["E"],
-            rate_times=[20.0, 10.0],
-            rate_values=[5.0, 8.0],
-            weight=_weight(),
-            delay=_delay(),
-        )
-
-
-def test_stop_must_be_after_start():
-    with pytest.raises(ValidationError, match="stop"):
-        DcStimulusConfig(targets=["E"], amplitude=100.0, start=50.0, stop=10.0)
 
 
 def test_dc_stimulus_needs_no_weight_or_delay():

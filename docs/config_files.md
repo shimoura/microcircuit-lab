@@ -12,7 +12,7 @@ One folder per network, one file per part. A population is named once, in `popul
 
 What this means for a model:
 
-- **A population has one neuron entry.** Every neuron in it gets the same model and the same parameters; only the starting membrane potential differs (drawn from `V0_mean` and `V0_std`).
+- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in `nest.random` works, with its arguments as keys.
 - **Connections are set per pair of populations**: one entry for each source and target, with the number of synapses and the distributions their weights and delays are drawn from. Every connection uses the same rule (a fixed total number of synapses) and NEST's default synapse and receptor; several synapse models, receptors or rules for one pair (e.g. AMPA and NMDA) are not supported yet.
 - **So, for neurons with another model or other parameters, or wired differently, make a separate population.** In `configs/network/toy_stimulated/`, `E` (`iaf_psc_exp`) and `E_adex` (`aeif_cond_exp`) are two populations, each with its own connections.
 - **Several populations can share one neuron entry**, e.g. one `excitatory` entry for the excitatory populations of every layer.
@@ -56,10 +56,13 @@ populations:
     # required · text · name of an entry in neurons.yaml; every neuron of the population
     #   gets that model and those parameters
     neuron: excitatory
-    # required · number · mean initial membrane potential (mV)
-    V0_mean: -58.0
-    # required · number ≥ 0 · standard deviation of the initial potential (mV)
-    V0_std: 10.0
+    # optional, default empty · mapping · starting value of each state variable of the
+    #   neuron model, e.g. V_m (mV): a number, or a distribution drawn per neuron: its
+    #   name and its arguments, e.g. {distribution: normal, mean: -58, std: 10} (for
+    #   NEST, any function in nest.random); a variable left out starts at the model's
+    #   default
+    initial_state:
+      V_m: {distribution: normal, mean: -58.0, std: 10.0}
     # optional, default 0.0 · number ≥ 0 · background-input connections per neuron;
     #   multiplies the rate in background_inputs.yaml
     background_indegree: 2510.0
@@ -77,7 +80,9 @@ neurons:
     # required · text · the simulator's neuron model name, e.g. iaf_psc_exp
     model: iaf_psc_exp
     # required · parameters passed to that model as-is; keys are model-specific and the
-    #   backend validates them (I_e defaults to 0.0)
+    #   backend validates them (I_e defaults to 0.0); a value is a number, or a
+    #   distribution drawn per neuron like in initial_state (I_e and the parameters a
+    #   PSP weight is converted with must be numbers)
     parameters:
       C_m: 250.0
       tau_m: 10.0
@@ -113,8 +118,8 @@ connections:
       mean: 0.15
       # required · number ≥ 0 · standard deviation / |mean|
       rel_std: 0.1
-      # optional, default normal · one of normal | lognormal | fixed · how each weight
-      #   is drawn
+      # optional, default normal · one of normal | uniform | lognormal | fixed · how
+      #   each weight is drawn, with that mean and standard deviation
       distribution: normal
       # required · one of PSC | PSP | native · PSP: mV, converted to pA; PSC: pA, used
       #   as given; native: used as given (e.g. nS)
@@ -125,8 +130,8 @@ connections:
       mean: 1.5
       # required · number ≥ 0 · standard deviation / mean
       rel_std: 0.5
-      # optional, default normal · one of normal | lognormal | fixed · how each delay is
-      #   drawn
+      # optional, default normal · one of normal | uniform | lognormal | fixed · how
+      #   each delay is drawn, with that mean and standard deviation
       distribution: normal
       # optional · number > 0 · smallest allowed delay (ms) of a drawn delay, never
       #   below half the simulation step; omit for half the simulation step

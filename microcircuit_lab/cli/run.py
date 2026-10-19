@@ -41,8 +41,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--simulation",
         default=None,
         help="Simulation config name (configs/simulation/<name>.yaml). Defaults to "
-        "--network's value; if no such file exists, built-in defaults are used "
-        "(see Simulation.from_yaml).",
+        "--network's value; if that file doesn't exist, built-in defaults are used, "
+        "with a warning. A name given here must exist.",
     )
     parser.add_argument(
         "--run-dir",
@@ -63,7 +63,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--analysis",
         default=None,
         help="Analysis config name (configs/analysis/<name>.yaml). Defaults to the "
-        "network name. If no such file exists, built-in defaults are used.",
+        "network name; if that file doesn't exist, built-in defaults are used, with a "
+        "warning (one plot for all areas). A name given here must exist.",
     )
     parser.add_argument(
         "--begin", type=float, default=None, help="Analysis start time in ms. Overrides YAML."

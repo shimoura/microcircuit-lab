@@ -10,6 +10,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.config.distributions import PerNeuronValue
 from microcircuit_lab.config.neurons import NeuronConfig
 
 
@@ -27,9 +28,13 @@ class PopulationEntry(FrozenConfig):
         description="name of an entry in neurons.yaml; every neuron of the population "
         "gets that model and those parameters",
     )
-    V0_mean: float = Field(examples=[-58.0], description="mean initial membrane potential (mV)")
-    V0_std: float = Field(
-        ge=0.0, examples=[10.0], description="standard deviation of the initial potential (mV)"
+    initial_state: dict[str, PerNeuronValue] = Field(
+        default_factory=dict,
+        examples=[{"V_m": {"distribution": "normal", "mean": -58.0, "std": 10.0}}],
+        description="starting value of each state variable of the neuron model, e.g. V_m (mV): "
+        "a number, or a distribution drawn per neuron: its name and its arguments, e.g. "
+        "{distribution: normal, mean: -58, std: 10} (for NEST, any function in nest.random); "
+        "a variable left out starts at the model's default",
     )
     background_indegree: float = Field(
         default=0.0,
@@ -54,6 +59,5 @@ class PopulationConfig(FrozenConfig):
 
     neuron: NeuronConfig
 
-    V0_mean: float
-    V0_std: float = Field(ge=0.0)
+    initial_state: dict[str, PerNeuronValue] = Field(default_factory=dict)
     background_indegree: float = Field(default=0.0, ge=0.0)

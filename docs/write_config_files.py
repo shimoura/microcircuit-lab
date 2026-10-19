@@ -362,9 +362,11 @@ def render() -> str:
             "",
             "What this means for a model:",
             "",
-            "- **A population has one neuron entry.** Every neuron in it gets the same model and the "
-            "same parameters; only the starting membrane potential differs (drawn from `V0_mean` "
-            "and `V0_std`).",
+            "- **A population has one neuron entry.** Every neuron in it gets the same model and "
+            "parameters, except values written as a distribution (a neuron parameter in "
+            "`neurons.yaml`, a starting value in `initial_state`): those are drawn for each "
+            "neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in "
+            "`nest.random` works, with its arguments as keys.",
             "- **Connections are set per pair of populations**: one entry for each source and "
             "target, with the number of synapses and the distributions their weights and delays "
             "are drawn from. Every connection uses the same rule (a fixed total number of "

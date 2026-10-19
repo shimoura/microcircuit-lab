@@ -165,8 +165,8 @@ def write_network_directory(
         The network folder to write, e.g. ``configs/network/my_model``. Existing
         files are overwritten.
     populations
-        One dict per population (``name``, ``size``, ``neuron``, ``V0_mean``,
-        ``V0_std``, ``background_indegree``).
+        One dict per population (``name``, ``size``, ``neuron``,
+        ``initial_state``, ``background_indegree``).
     neurons
         ``{neuron name: {"model": ..., "parameters": {...}}}``.
     connections

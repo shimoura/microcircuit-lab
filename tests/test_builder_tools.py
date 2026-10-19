@@ -28,9 +28,9 @@ def _parts(tmp_path: Path, **overrides):
     parts = dict(
         path=tmp_path / "net",
         populations=[
-            {"name": "E", "size": 8, "neuron": "n", "V0_mean": -65.0, "V0_std": 5.0,
+            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}},
              "background_indegree": 10},
-            {"name": "I", "size": 2, "neuron": "n", "V0_mean": -65.0, "V0_std": 5.0,
+            {"name": "I", "size": 2, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}},
              "background_indegree": 10},
         ],
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},

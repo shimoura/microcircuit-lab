@@ -13,6 +13,7 @@ these models.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +23,8 @@ from microcircuit_lab.config.base import FrozenConfig
 from microcircuit_lab.yaml_files import read_yaml
 
 ColorMode = Literal["layer", "cell_type", "population", "custom"]
+
+logger = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
@@ -256,13 +259,16 @@ class AnalysisConfig(FrozenConfig):
 
         ``analysis_name`` defaults to ``network_name`` when omitted, same
         convention as ``Simulation.from_yaml``'s ``simulation_name``. If
-        the file doesn't exist, all-defaults ``AnalysisConfig()`` is
-        returned instead of raising -- a network without a custom
-        analysis profile just gets the generic presentation.
+        that default file doesn't exist, the defaults of ``AnalysisConfig()``
+        are used, with a warning; a file named explicitly must exist.
         """
 
+        name_is_explicit = analysis_name is not None
         analysis_name = network_name if analysis_name is None else analysis_name
         path = Path(config_dir) / "analysis" / f"{analysis_name}.yaml"
-        if not path.exists():
-            return cls()
-        return cls.model_validate(read_yaml(path))
+        if path.exists():
+            return cls.model_validate(read_yaml(path))
+        if name_is_explicit:
+            raise FileNotFoundError(f"No analysis file at {path}.")
+        logger.warning("No analysis file at %s; using the default plot settings.", path)
+        return cls()

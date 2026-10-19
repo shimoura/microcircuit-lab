@@ -48,7 +48,7 @@ def _network(
     )
     populations = {
         name: PopulationConfig(
-            name=name, size=100, neuron=neuron, V0_mean=-58.0, V0_std=5.0,
+            name=name, size=100, neuron=neuron, initial_state={"V_m": {"distribution": "normal", "mean": -58.0, "std": 5.0}},
             background_indegree=background_indegree,
         )
         for name in ("E", "I")
@@ -183,7 +183,7 @@ def _write(tmp_path: Path, **overrides) -> Path:
     parts = dict(
         path=tmp_path / "net",
         populations=[
-            {"name": "E", "size": 8, "neuron": "n", "V0_mean": -65.0, "V0_std": 5.0, "background_indegree": 10},
+            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}, "background_indegree": 10},
         ],
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
@@ -220,13 +220,20 @@ def test_a_delay_without_a_minimum_leaves_it_out_of_the_file() -> None:
 # -----------------------------------------------------------------------------
 # what NEST draws
 # -----------------------------------------------------------------------------
-def _draw_synapses(bound_mode: str, *, weight_mean: float, minimum: float, rel_std: float = 2.0):
+def _draw_synapses(
+    bound_mode: str,
+    *,
+    weight_mean: float,
+    minimum: float,
+    rel_std: float = 2.0,
+    distribution: str = "normal",
+):
     """Connect E to E with 4000 synapses whose weights and delays are wide
     enough that many draws fall outside their range; return both lists."""
     import nest
 
-    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution="normal", unit="PSC")
-    wide_delay = DelayDistribution(mean=1.0, rel_std=rel_std, distribution="normal", minimum=minimum)
+    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution=distribution, unit="PSC")
+    wide_delay = DelayDistribution(mean=1.0, rel_std=rel_std, distribution=distribution, minimum=minimum)
     config = _network(
         tau_syn_in=TAU_SYN_EX,
         connections=[
@@ -275,6 +282,36 @@ def test_clip_leaves_values_inside_their_range_unchanged() -> None:
     assert np.all(weights > 0.0)
     assert np.mean(weights == 10.0) < 0.01
     assert np.all(delays > 0.5)
+
+
+@pytest.mark.parametrize("weight_mean", [10.0, -10.0])
+def test_uniform_draws_have_the_given_mean_and_spread(weight_mean: float) -> None:
+    weights, delays = _draw_synapses(
+        "redraw", weight_mean=weight_mean, minimum=0.1, rel_std=0.2, distribution="uniform"
+    )
+
+    half_width = np.sqrt(3.0) * 2.0
+    assert np.all(np.abs(weights - weight_mean) <= half_width)
+    assert abs(weights.mean() - weight_mean) < 0.2
+    assert abs(weights.std() - 2.0) < 0.1
+    assert np.all(np.abs(delays - 1.0) <= np.sqrt(3.0) * 0.2 + 0.05)
+
+
+@pytest.mark.parametrize("weight_mean", [10.0, -10.0])
+def test_lognormal_weights_have_the_sign_and_mean_of_their_mean(weight_mean: float) -> None:
+    weights, _ = _draw_synapses(
+        "redraw", weight_mean=weight_mean, minimum=0.1, rel_std=0.2, distribution="lognormal"
+    )
+
+    assert np.all(weights * np.sign(weight_mean) > 0.0)
+    assert abs(weights.mean() - weight_mean) < 0.2
+    assert abs(weights.std() - 2.0) < 0.2
+
+
+def test_uniform_weights_keep_their_sign() -> None:
+    clipped, _ = _draw_synapses("clip", weight_mean=10.0, minimum=0.5, distribution="uniform")
+    assert np.all(clipped >= 0.0)
+    assert np.mean(clipped == 0.0) > 0.2
 
 
 @pytest.mark.parametrize("bound_mode", ["clip", "redraw"])

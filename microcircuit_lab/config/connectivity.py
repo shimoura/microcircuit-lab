@@ -48,9 +48,13 @@ class WeightDistribution(FrozenConfig):
     # create_delay_parameter (backends/nest/backend.py).
     distribution: Literal[
         "normal",
+        "uniform",
         "lognormal",
         "fixed",
-    ] = Field(default="normal", description="how each weight is drawn")
+    ] = Field(
+        default="normal",
+        description="how each weight is drawn, with that mean and standard deviation",
+    )
 
     unit: Literal[
         "PSC",
@@ -67,8 +71,9 @@ class DelayDistribution(FrozenConfig):
 
     mean: float = Field(gt=0.0, examples=[1.5], description="mean delay (ms)")
     rel_std: float = Field(ge=0.0, examples=[0.5], description="standard deviation / mean")
-    distribution: Literal["normal", "lognormal", "fixed"] = Field(
-        default="normal", description="how each delay is drawn"
+    distribution: Literal["normal", "uniform", "lognormal", "fixed"] = Field(
+        default="normal",
+        description="how each delay is drawn, with that mean and standard deviation",
     )
     minimum: float | None = Field(
         default=None,

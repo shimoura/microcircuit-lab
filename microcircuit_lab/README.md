@@ -236,7 +236,7 @@ cp -r configs/network/toy configs/network/my_model
 microcircuit-lab run --network my_model
 ```
 
-Loading checks every file; fix what it reports. Add `configs/simulation/my_model.yaml` for the duration, threads and recording, or the defaults are used.
+Loading checks every file; fix what it reports. Add `configs/simulation/my_model.yaml` for the duration, threads and recording, or the defaults are used (with a warning).
 
 ### Option B: write a builder
 

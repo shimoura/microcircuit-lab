@@ -9,15 +9,15 @@ populations:
   - name: E
     size: 800
     neuron: excitatory
-    V0_mean: -65.0
-    V0_std: 5.0
+    initial_state:
+      V_m: {distribution: normal, mean: -65.0, std: 5.0}
     background_indegree: 1000
 
   - name: I
     size: 200
     neuron: inhibitory
-    V0_mean: -65.0
-    V0_std: 5.0
+    initial_state:
+      V_m: {distribution: normal, mean: -65.0, std: 5.0}
     background_indegree: 1000
 
   # A second E/I circuit using a different neuron model (aeif_cond_exp,
@@ -28,13 +28,13 @@ populations:
   - name: E_adex
     size: 800
     neuron: adex_excitatory
-    V0_mean: -70.6
-    V0_std: 5.0
+    initial_state:
+      V_m: {distribution: normal, mean: -70.6, std: 5.0}
     background_indegree: 1000
 
   - name: I_adex
     size: 200
     neuron: adex_inhibitory
-    V0_mean: -70.6
-    V0_std: 5.0
+    initial_state:
+      V_m: {distribution: normal, mean: -70.6, std: 5.0}
     background_indegree: 1000

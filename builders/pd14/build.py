@@ -33,8 +33,9 @@ def _build_populations() -> list[dict[str, Any]]:
             "name": population,
             "size": int(data.full_num_neurons[index]),
             "neuron": _neuron_type(population),
-            "V0_mean": data.V0_mean[index],
-            "V0_std": data.V0_std[index],
+            "initial_state": {
+                "V_m": {"distribution": "normal", "mean": data.V0_mean[index], "std": data.V0_std[index]}
+            },
             "background_indegree": int(data.K_ext[index]),
         }
         for index, population in enumerate(data.populations)

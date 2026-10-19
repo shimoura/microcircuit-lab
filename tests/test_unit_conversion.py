@@ -110,7 +110,7 @@ def _network(
         psp_conversion_aliases=psp_conversion_aliases or {},
     )
     population = PopulationConfig(
-        name="E", size=10, neuron=neuron, V0_mean=-65.0, V0_std=5.0,
+        name="E", size=10, neuron=neuron, initial_state={"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}},
         background_indegree=100,
     )
     weight = WeightDistribution(mean=0.15, rel_std=0.1, unit=weight_unit)
