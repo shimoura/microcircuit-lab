@@ -8,6 +8,7 @@ simulation, the simulator backend, the analysis).
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -128,8 +129,8 @@ class NetworkConfig(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_one_connection_per_synapse(self) -> "NetworkConfig":
-        keys = [(c.source, c.target, c.synapse) for c in self.connections]
-        repeated = sorted({key for key in keys if keys.count(key) > 1}, key=str)
+        counts = Counter((c.source, c.target, c.synapse) for c in self.connections)
+        repeated = sorted((key for key, count in counts.items() if count > 1), key=str)
         if repeated:
             raise ValueError(
                 f"connectivity.yaml has more than one entry for (source, target, synapse) "

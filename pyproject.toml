@@ -36,7 +36,7 @@ dependencies = [
     "pydantic>=2.0",
     "PyYAML>=6.0",
     "pandas>=2.0",
-    "matplotlib>=3.8",
+    "matplotlib>=3.10",
     "mne",
 ]
 

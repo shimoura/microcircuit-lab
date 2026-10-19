@@ -83,7 +83,8 @@ def scale_weight_sqrt(
     K_scaling: float,
 ) -> float:
     """
-    Scale synaptic weights according to Potjans & Diesmann (2014).
+    Scale synaptic weights as in van Albada, Helias & Diesmann (2015), PLoS
+    Comput Biol 11:e1004490 (also used by Potjans & Diesmann 2014's code).
 
     Scaling preserves input fluctuations (variance), not mean input,
     by applying

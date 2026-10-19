@@ -19,7 +19,7 @@ neuron entries and connection probabilities of ``toy_two_areas`` (see
 
 The rates differ from ``toy_two_areas``. No ``scaling.yaml`` is written (it
 runs at full scale) and no reference rates, so a scaled copy of this network
-is not compensated.
+needs ``compensate_recurrent_input: false``.
 """
 
 from __future__ import annotations

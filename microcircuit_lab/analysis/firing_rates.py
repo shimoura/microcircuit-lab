@@ -345,7 +345,7 @@ def plot_firing_rates(
     fig, ax = plt.subplots(figsize=figsize, dpi=style.dpi)
 
     violins = ax.violinplot(
-        values, positions=positions, vert=False,
+        values, positions=positions, orientation="horizontal",
         showmeans=False, showmedians=False, showextrema=False,
     )
     for body, color in zip(violins["bodies"], colors):
@@ -354,7 +354,7 @@ def plot_firing_rates(
         body.set_alpha(config.violin_alpha)
 
     box = ax.boxplot(
-        values, positions=positions, vert=False, widths=config.box_width,
+        values, positions=positions, orientation="horizontal", widths=config.box_width,
         showfliers=False, patch_artist=True,
     )
     for patch, color in zip(box["boxes"], colors):

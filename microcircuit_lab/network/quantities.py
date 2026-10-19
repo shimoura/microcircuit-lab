@@ -96,14 +96,8 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
     Return the full mean firing rates as a vector.
     """
 
-    if network.reference is None:
-        raise ValueError(
-            "NetworkConfig.reference is required to obtain " "reference firing rates."
-        )
-
-    missing = [
-        name for name in network.populations if name not in network.reference.full_mean_rates
-    ]
+    rates = {} if network.reference is None else network.reference.full_mean_rates
+    missing = [name for name in network.populations if name not in rates]
     if missing:
         raise ValueError(
             f"reference.full_mean_rates has no rate for population(s) {missing}. The DC "
@@ -112,10 +106,7 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
             "false (background only) or preserve_mean_input: false (no DC) in scaling.yaml."
         )
 
-    return np.asarray(
-        [network.reference.full_mean_rates[name] for name in network.populations],
-        dtype=float,
-    )
+    return np.asarray([rates[name] for name in network.populations], dtype=float)
 
 
 def background_indegrees(network: NetworkConfig) -> np.ndarray:
@@ -126,8 +117,24 @@ def background_indegrees(network: NetworkConfig) -> np.ndarray:
 
 
 def background_weights(network: NetworkConfig) -> np.ndarray:
+    """The background weight of each population, 0 for one without background input."""
     return np.asarray(
-        [network.background_inputs[name].weight.mean for name in network.populations],
+        [
+            network.background_inputs[name].weight.mean if name in network.background_inputs else 0.0
+            for name in network.populations
+        ],
+        dtype=float,
+    )
+
+
+def background_rates(network: NetworkConfig) -> np.ndarray:
+    """The background rate per synapse of each population (spikes/s), 0 for one
+    without background input."""
+    return np.asarray(
+        [
+            network.background_inputs[name].rate if name in network.background_inputs else 0.0
+            for name in network.populations
+        ],
         dtype=float,
     )
 
@@ -155,7 +162,8 @@ def background_psc_weights(
     network: NetworkConfig,
 ) -> np.ndarray:
     """
-    Return the background input weights as PSC amplitudes (pA).
+    Return the background input weights as PSC amplitudes (pA), 0 for a
+    population without background input.
 
     Only ``unit: PSP`` weights are converted, and only for a population
     whose neuron parameters support it (see network.units.convert_psp_to_psc);
@@ -164,8 +172,11 @@ def background_psc_weights(
 
     values = []
     for name in network.populations:
-        input_cfg = network.background_inputs[name]
+        input_cfg = network.background_inputs.get(name)
 
+        if input_cfg is None:
+            values.append(0.0)
+            continue
         if input_cfg.weight.unit != "PSP":
             values.append(input_cfg.weight.mean)
             continue

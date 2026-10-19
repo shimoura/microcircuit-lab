@@ -37,6 +37,7 @@ from microcircuit_lab.network.quantities import (
     tau_syn_in,
     convert_network_psp_to_psc,
     network_mean_input,
+    background_rates,
 )
 
 
@@ -207,14 +208,6 @@ def _compensate_lost_mean_input(
     if scaling.K_scaling == 1.0:
         return network
 
-    if original.reference is None:
-        logger.warning(
-            "Scaled network without reference.full_mean_rates: no DC compensation "
-            "is applied. Add the full-scale mean rates to reference.yaml to "
-            "compensate the lost mean input."
-        )
-        return network
-
     network_current = np.zeros(len(original.populations))
     if scaling.compensate_recurrent_input:
         network_current = _recurrent_compensation(original)
@@ -223,39 +216,7 @@ def _compensate_lost_mean_input(
     if original.background_mode != "mean_current":
         background_current = _background_compensation(original)
 
-    pop_names = list(original.populations.keys())
-
-    # Apply the compensation currents to neurons
-    populations = {}
-    for i, name in enumerate(pop_names):
-        population = network.populations[name]
-        params = population.neuron.parameters.model_copy(
-            update={
-                "I_e": (
-                    population.neuron.parameters.I_e
-                    + network_current[i]
-                    + background_current[i]
-                )
-            }
-        )
-
-        neuron = population.neuron.model_copy(
-            update={
-                "parameters": params,
-            }
-        )
-
-        populations[name] = population.model_copy(
-            update={
-                "neuron": neuron,
-            }
-        )
-
-    return network.model_copy(
-        update={
-            "populations": populations,
-        }
-    )
+    return _add_to_I_e(network, network_current + background_current)
 
 
 def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
@@ -325,14 +286,10 @@ def _background_compensation(original: NetworkConfig) -> np.ndarray:
         )
         PSC_ext = np.where(np.isin(pop_names, unknown), 0.0, PSC_ext)
 
-    bg_rates = np.asarray(
-        [original.background_inputs[name].rate for name in pop_names],
-        dtype=float,
-    )
     return background_compensation_current(
         PSC_ext=PSC_ext,
         K_ext=background_indegrees(original),
-        bg_rate=bg_rates,
+        bg_rate=background_rates(original),
         tau_syn=synaptic_tau(original, PSC_ext),
         K_scaling=original.scaling.K_scaling,
     )
@@ -402,52 +359,32 @@ def _replace_background_by_mean_current(
     PSC_ext = background_psc_weights(original)
     tau_syn = synaptic_tau(original, PSC_ext)
 
-    pop_names = list(original.populations.keys())
-    bg_rates = np.asarray(
-        [original.background_inputs[name].rate for name in pop_names],
-        dtype=float,
-    )
-
     dc_current = background_dc_current(
         PSC_ext=PSC_ext,
         K_ext=K_ext,
-        bg_rate=bg_rates,
+        bg_rate=background_rates(original),
         tau_syn=tau_syn,
     )
 
+    network = _add_to_I_e(network, dc_current)
+    background_inputs = {
+        name: input_cfg.model_copy(update={"rate": 0.0})
+        for name, input_cfg in network.background_inputs.items()
+    }
+    return network.model_copy(update={"background_inputs": background_inputs})
+
+
+def _add_to_I_e(network: NetworkConfig, current: np.ndarray) -> NetworkConfig:
+    """Add ``current`` (pA, one value per population, in order) to the
+    ``I_e`` of each population's neuron."""
+
     populations = {}
-    background_inputs = {}
-
-    for i, name in enumerate(pop_names):
-        population = network.populations[name]
-        params = population.neuron.parameters.model_copy(
-            update={
-                "I_e": population.neuron.parameters.I_e + dc_current[i],
-            }
-        )
-
-        neuron = population.neuron.model_copy(
-            update={
-                "parameters": params,
-            }
-        )
-
-        populations[name] = population.model_copy(
-            update={
-                "neuron": neuron,
-            }
-        )
-
-        background_inputs[name] = network.background_inputs[name].model_copy(
-            update={"rate": 0.0}
-        )
-
-    return network.model_copy(
-        update={
-            "populations": populations,
-            "background_inputs": background_inputs,
-        }
-    )
+    for added, (name, population) in zip(current, network.populations.items()):
+        parameters = population.neuron.parameters
+        parameters = parameters.model_copy(update={"I_e": parameters.I_e + float(added)})
+        neuron = population.neuron.model_copy(update={"parameters": parameters})
+        populations[name] = population.model_copy(update={"neuron": neuron})
+    return network.model_copy(update={"populations": populations})
 
 
 def _mean_current_is_known(network: NetworkConfig, item) -> bool:

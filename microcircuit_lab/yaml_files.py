@@ -14,6 +14,9 @@ from typing import Any
 
 import yaml
 
+# libyaml's loader, about four times faster on large files, where PyYAML has it.
+_Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 
 def read_yaml(path: str | Path) -> dict[str, Any]:
     """
@@ -32,7 +35,7 @@ def read_yaml(path: str | Path) -> dict[str, Any]:
     path = Path(path)
 
     with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+        data = yaml.load(f, Loader=_Loader)
 
     if data is None:
         return {}

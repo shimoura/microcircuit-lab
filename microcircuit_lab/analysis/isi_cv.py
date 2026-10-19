@@ -222,7 +222,7 @@ def plot_isi_cv(
 
     if plot_values:
         violins = ax.violinplot(
-            plot_values, positions=plot_positions, vert=False,
+            plot_values, positions=plot_positions, orientation="horizontal",
             showmeans=False, showmedians=False, showextrema=False,
         )
         for body, color in zip(violins["bodies"], plot_colors):
@@ -231,7 +231,7 @@ def plot_isi_cv(
             body.set_alpha(config.violin_alpha)
 
         box = ax.boxplot(
-            plot_values, positions=plot_positions, vert=False, widths=config.box_width,
+            plot_values, positions=plot_positions, orientation="horizontal", widths=config.box_width,
             showfliers=False, patch_artist=True,
         )
         for patch, color in zip(box["boxes"], plot_colors):

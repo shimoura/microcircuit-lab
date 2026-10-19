@@ -115,7 +115,9 @@ def test_dc_current_independent_of_k_scaling():
 
     scaled = _network("mean_current").model_copy(
         update={
-            "scaling": ScalingConfig(N_scaling=0.5, K_scaling=0.5),
+            "scaling": ScalingConfig(
+                N_scaling=0.5, K_scaling=0.5, compensate_recurrent_input=False
+            ),
         }
     )
     unscaled = prepare_network(_network("mean_current"))

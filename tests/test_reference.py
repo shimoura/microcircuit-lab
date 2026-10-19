@@ -52,13 +52,13 @@ def test_prepare_network_keeps_the_original_network():
 
     original = original.model_copy(
         update={
-            # No published reference rates to compensate against here --
-            # this test is only about N/K scaling arithmetic.
+            # This test is only about N/K scaling arithmetic: no compensation.
             "reference": None,
             "scaling": original.scaling.model_copy(
                 update={
                     "N_scaling": 0.2,
                     "K_scaling": 0.2,
+                    "preserve_mean_input": False,
                 }
             ),
         }

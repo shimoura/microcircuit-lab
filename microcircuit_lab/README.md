@@ -240,11 +240,11 @@ N_scaling: 0.1   # keep 10 % of the neurons
 K_scaling: 0.1   # keep 10 % of the inputs of each neuron
 ```
 
-`N_scaling` only makes the populations smaller: each neuron keeps all its inputs. `K_scaling` cuts the inputs, and that changes the input current each neuron gets. With $K$ inputs of weight $J$ (pA) firing at rate $\nu$, and synaptic time constant $\tau_s$, the mean and the variance of that current are
+`N_scaling` only makes the populations smaller: each neuron keeps all its inputs. `K_scaling` cuts the inputs, and that changes the input current each neuron gets. With $K$ inputs of weight $J$ (pA) firing at rate $\nu$ (spikes/ms), and synaptic time constant $\tau_s$, the mean and the variance of that current are
 
 $$\mu = \tau_s\, K J \nu, \qquad \sigma^2 = \tfrac{1}{2}\,\tau_s\, K J^2 \nu .$$
 
-With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigma^2$, not both. The options choose what to keep:
+With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigma^2$, not both. Scaling the weights by $1/\sqrt{k}$ and adding the lost mean as a DC current keeps both (van Albada, Helias & Diesmann 2015, *PLoS Comput Biol* 11:e1004490). The options choose what to keep:
 
 | `scaling.yaml` | Weights | DC added | Mean $\mu$ | Fluctuations $\sigma^2$ |
 |---|---|---|---|---|
@@ -254,7 +254,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 | `preserve_variance: false` | $J/k$ | none | kept | larger: $\sigma^2/k$ |
 
 - The DC is added to each population's `I_e`, so the `I_e` in a run's saved `config.yaml` is the one you wrote plus the DC.
-- The DC needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`. Without them, use `compensate_recurrent_input: false`.
+- The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input: false` compensates the background input only, and needs no rates.
 - With `background_mode: mean_current`, the background current is already that of the full-scale network, so only the recurrent input is compensated.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
 - These are the mean and variance only. A scaled network is close to the full one, not equal: PD14 at $k = 0.1$ has most rates within 10–20 %, and L2/3 E lower (0.5 instead of 0.9 spikes/s).
