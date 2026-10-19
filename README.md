@@ -1,26 +1,26 @@
 # Microcircuit Lab
 
-Microcircuit Lab is a configuration-driven framework for building, simulating, and analyzing recurrent neural microcircuit models. It separates **model-specific data**, **generic network representation**, and **simulator backends** so published models can share the same simulation infrastructure.
+Microcircuit Lab builds, simulates and analyses spiking network models of cortex, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
 
-Full documentation lives in [`microcircuit_lab/README.md`](microcircuit_lab/README.md): architecture, installation, configuration, adding a new model, adding a backend, and everything else.
+The full documentation is in [`microcircuit_lab/README.md`](microcircuit_lab/README.md).
 
 ## Quick start
+
+Install the core, start a project with the examples, and run the smallest one:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,nest]"
-```
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
 
-NEST isn't pinned as a hard dependency, since how you get it depends heavily on where you run (PyPI, conda-forge, or building from source on a cluster) -- see [`microcircuit_lab/README.md`](microcircuit_lab/README.md#installation) for the alternatives. All that matters is `import nest` works in the environment you run simulations in. Then run the bundled `toy` network, a minimal two-population (E/I) example:
-
-```bash
+microcircuit-lab init my_project --with-core
+cd my_project
 microcircuit-lab run --network toy
 ```
 
-See [`microcircuit_lab/README.md`](microcircuit_lab/README.md) for everything else.
+The plots and spikes are saved in `output/toy/<timestamp>/`. `pd14`, `toy_two_areas` and the HuMAM networks run the same way. NEST can also come from conda-forge or a build from source; see [Installation](microcircuit_lab/README.md#installation).
 
-To use the framework in your own project, install it and keep only your own builders, analyses and configs in the project folder (see "Starting a project" in `microcircuit_lab/README.md`). To change the framework itself, see [CONTRIBUTING.md](CONTRIBUTING.md).
+A project holds your own builders, analyses and configs, and with `--with-core` your own copy of the core to change as you like; see [Starting a project](microcircuit_lab/README.md#starting-a-project). To propose a change to the core here, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How to cite
 

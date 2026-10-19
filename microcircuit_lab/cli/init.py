@@ -1,15 +1,15 @@
 """Create the folders of a new project.
 
     microcircuit-lab init <project>               # builders/, analyses/, configs/, experiments/
-    microcircuit-lab init <project> --with-core   # also keep a clone of the core inside
+    microcircuit-lab init <project> --with-core   # also a copy of the core, and the examples
 
-Nothing that already exists is touched. With ``--with-core`` the core is cloned
-into ``<project>/microcircuit-lab/`` (at the release tag of the installed version,
-or the latest ``main`` if there is none) and installed in editable mode, so its code
-sits next to the project's and can be read and edited; the folder is added to
-``.gitignore`` because it is a clone of its own repository.
+Nothing that already exists is touched. With ``--with-core`` the core (the release
+of the installed version, or the latest ``main`` if it has none) is copied into
+``<project>/microcircuit-lab/`` and installed in editable mode. The copy is part of
+the project: it can be read, changed and committed with the project's own code, and
+the project's git commit then records the core's code too.
 
-``--with-core`` also copies the clone's examples into the project: every builder
+``--with-core`` also copies the examples into the project: every builder
 under ``builders/`` and every network, simulation and analysis config under
 ``configs/``. They can then be run as they are (``run --network <name>``) or
 regenerated first (``generate <builder>``). An example whose name already exists
@@ -20,6 +20,7 @@ import argparse
 import shutil
 import subprocess
 import sys
+import tempfile
 from importlib.metadata import version
 from pathlib import Path
 
@@ -27,14 +28,30 @@ PROJECT_FOLDERS = ("builders", "analyses", "configs", "experiments")
 CORE_URL = "https://github.com/shimoura/microcircuit-lab.git"
 CORE_FOLDER = "microcircuit-lab"
 EXAMPLE_FOLDERS = ("builders", "configs/network", "configs/simulation", "configs/analysis")
+# What the copy of the core needs to be installed and edited: the package, and
+# the files pyproject.toml names (readme, license).
+CORE_FILES = ("microcircuit_lab", "pyproject.toml", "README.md", "LICENSE", "CITATION.cff")
 
 
-def _ignore_core_folder(project: Path) -> None:
+def _ignore_build_files(project: Path) -> None:
+    """``pip install -e`` writes ``microcircuit_lab.egg-info/`` into the copy;
+    it is build output, not code to commit."""
     gitignore = project / ".gitignore"
-    entry = f"{CORE_FOLDER}/"
+    entry = "*.egg-info/"
     lines = gitignore.read_text().splitlines() if gitignore.exists() else []
     if entry not in lines:
         gitignore.write_text("\n".join([*lines, entry]) + "\n")
+
+
+def _copy_core(source: Path, core: Path) -> None:
+    core.mkdir(parents=True)
+    for name in CORE_FILES:
+        entry = source / name
+        if entry.is_dir():
+            shutil.copytree(entry, core / name, ignore=shutil.ignore_patterns("__pycache__"))
+        elif entry.is_file():
+            shutil.copy2(entry, core / name)
+    print(f"Copied the core into {core}")
 
 
 def _copy_examples(core: Path, project: Path) -> None:
@@ -72,18 +89,24 @@ def _release_tag() -> str | None:
 
 def _install_core(project: Path) -> None:
     core = project / CORE_FOLDER
-    if core.exists():
-        print(f"{core} already exists, left as it is.")
-    else:
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / "core"
         tag = _release_tag()
         if tag is None:
-            print("The installed version has no release tag; cloning the latest main instead.")
-            subprocess.run(["git", "clone", CORE_URL, str(core)], check=True)
+            print("The installed version has no release tag; using the latest main instead.")
+            subprocess.run(["git", "clone", "--depth", "1", CORE_URL, str(source)], check=True)
         else:
-            subprocess.run(["git", "clone", "--branch", tag, CORE_URL, str(core)], check=True)
-    _copy_examples(core, project)
+            subprocess.run(
+                ["git", "clone", "--depth", "1", "--branch", tag, CORE_URL, str(source)],
+                check=True,
+            )
+        if core.exists():
+            print(f"{core} already exists, left as it is.")
+        else:
+            _copy_core(source, core)
+        _copy_examples(source, project)
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", str(core)], check=True)
-    _ignore_core_folder(project)
+    _ignore_build_files(project)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -95,8 +118,8 @@ def main(argv: list[str] | None = None) -> None:
         "--with-core",
         action="store_true",
         help=(
-            f"Clone the core into <project>/{CORE_FOLDER}/, install it in editable mode "
-            "and copy its example builders and configs into the project."
+            f"Copy the core into <project>/{CORE_FOLDER}/, install it in editable mode "
+            "and copy the example builders and configs into the project."
         ),
     )
     args = parser.parse_args(argv)

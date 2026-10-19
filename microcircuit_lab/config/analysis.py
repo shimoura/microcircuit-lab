@@ -19,6 +19,7 @@ from typing import Literal
 from pydantic import ConfigDict, Field
 
 from microcircuit_lab.config.base import FrozenConfig
+from microcircuit_lab.yaml_files import read_yaml
 
 ColorMode = Literal["layer", "cell_type", "population", "custom"]
 
@@ -185,12 +186,6 @@ class AnalysisConfig(FrozenConfig):
         returned instead of raising -- a network without a custom
         analysis profile just gets the generic presentation.
         """
-
-        # Deferred: microcircuit_lab.io eagerly pulls in backends/network,
-        # which import this module's package (microcircuit_lab.config)
-        # while it's still initializing -- a module-level import here
-        # would be circular.
-        from microcircuit_lab.io.files import read_yaml
 
         analysis_name = network_name if analysis_name is None else analysis_name
         path = Path(config_dir) / "analysis" / f"{analysis_name}.yaml"

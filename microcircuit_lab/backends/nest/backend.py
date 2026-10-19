@@ -14,12 +14,12 @@ import nest
 import numpy as np
 import pandas as pd
 
-from microcircuit_lab.network import Network
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.config.network import (
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
     InhomogeneousPoissonStimulusConfig,
-    PopulationConfig,
     PoissonStimulusConfig,
 )
 
@@ -33,7 +33,7 @@ class NestBackend:
 
     def __init__(
         self,
-        network: Network,
+        network: NetworkConfig,
         simulation_config: SimulationConfig,
         *,
         extension_modules: Sequence[str] = (),
@@ -54,10 +54,10 @@ class NestBackend:
         self._recordings_dir: Path | None = None
 
         self.populations: dict[str, nest.NodeCollection] = {}
-        self.poisson_generators: dict[str, nest.NodeCollection] = {}
+        self.background_generators: dict[str, nest.NodeCollection] = {}
         self.spike_recorder: nest.NodeCollection | None = None
         self.multimeter: nest.NodeCollection | None = None
-        self.stimulus_devices: list[tuple] = []
+        self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
     def prepare_output(self, run_dir: Path) -> None:
@@ -115,22 +115,21 @@ class NestBackend:
             self.create_multimeters()
             self.connect_multimeters()
 
-        self.create_poisson_generators()
+        self.create_background_inputs()
+        self.connect_background_inputs()
 
-        self.connect_poisson_generators()
+        if self._network.stimuli:
+            self.create_stimuli()
+            self.connect_stimuli()
 
-        if self._network.config.stimuli:
-            self.create_stimulus_devices()
-            self.connect_stimulus_devices()
-
-        self.connect_recurrent_connections()
+        self.create_connections()
 
     def create_populations(self) -> None:
         """
         Create all neuron populations.
         """
 
-        for pop_name, pop_cfg in self._network.config.populations.items():
+        for pop_name, pop_cfg in self._network.populations.items():
             logger.info(
                 "Creating %s (%d neurons)",
                 pop_name,
@@ -162,14 +161,14 @@ class NestBackend:
             std=pop_cfg.V0_std,
         )
 
-    def connect_recurrent_connections(self) -> None:
+    def create_connections(self) -> None:
         """
         Connect populations according to the connectivity configuration.
         """
 
         logger.info("Creating recurrent connections:")
 
-        for connection in self._network.config.connections:
+        for connection in self._network.connections:
             source = self.get_population(connection.source)
             target = self.get_population(connection.target)
 
@@ -266,17 +265,17 @@ class NestBackend:
                 nodes,
             )
 
-    def create_poisson_generators(self) -> None:
+    def create_background_inputs(self) -> None:
         """
         Create one background Poisson generator per configured population.
 
         No-op when background_mode is "dc": the background drive was
         already injected as constant current onto each neuron's I_e by
-        NetworkPreprocessor, so no generator is created at all (see
+        prepare_network, so no generator is created at all (see
         NetworkConfig.background_mode).
         """
 
-        if self._network.config.background_mode == "dc":
+        if self._network.background_mode == "dc":
             logger.info(
                 "background_mode='dc': background drive is constant current "
                 "(I_e), skipping Poisson generators."
@@ -285,7 +284,7 @@ class NestBackend:
 
         logger.info("Creating background Poisson generators:")
 
-        for pop_name, input_cfg in self._network.config.background_inputs.items():
+        for pop_name, input_cfg in self._network.background_inputs.items():
             logger.info(
                 "Creating background Poisson input for %s (rate=%g Hz)",
                 pop_name,
@@ -297,17 +296,17 @@ class NestBackend:
                     "rate": input_cfg.rate,
                 },
             )
-            self.poisson_generators[pop_name] = pg
+            self.background_generators[pop_name] = pg
 
-    def connect_poisson_generators(self) -> None:
+    def connect_background_inputs(self) -> None:
         """
         Connect background Poisson generators to populations.
         """
 
-        for pop_name in self.poisson_generators:
-            input_cfg = self._network.config.background_inputs[pop_name]
+        for pop_name in self.background_generators:
+            input_cfg = self._network.background_inputs[pop_name]
             nest.Connect(
-                self.poisson_generators[pop_name],
+                self.background_generators[pop_name],
                 self.get_population(pop_name),
                 syn_spec={
                     "weight": self.create_weight_spec(input_cfg.weight),
@@ -315,7 +314,7 @@ class NestBackend:
                 },
             )
 
-    def create_stimulus_devices(self) -> None:
+    def create_stimuli(self) -> None:
         """
         Create one device per configured stimulus, dispatching on the
         stimulus's concrete type the same way create_weight_spec/
@@ -326,7 +325,7 @@ class NestBackend:
 
         logger.info("Creating stimulus devices:")
 
-        for stimulus in self._network.config.stimuli:
+        for stimulus in self._network.stimuli:
             logger.info(
                 "Creating %s stimulus for %s (start=%g, stop=%s)",
                 stimulus.type,
@@ -353,9 +352,9 @@ class NestBackend:
                 raise ValueError(f"Unsupported stimulus type: {type(stimulus).__name__!r}")
 
             device = nest.Create(model, params=params)
-            self.stimulus_devices.append((stimulus, device))
+            self.stimulus_generators.append((stimulus, device))
 
-    def connect_stimulus_devices(self) -> None:
+    def connect_stimuli(self) -> None:
         """
         Connect each stimulus device to its target populations.
 
@@ -364,7 +363,7 @@ class NestBackend:
         use the configured weight/delay, same as background input.
         """
 
-        for stimulus, device in self.stimulus_devices:
+        for stimulus, device in self.stimulus_generators:
             syn_spec = None
             if not isinstance(stimulus, DcStimulusConfig):
                 syn_spec = {
@@ -400,7 +399,7 @@ class NestBackend:
         for pop_name in self.populations:
             events = self.get_spike_events(pop_name)
             n_spikes = len(events["times"])
-            n_neurons = self._network.config.populations[pop_name].size
+            n_neurons = self._network.populations[pop_name].size
             mean_rate = (n_spikes / (n_neurons * t_sim_s)) if (n_neurons and t_sim_s > 0) else 0.0
 
             logger.info(
@@ -427,7 +426,7 @@ class NestBackend:
 
         if weight.distribution == "normal":
             distribution = nest.random.normal(mean=weight.mean, std=std)
-            clip = self._network.config.bound_mode == "clip"
+            clip = self._network.bound_mode == "clip"
 
             if weight.mean >= 0:
                 if clip:
@@ -490,7 +489,7 @@ class NestBackend:
         else:
             raise ValueError(f"Unsupported delay distribution: {delay.distribution!r}")
 
-        if self._network.config.bound_mode == "clip":
+        if self._network.bound_mode == "clip":
             return nest.math.max(distribution, min_delay)
 
         return nest.math.redraw(

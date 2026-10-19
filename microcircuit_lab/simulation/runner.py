@@ -16,15 +16,14 @@ from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
 from microcircuit_lab.backends.post_hoc import PostHocBackend
-from microcircuit_lab.network import Network
 
-from microcircuit_lab.io.network_validation import validate_network_config
+from microcircuit_lab.network.load import load_network
 
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 
-from microcircuit_lab.io.files import read_yaml
-from microcircuit_lab.io.output import resolve_run_directory, save_run_outputs
+from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.runs import resolve_run_directory, save_run_outputs
 
 from pathlib import Path
 
@@ -36,7 +35,7 @@ class Simulation:
 
     def __init__(
         self,
-        network: Network,
+        network: NetworkConfig,
         simulation_config: SimulationConfig,
         backend: BackendName = "nest",
         backend_options: dict[str, Any] | None = None,
@@ -63,34 +62,35 @@ class Simulation:
         backend_options: dict[str, Any] | None = None,
     ) -> "Simulation":
         """
-        Build a Simulation from YAML files.
+        Build a simulation from the config files.
 
-        ``simulation_name`` defaults to ``network_name`` when omitted --
-        every bundled network's own execution profile is named after it
-        (``configs/simulation/<network_name>.yaml``), so this is the
-        common case. Pass it explicitly to use a different, decoupled
-        simulation profile instead (e.g. one "quick_test" profile shared
-        across several networks). If the default profile file does not
-        exist, an all-defaults ``SimulationConfig()`` is used -- same
-        graceful degradation as ``AnalysisConfig.from_yaml`` -- so a new
-        network runs before you've written an execution profile for it.
-        A profile named explicitly that does not exist raises
-        ``FileNotFoundError``, so a misspelled name is not silently
-        replaced by the defaults.
+        Parameters
+        ----------
+        config_dir
+            The folder holding ``network/``, ``simulation/`` and ``analysis/``.
+        network_name
+            The network folder, ``<config_dir>/network/<network_name>/``.
+        simulation_name
+            The simulation profile, ``<config_dir>/simulation/<simulation_name>.yaml``.
+            By default the same name as the network. If that default file doesn't
+            exist, the defaults of ``SimulationConfig()`` are used, so a new network
+            runs before it has a profile; a profile named explicitly must exist.
+        backend
+            The simulator, ``"nest"``.
+        backend_options
+            Extra keyword arguments for the backend, passed through unchanged, e.g.
+            ``{"extension_modules": ["my_module"]}`` to load a NESTML model in NEST.
 
-        ``backend_options`` is forwarded unchanged to the chosen
-        backend's constructor as extra keyword arguments (see
-        SimulationBackend); it's for whatever that specific backend
-        needs beyond ``network``/``simulation_config``, e.g. NestBackend's
-        ``extension_modules`` for loading compiled NEST/NESTML models.
+        Returns
+        -------
+        Simulation
+            Ready to ``run()``; the network is already loaded and prepared.
         """
 
         profile_is_explicit = simulation_name is not None
         simulation_name = network_name if simulation_name is None else simulation_name
 
-        network = Network(
-            validate_network_config(Path(config_dir) / "network" / network_name)
-        )
+        network = load_network(Path(config_dir) / "network" / network_name)
 
         simulation_path = Path(config_dir) / "simulation" / f"{simulation_name}.yaml"
         if simulation_path.exists():
@@ -112,24 +112,31 @@ class Simulation:
     @classmethod
     def from_run_dir(cls, run_dir: str | Path) -> "Simulation":
         """
-        Reconstruct a Simulation from a directory a previous run wrote
-        (see save_run_outputs), for re-analyzing/re-plotting its spikes
-        without re-simulating.
+        Open a finished run to analyse or re-plot it, without simulating again.
 
-        Reads ``config.yaml`` directly into NetworkConfig/SimulationConfig
-        -- it's already the fully *resolved* (preprocessed, scaled)
-        config save_run_config wrote, so NetworkConfigLoader/
-        NetworkPreprocessor are skipped on purpose; running them again
-        would double-apply scaling/DC-compensation. The returned
-        Simulation's ``backend`` is a PostHocBackend reading spikes back
-        from ``run_dir/recordings`` -- ``.run()`` is never called, so
-        nothing is re-simulated, and ``.output_dir`` is already ``run_dir``
-        (so e.g. ``microcircuit-lab run --run-dir ...``'s plots land
-        back in that run's own ``plots/`` directory).
+        The run's ``config.yaml`` already holds the prepared network, so it is not
+        prepared a second time (that would apply the scaling twice). The returned
+        simulation reads its spikes from ``<run_dir>/recordings`` (a
+        ``PostHocBackend``), and its ``output_dir`` is ``run_dir``, so new plots
+        land in that run's ``plots/`` folder.
 
-        Raises if ``run_dir`` has no ``config.yaml`` (``output.save_config
-        =False``) or no ``metadata.json`` with per-population ``first_gid``
-        (predates PostHocBackend support -- see PostHocBackend).
+        Parameters
+        ----------
+        run_dir
+            The run folder, e.g. ``output/toy/20261018_120000``.
+
+        Returns
+        -------
+        Simulation
+            A simulation whose ``run()`` is never called.
+
+        Raises
+        ------
+        ValueError
+            If the run has no ``config.yaml`` (it was saved with
+            ``save_config: false``), or its ``metadata.json`` lacks the
+            ``first_gid`` of each population (a run saved before this
+            existed).
         """
 
         run_dir = Path(run_dir)
@@ -141,9 +148,8 @@ class Simulation:
             )
 
         resolved = read_yaml(config_path)
-        network_config = NetworkConfig.model_validate(resolved["network"])
+        network = NetworkConfig.model_validate(resolved["network"])
         simulation_config = SimulationConfig.model_validate(resolved["simulation"])
-        network = Network(network_config)
         backend = PostHocBackend(run_dir)
 
         network_name, simulation_name, backend_name = run_dir.name, run_dir.name, "nest"
@@ -167,11 +173,12 @@ class Simulation:
 
     def run(self) -> None:
         """
-        Run the simulation and save its outputs.
+        Build the network in the simulator, simulate it and save the outputs.
 
-        Which artifacts are written (recordings, resolved config,
-        metadata) is controlled by ``simulation_config.recording`` and
-        ``simulation_config.output``; see :func:`microcircuit_lab.io.output.save_run_outputs`.
+        What is saved (recordings, the prepared config, metadata) is set by the
+        ``recording`` and ``output`` sections of the simulation config; see
+        :func:`microcircuit_lab.runs.save_run_outputs`. ``output_dir`` points to the
+        run folder afterwards.
         """
 
         backend_class = get_backend(self.backend_name)

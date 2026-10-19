@@ -1,7 +1,7 @@
 """Create builders/<name>/ with a runnable main() example.
 
 A builder is any code whose output is a directory under
-configs/network/<name>/ that passes microcircuit_lab.io.validate_network_config.
+configs/network/<name>/ that passes microcircuit_lab.network.load.load_network.
 This makes the package that `microcircuit-lab generate` discovers, with a
 main() that already builds and writes a small example network -- edit the
 payload values to match your model (see builders/pd14/
@@ -29,7 +29,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from microcircuit_lab.io import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> None:
     The four payloads below are the configs/network/{name}/ files with their
     top-level wrapper key removed (write_network_directory adds it back) --
     replace the example values with this model's numbers. Full field list,
-    types and which are required: microcircuit_lab/config/schema.py.
+    types and which are required: the modules in microcircuit_lab/config/.
     """
     parser = argparse.ArgumentParser(
         prog="microcircuit-lab generate {name}", description="Generate the {name} network config."

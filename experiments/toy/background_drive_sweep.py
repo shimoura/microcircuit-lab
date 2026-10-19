@@ -17,27 +17,20 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 
 from microcircuit_lab.analysis import compute_population_firing_rates
+from microcircuit_lab import Simulation, prepare_network, read_network
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network import Network, NetworkPreprocessor
-from microcircuit_lab.simulation import Simulation
 
 BACKGROUND_INDEGREES = [200, 500, 1000, 2000, 4000]
 OUTPUT_DIR = "output/experiments/toy_background_drive_sweep"
 
 
 def run_one(background_indegree: float) -> dict[str, float]:
-    network_files = read_network_directory("configs/network/toy")
-    config = NetworkConfigLoader(network_files).build()
-
+    network = read_network("configs/network/toy")
     populations = {
         name: population.model_copy(update={"background_indegree": background_indegree})
-        for name, population in config.populations.items()
+        for name, population in network.populations.items()
     }
-    config = config.model_copy(update={"populations": populations})
-    config = NetworkPreprocessor(config).process()
-    network = Network(config)
+    network = prepare_network(network.model_copy(update={"populations": populations}))
 
     simulation_config = SimulationConfig.model_validate(
         {

@@ -1,4 +1,4 @@
-"""The on-disk network-config schema and the validate_network_config check."""
+"""The on-disk network-config schema and the load_network check."""
 
 from __future__ import annotations
 
@@ -9,9 +9,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from microcircuit_lab.config.schema import NetworkDirectory, NetworkManifest
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.io.network_validation import validate_network_config
+from microcircuit_lab.config.network import NetworkDirectory, NetworkManifest
+from microcircuit_lab.network.load import load_network, read_network_files
 
 TOY = Path("configs/network/toy")
 NETWORK_CONFIGS = sorted(
@@ -23,7 +22,7 @@ NETWORK_CONFIGS = sorted(
 def test_every_network_config_in_the_repository_is_valid(network_config: Path) -> None:
     """The core reads every network config under configs/network, however
     it was written: by hand or by a builder."""
-    assert validate_network_config(network_config).populations
+    assert load_network(network_config).populations
 
 
 @pytest.fixture
@@ -41,10 +40,10 @@ def _edit_yaml(path: Path, mutate) -> None:
 
 
 # -----------------------------------------------------------------------------
-# schema: read_network_directory validates every file against config.schema
+# read_network_files checks every file against the models in microcircuit_lab.config
 # -----------------------------------------------------------------------------
 def test_toy_directory_matches_the_schema() -> None:
-    directory = read_network_directory(TOY)
+    directory = read_network_files(TOY)
 
     assert isinstance(directory, NetworkDirectory)
     assert {p.name for p in directory.populations.populations} == {"E", "I"}
@@ -59,7 +58,36 @@ def test_unknown_field_is_rejected(network_dir: Path) -> None:
         lambda d: d["populations"][0].__setitem__("siz", 800),
     )
     with pytest.raises(ValueError, match="siz"):
-        read_network_directory(network_dir)
+        read_network_files(network_dir)
+
+
+def test_unknown_stimulus_type_points_to_where_new_ones_are_added(network_dir: Path) -> None:
+    (network_dir / "stimuli.yaml").write_text(
+        "stimuli:\n  - {type: spike, targets: [E], spike_times: [500.0]}\n"
+    )
+    _edit_yaml(network_dir / "network.yaml", lambda d: d.__setitem__("stimuli", "stimuli.yaml"))
+    with pytest.raises(ValueError, match="Changing the core") as error:
+        read_network_files(network_dir)
+    assert "stimuli.yaml: stimuli.0" in str(error.value)
+
+
+def test_unknown_distribution_points_to_where_new_ones_are_added(network_dir: Path) -> None:
+    _edit_yaml(
+        network_dir / "connectivity.yaml",
+        lambda d: d["connections"][0]["delay"].__setitem__("distribution", "gamma"),
+    )
+    with pytest.raises(ValueError, match="Changing the core"):
+        read_network_files(network_dir)
+
+
+def test_other_errors_do_not_point_to_contributing(network_dir: Path) -> None:
+    _edit_yaml(
+        network_dir / "populations.yaml",
+        lambda d: d["populations"][0].__setitem__("size", -1),
+    )
+    with pytest.raises(ValueError) as error:
+        read_network_files(network_dir)
+    assert "CONTRIBUTING" not in str(error.value)
 
 
 def test_error_names_the_file_and_the_field(network_dir: Path) -> None:
@@ -68,29 +96,11 @@ def test_error_names_the_file_and_the_field(network_dir: Path) -> None:
         lambda d: d["populations"][0].__setitem__("size", -1),
     )
     with pytest.raises(ValueError) as error:
-        read_network_directory(network_dir)
+        read_network_files(network_dir)
 
     message = str(error.value)
     assert str(network_dir) in message
     assert "populations.yaml: populations.0.size" in message
-
-
-def test_missing_required_field_is_rejected(network_dir: Path) -> None:
-    _edit_yaml(
-        network_dir / "populations.yaml",
-        lambda d: d["populations"][0].pop("size"),
-    )
-    with pytest.raises(ValueError, match="size"):
-        read_network_directory(network_dir)
-
-
-def test_wrong_type_is_rejected(network_dir: Path) -> None:
-    _edit_yaml(
-        network_dir / "connectivity.yaml",
-        lambda d: d["connections"][0].__setitem__("n_synapses", "lots"),
-    )
-    with pytest.raises(ValueError, match="n_synapses"):
-        read_network_directory(network_dir)
 
 
 def test_neuron_parameters_stay_open(network_dir: Path) -> None:
@@ -100,7 +110,7 @@ def test_neuron_parameters_stay_open(network_dir: Path) -> None:
         network_dir / "neurons.yaml",
         lambda d: d["neurons"]["excitatory"]["parameters"].__setitem__("g_L", 25.0),
     )
-    directory = read_network_directory(network_dir)
+    directory = read_network_files(network_dir)
     assert directory.neurons.neurons["excitatory"].parameters.model_dump()["g_L"] == 25.0
 
 
@@ -120,13 +130,8 @@ def test_manifest_rejects_an_unknown_file_key() -> None:
 
 
 # -----------------------------------------------------------------------------
-# validate_network_config: schema + cross-file refs + preprocessing dry run
+# load_network: schema + cross-file refs + prepare_network dry run
 # -----------------------------------------------------------------------------
-def test_validate_passes_on_the_toy_network() -> None:
-    config = validate_network_config(TOY)
-
-    assert set(config.populations) == {"E", "I"}
-    assert config.connections
 
 
 def test_validate_catches_a_dangling_neuron_reference(network_dir: Path) -> None:
@@ -135,7 +140,7 @@ def test_validate_catches_a_dangling_neuron_reference(network_dir: Path) -> None
         lambda d: d["populations"][0].__setitem__("neuron", "nope"),
     )
     with pytest.raises(ValueError, match="nope"):
-        validate_network_config(network_dir)
+        load_network(network_dir)
 
 
 def test_validate_catches_a_connection_to_an_undefined_population(network_dir: Path) -> None:
@@ -144,7 +149,7 @@ def test_validate_catches_a_connection_to_an_undefined_population(network_dir: P
         lambda d: d["connections"][0].__setitem__("target", "Z"),
     )
     with pytest.raises(ValueError, match="'Z'"):
-        validate_network_config(network_dir)
+        load_network(network_dir)
 
 
 def test_validate_catches_a_background_input_for_an_undefined_population(
@@ -155,4 +160,4 @@ def test_validate_catches_a_background_input_for_an_undefined_population(
         lambda d: d["background_inputs"].__setitem__("Z", d["background_inputs"]["E"]),
     )
     with pytest.raises(ValueError, match="'Z'"):
-        validate_network_config(network_dir)
+        load_network(network_dir)

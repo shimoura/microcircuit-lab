@@ -10,20 +10,14 @@ import shutil
 import pytest
 
 from microcircuit_lab import Simulation
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network.preprocessing import NetworkPreprocessor
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
 
 
-def test_toy_network_loads_and_preprocesses():
-    network_files = read_network_directory("configs/network/toy")
-    network = NetworkConfigLoader(network_files).build()
-    network = NetworkPreprocessor(network).process()
+def test_prepare_network_gives_the_total_background_rate():
+    network = prepare_network(assemble_network(read_network_files("configs/network/toy")))
 
-    assert network.populations["E"].size == 800
-    assert network.populations["I"].size == 200
-
-    # background rate (Hz) * background_indegree, per NetworkPreprocessor
+    # background rate (Hz) * background_indegree, per prepare_network
     assert network.background_inputs["E"].rate == 8.0 * 1000
     assert network.background_inputs["I"].rate == 8.0 * 1000
 
@@ -31,7 +25,7 @@ def test_toy_network_loads_and_preprocesses():
 def test_simulation_from_yaml_defaults_to_toy():
     simulation = Simulation.from_yaml()
 
-    assert simulation.network.config.populations["E"].size == 800
+    assert simulation.network.populations["E"].size == 800
     assert simulation.simulation_config.t_sim == 1000.0
 
 

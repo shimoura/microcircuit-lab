@@ -1,8 +1,8 @@
-"""Tests for the io.files YAML read/write helpers."""
+"""Tests for the YAML read/write helpers (yaml_files)."""
 
 from pathlib import Path
 
-from microcircuit_lab.io.files import flow_records, read_yaml, write_yaml
+from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
 
 def test_write_yaml_roundtrips_through_read_yaml(tmp_path: Path) -> None:

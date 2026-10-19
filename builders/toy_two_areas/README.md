@@ -12,18 +12,21 @@ microcircuit-lab generate toy_two_areas          # rewrite configs/network/toy_t
 ```mermaid
 flowchart LR
   subgraph A["Area A"]
+    direction TB
     A23["L23: E · PV · SOM"]
     A4["L4: E · PV · SOM"]
     A5["L5: E · PV · SOM"]
     A6["L6: E · PV · SOM"]
+    A23 ~~~ A4 ~~~ A5 ~~~ A6
   end
   subgraph B["Area B (agranular, no L4)"]
+    direction TB
     B23["L23: E · PV · SOM · VIP"]
     B5["L5: E · PV · SOM · VIP"]
     B6["L6: E · PV · SOM · VIP"]
+    B23 ~~~ B5 ~~~ B6
   end
-  A -- "E → E, PV · 5.7 ms" --> B
-  B -- "E → E, PV · 5.7 ms" --> A
+  A <-- "E → E, PV · 5.7 ms" --> B
 ```
 
 | Area | Layers | Cell types | Neurons per layer |

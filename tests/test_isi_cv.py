@@ -13,7 +13,7 @@ import pytest
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import compute_population_isi_cv, plot_isi_cv
-from microcircuit_lab.analysis.irregularity import compute_neuron_isi_cv
+from microcircuit_lab.analysis.isi_cv import compute_neuron_isi_cv
 
 
 class _FakeBackend:
@@ -36,9 +36,7 @@ class _FakeSimulation:
         self.simulation_config = types.SimpleNamespace(
             t_sim=1000.0, recording=types.SimpleNamespace(spike_recording=True)
         )
-        self.network = types.SimpleNamespace(
-            config=types.SimpleNamespace(populations=dict.fromkeys(populations))
-        )
+        self.network = types.SimpleNamespace(populations=dict.fromkeys(populations))
 
 
 def test_regular_spike_train_has_near_zero_cv():

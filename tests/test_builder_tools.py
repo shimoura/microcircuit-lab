@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from microcircuit_lab.io import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory
 
 NEURON = {
     "C_m": 250.0,

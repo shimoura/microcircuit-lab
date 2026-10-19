@@ -1,3 +1,5 @@
+begin: 200.0
+
 style:
   color_mode: cell_type
   cell_type_colors:
@@ -17,6 +19,7 @@ raster:
   figsize: [4, 3]
   separator_lines: true
   show_legend: false
+  neuron_fraction: 0.05
 
 firing_rates:
   figsize: [5, 3.5]
@@ -27,6 +30,7 @@ firing_rates:
 power_spectrum:
   width_per_column: 3.0
   height_per_row: 1.6
+  log_power: true
 
 isi_cv:
   figsize: [5, 3.5]

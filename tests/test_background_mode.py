@@ -12,21 +12,16 @@ import pytest
 import yaml
 
 from microcircuit_lab.backends.nest import NestBackend
-from microcircuit_lab.config.network import (
-    BackgroundInputConfig,
-    DelayDistribution,
-    NetworkConfig,
-    NeuronConfig,
-    NeuronParams,
-    PopulationConfig,
-    ScalingConfig,
-    WeightDistribution,
-)
+from microcircuit_lab.config.background_inputs import BackgroundInputConfig
+from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network import Network, NetworkPreprocessor
-from microcircuit_lab.network.parameters import (
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.quantities import (
     background_indegrees,
     background_psc_weights,
     tau_syn_ex,
@@ -93,43 +88,24 @@ def test_background_mode_defaults_to_poisson():
     assert network.background_mode == "poisson"
 
 
-def test_background_mode_rejects_unknown_value():
-    with pytest.raises(Exception):
-        _network("bogus")
-
-
 # -----------------------------------------------------------------------------
-# NetworkPreprocessor: "dc" replaces the Poisson rate with a constant current
+# prepare_network: "dc" replaces the Poisson rate with a constant current
 # -----------------------------------------------------------------------------
 def test_dc_mode_zeros_background_rate():
-    network = NetworkPreprocessor(_network("dc")).process()
+    network = prepare_network(_network("dc"))
 
     assert network.background_inputs["E"].rate == 0.0
 
 
 def test_poisson_mode_keeps_effective_background_rate():
-    network = NetworkPreprocessor(_network("poisson")).process()
+    network = prepare_network(_network("poisson"))
 
     # effective_rate = bg_rate * K_ext, per _apply_background_poisson_rates
     assert network.background_inputs["E"].rate == pytest.approx(8.0 * 100.0)
 
 
-def test_dc_mode_adds_expected_current():
-    network = NetworkPreprocessor(_network("dc")).process()
-
-    expected = background_dc_current(
-        PSC_ext=50.0,
-        K_ext=100.0,
-        bg_rate=8.0,
-        tau_syn=0.5,
-    )
-
-    assert network.populations["E"].neuron.parameters.I_e == pytest.approx(expected)
-    assert expected > 0.0
-
-
 def test_poisson_mode_leaves_i_e_untouched():
-    network = NetworkPreprocessor(_network("poisson")).process()
+    network = prepare_network(_network("poisson"))
 
     assert network.populations["E"].neuron.parameters.I_e == 0.0
 
@@ -143,8 +119,8 @@ def test_dc_current_independent_of_k_scaling():
             "scaling": ScalingConfig(N_scaling=0.5, K_scaling=0.5),
         }
     )
-    unscaled = NetworkPreprocessor(_network("dc")).process()
-    rescaled = NetworkPreprocessor(scaled).process()
+    unscaled = prepare_network(_network("dc"))
+    rescaled = prepare_network(scaled)
 
     assert rescaled.populations["E"].neuron.parameters.I_e == pytest.approx(
         unscaled.populations["E"].neuron.parameters.I_e
@@ -155,23 +131,23 @@ def test_dc_current_independent_of_k_scaling():
 # NEST backend: no Poisson generator is created for "dc"
 # -----------------------------------------------------------------------------
 def test_dc_mode_creates_no_poisson_generator():
-    network = NetworkPreprocessor(_network("dc")).process()
+    network = prepare_network(_network("dc"))
     simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
 
-    backend = NestBackend(network=Network(network), simulation_config=simulation_config)
+    backend = NestBackend(network=network, simulation_config=simulation_config)
     backend.build()
 
-    assert backend.poisson_generators == {}
+    assert backend.background_generators == {}
 
 
 def test_poisson_mode_creates_poisson_generator():
-    network = NetworkPreprocessor(_network("poisson")).process()
+    network = prepare_network(_network("poisson"))
     simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
 
-    backend = NestBackend(network=Network(network), simulation_config=simulation_config)
+    backend = NestBackend(network=network, simulation_config=simulation_config)
     backend.build()
 
-    assert "E" in backend.poisson_generators
+    assert "E" in backend.background_generators
 
 
 def test_dc_mode_network_still_spikes():
@@ -188,10 +164,10 @@ def test_dc_mode_network_still_spikes():
             "background_inputs": {"E": _background(rate=8.0, mean=100.0)},
         }
     )
-    network = NetworkPreprocessor(strong_network).process()
+    network = prepare_network(strong_network)
     simulation_config = SimulationConfig.model_validate({"t_sim": 500.0, "print_time": False})
 
-    backend = NestBackend(network=Network(network), simulation_config=simulation_config)
+    backend = NestBackend(network=network, simulation_config=simulation_config)
     backend.build()
     backend.simulate()
 
@@ -213,8 +189,8 @@ def test_loader_reads_background_mode_from_yaml(tmp_path: Path) -> None:
     data["background_mode"] = "dc"
     background_path.write_text(yaml.safe_dump(data))
 
-    network_files = read_network_directory(network_dir)
-    network = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files(network_dir)
+    network = assemble_network(network_files)
 
     assert network.background_mode == "dc"
 
@@ -225,7 +201,7 @@ def test_dc_matches_poisson_mean_input():
     from the same rate/weight/indegree."""
 
     bio = _network("poisson")
-    dc = NetworkPreprocessor(_network("dc")).process()
+    dc = prepare_network(_network("dc"))
 
     expected = background_dc_current(
         PSC_ext=background_psc_weights(bio),

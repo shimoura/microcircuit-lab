@@ -4,19 +4,18 @@ import pytest
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import check_reference_rates, compute_reference_deviation
-from microcircuit_lab.config.network import ReferenceConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network import Network, NetworkPreprocessor
+from microcircuit_lab.config.reference import ReferenceConfig
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
 
 
 def _toy_simulation_with_reference(tmp_path, full_mean_rates: dict[str, float]) -> Simulation:
-    network_files = read_network_directory("configs/network/toy")
-    config = NetworkConfigLoader(network_files).build()
+    network_files = read_network_files("configs/network/toy")
+    config = assemble_network(network_files)
     config = config.model_copy(
         update={"reference": ReferenceConfig(full_mean_rates=full_mean_rates)}
     )
-    config = NetworkPreprocessor(config).process()
+    config = prepare_network(config)
 
     from microcircuit_lab.config.simulation import SimulationConfig
 
@@ -27,7 +26,7 @@ def _toy_simulation_with_reference(tmp_path, full_mean_rates: dict[str, float]) 
     }
 
     simulation = Simulation(
-        network=Network(config),
+        network=config,
         simulation_config=SimulationConfig.model_validate(simulation_config_data),
         network_name="toy",
         simulation_name="toy",

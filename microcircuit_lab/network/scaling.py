@@ -68,7 +68,7 @@ def scale_weight_sqrt(
         w -> w / sqrt(K_scaling)
 
     Used by scale_weights() when ScalingConfig.preserve_variance is
-    True (the default). NetworkPreprocessor._apply_scaling_compensation
+    True (the default). prepare_network (step _compensate_lost_mean_input)
     is what actually restores the mean input this rule doesn't preserve
     on its own, via DC current injection, when preserve_mean_input is
     also True.
@@ -133,7 +133,7 @@ def background_dc_current(
     Used to replace the background Poisson generator entirely with DC
     input, per Potjans & Diesmann (2014)'s comparison of the two drive
     types (their Fig. 5) -- see
-    NetworkPreprocessor._apply_background_dc_current. Always computed
+    prepare_network (step _replace_background_by_dc). Always computed
     from the original (unscaled) network, independent of K_scaling,
     since the target mean is the full biological background input
     regardless of any N/K scaling applied to the recurrent network.
@@ -152,7 +152,7 @@ def scale_weights(
 
     - True (default): w -> w / sqrt(K_scaling) (scale_weight_sqrt).
       Preserves input fluctuations; biases mean input, which
-      NetworkPreprocessor._apply_scaling_compensation corrects for via DC
+      prepare_network (step _compensate_lost_mean_input) corrects for via DC
       current injection when scaling.preserve_mean_input is also True.
     - False: w -> w / K_scaling (scale_weight). Preserves mean input
       directly (indegree * weight is invariant under this law), at the

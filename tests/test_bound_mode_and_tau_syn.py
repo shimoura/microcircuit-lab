@@ -10,21 +10,21 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.backends.nest import NestBackend
-from microcircuit_lab.config.network import (
+from microcircuit_lab.config.background_inputs import BackgroundInputConfig
+from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
-    NetworkConfig,
-    NeuronConfig,
-    NeuronParams,
-    PopulationConfig,
-    BackgroundInputConfig,
-    ReferenceConfig,
-    ScalingConfig,
     WeightDistribution,
 )
+from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.reference import ReferenceConfig
+from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.io import delay, validate_network_config, weight, write_network_directory
-from microcircuit_lab.network import Network, NetworkPreprocessor
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.network.load import load_network
+from microcircuit_lab.network.prepare import prepare_network
 
 TAU_SYN_EX = 2.0
 
@@ -94,7 +94,7 @@ def _compensation_into_E(tau_syn_in: float) -> float:
             }
         }
     )
-    derived = NetworkPreprocessor(config).process()
+    derived = prepare_network(config)
     return derived.populations["E"].neuron.parameters.I_e
 
 
@@ -118,7 +118,7 @@ def test_compensation_is_unchanged_when_both_time_constants_are_equal() -> None:
 def test_compensation_sign_rule_also_holds_for_weights_given_as_psp() -> None:
     """A PSP weight keeps its sign when converted to a PSC, so an inhibitory
     PSP is compensated with tau_syn_in just like an inhibitory PSC."""
-    from microcircuit_lab.network.synapses import psp_to_psc_iaf_psc_exp
+    from microcircuit_lab.network.units import psp_to_psc_iaf_psc_exp
 
     tau_syn_in = 4.0
     config = _network(
@@ -140,7 +140,7 @@ def test_compensation_sign_rule_also_holds_for_weights_given_as_psp() -> None:
     psc = psp_to_psc_iaf_psc_exp(psp=-0.5, C_m=250.0, tau_m=10.0, tau_syn=tau_syn_in)
     expected = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * psc * 10.0 * 8.0
 
-    derived = NetworkPreprocessor(config).process()
+    derived = prepare_network(config)
 
     assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected)
 
@@ -164,7 +164,7 @@ def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitor
     expected_E = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * -30.0 * 100.0 * 8.0
     expected_I = 0.001 * (1.0 - np.sqrt(0.25)) * TAU_SYN_EX * 30.0 * 100.0 * 8.0
 
-    derived = NetworkPreprocessor(config).process()
+    derived = prepare_network(config)
 
     assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected_E)
     assert derived.populations["I"].neuron.parameters.I_e == pytest.approx(expected_I)
@@ -199,7 +199,7 @@ def _write(tmp_path: Path, **overrides) -> Path:
 
 
 def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Path) -> None:
-    config = validate_network_config(_write(tmp_path, bound_mode="clip"))
+    config = load_network(_write(tmp_path, bound_mode="clip"))
 
     assert config.bound_mode == "clip"
     assert config.connections[0].delay.minimum == 0.1
@@ -208,7 +208,7 @@ def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Pat
 def test_bound_mode_defaults_to_redraw_and_is_not_written(tmp_path: Path) -> None:
     network_dir = _write(tmp_path)
 
-    assert validate_network_config(network_dir).bound_mode == "redraw"
+    assert load_network(network_dir).bound_mode == "redraw"
     assert "bound_mode" not in (network_dir / "connectivity.yaml").read_text()
 
 
@@ -234,7 +234,7 @@ def _draw_synapses(bound_mode: str, *, weight_mean: float, minimum: float, rel_s
         ],
         bound_mode=bound_mode,
     )
-    network = Network(NetworkPreprocessor(config).process())
+    network = prepare_network(config)
     backend = NestBackend(
         network=network,
         simulation_config=SimulationConfig.model_validate(

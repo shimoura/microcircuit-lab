@@ -1,4 +1,4 @@
-"""`microcircuit-lab init`: project folders, never overwriting, --with-core and its examples."""
+"""`microcircuit-lab init`: project folders, never overwriting, --with-core (a copy of the core) and its examples."""
 
 import subprocess
 from pathlib import Path
@@ -32,7 +32,7 @@ def test_existing_files_are_left_alone(tmp_path, capsys):
     assert "already exists" in capsys.readouterr().out
 
 
-def test_with_core_clones_installs_and_ignores_the_folder(tmp_path, monkeypatch):
+def test_with_core_installs_the_copy_and_ignores_only_build_files(tmp_path, monkeypatch):
     commands = []
     monkeypatch.setattr(subprocess, "run", _recorder(commands))
     (tmp_path / ".gitignore").write_text("output/\n")
@@ -40,9 +40,9 @@ def test_with_core_clones_installs_and_ignores_the_folder(tmp_path, monkeypatch)
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][:3] == ["git", "ls-remote", "--tags"]
-    assert commands[1][:2] == ["git", "clone"]
-    assert commands[2][1:5] == ["-m", "pip", "install", "-e"]
-    assert (tmp_path / ".gitignore").read_text() == "output/\nmicrocircuit-lab/\n"
+    assert commands[1][:4] == ["git", "clone", "--depth", "1"]
+    assert commands[2][1:] == ["-m", "pip", "install", "-e", str(tmp_path / init.CORE_FOLDER)]
+    assert (tmp_path / ".gitignore").read_text() == "output/\n*.egg-info/\n"
 
 
 def test_with_core_clones_the_release_tag_of_the_installed_version(tmp_path, monkeypatch):
@@ -52,7 +52,7 @@ def test_with_core_clones_the_release_tag_of_the_installed_version(tmp_path, mon
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][-1] == "refs/tags/v0.1.0"
-    assert commands[1][:4] == ["git", "clone", "--branch", "v0.1.0"]
+    assert commands[1][:6] == ["git", "clone", "--depth", "1", "--branch", "v0.1.0"]
 
 
 def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch, capsys):
@@ -60,7 +60,7 @@ def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch
     monkeypatch.setattr(subprocess, "run", _recorder(commands, tag_exists=False))
     init.main([str(tmp_path), "--with-core"])
 
-    assert commands[1] == ["git", "clone", init.CORE_URL, str(tmp_path / init.CORE_FOLDER)]
+    assert commands[1][:5] == ["git", "clone", "--depth", "1", init.CORE_URL]
     assert "no release tag" in capsys.readouterr().out
 
 
@@ -73,6 +73,11 @@ def _fake_clone(monkeypatch):
         if command[:2] != ["git", "clone"]:
             return
         core = Path(command[-1])
+        (core / ".git").mkdir(parents=True)
+        (core / "microcircuit_lab").mkdir()
+        (core / "microcircuit_lab" / "__init__.py").write_text("core code")
+        (core / "pyproject.toml").write_text("[project]")
+        (core / "tests").mkdir()
         (core / "builders" / "demo").mkdir(parents=True)
         (core / "builders" / "__init__.py").write_text("")
         (core / "builders" / "demo" / "__init__.py").write_text("def main(argv=None): pass\n")
@@ -85,6 +90,26 @@ def _fake_clone(monkeypatch):
         (core / "configs" / "analysis" / "demo.yaml").write_text("core")
 
     monkeypatch.setattr(subprocess, "run", run)
+
+
+def test_with_core_copies_the_core_without_its_git_history(tmp_path, monkeypatch):
+    _fake_clone(monkeypatch)
+    init.main([str(tmp_path), "--with-core"])
+
+    core = tmp_path / init.CORE_FOLDER
+    assert (core / "microcircuit_lab" / "__init__.py").read_text() == "core code"
+    assert (core / "pyproject.toml").is_file()
+    assert sorted(p.name for p in core.iterdir()) == ["microcircuit_lab", "pyproject.toml"]
+
+
+def test_with_core_keeps_an_existing_copy(tmp_path, monkeypatch, capsys):
+    _fake_clone(monkeypatch)
+    init.main([str(tmp_path), "--with-core"])
+    (tmp_path / init.CORE_FOLDER / "microcircuit_lab" / "__init__.py").write_text("my edit")
+    init.main([str(tmp_path), "--with-core"])
+
+    assert (tmp_path / init.CORE_FOLDER / "microcircuit_lab" / "__init__.py").read_text() == "my edit"
+    assert "already exists, left as it is" in capsys.readouterr().out
 
 
 def test_with_core_copies_the_examples(tmp_path, monkeypatch):

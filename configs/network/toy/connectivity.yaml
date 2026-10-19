@@ -6,7 +6,7 @@
 # no interpretation) instead. A distribution is optional (default: normal).
 #
 # Fields: ConnectionConfig / WeightDistribution / DelayDistribution in
-# microcircuit_lab/config/{schema,network}.py.
+# microcircuit_lab/config/connectivity.py.
 connections:
 
   - source: E

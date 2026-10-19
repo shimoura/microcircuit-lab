@@ -8,19 +8,19 @@ from pathlib import Path
 import pytest
 
 from microcircuit_lab import Simulation
+from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.analysis import PLOT_REGISTRY, PlotSpec
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.io.files import read_network_directory
-from microcircuit_lab.network import Network, NetworkPreprocessor
+from microcircuit_lab.network.load import assemble_network, read_network_files
+from microcircuit_lab.network.prepare import prepare_network
 
 
 
-def _toy_network() -> Network:
-    network_files = read_network_directory("configs/network/toy")
-    config = NetworkConfigLoader(network_files).build()
-    config = NetworkPreprocessor(config).process()
-    return Network(config)
+def _toy_network() -> NetworkConfig:
+    network_files = read_network_files("configs/network/toy")
+    config = assemble_network(network_files)
+    config = prepare_network(config)
+    return config
 
 
 @pytest.fixture(scope="module")

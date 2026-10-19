@@ -15,7 +15,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ._utils import UNSET, select_populations
+from .areas import select_populations
+from .registry import UNSET
 from .plot_styles import (
     DEFAULT_ISI_CV_CONFIG,
     DEFAULT_PLOT_STYLE,
@@ -36,14 +37,30 @@ def compute_neuron_isi_cv(
     area: str | None = None,
     min_spikes: int = 3,
 ) -> dict[str, np.ndarray]:
-    """Compute the ISI coefficient of variation for every neuron in each
-    selected population.
+    """
+    The coefficient of variation of the inter-spike intervals (ISI CV) of every
+    neuron, per population.
 
-    A neuron needs at least ``min_spikes`` spikes (i.e. at least
-    ``min_spikes - 1`` inter-spike intervals) in ``[begin, end)`` for CV
-    to be defined; neurons with fewer get NaN, so they're naturally
-    excluded from NaN-aware aggregates (e.g. compute_population_isi_cv)
-    without special-casing.
+    A neuron needs at least ``min_spikes`` spikes in the window for its CV to be
+    defined; a neuron with fewer gets ``NaN``, which NaN-aware averages skip.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    min_spikes
+        The fewest spikes a neuron needs.
+
+    Returns
+    -------
+    dict of str to numpy.ndarray
+        ``{population: CV of each neuron}``.
     """
 
     if simulation.backend is None:
@@ -103,8 +120,27 @@ def compute_population_isi_cv(
     area: str | None = None,
     min_spikes: int = 3,
 ) -> dict[str, float]:
-    """Compute the mean ISI CV of each selected population, ignoring
-    neurons with too few spikes for CV to be defined."""
+    """
+    The mean ISI CV of each population, over the neurons where it is defined.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    min_spikes
+        The fewest spikes a neuron needs.
+
+    Returns
+    -------
+    dict of str to float
+        ``{population: mean CV}``.
+    """
 
     neuron_cv = compute_neuron_isi_cv(
         simulation, begin, end, populations=populations, area=area, min_spikes=min_spikes,
@@ -128,11 +164,37 @@ def plot_isi_cv(
     save_path: str | Path | None = None,
     show: bool = True,
 ):
-    """Plot per-neuron ISI-CV distributions for selected populations.
+    """
+    Plot the distribution of single-neuron ISI CVs of each population.
 
-    A dashed reference line at CV=1 marks the Poisson-like "asynchronous
-    irregular" regime cortical models are usually compared against.
-    ``min_spikes`` defaults to ``config.min_spikes``.
+    A dashed line at CV = 1 marks Poisson-like firing, the "asynchronous
+    irregular" state cortical models are usually compared with.
+
+    Parameters
+    ----------
+    simulation
+        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    begin, end
+        The time window in ms; ``end`` defaults to the end of the simulation.
+    populations
+        Population names to use; by default all of them (or those of ``area``).
+    area
+        For a multi-area network, use only the populations of this area.
+    min_spikes
+        The fewest spikes a neuron needs; by default as set in ``config``.
+    style
+        The shared plot style (:class:`~microcircuit_lab.config.PlotStyle`).
+    config
+        This plot's settings from the analysis file; its defaults otherwise.
+    save_path
+        Where to save the figure; not saved if ``None``.
+    show
+        Open the figure in a window.
+
+    Returns
+    -------
+    tuple
+        The matplotlib ``(figure, axes)``.
     """
 
     style = style or DEFAULT_PLOT_STYLE

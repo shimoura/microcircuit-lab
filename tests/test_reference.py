@@ -1,12 +1,9 @@
 import numpy as np
 import pytest
 
-from microcircuit_lab.io.config import NetworkConfigLoader
-from microcircuit_lab.config.network import ReferenceConfig
-from microcircuit_lab.network.preprocessing import (
-    NetworkPreprocessor,
-)
-from microcircuit_lab.network.parameters import (
+from microcircuit_lab.config.reference import ReferenceConfig
+from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.quantities import (
     full_num_neurons,
     full_num_synapses,
     indegree_matrix,
@@ -14,14 +11,14 @@ from microcircuit_lab.network.parameters import (
     background_indegrees,
     background_weights,
 )
-from microcircuit_lab.io.files import read_network_directory
+from microcircuit_lab.network.load import assemble_network, read_network_files
 
 
 def test_reference_matrices():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     neurons = full_num_neurons(network)
     synapses = full_num_synapses(network)
@@ -44,11 +41,11 @@ def test_reference_matrices():
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
 
 
-def test_preprocessing_preserves_original_network():
+def test_prepare_network_keeps_the_original_network():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    original = NetworkConfigLoader(network_files).build()
+    original = assemble_network(network_files)
 
     original_size = original.populations["E"].size
     original_indegree = original.populations["E"].background_indegree
@@ -67,7 +64,7 @@ def test_preprocessing_preserves_original_network():
         }
     )
 
-    derived = NetworkPreprocessor(original).process()
+    derived = prepare_network(original)
 
     #
     # original untouched
@@ -90,9 +87,9 @@ def test_preprocessing_preserves_original_network():
 
 def test_full_mean_rates():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     #
     # toy's own reference.yaml has no published rates -- set some
@@ -112,9 +109,9 @@ def test_full_mean_rates():
 
 def test_background_indegrees():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     K_ext = background_indegrees(network)
 
@@ -125,9 +122,9 @@ def test_background_indegrees():
 
 def test_background_weights():
 
-    network_files = read_network_directory("configs/network/toy")
+    network_files = read_network_files("configs/network/toy")
 
-    network = NetworkConfigLoader(network_files).build()
+    network = assemble_network(network_files)
 
     weights = background_weights(network)
 
