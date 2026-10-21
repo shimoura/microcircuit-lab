@@ -49,6 +49,8 @@ simulation.run()
 - **Prepare**: weights in mV become pA, scaling is applied, compensation currents are added.
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
+The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
+
 ## Included models
 
 | Network | What it is |
