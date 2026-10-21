@@ -41,13 +41,14 @@ def _mean_input(network) -> dict[str, float]:
         total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.mean * background.rate
         current[name] = total
 
-    for connection in network.connections:
-        target = network.populations[connection.target]
+    for connection in network.connections.to_yaml_rows():
+        target = network.populations[connection["target"]]
         parameters = target.neuron.parameters
-        tau = parameters.tau_syn_ex if connection.weight.mean > 0 else parameters.tau_syn_in
-        indegree = connection.n_synapses / target.size
-        current[connection.target] += (
-            0.001 * tau * indegree * connection.weight.mean * rates[connection.source]
+        weight = connection["weight"]["mean"]
+        tau = parameters.tau_syn_ex if weight > 0 else parameters.tau_syn_in
+        indegree = connection["n_synapses"] / target.size
+        current[connection["target"]] += (
+            0.001 * tau * indegree * weight * rates[connection["source"]]
         )
     return current
 
@@ -84,9 +85,9 @@ def test_psp_weights_are_converted_with_each_target_neuron():
     in C_m, so the same PSP gives PSCs in the ratio of their capacitances."""
     network = prepare_network(_config())
     psc = {
-        connection.target: connection.weight.mean
-        for connection in network.connections
-        if connection.source == "A__L23_E" and connection.target in ("A__L23_PV", "A__L5_PV")
+        connection["target"]: connection["weight"]["mean"]
+        for connection in network.connections.to_yaml_rows()
+        if connection["source"] == "A__L23_E" and connection["target"] in ("A__L23_PV", "A__L5_PV")
     }
     c_m = {name: network.populations[name].neuron.parameters.C_m for name in psc}
 

@@ -130,15 +130,31 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network-name", default=None)
-    parser.add_argument(
+    variant = parser.add_mutually_exclusive_group()
+    variant.add_argument(
         "--advanced",
         action="store_true",
         help="write toy_two_areas_advanced instead: values drawn per neuron, connection "
         "rules, synapse models and receptor ports (see advanced.py)",
     )
+    variant.add_argument(
+        "--clusters",
+        type=int,
+        metavar="Q",
+        help="write toy_two_areas_clustered instead: every population split into Q "
+        "clusters (see clustered.py; the other settings are in data.py)",
+    )
     args = parser.parse_args(argv)
 
-    if args.advanced:
+    if args.clusters is not None:
+        # imported here: clustered.py builds on the functions of this file
+        from builders.toy_two_areas.clustered import generate_toy_two_areas_clustered
+
+        name = args.network_name or "toy_two_areas_clustered"
+        generate_toy_two_areas_clustered(
+            config_dir=args.config_dir, network_name=name, clusters=args.clusters
+        )
+    elif args.advanced:
         # imported here: advanced.py builds on the functions of this file
         from builders.toy_two_areas.advanced import generate_toy_two_areas_advanced
 

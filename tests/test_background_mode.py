@@ -216,3 +216,45 @@ def test_dc_matches_poisson_mean_input():
     for i, name in enumerate(bio.populations):
         assert dc.populations[name].neuron.parameters.I_e == pytest.approx(expected[i])
         assert dc.background_inputs[name].rate == 0.0
+
+
+# -----------------------------------------------------------------------------
+# generator: populations with the same name share one Poisson generator
+# -----------------------------------------------------------------------------
+def _two_populations(generators=("A", "A"), rates=(8.0, 8.0), background_mode="poisson") -> NetworkConfig:
+    neuron = _neuron()
+    return NetworkConfig(
+        populations={name: _population(name, neuron) for name in ("E1", "E2")},
+        connections=[],
+        background_inputs={
+            name: _background(rate=rate).model_copy(update={"generator": generator})
+            for name, generator, rate in zip(("E1", "E2"), generators, rates)
+        },
+        background_mode=background_mode,
+        scaling=ScalingConfig(),
+    )
+
+
+def test_populations_with_the_same_generator_name_share_one_generator():
+    simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
+
+    shared = NestBackend(network=prepare_network(_two_populations()), simulation_config=simulation_config)
+    shared.build()
+    own = NestBackend(
+        network=prepare_network(_two_populations(generators=(None, None))),
+        simulation_config=simulation_config,
+    )
+    own.build()
+
+    assert shared.background_generators["E1"] == shared.background_generators["E2"]
+    assert own.background_generators["E1"] != own.background_generators["E2"]
+
+
+def test_a_shared_generator_needs_the_same_input_for_its_populations():
+    with pytest.raises(ValueError, match="generator 'A' need the same rate"):
+        _two_populations(rates=(8.0, 9.0))
+
+
+def test_a_generator_name_with_mean_current_is_an_error():
+    with pytest.raises(ValueError, match="background_mode is mean_current"):
+        _two_populations(background_mode="mean_current")

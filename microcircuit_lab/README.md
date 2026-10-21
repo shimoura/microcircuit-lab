@@ -23,7 +23,7 @@ Build, simulate and analyse spiking neural network models, from a single microci
 ## Quick start
 
 ```bash
-pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 microcircuit-lab init my_project --with-core
 cd my_project
 microcircuit-lab run --network toy
@@ -99,10 +99,10 @@ Good to know:
 ## Installation
 
 ```bash
-pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 ```
 
-Use the version you want in place of `v0.1.0`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
+This installs the latest version. For a fixed one, add its tag from the [releases](https://github.com/shimoura/microcircuit-lab/releases) to the address: `...microcircuit-lab@<tag>`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
 
 - conda-forge: `mamba install -c conda-forge nest-simulator`
 - from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh` (`NEST_WITH_MPI=ON` for MPI)
@@ -175,6 +175,7 @@ stimuli:
 
 - **`background_mode: mean_current`** (at the top of the file) replaces that Poisson input by its mean, a constant current: the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs current weights (`PSP` or `PSC`) on the default receptor port. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current`.
 - **A constant current of your own** is not a background mode; it adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
+- **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `background_indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
 ### Weights and delays
 
@@ -235,6 +236,15 @@ connections:
 ### Large files
 
 A builder writes long tables (`connectivity.yaml` of a multi-area model) one record per line, `- {source: ..., target: ..., weight: {...}, ...}`: `humam_all` has about 8,400 lines instead of 100,000. It is plain YAML and loads like any other. `write_network_directory` does this for you.
+
+For millions of connections, YAML gets slow to write and read. `connectivity.yaml` can then name a CSV file instead of listing the rows:
+
+```yaml
+bound_mode: redraw
+connections_file: connections.csv
+```
+
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its prepared connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 

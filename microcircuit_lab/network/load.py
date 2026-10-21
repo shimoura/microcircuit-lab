@@ -25,6 +25,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import (
     NetworkConfig,
     NetworkDirectory,
@@ -91,11 +92,13 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         raise FileNotFoundError(_missing_network_message(folder))
     manifest = NetworkManifest.model_validate(read_yaml(folder / "network.yaml"))
 
+    connectivity = read_yaml(folder / manifest.connectivity)
+
     parts: dict[str, Any] = {
         "manifest": manifest,
         "populations": read_yaml(folder / manifest.populations),
         "neurons": read_yaml(folder / manifest.neurons),
-        "connectivity": read_yaml(folder / manifest.connectivity),
+        "connectivity": connectivity,
         "background_inputs": read_yaml(folder / manifest.background_inputs),
     }
     if manifest.scaling is not None:
@@ -106,6 +109,15 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         parts["stimuli"] = read_yaml(folder / manifest.stimuli)
     if manifest.synapses is not None:
         parts["synapses"] = read_yaml(folder / manifest.synapses)
+    # A large network keeps its connections in a CSV file.
+    if isinstance(connectivity.get("connections_file"), str):
+        csv_path = folder / connectivity["connections_file"]
+        if not csv_path.is_file():
+            raise FileNotFoundError(
+                f"{folder}: {manifest.connectivity} names connections_file "
+                f"'{connectivity['connections_file']}', but there is no file {csv_path}."
+            )
+        parts["connection_table"] = ConnectionTable.read_csv(csv_path)
 
     try:
         return NetworkDirectory.model_validate(parts)
@@ -190,12 +202,15 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             background_indegree=entry.background_indegree,
         )
 
-    for connection in directory.connectivity.connections:
-        for role, name in (("source", connection.source), ("target", connection.target)):
-            if name not in populations:
-                raise ValueError(
-                    f"Connection {role} population '{name}' is not defined in populations.yaml."
-                )
+    connections = directory.connection_table
+    if connections is None:
+        connections = ConnectionTable.from_yaml_rows(directory.connectivity.connections)
+    for role in ("source", "target"):
+        unknown = sorted(set(connections[role].tolist()) - set(populations))
+        if unknown:
+            raise ValueError(
+                f"Connection {role} population '{unknown[0]}' is not defined in populations.yaml."
+            )
 
     for name in directory.background_inputs.background_inputs:
         if name not in populations:
@@ -206,7 +221,7 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
 
     return NetworkConfig(
         populations=populations,
-        connections=list(directory.connectivity.connections),
+        connections=connections,
         background_inputs=dict(directory.background_inputs.background_inputs),
         background_mode=directory.background_inputs.background_mode,
         bound_mode=directory.connectivity.bound_mode,

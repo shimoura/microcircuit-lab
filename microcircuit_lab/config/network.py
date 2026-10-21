@@ -8,16 +8,26 @@ analysis all use it.
 
 from __future__ import annotations
 
-from collections import Counter
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+import numpy as np
+from pydantic import (
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    model_validator,
+)
 
 from microcircuit_lab.config.background_inputs import (
     BackgroundInputConfig,
     BackgroundInputsFile,
 )
-from microcircuit_lab.config.connectivity import ConnectionConfig, ConnectivityFile
+from microcircuit_lab.config.connection_table import (
+    ConnectionTable,
+    to_connection_table,
+)
+from microcircuit_lab.config.connectivity import ConnectivityFile
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
@@ -74,6 +84,8 @@ class NetworkDirectory(FrozenConfig):
     the first row of ``populations.yaml``".
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     manifest: NetworkManifest
     populations: PopulationsFile
     neurons: NeuronsFile
@@ -83,6 +95,8 @@ class NetworkDirectory(FrozenConfig):
     reference: ReferenceConfig | None = None
     stimuli: StimuliFile = Field(default_factory=StimuliFile)
     synapses: SynapsesFile = Field(default_factory=SynapsesFile)
+    # The rows of connectivity.yaml's connections_file, read from the CSV file.
+    connection_table: ConnectionTable | None = None
 
 
 class NetworkConfig(FrozenConfig):
@@ -106,8 +120,17 @@ class NetworkConfig(FrozenConfig):
         model does. Applies to all weights and delays of the network.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     populations: dict[str, PopulationConfig]
-    connections: list[ConnectionConfig]
+    # All connections as one table (config/connection_table.py). The rows of
+    # connectivity.yaml, as a list, are turned into one, and a table is written
+    # back as those rows.
+    connections: Annotated[
+        ConnectionTable,
+        BeforeValidator(to_connection_table),
+        PlainSerializer(lambda table: table.to_yaml_rows(), return_type=list),
+    ]
 
     background_inputs: dict[str, BackgroundInputConfig]
     background_mode: Literal["poisson", "mean_current"] = "poisson"
@@ -131,8 +154,7 @@ class NetworkConfig(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_one_connection_per_synapse(self) -> NetworkConfig:
-        counts = Counter((c.source, c.target, c.synapse) for c in self.connections)
-        repeated = sorted((key for key, count in counts.items() if count > 1), key=str)
+        repeated = sorted(self.connections.duplicates(["source", "target", "synapse"]), key=str)
         if repeated:
             raise ValueError(
                 f"connectivity.yaml has more than one entry for (source, target, synapse) "
@@ -142,9 +164,66 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
+    def _check_shared_generators(self) -> NetworkConfig:
+        groups: dict[str, list[str]] = {}
+        for name, entry in self.background_inputs.items():
+            if entry.generator is not None:
+                groups.setdefault(entry.generator, []).append(name)
+        if groups and self.background_mode == "mean_current":
+            raise ValueError(
+                f"background_inputs.yaml: generator {sorted(groups)[0]!r} is set, but "
+                "background_mode is mean_current, which creates no generators."
+            )
+        # One generator fires at one rate (rate x indegree) through one synapse
+        # model (the simulator connects a device through one model). Rate and
+        # indegree are compared one by one, not their product: that holds
+        # whether the network is prepared or not (a prepared rate is already
+        # rate x indegree), and after any K_scaling.
+        indegree = {name: pop.background_indegree for name, pop in self.populations.items()}
+        for generator, names in groups.items():
+            inputs = {
+                name: (
+                    self.background_inputs[name].rate,
+                    indegree.get(name),
+                    self.background_inputs[name].synapse,
+                )
+                for name in names
+            }
+            first = names[0]
+            different = [name for name in names if inputs[name] != inputs[first]]
+            if different:
+                raise ValueError(
+                    f"background_inputs.yaml: the populations of generator {generator!r} need "
+                    "the same rate, background_indegree and synapse (rate, indegree, synapse): "
+                    f"{first} has {inputs[first]}, {different[0]} has {inputs[different[0]]}."
+                )
+        return self
+
+    @model_validator(mode="after")
     def _check_synapses(self) -> NetworkConfig:
-        users = [(f"connection {c.source} -> {c.target}", c) for c in self.connections]
-        users += [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        # Connections: checked once per synapse name, on whole columns.
+        table = self.connections
+        synapse = table["synapse"]
+        for name in sorted({s for s in synapse.tolist() if s is not None}):
+            uses = synapse == name
+            first = int(np.flatnonzero(uses)[0])
+            user = f"connection {table['source'][first]} -> {table['target'][first]}"
+            if name not in self.synapses:
+                raise ValueError(
+                    f"The {user} uses synapse {name!r}, which is not defined in synapses.yaml."
+                )
+            psp = uses & (table["weight.unit"] == "PSP")
+            if self.synapses[name].receptor_port is not None and psp.any():
+                first = int(np.flatnonzero(psp)[0])
+                user = f"connection {table['source'][first]} -> {table['target'][first]}"
+                raise ValueError(
+                    f"The {user} has a unit: PSP weight on receptor port "
+                    f"{self.synapses[name].receptor_port} (synapse {name!r}). "
+                    "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
+                    "default port only; give this weight as unit: PSC or native."
+                )
+
+        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
         users += [
             (f"stimulus of {s.targets}", s)
             for s in self.stimuli

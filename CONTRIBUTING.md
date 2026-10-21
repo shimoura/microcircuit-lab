@@ -73,9 +73,10 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <summary><b>A field on a connection, or a connection rule</b></summary>
 
 1. `config/connectivity.py`: add it to `ConnectionConfig`.
-2. `backends/nest/simulator.py`: use it in `create_connections`.
-3. If scaling or the indegrees depend on it: `network/mean_input.py` and `network/prepare.py`.
-4. Test in `tests/test_connection_rules.py`.
+2. `config/connection_table.py`: add its column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
+3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column.
+4. If scaling or the indegrees depend on it: `network/mean_input.py` and `network/prepare.py`, on whole columns.
+5. Test in `tests/test_connection_rules.py`.
 </details>
 
 <details>

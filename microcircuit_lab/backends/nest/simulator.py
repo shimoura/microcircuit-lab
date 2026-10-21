@@ -16,6 +16,7 @@ import numpy as np
 
 from microcircuit_lab.backends import population_spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
+from microcircuit_lab.config.connection_table import COLUMNS
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -184,15 +185,12 @@ class NestBackend:
 
     def synapse_spec(self, weight, delay, synapse: str | None) -> dict:
         """
-        The ``syn_spec`` of a connection: its weight and delay, and its
-        synapse model and receptor port if it names a synapses.yaml entry.
+        The ``syn_spec`` of a connection: its weight and delay (made by
+        distributions.py), and its synapse model and receptor port if it names
+        a synapses.yaml entry.
         """
 
-        bound_mode = self._network.bound_mode
-        spec = {
-            "weight": distributions.create_weight_spec(weight, bound_mode),
-            "delay": distributions.create_delay_parameter(delay, bound_mode),
-        }
+        spec = {"weight": weight, "delay": delay}
         if synapse is not None:
             spec["synapse_model"] = synapse
             receptor_port = self._network.receptor_port(synapse)
@@ -200,9 +198,22 @@ class NestBackend:
                 spec["receptor_type"] = receptor_port
         return spec
 
+    def weight_and_delay(self, weight, delay) -> tuple:
+        """The NEST weight and delay of a background input or stimulus, from its
+        ``weight`` and ``delay`` as written in the config files."""
+
+        bound_mode = self._network.bound_mode
+        return (
+            distributions.create_weight_spec(weight.mean, weight.rel_std, weight.distribution, bound_mode),
+            distributions.create_delay_parameter(
+                delay.mean, delay.rel_std, delay.distribution, delay.minimum, bound_mode
+            ),
+        )
+
     def create_connections(self) -> None:
         """
-        Connect populations according to the connectivity configuration.
+        Connect populations according to the connectivity configuration:
+        one ``nest.Connect`` per row of the connection table.
         """
 
         logger.info("Creating recurrent connections:")
@@ -215,35 +226,56 @@ class NestBackend:
             "pairwise_bernoulli": "p",
         }
 
-        for connection in self._network.connections:
-            source = self.get_population(connection.source)
-            target = self.get_population(connection.target)
+        table = self._network.connections
+        bound_mode = self._network.bound_mode
+        resolution = nest.resolution
+        rows_per_piece = 100_000
 
-            logger.info(
-                "Connecting %s -> %s (%s=%g, synapse=%s, weight=%g, delay=%g)",
-                connection.source,
-                connection.target,
-                nest_number[connection.rule],
-                connection.number,
-                connection.synapse or "default",
-                connection.weight.mean,
-                connection.delay.mean,
-            )
+        for start in range(0, len(table), rows_per_piece):
+            stop = min(start + rows_per_piece, len(table))
+            # The rows of this piece, each column as a plain list: reading a
+            # numpy array value by value is slow, and lists of whole columns
+            # would take gigabytes for millions of connections.
+            column = {name: table[name][start:stop].tolist() for name in COLUMNS}
 
-            conn_spec = {
-                "rule": connection.rule,
-                nest_number[connection.rule]: connection.number,
-            }
-            for option in ("allow_autapses", "allow_multapses"):
-                if getattr(connection, option) is not None:
-                    conn_spec[option] = getattr(connection, option)
+            for i in range(stop - start):
+                source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
+                number = column["number"][i]
+                if rule != "pairwise_bernoulli":
+                    number = int(number)
+                synapse = column["synapse"][i]
+                weight = distributions.create_weight_spec(
+                    column["weight.mean"][i],
+                    column["weight.rel_std"][i],
+                    column["weight.distribution"][i],
+                    bound_mode,
+                )
+                delay = distributions.create_delay_parameter(
+                    column["delay.mean"][i],
+                    column["delay.rel_std"][i],
+                    column["delay.distribution"][i],
+                    column["delay.minimum"][i],
+                    bound_mode,
+                    resolution,
+                )
 
-            nest.Connect(
-                source,
-                target,
-                conn_spec=conn_spec,
-                syn_spec=self.synapse_spec(connection.weight, connection.delay, connection.synapse),
-            )
+                logger.debug(
+                    "Connecting %s -> %s (%s=%g, synapse=%s, weight=%g, delay=%g)",
+                    source, target, nest_number[rule], number, synapse or "default",
+                    column["weight.mean"][i], column["delay.mean"][i],
+                )
+
+                conn_spec = {"rule": rule, nest_number[rule]: number}
+                for option in ("allow_autapses", "allow_multapses"):
+                    if column[option][i] is not None:
+                        conn_spec[option] = bool(column[option][i])
+
+                nest.Connect(
+                    self.populations[source],
+                    self.populations[target],
+                    conn_spec=conn_spec,
+                    syn_spec=self.synapse_spec(weight, delay, synapse),
+                )
 
     def get_population(
         self,
@@ -318,7 +350,8 @@ class NestBackend:
 
     def create_background_inputs(self) -> None:
         """
-        Create one background Poisson generator per configured population.
+        Create one background Poisson generator per configured population, or
+        one per ``generator`` name for the populations that share one.
 
         Does nothing when background_mode is "mean_current": prepare_network has
         already added the background input to each neuron's I_e as a constant
@@ -334,18 +367,24 @@ class NestBackend:
 
         logger.info("Creating background Poisson generators:")
 
+        # Populations with the same ``generator`` name share one generator
+        # (each neuron still gets its own spike train); the others get their own.
+        shared: dict[str, nest.NodeCollection] = {}
         for pop_name, input_cfg in self._network.background_inputs.items():
             logger.info(
-                "Creating background Poisson input for %s (rate=%g Hz)",
+                "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
                 input_cfg.rate,
+                input_cfg.generator or "its own",
             )
-            pg = nest.Create(
-                "poisson_generator",
-                params={
-                    "rate": input_cfg.rate,
-                },
-            )
+            if input_cfg.generator is None:
+                pg = nest.Create("poisson_generator", params={"rate": input_cfg.rate})
+            elif input_cfg.generator not in shared:
+                pg = shared[input_cfg.generator] = nest.Create(
+                    "poisson_generator", params={"rate": input_cfg.rate}
+                )
+            else:
+                pg = shared[input_cfg.generator]
             self.background_generators[pop_name] = pg
 
     def connect_background_inputs(self) -> None:
@@ -355,10 +394,11 @@ class NestBackend:
 
         for pop_name in self.background_generators:
             input_cfg = self._network.background_inputs[pop_name]
+            weight, delay = self.weight_and_delay(input_cfg.weight, input_cfg.delay)
             nest.Connect(
                 self.background_generators[pop_name],
                 self.get_population(pop_name),
-                syn_spec=self.synapse_spec(input_cfg.weight, input_cfg.delay, input_cfg.synapse),
+                syn_spec=self.synapse_spec(weight, delay, input_cfg.synapse),
             )
 
     def create_stimuli(self) -> None:
@@ -410,7 +450,8 @@ class NestBackend:
         for stimulus, device in self.stimulus_generators:
             syn_spec = None
             if not isinstance(stimulus, DcStimulusConfig):
-                syn_spec = self.synapse_spec(stimulus.weight, stimulus.delay, stimulus.synapse)
+                weight, delay = self.weight_and_delay(stimulus.weight, stimulus.delay)
+                syn_spec = self.synapse_spec(weight, delay, stimulus.synapse)
 
             for target in stimulus.targets:
                 nest.Connect(device, self.get_population(target), syn_spec=syn_spec)

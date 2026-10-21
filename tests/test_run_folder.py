@@ -1,6 +1,7 @@
 """Tests for simulation run output writing (recordings, config, metadata)."""
 
 import json
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -197,7 +198,7 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
     )
 
     metadata = json.loads((tmp_path / "metadata.json").read_text())
-    assert metadata["microcircuit_lab_version"] == "0.1.0"
+    assert metadata["microcircuit_lab_version"] == version("microcircuit_lab")
     # This test runs inside the microcircuit-lab git repo, so provenance
     # should resolve to a real commit (not just gracefully return None).
     assert metadata["git"] is not None

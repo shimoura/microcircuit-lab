@@ -111,11 +111,12 @@ def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
     ]
     for fields in rules:
         connection = _connection(**fields)
-        full = expected_synapses(connection, *SIZES.values())
+        full = expected_synapses(connection.rule, connection.number, *SIZES.values())
         scaled = prepare_network(_network([connection], scaling=scaling))
         sizes = [population.size for population in scaled.populations.values()]
         # both factors: half the neurons, each with half its synapses
-        assert expected_synapses(scaled.connections[0], *sizes) == pytest.approx(full / 4)
+        table = scaled.connections
+        assert expected_synapses(table["rule"][0], table["number"][0], *sizes) == pytest.approx(full / 4)
 
 
 def test_scaled_probability_above_one_is_an_error():
@@ -193,7 +194,7 @@ def test_advanced_example_uses_every_feature():
     from microcircuit_lab.network.load import read_network
 
     network = read_network("configs/network/toy_two_areas_advanced")
-    rules = {connection.rule for connection in network.connections}
+    rules = set(network.connections["rule"])
     assert rules == {"pairwise_bernoulli", "fixed_indegree"}
     assert {entry.model for entry in network.synapses.values()} == {"static_synapse", "tsodyks2_synapse"}
     assert any(entry.receptor_port for entry in network.synapses.values())

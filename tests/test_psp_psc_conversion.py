@@ -125,8 +125,8 @@ def test_psc_unit_weights_are_left_untouched():
 
     converted = convert_network_psp_to_psc(network)
 
-    assert converted.connections[0].weight.mean == 0.15
-    assert converted.connections[0].weight.unit == "PSC"
+    assert converted.connections["weight.mean"][0] == 0.15
+    assert converted.connections["weight.unit"][0] == "PSC"
     assert converted.background_inputs["E"].weight.mean == 0.15
 
 
@@ -135,9 +135,9 @@ def test_psp_unit_weights_are_converted():
 
     converted = convert_network_psp_to_psc(network)
 
-    assert converted.connections[0].weight.unit == "PSC"
-    assert converted.connections[0].weight.mean != 0.15
-    assert converted.connections[0].weight.mean == pytest.approx(87.80849352920844)
+    assert converted.connections["weight.unit"][0] == "PSC"
+    assert converted.connections["weight.mean"][0] != 0.15
+    assert converted.connections["weight.mean"][0] == pytest.approx(87.80849352920844)
 
 
 def test_psp_conversion_supports_a_renamed_model_via_aliases():
@@ -156,7 +156,7 @@ def test_psp_conversion_supports_a_renamed_model_via_aliases():
 
     converted = convert_network_psp_to_psc(network)
 
-    assert converted.connections[0].weight.mean == pytest.approx(87.80849352920844)
+    assert converted.connections["weight.mean"][0] == pytest.approx(87.80849352920844)
 
 
 def test_psp_conversion_missing_aliased_parameter_names_the_aliased_key():
@@ -196,7 +196,7 @@ def test_psc_unit_skips_the_required_parameters_check():
 
     converted = convert_network_psp_to_psc(network)
 
-    assert converted.connections[0].weight.mean == 0.15
+    assert converted.connections["weight.mean"][0] == 0.15
 
 
 # mean_psc_matrix / background_psc_weights: used by the scaling-compensation
@@ -259,10 +259,9 @@ def test_psc_and_equivalent_psp_unit_networks_process_identically():
     )
     network_psc = network_psc.model_copy(
         update={
-            "connections": [
-                c.model_copy(update={"weight": c.weight.model_copy(update={"mean": psc_value})})
-                for c in network_psc.connections
-            ],
+            "connections": network_psc.connections.with_columns(
+                **{"weight.mean": np.full(len(network_psc.connections), psc_value)}
+            ),
             "background_inputs": {
                 name: cfg.model_copy(update={"weight": cfg.weight.model_copy(update={"mean": psc_value})})
                 for name, cfg in network_psc.background_inputs.items()
@@ -276,8 +275,8 @@ def test_psc_and_equivalent_psp_unit_networks_process_identically():
     processed_psc = prepare_network(network_psc)
     processed_psp = prepare_network(network_psp)
 
-    assert processed_psc.connections[0].weight.mean == pytest.approx(
-        processed_psp.connections[0].weight.mean
+    assert processed_psc.connections["weight.mean"][0] == pytest.approx(
+        processed_psp.connections["weight.mean"][0]
     )
     assert processed_psc.populations["E"].neuron.parameters.I_e == pytest.approx(
         processed_psp.populations["E"].neuron.parameters.I_e
@@ -294,15 +293,15 @@ def test_native_unit_is_left_untouched_by_conversion():
 
     converted = convert_network_psp_to_psc(network)
 
-    assert converted.connections[0].weight.mean == 0.15
-    assert converted.connections[0].weight.unit == "native"
+    assert converted.connections["weight.mean"][0] == 0.15
+    assert converted.connections["weight.unit"][0] == "native"
     assert converted.background_inputs["E"].weight.mean == 0.15
 
 
 def test_native_unit_skips_neuron_model_check_everywhere():
     network = _network(neuron_model="iaf_cond_exp", weight_unit="native")
 
-    assert convert_network_psp_to_psc(network).connections[0].weight.mean == 0.15
+    assert convert_network_psp_to_psc(network).connections["weight.mean"][0] == 0.15
     assert mean_psc_matrix(network)[0, 0] == 0.15
     assert background_psc_weights(network)[0] == 0.15
 

@@ -139,11 +139,19 @@ def save_run_config(
 
     connections/populations/background_inputs are written one-record-per-line
     (see yaml_files.flow_records) since a full-scale network can have
-    thousands of connection entries.
+    thousands of connection entries. Above 20,000 connections,
+    they go to ``connections.csv`` instead, named by ``connections_file`` in
+    ``config.yaml``.
     """
 
-    network_payload = network.model_dump(mode="json")
-    for field in ("connections", "populations", "background_inputs"):
+    network_payload = network.model_dump(mode="json", exclude={"connections"})
+    most_connections_in_yaml = 20_000
+    if len(network.connections) > most_connections_in_yaml:
+        network.connections.write_csv(run_dir / "connections.csv")
+        network_payload["connections_file"] = "connections.csv"
+    else:
+        network_payload["connections"] = flow_records(network.connections.to_yaml_rows())
+    for field in ("populations", "background_inputs"):
         network_payload[field] = flow_records(network_payload[field])
 
     payload = {

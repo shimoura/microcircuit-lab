@@ -174,11 +174,21 @@ class ConnectivityFile(FrozenConfig):
     ``rule`` with its number, an optional ``synapse`` and a ``weight`` /
     ``delay`` distribution (above). A pair may have several rows with
     different synapses (e.g. AMPA and NMDA).
+
+    The rows are listed under ``connections``, or, for a large network, kept
+    in a CSV file named by ``connections_file`` (one row per connection, the
+    same fields; see ``config/connection_table.py``). Give one of the two.
     """
 
-    connections: list[ConnectionConfig] = Field(
+    connections: list[ConnectionConfig] | None = Field(
+        default=None,
         description="one entry per (source, target, synapse); leave a pair out rather "
-        "than writing n_synapses: 0"
+        "than writing n_synapses: 0. Required unless connections_file is given",
+    )
+    connections_file: str | None = Field(
+        default=None,
+        description="instead of connections: a CSV file, relative to the network folder, "
+        "with one row per connection (e.g. connections.csv), for a large network",
     )
     bound_mode: Literal["redraw", "clip"] = Field(
         default="redraw",
@@ -186,3 +196,9 @@ class ConnectivityFile(FrozenConfig):
         "range: 'redraw' draws again, 'clip' replaces it by the limit; applies to "
         "all weights and delays of the network, background inputs included",
     )
+
+    @model_validator(mode="after")
+    def _check_one_source_of_rows(self) -> ConnectivityFile:
+        if (self.connections is None) == (self.connections_file is None):
+            raise ValueError("give either connections (a list) or connections_file (a CSV file)")
+        return self

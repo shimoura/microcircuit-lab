@@ -40,8 +40,8 @@ def test_with_core_installs_the_copy_and_ignores_only_build_files(tmp_path, monk
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][:3] == ["git", "ls-remote", "--tags"]
-    assert commands[1][:4] == ["git", "clone", "--depth", "1"]
-    assert commands[2][1:] == ["-m", "pip", "install", "-e", str(tmp_path / init.CORE_FOLDER)]
+    assert commands[1][:3] == ["git", "clone", "--filter=blob:none"]
+    assert commands[-1][1:] == ["-m", "pip", "install", "-e", str(tmp_path / init.CORE_FOLDER)]
     assert (tmp_path / ".gitignore").read_text() == "output/\n*.egg-info/\n"
 
 
@@ -52,7 +52,7 @@ def test_with_core_clones_the_release_tag_of_the_installed_version(tmp_path, mon
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][-1] == "refs/tags/v0.1.0"
-    assert commands[1][:6] == ["git", "clone", "--depth", "1", "--branch", "v0.1.0"]
+    assert commands[1][:5] == ["git", "clone", "--filter=blob:none", "--branch", "v0.1.0"]
 
 
 def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch, capsys):
@@ -60,7 +60,7 @@ def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch
     monkeypatch.setattr(subprocess, "run", _recorder(commands, tag_exists=False))
     init.main([str(tmp_path), "--with-core"])
 
-    assert commands[1][:5] == ["git", "clone", "--depth", "1", init.CORE_URL]
+    assert commands[1][:4] == ["git", "clone", "--filter=blob:none", init.CORE_URL]
     assert "no release tag" in capsys.readouterr().out
 
 
@@ -71,7 +71,7 @@ def _fake_clone(monkeypatch):
         if command[:2] == ["git", "ls-remote"]:
             return SimpleNamespace(stdout="")
         if command[:2] != ["git", "clone"]:
-            return
+            return SimpleNamespace(stdout="v0.1.0-4-gabc1234\n")
         core = Path(command[-1])
         (core / ".git").mkdir(parents=True)
         (core / "microcircuit_lab").mkdir()
@@ -101,7 +101,11 @@ def test_with_core_copies_the_core_without_its_git_history(tmp_path, monkeypatch
     core = tmp_path / init.CORE_FOLDER
     assert (core / "microcircuit_lab" / "__init__.py").read_text() == "core code"
     assert (core / "pyproject.toml").is_file()
-    assert sorted(p.name for p in core.iterdir()) == ["docs", "microcircuit_lab", "pyproject.toml"]
+    assert sorted(p.name for p in core.iterdir()) == [
+        ".git_archival.txt", "docs", "microcircuit_lab", "pyproject.toml"
+    ]
+    # the commit copied, where setuptools-scm reads the version without .git
+    assert "describe-name: v0.1.0-4-gabc1234" in (core / ".git_archival.txt").read_text()
 
 
 def test_with_core_keeps_an_existing_copy(tmp_path, monkeypatch, capsys):

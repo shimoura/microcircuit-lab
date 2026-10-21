@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.connectivity import ConnectionConfig
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.psp_psc_conversion import convert_psp_weight
+from microcircuit_lab.network.psp_psc_conversion import (
+    convert_psp_weight,
+    convert_psp_weights,
+)
 
 
 def full_num_neurons(network: NetworkConfig) -> np.ndarray:
@@ -27,17 +29,43 @@ def full_num_neurons(network: NetworkConfig) -> np.ndarray:
     )
 
 
-def expected_synapses(connection: ConnectionConfig, n_source: int, n_target: int) -> float:
-    """The expected number of synapses of a connection between populations of
-    these sizes, whatever its rule."""
+def expected_synapses(rule, number, n_source, n_target):
+    """
+    The expected number of synapses of a connection, whatever its rule:
 
-    if connection.rule == "fixed_total_number":
-        return float(connection.n_synapses)
-    if connection.rule == "fixed_indegree":
-        return float(connection.indegree * n_target)
-    if connection.rule == "fixed_outdegree":
-        return float(connection.outdegree * n_source)
-    return connection.p * n_source * n_target
+    ==================== ==============================
+    rule                 expected synapses
+    ==================== ==============================
+    fixed_total_number   n_synapses
+    fixed_indegree       indegree x n_target
+    fixed_outdegree      outdegree x n_source
+    pairwise_bernoulli   p x n_source x n_target
+    ==================== ==============================
+
+    ``number`` is the number the rule takes; every argument may be a single
+    value or one value per connection.
+    """
+
+    rule, number = np.asarray(rule), np.asarray(number, dtype=float)
+    return np.select(
+        [rule == "fixed_indegree", rule == "fixed_outdegree", rule == "pairwise_bernoulli"],
+        [number * n_target, number * n_source, number * n_source * n_target],
+        default=number,
+    )
+
+
+def expected_synapses_per_connection(network: NetworkConfig) -> np.ndarray:
+    """:func:`expected_synapses` of every connection of the network, one value per row."""
+
+    table = network.connections
+    names = list(network.populations)
+    sizes = np.asarray([pop.size for pop in network.populations.values()], dtype=float)
+    return expected_synapses(
+        table["rule"],
+        table["number"],
+        n_source=sizes[table.population_index("source", names)],
+        n_target=sizes[table.population_index("target", names)],
+    )
 
 
 def full_num_synapses(network: NetworkConfig) -> np.ndarray:
@@ -51,22 +79,14 @@ def full_num_synapses(network: NetworkConfig) -> np.ndarray:
 
     pop_names = list(network.populations.keys())
     n = len(pop_names)
+    table = network.connections
 
     matrix = np.zeros((n, n), dtype=float)
-
-    name_to_index = {name: i for i, name in enumerate(pop_names)}
-
-    for connection in network.connections:
-
-        i = name_to_index[connection.target]
-        j = name_to_index[connection.source]
-
-        matrix[i, j] += expected_synapses(
-            connection,
-            network.populations[connection.source].size,
-            network.populations[connection.target].size,
-        )
-
+    np.add.at(
+        matrix,
+        (table.population_index("target", pop_names), table.population_index("source", pop_names)),
+        expected_synapses_per_connection(network),
+    )
     return matrix
 
 
@@ -172,38 +192,30 @@ def mean_psc_matrix(
     """
 
     pop_names = list(network.populations.keys())
-    name_to_index = {name: i for i, name in enumerate(pop_names)}
-
     n = len(pop_names)
+    table = network.connections
 
-    # (weight, expected number of synapses) of each connection, per pair
-    entries: dict[tuple[int, int], list[tuple[float, float]]] = {}
+    psp = table["weight.unit"] == "PSP"
+    weight = convert_psp_weights(network, psp) if psp.any() else table["weight.mean"]
+    synapses = expected_synapses_per_connection(network)
+    pair = (table.population_index("target", pop_names), table.population_index("source", pop_names))
 
-    for connection in network.connections:
+    def sum_per_pair(values):
+        matrix = np.zeros((n, n))
+        np.add.at(matrix, pair, values)
+        return matrix
 
-        i = name_to_index[connection.target]
-        j = name_to_index[connection.source]
-
-        weight = connection.weight.mean
-        if connection.weight.unit == "PSP":
-            weight = convert_psp_weight(network.populations[connection.target], weight)
-
-        count = expected_synapses(
-            connection,
-            network.populations[connection.source].size,
-            network.populations[connection.target].size,
+    # Most pairs have one connection: their weight as it is. A pair with
+    # several (one per synapse model) gets the mean of their weights,
+    # weighted by the expected synapses of each (the plain mean if none).
+    connections = sum_per_pair(1.0)
+    weights = sum_per_pair(weight)
+    synapse_count = sum_per_pair(synapses)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        several = np.where(
+            synapse_count > 0, sum_per_pair(weight * synapses) / synapse_count, weights / connections
         )
-        entries.setdefault((i, j), []).append((weight, count))
-
-    matrix = np.zeros((n, n), dtype=float)
-    for (i, j), pair in entries.items():
-        weights, counts = zip(*pair)
-        if len(pair) == 1:
-            matrix[i, j] = weights[0]
-        else:
-            matrix[i, j] = np.average(weights, weights=counts if sum(counts) else None)
-
-    return matrix
+    return np.select([connections == 1, connections > 1], [weights, several], default=0.0)
 
 
 def _tau_syn(network: NetworkConfig, parameter: str, needed=None) -> np.ndarray:

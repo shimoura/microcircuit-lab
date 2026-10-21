@@ -30,6 +30,16 @@ class BackgroundInputConfig(FrozenConfig):
         examples=["depressing"],
         description="name of an entry in synapses.yaml; omit for the default synapse",
     )
+    generator: str | None = Field(
+        default=None,
+        examples=["L23_E"],
+        description="a name for the population's Poisson generator: populations that give the "
+        "same name share one generator, and each neuron still gets its own independent spike "
+        "train. Saves memory when many populations have the same input, but "
+        "gives other random draws than one generator each. They need the same rate, "
+        "background_indegree and synapse (a generator connects through one synapse model). "
+        "Omit for a generator of its own",
+    )
 
 
 class BackgroundInputsFile(FrozenConfig):

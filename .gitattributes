@@ -1,0 +1,2 @@
+# Lets setuptools-scm read the version from a GitHub source archive (no .git folder).
+.git_archival.txt  export-subst

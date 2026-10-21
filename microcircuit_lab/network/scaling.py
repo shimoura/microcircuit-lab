@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+
 from microcircuit_lab.config.network import NetworkConfig
 
 
@@ -22,38 +24,32 @@ def scale_neuron_number(
     return int(round(value * factor))
 
 
-def scale_synapse_number(
-    value: int,
-    factor: float,
-) -> int:
-    """
-    Scale the number of synapses.
-    """
-
-    return int(round(value * factor))
-
-
-def scale_rule_number(
-    value: int | float,
-    rule: str,
-    N_scaling: float,
-    K_scaling: float,
-) -> int | float:
+def scale_rule_number(value, rule, N_scaling: float, K_scaling: float):
     """
     Scale the number a connection rule takes (see ``ConnectionConfig``) so
-    that every neuron has ``K_scaling`` times as many synapses.
+    that every neuron has ``K_scaling`` times as many synapses:
 
-    The total number of synapses scales with ``N_scaling * K_scaling``, the
-    indegree and outdegree with ``K_scaling``, and the connection
-    probability with ``K_scaling / N_scaling``, since both populations
-    shrink by ``N_scaling``.
+    ==================== ======================== ===========================
+    rule                 number                   scaled by
+    ==================== ======================== ===========================
+    fixed_total_number   n_synapses               N_scaling x K_scaling
+    fixed_indegree       indegree                 K_scaling
+    fixed_outdegree      outdegree                K_scaling
+    pairwise_bernoulli   p                        K_scaling / N_scaling
+    ==================== ======================== ===========================
+
+    The probability grows by 1 / N_scaling because both populations shrink by
+    N_scaling. Numbers of synapses are rounded to whole numbers. ``value``
+    and ``rule`` may be a single value or one value per connection.
     """
 
-    if rule == "pairwise_bernoulli":
-        return value * K_scaling / N_scaling
-    if rule == "fixed_total_number":
-        return scale_synapse_number(value, N_scaling * K_scaling)
-    return scale_synapse_number(value, K_scaling)
+    value, rule = np.asarray(value, dtype=float), np.asarray(rule)
+    count_factor = np.where(rule == "fixed_total_number", N_scaling * K_scaling, K_scaling)
+    return np.where(
+        rule == "pairwise_bernoulli",
+        value * K_scaling / N_scaling,
+        np.round(value * count_factor),
+    )
 
 
 def scale_weight(
@@ -112,13 +108,10 @@ def scale_weights(
     scaling = network.scaling
     weight_scaler = scale_weight_sqrt if scaling.preserve_variance else scale_weight
 
-    # Recurrent connections.
-    connections = []
-
-    for connection in network.connections:
-        mean = weight_scaler(connection.weight.mean, scaling.K_scaling)
-        weight = connection.weight.model_copy(update={"mean": mean})
-        connections.append(connection.model_copy(update={"weight": weight}))
+    # Recurrent connections: the whole weight column at once.
+    connections = network.connections.with_columns(copy=False, **{
+        "weight.mean": weight_scaler(network.connections["weight.mean"], scaling.K_scaling)
+    })
 
     # Background inputs.
     background_inputs = {}
