@@ -183,8 +183,12 @@ def plot_raster(
 
 def _spread(positions: list[float], gap: float, low: float, high: float) -> list[float]:
     """Move sorted ``positions`` as little as possible so that neighbours are at
-    least ``gap`` apart, staying within ``[low, high]`` where there is room."""
+    least ``gap`` apart, staying within ``[low, high]``. When there are too many
+    labels for that gap, they are set closer, so they still fit: a label past
+    the axis would make matplotlib widen the axis and squeeze the data."""
 
+    if positions:
+        gap = min(gap, (high - low) / len(positions))
     groups: list[list[float]] = []
     for position in positions:
         groups.append([position])

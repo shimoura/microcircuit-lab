@@ -152,3 +152,22 @@ RECEPTOR_PORT_NEURON = "B_E_upper"
 RECEPTOR_PORT_MODEL = "iaf_psc_exp_multisynapse"
 RECEPTOR_PORTS = {"excitatory": 1, "inhibitory": 2, "other_area": 3}
 RECEPTOR_PORT_TAU_SYN = {"excitatory": 2.0, "inhibitory": 4.0, "other_area": 20.0}
+
+# --- Only for toy_two_areas_clustered (clustered.py) -------------------------
+
+# Each population is split into this many clusters.
+CLUSTERS = 3
+
+# The clustering rule (see clustered.py): the
+# weights of E -> E connections are multiplied by J_E_PLUS within a cluster;
+# those of every connection with an inhibitory source or target by
+# J_I_plus = 1 + R_J * (J_E_PLUS - 1). Between clusters, J_minus =
+# (CLUSTERS - J_plus) / (CLUSTERS - 1), which keeps each neuron's mean input.
+# J_E_PLUS must stay below CLUSTERS.
+J_E_PLUS = 2.0
+R_J = 0.75
+
+# The same, for the connections between areas (cluster i of one area to
+# cluster i of the other).
+BETWEEN_AREAS_J_E_PLUS = 2.0
+BETWEEN_AREAS_R_J = 0.75
