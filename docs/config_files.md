@@ -210,6 +210,13 @@ background_inputs:
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
+    # optional · text · a name for the population's Poisson generator: populations that
+    #   give the same name share one generator, and each neuron still gets its own
+    #   independent spike train. Saves memory when many populations have the same input,
+    #   but gives other random draws than one generator each. They need the same rate,
+    #   background_indegree and synapse (a generator connects through one synapse
+    #   model). Omit for a generator of its own
+    generator: L23_E
 # optional, default poisson · one of poisson | mean_current · 'mean_current' replaces
 #   each population's Poisson input by its mean, a constant current (Potjans & Diesmann
 #   2014, Fig. 5); for a constant input of your own, use I_e in neurons.yaml or a dc

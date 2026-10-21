@@ -350,7 +350,8 @@ class NestBackend:
 
     def create_background_inputs(self) -> None:
         """
-        Create one background Poisson generator per configured population.
+        Create one background Poisson generator per configured population, or
+        one per ``generator`` name for the populations that share one.
 
         Does nothing when background_mode is "mean_current": prepare_network has
         already added the background input to each neuron's I_e as a constant
@@ -366,18 +367,24 @@ class NestBackend:
 
         logger.info("Creating background Poisson generators:")
 
+        # Populations with the same ``generator`` name share one generator
+        # (each neuron still gets its own spike train); the others get their own.
+        shared: dict[str, nest.NodeCollection] = {}
         for pop_name, input_cfg in self._network.background_inputs.items():
             logger.info(
-                "Creating background Poisson input for %s (rate=%g Hz)",
+                "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
                 input_cfg.rate,
+                input_cfg.generator or "its own",
             )
-            pg = nest.Create(
-                "poisson_generator",
-                params={
-                    "rate": input_cfg.rate,
-                },
-            )
+            if input_cfg.generator is None:
+                pg = nest.Create("poisson_generator", params={"rate": input_cfg.rate})
+            elif input_cfg.generator not in shared:
+                pg = shared[input_cfg.generator] = nest.Create(
+                    "poisson_generator", params={"rate": input_cfg.rate}
+                )
+            else:
+                pg = shared[input_cfg.generator]
             self.background_generators[pop_name] = pg
 
     def connect_background_inputs(self) -> None:

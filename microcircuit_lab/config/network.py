@@ -164,6 +164,42 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
+    def _check_shared_generators(self) -> NetworkConfig:
+        groups: dict[str, list[str]] = {}
+        for name, entry in self.background_inputs.items():
+            if entry.generator is not None:
+                groups.setdefault(entry.generator, []).append(name)
+        if groups and self.background_mode == "mean_current":
+            raise ValueError(
+                f"background_inputs.yaml: generator {sorted(groups)[0]!r} is set, but "
+                "background_mode is mean_current, which creates no generators."
+            )
+        # One generator fires at one rate (rate x indegree) through one synapse
+        # model (the simulator connects a device through one model). Rate and
+        # indegree are compared one by one, not their product: that holds
+        # whether the network is prepared or not (a prepared rate is already
+        # rate x indegree), and after any K_scaling.
+        indegree = {name: pop.background_indegree for name, pop in self.populations.items()}
+        for generator, names in groups.items():
+            inputs = {
+                name: (
+                    self.background_inputs[name].rate,
+                    indegree.get(name),
+                    self.background_inputs[name].synapse,
+                )
+                for name in names
+            }
+            first = names[0]
+            different = [name for name in names if inputs[name] != inputs[first]]
+            if different:
+                raise ValueError(
+                    f"background_inputs.yaml: the populations of generator {generator!r} need "
+                    "the same rate, background_indegree and synapse (rate, indegree, synapse): "
+                    f"{first} has {inputs[first]}, {different[0]} has {inputs[different[0]]}."
+                )
+        return self
+
+    @model_validator(mode="after")
     def _check_synapses(self) -> NetworkConfig:
         # Connections: checked once per synapse name, on whole columns.
         table = self.connections
