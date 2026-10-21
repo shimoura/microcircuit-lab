@@ -77,12 +77,9 @@ def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
     _mean_current_is_known).
     """
 
-    known = [c for c in original.connections if _mean_current_is_known(original, c)]
-    unknown = [
-        f"{c.source} -> {c.target}"
-        for c in original.connections
-        if not _mean_current_is_known(original, c)
-    ]
+    table = original.connections
+    known = _connections_with_known_current(original)
+    unknown = [f"{s} -> {t}" for s, t in zip(table["source"][~known], table["target"][~known])]
     if unknown:
         logger.warning(
             "The input lost by scaling is not compensated for %s: their weights are "
@@ -95,12 +92,13 @@ def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
 
     # Excitatory and inhibitory input have different synaptic time
     # constants, so each kind is compensated with its own.
-    excitatory = [c for c in known if c.weight.mean > 0]
-    inhibitory = [c for c in known if c.weight.mean < 0]
-    for connections, tau_syn in ((excitatory, tau_syn_ex), (inhibitory, tau_syn_in)):
-        if not connections:
+    weight = table["weight.mean"]
+    excitatory = known & (weight > 0)
+    inhibitory = known & (weight < 0)
+    for rows, tau_syn in ((excitatory, tau_syn_ex), (inhibitory, tau_syn_in)):
+        if not rows.any():
             continue
-        part = original.model_copy(update={"connections": connections})
+        part = original.model_copy(update={"connections": table.keep_rows(rows)})
         network_input = network_mean_input(
             mean_PSC_matrix=mean_psc_matrix(part),
             indegree_matrix=indegree_matrix(part),
@@ -212,6 +210,15 @@ def _mean_current_is_known(network: NetworkConfig, item) -> bool:
     """
 
     return item.weight.unit != "native" and network.receptor_port(item.synapse) is None
+
+
+def _connections_with_known_current(network: NetworkConfig) -> np.ndarray:
+    """``_mean_current_is_known`` for every connection at once (one bool per row)."""
+
+    table = network.connections
+    ports = {name: network.receptor_port(name) for name in set(table["synapse"].tolist())}
+    default_port = np.asarray([ports[name] is None for name in table["synapse"]], dtype=bool)
+    return (table["weight.unit"] != "native") & default_port
 
 
 def _background_without_known_current(network: NetworkConfig) -> list[str]:

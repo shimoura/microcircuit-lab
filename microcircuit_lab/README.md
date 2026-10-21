@@ -236,6 +236,15 @@ connections:
 
 A builder writes long tables (`connectivity.yaml` of a multi-area model) one record per line, `- {source: ..., target: ..., weight: {...}, ...}`: `humam_all` has about 8,400 lines instead of 100,000. It is plain YAML and loads like any other. `write_network_directory` does this for you.
 
+For millions of connections, YAML gets slow to write and read. `connectivity.yaml` can then name a CSV file instead of listing the rows:
+
+```yaml
+bound_mode: redraw
+connections_file: connections.csv
+```
+
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its prepared connections the same way, next to `config.yaml`.
+
 ## Scaling a network
 
 A full-scale network can be slow or need a lot of memory. `scaling.yaml` runs a smaller copy:

@@ -214,6 +214,28 @@ def convert_psp_weight(population: PopulationConfig, psp: float) -> float:
         raise ValueError(f"Population {population.name!r}: {exc}") from exc
 
 
+def convert_psp_weights(network: NetworkConfig, psp: np.ndarray) -> np.ndarray:
+    """All connection weights, those of the rows marked ``psp`` converted
+    from mV to pA (the others as they are).
+
+    The conversion is linear in the PSP and its sign picks ``tau_syn_ex`` or
+    ``tau_syn_in``, so it is one factor per target population and sign,
+    computed only for the populations that need it.
+    """
+
+    names = list(network.populations)
+    target = network.connections.population_index("target", names)
+    mean = network.connections["weight.mean"].astype(float)
+    converted = mean.copy()
+    for sign in (1.0, -1.0):
+        rows = psp & (np.sign(mean) == sign)
+        factor = np.zeros(len(names))
+        for i in np.unique(target[rows]):
+            factor[i] = sign * convert_psp_weight(network.populations[names[i]], sign)
+        converted[rows] = mean[rows] * factor[target[rows]]
+    return converted
+
+
 def convert_network_psp_to_psc(network: NetworkConfig) -> NetworkConfig:
     """
     Convert synaptic weights stored as PSP amplitudes (``unit: PSP``) into
@@ -228,16 +250,13 @@ def convert_network_psp_to_psc(network: NetworkConfig) -> NetworkConfig:
     current amplitudes in pA) instead.
     """
 
-    connections = []
-    for connection in network.connections:
-        if connection.weight.unit != "PSP":
-            connections.append(connection)
-            continue
-
-        target = network.populations[connection.target]
-        mean = convert_psp_weight(target, connection.weight.mean)
-        weight = connection.weight.model_copy(update={"mean": mean, "unit": "PSC"})
-        connections.append(connection.model_copy(update={"weight": weight}))
+    connections = network.connections
+    psp = connections["weight.unit"] == "PSP"
+    if psp.any():
+        connections = connections.with_columns(copy=False, **{
+            "weight.mean": convert_psp_weights(network, psp),
+            "weight.unit": np.where(psp, "PSC", connections["weight.unit"]),
+        })
 
     background_inputs = {}
     for pop_name, input_cfg in network.background_inputs.items():

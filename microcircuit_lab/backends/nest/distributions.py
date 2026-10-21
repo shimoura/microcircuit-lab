@@ -36,9 +36,10 @@ def per_neuron_value(value):
     return draw(**value.model_extra)
 
 
-def create_weight_spec(weight, bound_mode: str):
+def create_weight_spec(mean: float, rel_std: float, distribution: str, bound_mode: str):
     """
-    Create a NEST weight parameter.
+    Create a NEST weight parameter from a weight's ``mean``, ``rel_std`` and
+    ``distribution`` (the fields of a weight in the config files).
 
     A weight without spread (fixed, or ``rel_std`` 0) is returned as
     given. Every distribution has the given mean and standard deviation;
@@ -47,83 +48,96 @@ def create_weight_spec(weight, bound_mode: str):
     redrawn or clipped to 0, as set by the network's ``bound_mode``.
     """
 
-    if weight.distribution == "fixed" or weight.rel_std == 0.0:
-        return weight.mean
+    if distribution == "fixed" or rel_std == 0.0:
+        return mean
 
-    std = abs(weight.mean * weight.rel_std)
+    std = abs(mean * rel_std)
 
-    if weight.distribution in ("normal", "uniform"):
-        if weight.distribution == "normal":
-            distribution = nest.random.normal(mean=weight.mean, std=std)
+    if distribution in ("normal", "uniform"):
+        if distribution == "normal":
+            drawn = nest.random.normal(mean=mean, std=std)
         else:
             half_width = np.sqrt(3.0) * std
-            distribution = nest.random.uniform(
-                min=weight.mean - half_width, max=weight.mean + half_width
+            drawn = nest.random.uniform(
+                min=mean - half_width, max=mean + half_width
             )
         clip = bound_mode == "clip"
 
-        if weight.mean >= 0:
+        if mean >= 0:
             if clip:
-                return nest.math.max(distribution, 0.0)
-            return nest.math.redraw(distribution, min=0.0, max=float("inf"))
+                return nest.math.max(drawn, 0.0)
+            return nest.math.redraw(drawn, min=0.0, max=float("inf"))
 
         if clip:
-            return nest.math.min(distribution, 0.0)
-        return nest.math.redraw(distribution, min=-float("inf"), max=0.0)
+            return nest.math.min(drawn, 0.0)
+        return nest.math.redraw(drawn, min=-float("inf"), max=0.0)
 
-    if weight.distribution == "lognormal":
-        variance = (weight.mean * weight.rel_std) ** 2
-        sigma2 = np.log(1.0 + variance / weight.mean**2)
+    if distribution == "lognormal":
+        variance = (mean * rel_std) ** 2
+        sigma2 = np.log(1.0 + variance / mean**2)
         sigma = np.sqrt(sigma2)
-        mu = np.log(abs(weight.mean)) - sigma2 / 2.0
+        mu = np.log(abs(mean)) - sigma2 / 2.0
 
-        distribution = nest.random.lognormal(mean=mu, std=sigma)
-        return distribution if weight.mean > 0 else -1.0 * distribution
+        drawn = nest.random.lognormal(mean=mu, std=sigma)
+        return drawn if mean > 0 else -1.0 * drawn
 
-    raise NotImplementedError(f"Unsupported distribution: {weight.distribution}")
+    raise NotImplementedError(f"Unsupported distribution: {distribution}")
 
 
-def create_delay_parameter(delay, bound_mode: str):
+def create_delay_parameter(
+    mean: float,
+    rel_std: float,
+    distribution: str,
+    minimum: float | None,
+    bound_mode: str,
+    resolution: float | None = None,
+):
     """
-    Create a NEST delay parameter.
+    Create a NEST delay parameter from a delay's ``mean``, ``rel_std``,
+    ``distribution`` and ``minimum`` (the fields of a delay in the config
+    files; a ``minimum`` of None or NaN is not set).
 
-    A drawn delay below the minimum (``delay.minimum``, or half the
+    A drawn delay below the minimum (``minimum``, or half the
     simulation step if not set) is redrawn or clipped to the minimum,
     as set by the network's ``bound_mode``. The minimum is never below
     half the simulation step, which NEST would round to a delay of 0.
     A fixed delay is returned as given; a uniform one is drawn from
     mean ± sqrt(3) * std, which has that mean and standard deviation.
+
+    ``resolution`` is the simulation step (ms); give it when creating many
+    delays, since reading ``nest.resolution`` asks NEST for its whole status
+    each time.
     """
 
-    if delay.distribution == "fixed" or delay.rel_std == 0.0:
-        return delay.mean
+    if distribution == "fixed" or rel_std == 0.0:
+        return mean
 
-    std = delay.mean * delay.rel_std
-    min_delay = 0.5 * nest.resolution
-    if delay.minimum is not None:
-        min_delay = max(delay.minimum, min_delay)
+    std = mean * rel_std
+    min_delay = 0.5 * (nest.resolution if resolution is None else resolution)
+    if minimum is not None and minimum == minimum:  # NaN is "not set" too
+        min_delay = max(minimum, min_delay)
 
-    if delay.distribution == "normal":
-        distribution = nest.random.normal(mean=delay.mean, std=std)
+    if distribution == "normal":
+        drawn = nest.random.normal(mean=mean, std=std)
 
-    elif delay.distribution == "uniform":
+    elif distribution == "uniform":
         half_width = np.sqrt(3.0) * std
-        distribution = nest.random.uniform(
-            min=delay.mean - half_width, max=delay.mean + half_width
+        drawn = nest.random.uniform(
+            min=mean - half_width, max=mean + half_width
         )
 
-    elif delay.distribution == "lognormal":
+    elif distribution == "lognormal":
         variance = std**2
-        sigma_squared = np.log1p(variance / delay.mean**2)
+        sigma_squared = np.log1p(variance / mean**2)
         sigma = np.sqrt(sigma_squared)
-        mu = np.log(delay.mean) - 0.5 * sigma_squared
+        mu = np.log(mean) - 0.5 * sigma_squared
 
-        distribution = nest.random.lognormal(mean=mu, std=sigma)
+        drawn = nest.random.lognormal(mean=mu, std=sigma)
 
     else:
-        raise ValueError(f"Unsupported delay distribution: {delay.distribution!r}")
+        raise ValueError(f"Unsupported delay distribution: {distribution!r}")
 
     if bound_mode == "clip":
-        return nest.math.max(distribution, min_delay)
+        return nest.math.max(drawn, min_delay)
 
-    return nest.math.redraw(distribution, min=min_delay, max=float("inf"))
+    return nest.math.redraw(drawn, min=min_delay, max=float("inf"))

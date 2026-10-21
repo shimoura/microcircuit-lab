@@ -40,6 +40,7 @@ from typing import Any, Literal
 
 import numpy as np
 
+from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.load import load_network
@@ -143,7 +144,7 @@ def write_network_directory(
     *,
     populations: Iterable[Mapping[str, Any]],
     neurons: Mapping[str, Mapping[str, Any]],
-    connections: Iterable[Mapping[str, Any]],
+    connections: Iterable[Mapping[str, Any]] | ConnectionTable,
     background_inputs: Mapping[str, Mapping[str, Any]],
     background_mode: Literal["poisson", "mean_current"] = "poisson",
     bound_mode: Literal["redraw", "clip"] = "redraw",
@@ -172,7 +173,9 @@ def write_network_directory(
     connections
         One dict per projection (``source``, ``target``, ``n_synapses`` or
         another ``rule`` with its number, ``weight``, ``delay``, optionally
-        ``synapse``).
+        ``synapse``). Or, for a large network, a
+        :class:`~microcircuit_lab.config.connection_table.ConnectionTable`,
+        written as ``connections.csv``.
     background_inputs
         ``{population name: {"rate": ..., "weight": ..., "delay": ...}}``.
     background_mode
@@ -228,7 +231,12 @@ def write_network_directory(
     connectivity_payload: dict[str, Any] = {}
     if bound_mode != "redraw":
         connectivity_payload["bound_mode"] = bound_mode
-    connectivity_payload["connections"] = flow_records(list(connections))
+    if isinstance(connections, ConnectionTable):
+        # A large network: the table goes to a CSV file, named in connectivity.yaml.
+        connections.write_csv(directory / "connections.csv")
+        connectivity_payload["connections_file"] = "connections.csv"
+    else:
+        connectivity_payload["connections"] = flow_records(list(connections))
 
     background_payload: dict[str, Any] = {}
     if background_mode != "poisson":

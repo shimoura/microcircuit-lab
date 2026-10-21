@@ -14,6 +14,7 @@ from typing import Any
 
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
 from microcircuit_lab.backends.run_folder_reader import RunFolderReader
+from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import load_network
@@ -150,6 +151,16 @@ class Simulation:
             )
 
         resolved = read_yaml(config_path)
+        # A large network's connections are in a CSV file next to config.yaml.
+        if "connections_file" in resolved["network"]:
+            name = resolved["network"].pop("connections_file")
+            csv_path = run_dir / name
+            if not csv_path.is_file():
+                raise FileNotFoundError(
+                    f"{run_dir}: config.yaml names connections_file '{name}', but there is "
+                    f"no file {csv_path}."
+                )
+            resolved["network"]["connections"] = ConnectionTable.read_csv(csv_path)
         network = NetworkConfig.model_validate(resolved["network"])
         simulation_config = SimulationConfig.model_validate(resolved["simulation"])
         backend = RunFolderReader(run_dir)

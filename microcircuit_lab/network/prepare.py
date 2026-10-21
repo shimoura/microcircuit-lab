@@ -11,7 +11,8 @@ currents) and call it from :func:`prepare_network`.
 
 from __future__ import annotations
 
-from microcircuit_lab.config.connectivity import RULE_NUMBER
+import numpy as np
+
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.compensation import (
     compensate_lost_mean_input,
@@ -105,7 +106,8 @@ def _scale_indegrees(
     Apply indegree scaling.
 
     Currently scales:
-        - the number each connection rule takes (see scale_rule_number)
+        - the number each connection rule takes (see scale_rule_number), for
+          the whole column at once
         - background indegrees
 
     Synaptic weights and DC compensation are intentionally
@@ -120,26 +122,24 @@ def _scale_indegrees(
         scaled_indegree = population.background_indegree * scaling.K_scaling
         populations[name] = population.model_copy(update={"background_indegree": scaled_indegree})
 
-    # Scale the number each connection rule takes (n_synapses, indegree, ...)
-    connections = []
-    for connection in network.connections:
-        scaled = scale_rule_number(
-            connection.number,
-            connection.rule,
-            scaling.N_scaling,
-            scaling.K_scaling,
-        )
-        if scaled == 0:
-            continue
-        if connection.rule == "pairwise_bernoulli" and scaled > 1.0:
-            raise ValueError(
-                f"Connection {connection.source} -> {connection.target}: with N_scaling="
-                f"{scaling.N_scaling} and K_scaling={scaling.K_scaling}, p={connection.p} "
-                f"becomes {scaled:.3g}, above 1. Keeping the indegree in smaller populations "
-                "needs a higher probability; increase N_scaling or lower K_scaling."
-            )
+    # Scale the number each connection rule takes (n_synapses, indegree, ...),
+    # for all connections at once.
+    table = network.connections
+    rule = table["rule"]
+    scaled = scale_rule_number(table["number"], rule, scaling.N_scaling, scaling.K_scaling)
 
-        connections.append(connection.model_copy(update={RULE_NUMBER[connection.rule]: scaled}))
+    too_likely = np.flatnonzero((rule == "pairwise_bernoulli") & (scaled > 1.0))
+    if too_likely.size:
+        i = too_likely[0]
+        raise ValueError(
+            f"Connection {table['source'][i]} -> {table['target'][i]}: with N_scaling="
+            f"{scaling.N_scaling} and K_scaling={scaling.K_scaling}, p={table['number'][i]} "
+            f"becomes {scaled[i]:.3g}, above 1. Keeping the indegree in smaller populations "
+            "needs a higher probability; increase N_scaling or lower K_scaling."
+        )
+
+    # A connection scaled to no synapse is left out.
+    connections = table.with_columns(copy=False, number=scaled).keep_rows(scaled != 0)
 
     return network.model_copy(update={"populations": populations, "connections": connections})
 

@@ -35,11 +35,11 @@ def _expected_first_weight_psc(network: NetworkConfig, *, linear: bool) -> float
     PSP amplitude convert to, scaled the same way prepare_network
     would (linear w -> w/K, or sqrt-preserving w -> w/sqrt(K))."""
 
-    first = network.connections[0]
-    target_params = network.populations[first.target].neuron.parameters
+    first = network.connections.to_yaml_rows()[0]
+    target_params = network.populations[first["target"]].neuron.parameters
 
     psc = psp_to_psc_iaf_psc_exp(
-        psp=first.weight.mean,
+        psp=first["weight"]["mean"],
         C_m=target_params.C_m,
         tau_m=target_params.tau_m,
         tau_syn=target_params.tau_syn_ex,
@@ -74,7 +74,7 @@ def test_weight_scaling():
 
     expected = _expected_first_weight_psc(network_config, linear=False)
 
-    assert derived.connections[0].weight.mean == pytest.approx(expected)
+    assert derived.connections["weight.mean"][0] == pytest.approx(expected)
 
 
 def test_identity_scaling_changes_nothing():
@@ -148,7 +148,7 @@ def test_preserve_variance_false_uses_linear_weight_scaling():
 
     expected = _expected_first_weight_psc(network, linear=True)  # linear, not sqrt
 
-    assert derived.connections[0].weight.mean == pytest.approx(expected)
+    assert derived.connections["weight.mean"][0] == pytest.approx(expected)
 
 
 def test_preserve_variance_false_skips_dc_compensation():
@@ -196,4 +196,4 @@ def test_preserve_mean_input_false_disables_dc_compensation():
 
     # weight scaling itself is untouched by preserve_mean_input -- still sqrt
     expected = _expected_first_weight_psc(network, linear=False)
-    assert derived.connections[0].weight.mean == pytest.approx(expected)
+    assert derived.connections["weight.mean"][0] == pytest.approx(expected)

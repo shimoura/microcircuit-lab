@@ -202,7 +202,7 @@ def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Pat
     config = load_network(_write(tmp_path, bound_mode="clip"))
 
     assert config.bound_mode == "clip"
-    assert config.connections[0].delay.minimum == 0.1
+    assert config.connections["delay.minimum"][0] == 0.1
 
 
 def test_bound_mode_defaults_to_redraw_and_is_not_written(tmp_path: Path) -> None:
