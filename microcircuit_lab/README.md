@@ -13,7 +13,7 @@ Build, simulate and analyse spiking neural network models, from a single microci
 - [Scaling a network](#scaling-a-network)
 - [Adding a new model](#adding-a-new-model)
 - [Analysing a run](#analysing-a-run)
-- [Experiments](#experiments)
+- [Running from a script](#running-from-a-script)
 - [Run outputs](#run-outputs)
 - [Using a NESTML model](#using-a-nestml-model)
 - [Changing the core](#changing-the-core)
@@ -39,6 +39,12 @@ from microcircuit_lab import Simulation
 simulation = Simulation.from_yaml(network_name="toy")
 simulation.run()
 ```
+
+Next:
+
+- **Other settings** (duration, seed, threads, what to record): edit `configs/simulation/toy.yaml` and run again.
+- **Parameter sweeps, several seeds, any batch:** a Python script that loops over runs; recipes in [Running from a script](#running-from-a-script).
+- **Your own network:** [Adding a new model](#adding-a-new-model).
 
 ## How it works
 
@@ -421,9 +427,49 @@ The figure is saved in `plots/`, one per area with `--area all`, and listed in `
 - A name already taken (`raster`, ...) raises an error.
 - A package can provide such plots through the `microcircuit_lab.analyses` entry-point group (see `microcircuit_lab/analysis/run_command_plots.py`).
 
-## Experiments
+## Running from a script
 
-An experiment (a sweep, a comparison) is a plain script in `experiments/` that runs simulations itself:
+The command and a script run the same steps (check, prepare, simulate, save); the command also makes the plots.
+
+| | Command | Script |
+| :--- | :--- | :--- |
+| run a network as configured | `microcircuit-lab run --network toy` | `Simulation.from_yaml(network_name="toy").run()` |
+| change a setting (seed, duration, ...) | edit `configs/simulation/toy.yaml` | change it in code, below |
+| change the network | edit its YAML files | `read_network`, change, `prepare_network`, below |
+| many runs (seeds, a sweep) | a shell loop | a Python loop, below |
+| plots | made from `configs/analysis/toy.yaml` | call the plot functions, or `run --run-dir <folder>` afterwards |
+
+Scripts go in your project's `experiments/` and run from the project folder (`python experiments/my_sweep.py`), so that `configs/` and `output/` are found. A worked example: `experiments/toy/background_drive_sweep.py`.
+
+**Other settings.** The settings are a `SimulationConfig` (fields: [docs/config_files.md](../docs/config_files.md)); replace it before `run()`:
+
+```python
+from microcircuit_lab import Simulation
+
+simulation = Simulation.from_yaml(network_name="toy")
+settings = simulation.simulation_config
+simulation.simulation_config = settings.model_copy(update={"t_sim": 2000.0, "rng_seed": 7})
+simulation.run()
+print(simulation.output_dir)   # where this run was saved
+```
+
+**A batch.** Each run is independent (NEST starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
+
+```python
+from microcircuit_lab import Simulation
+from microcircuit_lab.analysis import compute_population_firing_rates
+
+rates = {}
+for seed in (1, 2, 3):
+    simulation = Simulation.from_yaml(network_name="toy")
+    settings = simulation.simulation_config
+    output = settings.output.model_copy(update={"output_dir": f"output/toy_seeds/seed_{seed}"})
+    simulation.simulation_config = settings.model_copy(update={"rng_seed": seed, "output": output})
+    simulation.run()
+    rates[seed] = compute_population_firing_rates(simulation)   # {population: spikes/s}
+```
+
+**A changed network.** `read_network` gives the network as written; change it, then `prepare_network` gets it ready to simulate:
 
 ```python
 from microcircuit_lab import Simulation, prepare_network, read_network
@@ -434,11 +480,20 @@ populations = {name: pop.model_copy(update={"background_indegree": 2000})
                for name, pop in network.populations.items()}
 network = prepare_network(network.model_copy(update={"populations": populations}))
 
-simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy")
+simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy_k2000")
 simulation.run()
 ```
 
-`read_network` gives the network as written; change it, then `prepare_network` gets it ready to simulate. A worked example: `experiments/toy/background_drive_sweep.py`.
+**Results and plots.** The functions in `microcircuit_lab.analysis` take a simulation, just run or reopened later:
+
+```python
+from microcircuit_lab.analysis import plot_raster
+
+plot_raster(simulation, save_path=simulation.output_dir / "plots" / "raster.png", show=False)
+later = Simulation.from_run_dir("output/toy_seeds/seed_1/<timestamp>")   # no NEST needed
+```
+
+Runs in one script go one after another. For runs in parallel, start several scripts; each run still gets its own folder. With several MPI processes, save or plot only where `simulation.is_main_process` is true (see [Several MPI processes](#several-mpi-processes)).
 
 ## Run outputs
 
