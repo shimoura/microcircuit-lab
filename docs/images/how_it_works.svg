@@ -42,7 +42,7 @@
 <text x="378" y="292" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">in NEST, per configs/simulation</text>
 <rect x="366" y="328.5" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
 <text x="378" y="347.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">4  save</text>
-<text x="587" y="347.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">runs.py</text>
+<text x="587" y="347.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">run_folder.py</text>
 <text x="378" y="365.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">spikes, config, metadata</text>
 <rect x="366" y="402" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
 <text x="378" y="421" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">5  plot</text>
