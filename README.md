@@ -1,5 +1,7 @@
 # Microcircuit Lab
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23547742.svg)](https://doi.org/10.5281/zenodo.23547742)
+
 Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
 
 The full documentation is in [`microcircuit_lab/README.md`](microcircuit_lab/README.md).
@@ -24,7 +26,7 @@ A project holds your own builders, analyses and configs, and with `--with-core` 
 
 ## How to cite
 
-If you use Microcircuit Lab in your work, please cite it. [`CITATION.cff`](CITATION.cff) has the reference; on GitHub, "Cite this repository" in the sidebar gives it in APA and BibTeX. Please also cite the papers of the models you use (listed in each builder's README).
+If you use Microcircuit Lab in your work, please cite it. [`CITATION.cff`](CITATION.cff) has the reference; on GitHub, "Cite this repository" in the sidebar gives it in APA and BibTeX. The DOI [10.5281/zenodo.23547742](https://doi.org/10.5281/zenodo.23547742) cites all versions; each release also has its own DOI on Zenodo. Please also cite the papers of the models you use (listed in each builder's README).
 
 ## License
 

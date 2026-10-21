@@ -3,6 +3,7 @@ message: "If you use Microcircuit Lab, please cite it as below."
 title: "Microcircuit Lab"
 abstract: "A configuration-driven framework for building, simulating and analysing spiking network models of cortical microcircuits and multi-area models."
 type: software
+doi: 10.5281/zenodo.23547742
 authors:
   - family-names: Shimoura
     given-names: Renan Oliveira
