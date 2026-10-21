@@ -22,6 +22,12 @@ microcircuit-lab run --network toy
 
 The plots and spikes are saved in `output/toy/<timestamp>/`. `pd14`, `toy_two_areas` and the HuMAM networks run the same way. NEST can also come from conda-forge or a build from source; see [Installation](microcircuit_lab/README.md#installation).
 
+Next:
+
+- **Other settings** (duration, seed, threads): edit `configs/simulation/toy.yaml` and run again.
+- **Parameter sweeps, several seeds, any batch:** a Python script; recipes in [Running from a script](microcircuit_lab/README.md#running-from-a-script).
+- **Your own network:** [Adding a new model](microcircuit_lab/README.md#adding-a-new-model).
+
 A project holds your own builders, analyses and configs, and with `--with-core` your own copy of the core to change as you like; see [Starting a project](microcircuit_lab/README.md#starting-a-project). To propose a change to the core here, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How to cite
