@@ -23,7 +23,7 @@ Build, simulate and analyse spiking neural network models, from a single microci
 ## Quick start
 
 ```bash
-pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 microcircuit-lab init my_project --with-core
 cd my_project
 microcircuit-lab run --network toy
@@ -99,10 +99,10 @@ Good to know:
 ## Installation
 
 ```bash
-pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 ```
 
-Use the version you want in place of `v0.1.0`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
+This installs the latest version. For a fixed one, add its tag from the [releases](https://github.com/shimoura/microcircuit-lab/releases) to the address: `...microcircuit-lab@<tag>`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
 
 - conda-forge: `mamba install -c conda-forge nest-simulator`
 - from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh` (`NEST_WITH_MPI=ON` for MPI)

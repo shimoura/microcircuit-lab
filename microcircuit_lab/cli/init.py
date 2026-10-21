@@ -43,6 +43,12 @@ def _ignore_build_files(project: Path) -> None:
         gitignore.write_text("\n".join([*lines, entry]) + "\n")
 
 
+def _git(source: Path, *arguments: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(source), *arguments], check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
 def _copy_core(source: Path, core: Path) -> None:
     core.mkdir(parents=True)
     for name in CORE_FILES:
@@ -51,6 +57,14 @@ def _copy_core(source: Path, core: Path) -> None:
             shutil.copytree(entry, core / name, ignore=shutil.ignore_patterns("__pycache__"))
         elif entry.is_file():
             shutil.copy2(entry, core / name)
+    # The copy has no git history: record the commit it holds where setuptools-scm
+    # reads it without one (as in a GitHub source archive), so the copy installs
+    # under its own version (v0.1.0 -> 0.1.0, 4 commits past it -> 0.1.1.dev4+g<commit>).
+    (core / ".git_archival.txt").write_text(
+        f"node: {_git(source, 'rev-parse', 'HEAD')}\n"
+        f"node-date: {_git(source, 'log', '-1', '--format=%cI')}\n"
+        f"describe-name: {_git(source, 'describe', '--tags', '--match', '*[0-9]*')}\n"
+    )
     print(f"Copied the core into {core}")
 
 
@@ -92,14 +106,14 @@ def _install_core(project: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "core"
         tag = _release_tag()
+        # The commits and tags, without the files of old commits: enough to
+        # name the version of the commit copied (see _copy_core).
+        branch = [] if tag is None else ["--branch", tag]
         if tag is None:
             print("The installed version has no release tag; using the latest main instead.")
-            subprocess.run(["git", "clone", "--depth", "1", CORE_URL, str(source)], check=True)
-        else:
-            subprocess.run(
-                ["git", "clone", "--depth", "1", "--branch", tag, CORE_URL, str(source)],
-                check=True,
-            )
+        subprocess.run(
+            ["git", "clone", "--filter=blob:none", *branch, CORE_URL, str(source)], check=True
+        )
         if core.exists():
             print(f"{core} already exists, left as it is.")
         else:

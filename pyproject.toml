@@ -1,10 +1,11 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "microcircuit_lab"
-version = "0.1.0"
+# The version comes from the git tag (v0.1.0 -> 0.1.0; see [tool.setuptools_scm]).
+dynamic = ["version"]
 description = "Build, simulate and analyse spiking neural network models, from a single microcircuit to multi-area models."
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -48,6 +49,11 @@ microcircuit-lab = "microcircuit_lab.cli:main"
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools_scm]
+# The version is the latest tag (v0.1.0 -> 0.1.0). Between releases it also names
+# the commit (0.1.1.dev3+g505c8ed), which each run records in metadata.json.
+# A release is: tag, push the tag, publish the release on GitHub.
 
 [tool.setuptools.packages.find]
 include = ["microcircuit_lab*"]

@@ -11,7 +11,7 @@ Install the core, start a project with the examples, and run the smallest one:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab@v0.1.0"
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 
 microcircuit-lab init my_project --with-core
 cd my_project

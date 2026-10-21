@@ -7,7 +7,6 @@ authors:
   - family-names: Shimoura
     given-names: Renan Oliveira
     orcid: "https://orcid.org/0000-0002-6580-5999"
-version: 0.1.0
 license: BSD-3-Clause
 repository-code: "https://github.com/shimoura/microcircuit-lab"
 keywords:
