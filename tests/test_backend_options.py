@@ -1,4 +1,4 @@
-"""Tests for Simulation's generic backend_options passthrough and
+"""Tests for Simulation's choice of backend, its generic backend_options passthrough and
 NestBackend's extension_modules use of it (for loading compiled
 NEST/NESTML models before the network is built).
 
@@ -14,6 +14,8 @@ import microcircuit_lab.backends.nest.simulator as nest_backend_module
 import microcircuit_lab.simulation as runner_module
 from microcircuit_lab import Simulation
 from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.yaml_files import read_yaml
 
 
 class _FakeBackend:
@@ -92,6 +94,27 @@ def test_run_without_backend_options_forwards_nothing_extra(monkeypatch, tmp_pat
     _use_tmp_output(simulation, tmp_path)
     simulation.run()
 
+    assert _FakeBackend.last_kwargs == {}
+
+
+def test_the_simulation_file_chooses_the_backend_and_an_argument_overrides_it(monkeypatch, tmp_path):
+    chosen = []
+    monkeypatch.setattr(runner_module, "get_backend", lambda name: chosen.append(name) or _FakeBackend)
+    profile = SimulationConfig(backend={"name": "brian2", "options": {"device": "cpp_standalone"}})
+    network = Simulation.from_yaml(network_name="toy").network
+
+    simulation = _use_tmp_output(Simulation(network, profile, backend_options={"codegen_target": "numpy"}), tmp_path)
+    simulation.run()
+    assert chosen == ["brian2"]
+    assert _FakeBackend.last_kwargs == {"device": "cpp_standalone", "codegen_target": "numpy"}
+    # The run's config.yaml records the simulator used.
+    saved = read_yaml(simulation.output_dir / "config.yaml")["simulation"]["backend"]
+    assert saved == {"name": "brian2", "options": {"device": "cpp_standalone", "codegen_target": "numpy"}}
+
+    # The profile's options belong to Brian2, so NEST does not get them.
+    simulation = _use_tmp_output(Simulation(network, profile, backend="nest"), tmp_path)
+    simulation.run()
+    assert chosen[-1] == "nest"
     assert _FakeBackend.last_kwargs == {}
 
 
