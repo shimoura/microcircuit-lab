@@ -1,9 +1,11 @@
 """
-Find the code of the project you run from: its builders and its analyses.
+Find the code of the project you run from: its builders, its analyses and its
+neuron and synapse models.
 
 :func:`discover_builders` finds what ``microcircuit-lab generate`` can run;
 :func:`microcircuit_lab.analysis.run_command_plots.discover_plots` finds the plots in
-``analyses/``. Both import a folder of the project with
+``analyses/``; :func:`microcircuit_lab.backends.brian2.models.load_models` finds
+the Brian2 models in ``models/brian2/``. All import a folder of the project with
 :func:`import_folder_modules`.
 
 A builder is any package with a callable ``main(argv=None)``. That is all the
@@ -40,31 +42,36 @@ BUILDER_ENTRY_POINT_GROUP = "microcircuit_lab.builders"
 
 
 def import_folder_modules(
-    folder: str | Path, *, packages_only: bool = False
+    folder: str | Path, *, packages_only: bool = False, package: str | None = None
 ) -> dict[str, ModuleType]:
     """Import every module and package in ``folder`` and return them by name.
 
-    The folder's parent is added to the front of ``sys.path``, as Python
-    does for the folder of a script you run, so the folder itself is
-    importable (``builders.pd14``) and your project's files win over an
-    installed package of the same name. With ``packages_only`` plain ``.py``
-    files are skipped. An error raised while importing propagates, so a
-    broken module fails loudly instead of silently disappearing. A folder
-    that does not exist gives ``{}``.
+    The folder is imported as the package ``package`` (default: the folder's
+    name), and the folder that holds that package is added to the front of
+    ``sys.path``, as Python does for the folder of a script you run. So
+    ``builders/`` is imported as ``builders`` (``builders.pd14``), and
+    ``models/brian2/`` with ``package="models.brian2"``, which keeps it apart
+    from the ``brian2`` package. Your project's files win over an installed
+    package of the same name. With ``packages_only`` plain ``.py`` files are
+    skipped. An error raised while importing propagates, so a broken module
+    fails loudly instead of silently disappearing. A folder that does not
+    exist gives ``{}``.
     """
 
     folder = Path(folder).resolve()
     if not folder.is_dir():
         return {}
 
-    if str(folder.parent) not in sys.path:
-        sys.path.insert(0, str(folder.parent))
+    package = package or folder.name
+    root = folder.parents[package.count(".")]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
 
     modules: dict[str, ModuleType] = {}
     for module_info in pkgutil.iter_modules([str(folder)]):
         if packages_only and not module_info.ispkg:
             continue
-        modules[module_info.name] = importlib.import_module(f"{folder.name}.{module_info.name}")
+        modules[module_info.name] = importlib.import_module(f"{package}.{module_info.name}")
     return modules
 
 

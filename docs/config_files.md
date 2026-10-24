@@ -339,6 +339,15 @@ rng_seed: 42
 local_num_threads: 1
 # optional, default true · true or false · print the simulation progress
 print_time: true
+# optional · the simulator to use
+backend:
+  # optional, default nest · one of nest | brian2 · the simulator to run the network
+  #   with
+  name: nest
+  # optional, default empty · mapping · options of that simulator, passed to its backend
+  #   as-is; the backend validates them (see "Running with Brian2" in the README)
+  options:
+    device: cpp_standalone
 # optional · what to record
 recording:
   # optional, default true · true or false · record the spikes of every neuron

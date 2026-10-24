@@ -17,7 +17,23 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from microcircuit_lab.backends.population_spikes import empty_spikes, sort_by_sender
+# read_csv_spikes and write_csv_spikes now live in population_spikes.py, shared
+# by the backends; they are imported here as before, so code that imports them
+# from here keeps working.
+from microcircuit_lab.backends.population_spikes import (
+    empty_spikes,
+    read_csv_spikes,
+    sort_by_sender,
+    write_csv_spikes,
+)
+
+__all__ = [
+    "ascii_spike_files",
+    "read_ascii_spikes",
+    "read_csv_spikes",
+    "read_saved_spikes",
+    "write_csv_spikes",
+]
 
 
 def ascii_spike_files(recordings_dir: Path) -> list[Path]:
@@ -35,15 +51,6 @@ def read_ascii_spikes(paths: list[Path]) -> tuple[np.ndarray, np.ndarray]:
     tables = [pd.read_csv(path, sep="\t", comment="#") for path in paths]
     senders = np.concatenate([table["sender"].to_numpy() for table in tables]).astype(int)
     times = np.concatenate([table["time_ms"].to_numpy() for table in tables]).astype(float)
-    return sort_by_sender(senders, times)
-
-
-def read_csv_spikes(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """The spikes of a ``spikes.csv``, sorted by sender."""
-
-    table = pd.read_csv(path)
-    senders = table["sender"].to_numpy(dtype=int)
-    times = table["time_ms"].to_numpy(dtype=float)
     return sort_by_sender(senders, times)
 
 
@@ -71,19 +78,4 @@ def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
     raise ValueError(
         f"No spike recordings under {recordings_dir} (expected 'spikes-*.dat' or "
         "'spikes.csv'). Simulate the run again with spike_recording enabled."
-    )
-
-
-
-def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None:
-    """Write spikes to a ``spikes.csv``, ordered by time."""
-
-    order = np.argsort(times)
-    np.savetxt(
-        path,
-        np.column_stack([senders[order], times[order]]),
-        delimiter=",",
-        header="sender,time_ms",
-        comments="",
-        fmt=["%d", "%.3f"],
     )

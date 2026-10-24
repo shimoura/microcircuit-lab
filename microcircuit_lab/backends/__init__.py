@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 
-from .interface import SimulationBackend
+# The names are listed with the simulation config, which validates them.
+from microcircuit_lab.config.simulation import BackendName
 
-#: Registered backend names. Adding a backend means adding it here and to
-#: get_backend() and read_saved_spikes() below. See "Adding a backend" in the README.
-BackendName = Literal["nest"]
+from .interface import SimulationBackend
 
 
 def get_backend(name: BackendName):
@@ -19,6 +17,9 @@ def get_backend(name: BackendName):
     if name == "nest":
         from .nest.simulator import NestBackend
         return NestBackend
+    if name == "brian2":
+        from .brian2.simulator import Brian2Backend
+        return Brian2Backend
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 
@@ -31,6 +32,9 @@ def read_saved_spikes(name: BackendName, recordings_dir: Path) -> tuple[np.ndarr
     if name == "nest":
         from .nest.spike_files import read_saved_spikes as read_nest_spikes
         return read_nest_spikes(recordings_dir)
+    if name == "brian2":
+        from .brian2.spike_files import read_saved_spikes as read_brian2_spikes
+        return read_brian2_spikes(recordings_dir)
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 

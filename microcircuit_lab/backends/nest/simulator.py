@@ -476,21 +476,12 @@ class NestBackend:
         if self.spike_recorder is None:
             return
 
-        t_sim_s = self._simulation_config.t_sim / 1000.0
-
-        for pop_name in self.populations:
-            events = self.get_spike_events(pop_name)
-            n_spikes = len(events["times"])
-            n_neurons = self._network.populations[pop_name].size
-            mean_rate = (n_spikes / (n_neurons * t_sim_s)) if (n_neurons and t_sim_s > 0) else 0.0
-
-            logger.info(
-                "%-6s  N=%5d  spikes=%7d  rate=%8.3f Hz",
-                pop_name,
-                n_neurons,
-                n_spikes,
-                mean_rate,
-            )
+        population_spikes.log_firing_rates(
+            logger,
+            self.get_spike_events,
+            {name: pop.size for name, pop in self._network.populations.items()},
+            self._simulation_config.t_sim,
+        )
 
     def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -567,5 +558,5 @@ class NestBackend:
         path = recordings_dir / "spikes.csv"
 
         senders, times = self._memory_spikes()
-        spike_files.write_csv_spikes(path, senders, times)
+        population_spikes.write_csv_spikes(path, senders, times)
         return path

@@ -73,6 +73,9 @@ nest = [
 nestml = [
     "nestml",
 ]
+brian2 = [
+    "brian2>=2.5",
+]
 
 [tool.pytest.ini_options]
 # builders/ sits next to microcircuit_lab/, outside the installed package, and
