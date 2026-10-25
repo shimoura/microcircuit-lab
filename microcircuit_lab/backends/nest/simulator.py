@@ -17,6 +17,7 @@ import numpy as np
 from microcircuit_lab.backends import population_spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.config.connection_table import COLUMNS
+from microcircuit_lab.config.connectivity import SHARED_RULES
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -115,9 +116,20 @@ class NestBackend:
     def check(self) -> None:
         """
         Raise if the network uses something NEST cannot build, before anything
-        is built. Nothing to check yet: neuron and synapse model names are
-        left to NEST, which knows them only once the modules are installed.
+        is built: a project connection rule (NEST runs the shared rules only).
+        Neuron and synapse model names are left to NEST, which knows them only
+        once the modules are installed.
         """
+
+        rules = self._network.connections["rule"]
+        project = np.flatnonzero(~np.isin(rules, SHARED_RULES))
+        if project.size:
+            rule = rules[project[0]]
+            raise ValueError(
+                f"NEST has no connection rule {rule!r}: it runs the shared rules only "
+                f"({', '.join(SHARED_RULES)}). A rule of your own is a Brian2 project rule "
+                "(a ConnectionRule in models/brian2/); run this network with --backend brian2."
+            )
 
     def build(self) -> None:
         """
@@ -247,9 +259,10 @@ class NestBackend:
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
-                number = column["number"][i]
-                if rule != "pairwise_bernoulli":
-                    number = int(number)
+                conn_spec = {"rule": rule}
+                if rule in nest_number:
+                    number = column["number"][i]
+                    conn_spec[nest_number[rule]] = number if rule == "pairwise_bernoulli" else int(number)
                 synapse = column["synapse"][i]
                 weight = distributions.create_weight_spec(
                     column["weight.mean"][i],
@@ -267,12 +280,11 @@ class NestBackend:
                 )
 
                 logger.debug(
-                    "Connecting %s -> %s (%s=%g, synapse=%s, weight=%g, delay=%g)",
-                    source, target, nest_number[rule], number, synapse or "default",
+                    "Connecting %s -> %s (%s, synapse=%s, weight=%g, delay=%g)",
+                    source, target, conn_spec, synapse or "default",
                     column["weight.mean"][i], column["delay.mean"][i],
                 )
 
-                conn_spec = {"rule": rule, nest_number[rule]: number}
                 for option in ("allow_autapses", "allow_multapses"):
                     if column[option][i] is not None:
                         conn_spec[option] = bool(column[option][i])

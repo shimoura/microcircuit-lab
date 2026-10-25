@@ -164,6 +164,20 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
+    def _check_one_to_one_sizes(self) -> NetworkConfig:
+        table = self.connections
+        for i in np.flatnonzero(table["rule"] == "one_to_one"):
+            source, target = table["source"][i], table["target"][i]
+            sizes = [self.populations[name].size if name in self.populations else None
+                     for name in (source, target)]
+            if None not in sizes and sizes[0] != sizes[1]:
+                raise ValueError(
+                    f"Connection {source} -> {target}: one_to_one needs populations of the same "
+                    f"size; they have {sizes[0]} and {sizes[1]} neurons."
+                )
+        return self
+
+    @model_validator(mode="after")
     def _check_shared_generators(self) -> NetworkConfig:
         groups: dict[str, list[str]] = {}
         for name, entry in self.background_inputs.items():

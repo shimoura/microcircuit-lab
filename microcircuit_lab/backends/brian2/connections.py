@@ -17,16 +17,20 @@ twice.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import brian2 as b2
 import numpy as np
 
+from microcircuit_lab.backends.brian2.models import ConnectionRule
+from microcircuit_lab.config.connectivity import RULE_NUMBER, SHARED_RULES
+
 
 @dataclass(frozen=True)
 class Row:
-    """One row of the connection table: its rule and number, and where its
-    source and target populations are in their Brian2 groups."""
+    """One row of the connection table: its rule and number (or, for a
+    project rule, its definition and parameters), and where its source and
+    target populations are in their Brian2 groups."""
 
     rule: str
     number: float
@@ -37,6 +41,8 @@ class Row:
     autapses: bool
     multapses: bool
     same_population: bool
+    parameters: dict = field(default_factory=dict)
+    definition: ConnectionRule | None = None
 
     @property
     def no_autapses(self) -> int:
@@ -132,12 +138,32 @@ def _merged(rows: list[Row], outward: bool, n_outer: int, prefix: str, rng) -> t
 
 
 def _single(row: Row, n_source: int, prefix: str, rng) -> tuple[dict, dict, int]:
-    """One ``connect`` call for one row: pairwise_bernoulli, or a rule without
-    multapses."""
+    """One ``connect`` call for one row: pairwise_bernoulli, one_to_one,
+    all_to_all, a project rule, or a rule without multapses."""
 
     s0, ns, t0, nt, self_ = row.source_start, row.source_size, row.target_start, row.target_size, row.no_autapses
     in_source = f"i >= {s0} and i < {s0 + ns}"
     in_target = f"j >= {t0} and j < {t0 + nt}"
+    not_self = " and k != i" if self_ else ""
+
+    if row.rule == "one_to_one":
+        # The populations have the same size: the k-th source to the k-th target.
+        k = f"i - {s0} + {t0}"
+        return {"j": f"k for k in range({k}, {k} + 1) if {in_source}{not_self}"}, {}, ns * (1 - self_)
+
+    if row.rule == "all_to_all":
+        return {"j": f"k for k in range({t0}, {t0 + nt}) if {in_source}{not_self}"}, {}, ns * (nt - self_)
+
+    if row.definition is not None:
+        rule = row.definition
+        condition = f"{in_source}{not_self} and ({rule.condition})"
+        if rule.p != "1":
+            condition += f" and rand() < ({rule.p})"
+        arguments = {"j": f"k for k in range({t0}, {t0 + nt}) if {condition}"}
+        if rule.n != "1":
+            arguments["n"] = rule.n
+        # The count is known only once Brian2 has drawn the pairs: at most every pair.
+        return arguments, dict(row.parameters), ns * (nt - self_)
 
     if row.rule == "pairwise_bernoulli":
         p = min(float(row.number), 1.0)
@@ -183,8 +209,10 @@ def connect_calls(
     """
 
     for row in rows:
-        if row.rule not in ("fixed_total_number", "fixed_indegree", "fixed_outdegree", "pairwise_bernoulli"):
-            raise ValueError(f"Unknown connection rule: {row.rule!r}")
+        if row.rule not in RULE_NUMBER:
+            if row.rule not in SHARED_RULES and row.definition is None:
+                raise ValueError(f"Unknown connection rule: {row.rule!r}")
+            continue
         if row.multapses or row.rule == "pairwise_bernoulli":
             continue
         available = (row.source_size if row.rule == "fixed_indegree" else row.target_size) - row.no_autapses

@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from microcircuit_lab import Simulation
-from microcircuit_lab.backends.brian2.models import NeuronModel
+from microcircuit_lab.backends.brian2.models import ConnectionRule, NeuronModel
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
@@ -43,6 +43,10 @@ pacemaker = NeuronModel(
     inhibitory="V_m",
     defaults={"E_L": -50.0, "tau_m": 10.0, "V_m": -70.0},
 )
+
+
+# Found by the test of project rules, with pacemaker above.
+ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= width")
 
 
 # numpy compiles nothing: Cython would compile each test network first, which
@@ -130,6 +134,8 @@ def _distinct_pairs(syn) -> bool:
             {"n_synapses": 2000, "source": "T", "allow_autapses": False, "allow_multapses": False},
             lambda syn: _distinct_pairs(syn) and len(syn) == 2000,
         ),
+        ("one_to_one", {"source": "T"}, lambda syn: len(syn) == 50 and np.array_equal(syn.i[:], syn.j[:])),
+        ("all_to_all", {}, lambda syn: len(syn) == 100 * 50 and _distinct_pairs(syn)),
     ],
 )
 def test_each_connection_rule(rule: str, number_kwargs: dict, check) -> None:
@@ -145,6 +151,37 @@ def test_each_connection_rule(rule: str, number_kwargs: dict, check) -> None:
     backend.build()
     assert len(backend.synapses) == 1
     assert check(backend.synapses[0])
+
+
+def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
+    connection = ConnectionConfig(
+        source="T",
+        target="T",
+        rule="ring",
+        parameters={"width": 1},
+        allow_autapses=False,
+        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+    )
+    backend = _backend(_network("iaf_psc_exp", connections=[connection]), model_modules=[__name__])
+    backend.build()
+
+    # T is neurons 100-149 of the group (after S); each neuron to its neighbours.
+    pairs = set(zip(backend.synapses[0].i[:].tolist(), backend.synapses[0].j[:].tolist()))
+    assert pairs == {(a, b) for a in range(100, 150) for b in range(100, 150) if abs(a - b) == 1}
+
+
+def test_an_unknown_rule_says_where_to_define_it() -> None:
+    connection = ConnectionConfig(
+        source="S",
+        target="T",
+        rule="no_such_rule",
+        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+    )
+    backend = _backend(_network("iaf_psc_exp", connections=[connection]))
+    with pytest.raises(ValueError, match=r"no connection rule 'no_such_rule'.*ConnectionRule.*models/brian2/"):
+        backend.check()
 
 
 def test_redraw_keeps_the_sign_of_the_weights() -> None:

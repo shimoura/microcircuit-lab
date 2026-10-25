@@ -40,16 +40,22 @@ def expected_synapses(rule, number, n_source, n_target):
     fixed_indegree       indegree x n_target
     fixed_outdegree      outdegree x n_source
     pairwise_bernoulli   p x n_source x n_target
+    one_to_one           n_target
+    all_to_all           n_source x n_target
     ==================== ==============================
 
-    ``number`` is the number the rule takes; every argument may be a single
-    value or one value per connection.
+    ``number`` is the number the rule takes (NaN for a rule that takes none);
+    every argument may be a single value or one value per connection. A
+    project rule's count is not known here: NaN.
     """
 
     rule, number = np.asarray(rule), np.asarray(number, dtype=float)
+    n_source, n_target = np.asarray(n_source, dtype=float), np.asarray(n_target, dtype=float)
     return np.select(
-        [rule == "fixed_indegree", rule == "fixed_outdegree", rule == "pairwise_bernoulli"],
-        [number * n_target, number * n_source, number * n_source * n_target],
+        [rule == "fixed_indegree", rule == "fixed_outdegree", rule == "pairwise_bernoulli",
+         rule == "one_to_one", rule == "all_to_all"],
+        [number * n_target, number * n_source, number * n_source * n_target,
+         n_target * np.ones_like(number), n_source * n_target * np.ones_like(number)],
         default=number,
     )
 

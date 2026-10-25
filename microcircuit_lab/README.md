@@ -224,8 +224,12 @@ Each connection has a `rule` and the number that rule takes:
 | `fixed_indegree` | `indegree` | that many onto each target neuron |
 | `fixed_outdegree` | `outdegree` | that many from each source neuron |
 | `pairwise_bernoulli` | `p` | each pair connected with probability `p` |
+| `one_to_one` | none | the k-th source neuron to the k-th target neuron (populations of the same size) |
+| `all_to_all` | none | every pair |
 
-Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). `allow_autapses` and `allow_multapses` are passed to NEST if given.
+These rules run on every simulator. Any other name is a rule of your own, with `parameters` instead of a number; for now Brian2 only (see [Connection rules of your own](#connection-rules-of-your-own)).
+
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and a rule of your own. `allow_autapses` and `allow_multapses` are passed to NEST if given.
 
 A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses NEST's `static_synapse` on the default port:
 
@@ -612,6 +616,24 @@ my_lif = NeuronModel(
 - `I_e` is required: scaling adds its compensation currents to it. `I_stim` is the current of `dc` stimuli.
 - A connection adds its weight to `excitatory` or `inhibitory`, as its sign says, or to `receptor_port` (e.g. `"I_syn_{port}"`) if its synapse has a `receptor_port`. A weight onto a conductance adds its size, as in NEST.
 - A list parameter such as `tau_syn: [0.5, 2.0]` sets `tau_syn_1` and `tau_syn_2`; `equations` can be a function of the parameters when their number varies (see `iaf_psc_exp_multisynapse.py`).
+
+### Connection rules of your own
+
+A `rule` that is not one of the shared rules is a `ConnectionRule` in `models/brian2/` (or in a module given with `--model-modules`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's `parameters`, the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
+
+```python
+# models/brian2/rules.py
+from microcircuit_lab.backends.brian2.models import ConnectionRule
+
+ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= width", p="p0")
+```
+
+```yaml
+# connectivity.yaml
+- {source: E, target: E, rule: ring, parameters: {width: 10, p0: 0.5}, allow_autapses: false, weight: {...}, delay: {...}}
+```
+
+In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). A network with such a rule runs on Brian2 only: NEST stops before building, and so does a scaled network, since the core can't know how the rule scales (scale it in its builder instead).
 
 Brian2 spends time on every object it has, so the network is built from few: the populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has. The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs, also of the same network with other numbers. `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network. `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs. Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
 

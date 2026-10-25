@@ -34,6 +34,7 @@ from brian2.units.fundamentalunits import DIMENSIONLESS
 from microcircuit_lab.backends import population_spikes
 from microcircuit_lab.backends.brian2 import connections, distributions, models
 from microcircuit_lab.config.connection_table import COLUMNS
+from microcircuit_lab.config.connectivity import SHARED_RULES
 from microcircuit_lab.config.distributions import DrawnValue
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -145,6 +146,7 @@ class Brian2Backend:
         self._standalone_dir: tempfile.TemporaryDirectory | None = None
         self._neuron_models: dict[str, models.NeuronModel] = {}
         self._synapse_models: dict[str, models.SynapseModel] = {}
+        self._connection_rules: dict[str, models.ConnectionRule] = {}
         self._groups: list[_Group] = []
         self._group_of: dict[str, _Group] = {}
 
@@ -205,15 +207,22 @@ class Brian2Backend:
 
     def check(self) -> None:
         """
-        Find the project's models, and raise if a population or a
-        ``synapses.yaml`` entry names one that is not defined.
+        Find the project's models and connection rules, and raise if a
+        population, a ``synapses.yaml`` entry or a connection names one that
+        is not defined.
         """
 
-        self._neuron_models, self._synapse_models = models.load_models(self._model_modules)
+        self._neuron_models, self._synapse_models, self._connection_rules = models.load_models(
+            self._model_modules
+        )
         for population in self._network.populations:
             self.neuron_model(population)
         for synapse in self._network.synapses:
             self.synapse_model(synapse)
+        rules = self._network.connections["rule"]
+        for rule in sorted(set(rules[~np.isin(rules, SHARED_RULES)].tolist())):
+            if rule not in self._connection_rules:
+                raise models.missing_model_error("rule", rule, self._connection_rules)
 
     def build(self) -> None:
         """
@@ -261,7 +270,8 @@ class Brian2Backend:
         each neuron model (and of each set of equations, for a model whose
         equations depend on its parameters).
 
-        Every neuron knows its ``population_index`` in its group. A group with
+        Every neuron knows its ``population_index`` in its group, and its
+        ``index`` within its population (for connection rules). A group with
         ``dc`` stimuli reads its current from one table of all their currents,
         at each neuron's ``dc_index``. A group with Poisson background input
         has the variables of that input (see create_background_inputs).
@@ -306,7 +316,9 @@ class Brian2Backend:
             logger.info(
                 "Creating %s (%d neurons, model %s)", ", ".join(group.populations), group.size, group.model.name
             )
-            equations = group.equations + b2.Equations("population_index : integer (constant)")
+            equations = group.equations + b2.Equations(
+                "population_index : integer (constant)\nindex : integer (constant)"
+            )
             namespace = {}
             has_dc = any(dc_index[pop] for pop in group.populations)
             if "I_stim" in group.equations.identifiers:
@@ -334,10 +346,9 @@ class Brian2Backend:
             )
             group.neurons = neurons
             self._set_group_values(group, values)
-            neurons.population_index = np.repeat(
-                np.arange(len(group.populations)),
-                [self._network.populations[pop].size for pop in group.populations],
-            )
+            sizes = [self._network.populations[pop].size for pop in group.populations]
+            neurons.population_index = np.repeat(np.arange(len(group.populations)), sizes)
+            neurons.index = np.concatenate([np.arange(size) for size in sizes])
             if has_dc:
                 neurons.dc_index = np.repeat(
                     [dc_index[pop] for pop in group.populations],
@@ -500,6 +511,8 @@ class Brian2Backend:
                     autapses=True if column["allow_autapses"][row] is None else bool(column["allow_autapses"][row]),
                     multapses=True if column["allow_multapses"][row] is None else bool(column["allow_multapses"][row]),
                     same_population=column["source"][row] == column["target"][row],
+                    parameters=column["parameters"][row] or {},
+                    definition=self._connection_rules.get(column["rule"][row]),
                 )
                 for row in rows
             ]

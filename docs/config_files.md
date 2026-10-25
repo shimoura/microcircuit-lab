@@ -137,9 +137,11 @@ connections:
   - source: L4_E
     # required · text · target population name
     target: L23_E
-    # optional, default fixed_total_number · one of fixed_total_number | fixed_indegree
-    #   | fixed_outdegree | pairwise_bernoulli · how the synapses are placed; each rule
-    #   takes its own number (n_synapses, indegree, outdegree or p)
+    # optional, default fixed_total_number · text · how the synapses are placed:
+    #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
+    #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
+    #   all_to_all, with no number; or the name of a project rule (Brian2: a
+    #   ConnectionRule in models/brian2/), with parameters
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
@@ -151,6 +153,9 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
+    # optional · mapping · only for a project rule: the values its expressions use, e.g.
+    #   {width: 10, p0: 0.5}
+    parameters:
     # optional · true or false · whether a neuron may connect to itself; omit for the
     #   simulator's default
     allow_autapses:

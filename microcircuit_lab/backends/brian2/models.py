@@ -1,11 +1,12 @@
 """
-Neuron and synapse models for the Brian2 backend.
+Neuron and synapse models, and connection rules, for the Brian2 backend.
 
 Brian2 has no models of its own, so the project defines the ones its
 ``neurons.yaml`` and ``synapses.yaml`` name: as :class:`NeuronModel` and
 :class:`SynapseModel` objects in the Python files of ``models/brian2/``, or in
 modules given as ``model_modules``. The one model the backend has itself
-is ``static_synapse``.
+is ``static_synapse``. A ``rule`` in ``connectivity.yaml`` that is not one of
+the shared rules is a :class:`ConnectionRule` found the same way.
 
 Numbers in the config files are in NEST's units (mV, ms, pF, pA, nS, Hz), so the
 same files run on both simulators; the equations are written in Brian2's units.
@@ -95,32 +96,65 @@ class SynapseModel:
 STATIC_SYNAPSE = SynapseModel("static_synapse")
 
 
+@dataclass(frozen=True)
+class ConnectionRule:
+    """
+    A connection rule of the project: which pairs of neurons connect.
+
+    Parameters
+    ----------
+    name
+        The name ``connectivity.yaml`` gives as ``rule``.
+    condition, p, n
+        As for ``brian2.Synapses.connect``: which pairs may connect, the
+        probability that such a pair does, and how many synapses it then
+        gets. Brian2 expressions, which can use the connection's
+        ``parameters`` (as constants), the variables of the pre- and
+        post-synaptic neurons (``V_m_pre``, ``V_m_post``), and
+        ``index_pre`` / ``index_post``: each neuron's index within its
+        population. A neuron is not connected to itself when the connection
+        sets ``allow_autapses: false``.
+    """
+
+    name: str
+    condition: str = "True"
+    p: str = "1"
+    n: str = "1"
+
+
 def load_models(
     model_modules: Sequence[str] = (),
-) -> tuple[dict[str, NeuronModel], dict[str, SynapseModel]]:
+) -> tuple[dict[str, NeuronModel], dict[str, SynapseModel], dict[str, ConnectionRule]]:
     """
-    The neuron and synapse models of the project, by name.
+    The neuron and synapse models and the connection rules of the project,
+    by name.
 
-    Every :class:`NeuronModel` and :class:`SynapseModel` at the top level of
-    the files in ``models/brian2/`` (of the folder you run from) and of the
-    modules ``model_modules`` is found (see
+    Every :class:`NeuronModel`, :class:`SynapseModel` and
+    :class:`ConnectionRule` at the top level of the files in
+    ``models/brian2/`` (of the folder you run from) and of the modules
+    ``model_modules`` is found (see
     :func:`microcircuit_lab.project_code.find_definitions`). A project's own
     ``static_synapse`` replaces the backend's.
     """
 
-    found = find_definitions(MODELS_FOLDER, "models.brian2", model_modules, (NeuronModel, SynapseModel))
-    neurons, synapses = found[NeuronModel], found[SynapseModel]
-    synapses.setdefault(STATIC_SYNAPSE.name, STATIC_SYNAPSE)
-    return neurons, synapses
+    kinds = (NeuronModel, SynapseModel, ConnectionRule)
+    found = find_definitions(MODELS_FOLDER, "models.brian2", model_modules, kinds)
+    found[SynapseModel].setdefault(STATIC_SYNAPSE.name, STATIC_SYNAPSE)
+    return found[NeuronModel], found[SynapseModel], found[ConnectionRule]
 
 
 def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
-    """The error for a model that ``neurons.yaml`` or ``synapses.yaml`` names
-    but the project does not define, saying where to define it."""
+    """The error for a model that ``neurons.yaml`` or ``synapses.yaml`` names,
+    or a rule that ``connectivity.yaml`` names, but the project does not
+    define, saying where to define it."""
 
+    what, file, cls = {
+        "neuron": ("neuron model", "neurons.yaml", "NeuronModel"),
+        "synapse": ("synapse model", "synapses.yaml", "SynapseModel"),
+        "rule": ("connection rule", "connectivity.yaml", "ConnectionRule"),
+    }[kind]
     return ValueError(
-        f"Brian2 has no {kind} model {name!r} (named in {kind}s.yaml). Define it as a "
-        f"{'NeuronModel' if kind == 'neuron' else 'SynapseModel'} in a file of "
+        f"Brian2 has no {what} {name!r} (named in {file}). Define it as a {cls} in a file of "
         f"{MODELS_FOLDER}/ in the folder you run from (see the examples there), or in a "
-        f"module passed with --model-modules. Models found: {sorted(known)}."
+        f"module passed with --model-modules. Found: {sorted(known)}."
     )

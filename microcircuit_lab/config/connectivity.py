@@ -6,9 +6,10 @@ inputs and stimuli.
 
 from __future__ import annotations
 
+import math
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, StrictBool, StrictFloat, StrictInt, model_validator
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
@@ -87,12 +88,16 @@ RULE_NUMBER = {
     "pairwise_bernoulli": "p",
 }
 
+#: The rules every backend implements. Any other name is a project rule, which
+#: the backend defines (for Brian2, a ConnectionRule in models/brian2/).
+SHARED_RULES = (*RULE_NUMBER, "one_to_one", "all_to_all")
+
 
 class ConnectionConfig(FrozenConfig):
     """
     Description of one projection between two populations.
 
-    ``rule`` says how the synapses are placed, and takes one number:
+    ``rule`` says how the synapses are placed. Four rules take one number:
 
     - ``fixed_total_number``: ``n_synapses`` synapses in total;
     - ``fixed_indegree``: ``indegree`` synapses onto each target neuron;
@@ -100,19 +105,25 @@ class ConnectionConfig(FrozenConfig):
     - ``pairwise_bernoulli``: each source-target pair connected with
       probability ``p``.
 
+    Two take none: ``one_to_one`` (the k-th source neuron to the k-th target
+    neuron; the populations have the same size) and ``all_to_all``. Any other
+    name is a project rule, defined for the backend (see ``SHARED_RULES``),
+    which takes ``parameters`` instead of a number.
+
     The core computes with the expected number of synapses
     (``network.mean_input.expected_synapses``) and scales the given number
-    with the network (``network.scaling.scale_rule_number``).
+    with the network (``network.scaling.scale_rule_number``). A project rule
+    cannot be scaled yet.
     """
 
     source: str = Field(examples=["L4_E"], description="source population name")
     target: str = Field(examples=["L23_E"], description="target population name")
-    rule: Literal["fixed_total_number", "fixed_indegree", "fixed_outdegree", "pairwise_bernoulli"] = (
-        Field(
-            default="fixed_total_number",
-            description="how the synapses are placed; each rule takes its own number "
-            "(n_synapses, indegree, outdegree or p)",
-        )
+    rule: str = Field(
+        default="fixed_total_number",
+        description="how the synapses are placed: fixed_total_number, fixed_indegree, "
+        "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
+        "outdegree or p); one_to_one or all_to_all, with no number; or the name of a project "
+        "rule (Brian2: a ConnectionRule in models/brian2/), with parameters",
     )
     n_synapses: int | None = Field(
         default=None,
@@ -132,6 +143,11 @@ class ConnectionConfig(FrozenConfig):
         le=1.0,
         description="pairwise_bernoulli: probability that a source-target pair is connected",
     )
+    parameters: dict[str, StrictInt | StrictFloat | StrictBool] | None = Field(
+        default=None,
+        description="only for a project rule: the values its expressions use, e.g. "
+        "{width: 10, p0: 0.5}",
+    )
     allow_autapses: bool | None = Field(
         default=None,
         description="whether a neuron may connect to itself; omit for the simulator's default",
@@ -150,21 +166,26 @@ class ConnectionConfig(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_number_matches_rule(self) -> ConnectionConfig:
-        needed = RULE_NUMBER[self.rule]
+        needed = RULE_NUMBER.get(self.rule)
         others = [
             name for name in RULE_NUMBER.values() if name != needed and getattr(self, name) is not None
         ]
-        if getattr(self, needed) is None or others:
+        if needed is not None and (getattr(self, needed) is None or others):
             raise ValueError(
                 f"rule {self.rule!r} takes the number {needed!r} and no other"
                 + (f"; remove {others}" if others else "")
             )
+        if needed is None and others:
+            raise ValueError(f"rule {self.rule!r} takes no number; remove {others}")
+        if self.parameters is not None and self.rule in SHARED_RULES:
+            raise ValueError(f"rule {self.rule!r} takes no parameters (only a project rule does)")
         return self
 
     @property
     def number(self) -> int | float:
-        """The number the rule takes (``n_synapses``, ``indegree``, ...)."""
-        return getattr(self, RULE_NUMBER[self.rule])
+        """The number the rule takes (``n_synapses``, ``indegree``, ...); NaN
+        for a rule that takes none."""
+        return getattr(self, RULE_NUMBER[self.rule]) if self.rule in RULE_NUMBER else math.nan
 
 
 class ConnectivityFile(FrozenConfig):

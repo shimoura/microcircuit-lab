@@ -74,10 +74,12 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A field on a connection, or a connection rule</b></summary>
 
-1. `config/connectivity.py`: add it to `ConnectionConfig`.
-2. `config/connection_table.py`: add its column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
-3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column; `backends/brian2/simulator.py` too, and a rule in `backends/brian2/connections.py`: its counts in `_counts`, its `connect` call in `_single`, and its name in the rules `connect_calls` accepts.
-4. If scaling or the indegrees depend on it: `network/mean_input.py` and `network/prepare.py`, on whole columns.
+A rule only one project needs doesn't go in the core: with Brian2 it is a `ConnectionRule` in the project's `models/brian2/` (see "Connection rules of your own" in the core's README). A shared rule, one that every simulator runs:
+
+1. `config/connectivity.py`: add it to `ConnectionConfig` (a field), or to `SHARED_RULES` (a rule; to `RULE_NUMBER` too if it takes a number).
+2. `config/connection_table.py`: add a field's column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
+3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column; `backends/brian2/simulator.py` too, and a rule in `backends/brian2/connections.py`: its counts in `_counts` if it takes a number, its `connect` call in `_single`.
+4. If scaling or the indegrees depend on it: `network/mean_input.py` (`expected_synapses`) and `network/prepare.py` (`_check_rules_can_scale` for a rule that can't follow the scaling), on whole columns.
 5. Test in `tests/test_connection_rules.py`.
 </details>
 

@@ -8,6 +8,7 @@ import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
+from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
@@ -26,10 +27,10 @@ from microcircuit_lab.network.prepare import prepare_network
 SIZES = {"S": 100, "T": 50}
 
 
-def _connection(rule="fixed_total_number", weight=10.0, unit="PSC", **fields):
+def _connection(rule="fixed_total_number", weight=10.0, unit="PSC", source="S", target="T", **fields):
     return ConnectionConfig(
-        source="S",
-        target="T",
+        source=source,
+        target=target,
         rule=rule,
         weight=WeightDistribution(mean=weight, rel_std=0.0, distribution="fixed", unit=unit),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
@@ -99,6 +100,72 @@ def test_a_rule_takes_its_own_number_only():
         _connection(rule="pairwise_bernoulli", n_synapses=10)
     with pytest.raises(ValueError, match=r"remove \['n_synapses'\]"):
         _connection(rule="fixed_indegree", indegree=5, n_synapses=10)
+    with pytest.raises(ValueError, match="'one_to_one' takes no number"):
+        _connection(rule="one_to_one", n_synapses=10)
+    with pytest.raises(ValueError, match="'my_rule' takes no number"):
+        _connection(rule="my_rule", p=0.1)
+    with pytest.raises(ValueError, match="takes no parameters"):
+        _connection(rule="all_to_all", parameters={"width": 1})
+
+
+def test_one_to_one_and_all_to_all_in_nest():
+    network = _network([_connection(rule="one_to_one", source="S", target="S"), _connection(rule="all_to_all")])
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    S, T = backend.get_population("S"), backend.get_population("T")
+
+    one = nest.GetConnections(S, S)
+    assert np.array_equal(one.get("source"), one.get("target")) and len(one) == SIZES["S"]
+    assert len(nest.GetConnections(S, T)) == SIZES["S"] * SIZES["T"]
+    nest.ResetKernel()
+
+
+def test_one_to_one_needs_populations_of_the_same_size():
+    with pytest.raises(ValueError, match="one_to_one needs populations of the same size"):
+        _network([_connection(rule="one_to_one")])
+
+
+def test_nest_rejects_a_project_rule_before_building():
+    network = _network([_connection(rule="ring", parameters={"width": 2})])
+    with pytest.raises(ValueError, match="NEST has no connection rule 'ring'.*brian2"):
+        NestBackend(network, SimulationConfig(print_time=False)).check()
+
+
+@pytest.mark.parametrize(
+    ("connection", "scaling", "message"),
+    [
+        (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
+        (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
+        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "project rule 'ring' cannot be scaled"),
+    ],
+)
+def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):
+    network = _network([_connection(**connection)], scaling=ScalingConfig(preserve_mean_input=False, **scaling))
+    with pytest.raises(ValueError, match=message):
+        prepare_network(network)
+
+
+def test_the_new_rules_scale_where_they_can():
+    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
+    network = prepare_network(_network([_connection(rule="all_to_all")], scaling=scaling))
+    assert network.connections["rule"][0] == "all_to_all"
+    scaling = ScalingConfig(N_scaling=0.5, preserve_mean_input=False)
+    connection = _connection(rule="one_to_one", source="S", target="S")
+    assert len(prepare_network(_network([connection], scaling=scaling)).connections) == 1
+
+
+def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
+    rows = [
+        _connection(n_synapses=300),
+        _connection(rule="one_to_one", source="S", target="S"),
+        _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
+    ]
+    table = ConnectionTable.from_yaml_rows(rows)
+    table.write_csv(tmp_path / "connections.csv")
+
+    assert ConnectionTable.read_csv(tmp_path / "connections.csv") == table
+    assert table.to_yaml_rows()[2]["parameters"] == {"width": 2, "p0": 0.5}
+    assert "n_synapses" not in table.to_yaml_rows()[1]
 
 
 def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
