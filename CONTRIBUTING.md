@@ -56,7 +56,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A weight or delay distribution</b></summary>
 
-A distribution only one project needs doesn't go in the core: with Brian2 it is a `Distribution` in the project's `models/brian2/` (see "Distributions of your own" in the core's README). A shared one, which every simulator draws:
+A distribution only one project needs doesn't go in the core: with Brian2 it is a `Distribution` in the project's `extensions/brian2/` (see "Distributions of your own" in the core's README). A shared one, which every simulator draws:
 
 1. `config/connectivity.py`: add its name to `SHARED_DISTRIBUTIONS`.
 2. `backends/nest/distributions.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
@@ -76,7 +76,7 @@ A distribution only one project needs doesn't go in the core: with Brian2 it is 
 <details>
 <summary><b>A field on a connection, or a connection rule</b></summary>
 
-A rule only one project needs doesn't go in the core: with Brian2 it is a `ConnectionRule` in the project's `models/brian2/` (see "Connection rules of your own" in the core's README). A shared rule, one that every simulator runs:
+A rule only one project needs doesn't go in the core: with Brian2 it is a `ConnectionRule` in the project's `extensions/brian2/` (see "Connection rules of your own" in the core's README). A shared rule, one that every simulator runs:
 
 1. `config/connectivity.py`: add it to `ConnectionConfig` (a field), or to `SHARED_RULES` (a rule; to `RULE_NUMBER` too if it takes a number).
 2. `config/connection_table.py`: add a field's column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
@@ -117,7 +117,7 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 A new package `backends/<name>/` and a line in `get_backend` and `read_saved_spikes`; see "Adding a backend" in the README.
 </details>
 
-**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `models/brian2/`, see "Running with Brian2" in the README) or for a new network (a network folder or a builder; see "Adding a new network" in the README).
+**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Running with Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).
 
 When a stimulus `type` is not known, the error message points to this section.
 

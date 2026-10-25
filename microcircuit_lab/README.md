@@ -1,6 +1,6 @@
 # Microcircuit Lab
 
-Build, simulate and analyse spiking neural network models, from a single microcircuit to multi-area models. A network is a folder of YAML files; the same core checks it, runs it in NEST and plots the result, whatever model it came from.
+Build, simulate and analyse spiking neural network models, from a single microcircuit to multi-area models. A network is a folder of YAML files; the same core checks it, runs it in NEST or Brian2 and plots the result, whatever model it came from.
 
 ## Contents
 
@@ -82,7 +82,7 @@ my_project/
 ├── analyses/           your analyses
 ├── configs/            network, simulation and analysis configs
 ├── experiments/        your experiment scripts
-├── models/             your neuron and synapse models (models/brian2/ for Brian2)
+├── extensions/         what you add to a simulator: neurons, synapses, connection rules, ...
 ├── output/             the runs (created by the first run)
 └── microcircuit-lab/   with --with-core: your copy of the core
 ```
@@ -103,7 +103,7 @@ microcircuit-lab run --network my_model
 
 Good to know:
 
-- Run the commands from the project folder; that is where `builders/`, `analyses/`, `configs/` and `models/` are looked for.
+- Run the commands from the project folder; that is where `builders/`, `analyses/`, `configs/` and `extensions/` are looked for.
 - With `--with-core`, the copy of the core is yours: change it and commit it with your project. Your edits take effect at once, and each run's `metadata.json` records your project's git commit, which then covers the core too.
 - A later core release is not applied to the copy by itself; compare and merge it by hand if you want it. To propose a change to the original core, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 - The examples (every builder and config) are copied too, and are yours as well. A name that already exists is skipped, so `microcircuit-lab init . --with-core` is safe in an existing repository.
@@ -157,6 +157,18 @@ configs/
   populations.yaml: populations.0.size: Input should be greater than 0
   ```
   `load_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
+- **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
+- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run before anything is built, saying so:
+
+  | Field | Shared | Any other name |
+  |---|---|---|
+  | `neurons.yaml` `model` | none | NEST: its own models and NESTML modules; Brian2: a `NeuronModel` in `extensions/brian2/` |
+  | `synapses.yaml` `model` | `static_synapse` | NEST: its own models; Brian2: a `SynapseModel` in `extensions/brian2/` |
+  | `rule` of a connection | `fixed_total_number`, `fixed_indegree`, `fixed_outdegree`, `pairwise_bernoulli`, `one_to_one`, `all_to_all` | with `parameters`; Brian2: a `ConnectionRule` in `extensions/brian2/` ([Connection rules of your own](#connection-rules-of-your-own)) |
+  | `distribution` of a connection's weight or delay | `normal`, `uniform`, `lognormal`, `fixed` | with `parameters`; Brian2: a `Distribution` in `extensions/brian2/` ([Distributions of your own](#distributions-of-your-own)) |
+  | `receptor_port` of a synapse | a number | NEST: a name in the target model's `receptor_types`; Brian2: the variable the connection adds to |
+
+  A network that uses names of one simulator runs on that simulator only. What the core can't know about a name of your own, it doesn't guess: a scaled network with such a rule, or with weights from such a distribution, stops with an error.
 - **Matched by name.** `microcircuit-lab run --network toy` uses `configs/simulation/toy.yaml` and `configs/analysis/toy.yaml`; `--simulation` and `--analysis` pick others. Both files are optional.
 
 ### Stimuli
@@ -230,9 +242,9 @@ Each connection has a `rule` and the number that rule takes:
 
 These rules run on every simulator. Any other name is a rule of your own, with `parameters` instead of a number; for now Brian2 only (see [Connection rules of your own](#connection-rules-of-your-own)).
 
-Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and a rule of your own. `allow_autapses` and `allow_multapses` are passed to NEST if given.
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and a rule of your own. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
 
-A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses NEST's `static_synapse` on the default port:
+A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses the simulator's `static_synapse` on the default port:
 
 ```yaml
 synapses:
@@ -467,7 +479,7 @@ simulation.run()
 print(simulation.output_dir)   # where this run was saved
 ```
 
-**A batch.** Each run is independent (NEST starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
+**A batch.** Each run is independent (the simulator starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
 
 ```python
 from microcircuit_lab import Simulation
@@ -504,7 +516,7 @@ simulation.run()
 from microcircuit_lab.analysis import plot_raster
 
 plot_raster(simulation, save_path=simulation.output_dir / "plots" / "raster.png", show=False)
-later = Simulation.from_run_dir("output/toy_seeds/seed_1/<timestamp>")   # no NEST needed
+later = Simulation.from_run_dir("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
 ```
 
 Runs in one script go one after another. For runs in parallel, start several scripts; each run still gets its own folder. With several MPI processes, save or plot only where `simulation.is_main_process` is true (see [Several MPI processes](#several-mpi-processes)).
@@ -536,12 +548,12 @@ mpirun -n 4 microcircuit-lab run --network pd14
 
 ## Using a NESTML model
 
-1. Write the model in a top-level `nestml/` folder (e.g. `nestml/my_lif.nestml`), and compile it once:
+1. Write the model in `extensions/nestml/` (e.g. `extensions/nestml/my_lif.nestml`), and compile it once:
    ```python
    from pynestml.frontend.pynestml_frontend import generate_nest_target
 
-   generate_nest_target(input_path="nestml/my_lif.nestml",
-                        target_path="nestml/build/my_module", module_name="my_module")
+   generate_nest_target(input_path="extensions/nestml/my_lif.nestml",
+                        target_path="extensions/nestml/build/my_module", module_name="my_module")
    ```
 2. Use it in `neurons.yaml` like any model, by the name NESTML gives it (e.g. `my_lif_nestml`). With `unit: PSP` and other parameter names, add `psp_conversion_aliases` (see [Weights and delays](#weights-and-delays)).
 3. Load the module when running:
@@ -582,10 +594,10 @@ backend:
 
 `--backend`, the `--brian2-...` flags and the `backend`/`backend_options` arguments override it. The options belong to the simulator named with them: with `--backend nest`, a Brian2 profile's options are left out. The run's `config.yaml` records the simulator and options used.
 
-Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `models/brian2/` of your project, or in a module given with `--model-modules`. A name it cannot find is an error that says so, before anything is built. This repository's [`models/brian2/`](../models/brian2/) has the NEST models the example networks use, `static_synapse` is built in, and `init --with-core` copies them into a project.
+Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `extensions/brian2/` of your project, or in a module given with `--extensions`. A name it cannot find is an error that says so, before anything is built. This repository's [`extensions/brian2/`](../extensions/brian2/) has the NEST models the example networks use, `static_synapse` is built in, and `init --with-core` copies them into a project.
 
 ```python
-# models/brian2/my_lif.py
+# extensions/brian2/my_lif.py
 from microcircuit_lab.backends.brian2.models import NeuronModel
 
 my_lif = NeuronModel(
@@ -613,12 +625,12 @@ my_lif = NeuronModel(
 )
 ```
 
-- Values in the config files and in `defaults` are in NEST's units (mV, ms, pF, pA, nS, Hz); the equations use Brian2's.
+- Values in the config files and in `defaults` are in the package's [units](#configuration) (mV, ms, pF, pA, nS, Hz); the equations use Brian2's.
 - Every parameter is declared in the equations. A parameter in `neurons.yaml` that the model does not have, or one with no value, is an error.
 - `I_e` is needed only where `neurons.yaml` sets it or scaling adds its compensation current to it; a model that declares it gives it a default (0.0). `I_stim` is the current of `dc` stimuli.
 - A connection adds its weight to `excitatory` or `inhibitory`, as its sign says, or to `receptor_port` (e.g. `"I_syn_{port}"`) if its synapse has a `receptor_port`; a port given by name is that variable (e.g. `g_ampa`). A weight onto a conductance adds its size, as in NEST.
 - A list parameter such as `tau_syn: [0.5, 2.0]` sets `tau_syn_1` and `tau_syn_2`; `equations` can be a function of the parameters when their number varies (see `iaf_psc_exp_multisynapse.py`).
-- A `SynapseModel` takes Brian2's own forms. `model` holds the synapse's variables (the weight `w_syn` is added), `on_pre` and `on_post` are code or a dict of pathways to code (`{target}` is the variable the connection adds to), `delays` gives an expression for the delay of each pathway other than `pre` (the connection's delay sets `pre`), and `method` is the integration method. A summed variable such as `I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)` makes a gap junction (with `on_pre=""`; the target neuron declares `I_gap`, with a default). `models/brian2/` has no NEST-matching `stdp_synapse`: write a model of your own; NEST's `stdp_synapse` parameters are not mapped.
+- A `SynapseModel` takes Brian2's own forms. `model` holds the synapse's variables (the weight `w_syn` is added), `on_pre` and `on_post` are code or a dict of pathways to code (`{target}` is the variable the connection adds to), `delays` gives an expression for the delay of each pathway other than `pre` (the connection's delay sets `pre`), and `method` is the integration method. A summed variable such as `I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)` makes a gap junction (with `on_pre=""`; the target neuron declares `I_gap`, with a default). `extensions/brian2/` has no NEST-matching `stdp_synapse`: write a model of your own; NEST's `stdp_synapse` parameters are not mapped.
 
 ```python
 stdp = SynapseModel(
@@ -633,10 +645,10 @@ stdp = SynapseModel(
 
 ### Connection rules of your own
 
-A `rule` that is not one of the shared rules is a `ConnectionRule` in `models/brian2/` (or in a module given with `--model-modules`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's `parameters`, the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
+A `rule` that is not one of the shared rules is a `ConnectionRule` in `extensions/brian2/` (or in a module given with `--extensions`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's `parameters`, the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
 
 ```python
-# models/brian2/rules.py
+# extensions/brian2/rules.py
 from microcircuit_lab.backends.brian2.models import ConnectionRule
 
 ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= width", p="p0")
@@ -651,10 +663,10 @@ In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 
 
 ### Distributions of your own
 
-A weight or delay `distribution` that is not a shared one is a `Distribution` in `models/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the connection's `mean` and `rel_std`, its `parameters`, the neurons' variables and `index_pre` / `index_post`:
+A weight or delay `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the connection's `mean` and `rel_std`, its `parameters`, the neurons' variables and `index_pre` / `index_post`:
 
 ```python
-# models/brian2/distributions.py
+# extensions/brian2/distributions.py
 from microcircuit_lab.backends.brian2.models import Distribution
 
 decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index_post) / length)", redraw_rounds=0)
@@ -688,11 +700,11 @@ microcircuit_lab/
 ├── cli/               the microcircuit-lab command
 ├── builder_tools.py   what a builder needs, in one import
 ├── run_folder.py      run folders and their metadata
-├── project_code.py    finds the builders/, analyses/ and models/ of a project
+├── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 └── yaml_files.py      reading and writing YAML
 ```
 
-Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `models/` hold the examples, laid out like a project's.
+Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `extensions/` hold the examples, laid out like a project's.
 
 ### Adding a bundled plot
 
@@ -715,4 +727,4 @@ register_plot("spectrogram", plot_spectrogram,
 pytest
 ```
 
-The tests cover the core: reading and checking configs, preparing a network, the NEST backend and the analysis. A builder is tested through what it writes: every network in `configs/network/` is loaded and checked. Tests that simulate need NEST; the Brian2 tests are skipped without Brian2.
+The tests cover the core: reading and checking configs, preparing a network, the simulator backends and the analysis. A builder is tested through what it writes: every network in `configs/network/` is loaded and checked. Tests that simulate need NEST; the Brian2 tests are skipped without Brian2.

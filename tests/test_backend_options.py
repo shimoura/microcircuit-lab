@@ -92,7 +92,7 @@ def test_run_forwards_backend_options_to_the_backend_constructor(monkeypatch, tm
 
 
 def test_the_removed_extension_modules_option_names_its_replacements():
-    with pytest.raises(ValueError, match="nest_modules.*model_modules"):
+    with pytest.raises(ValueError, match="nest_modules.*extensions"):
         Simulation.from_yaml(network_name="toy", backend_options={"extension_modules": ["m"]})
 
 

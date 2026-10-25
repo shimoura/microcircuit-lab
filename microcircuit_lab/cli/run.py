@@ -86,13 +86,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "the network is built, for the models neurons.yaml and synapses.yaml name.",
     )
     parser.add_argument(
-        "--model-modules",
+        "--extensions",
         nargs="+",
         default=None,
         help="With Brian2: Python modules that define models, besides the files in "
-        "models/brian2/.",
+        "extensions/brian2/.",
     )
-    # Removed: split into --nest-modules and --model-modules.
+    # Removed: split into --nest-modules and --extensions.
     parser.add_argument("--extension-modules", nargs="+", default=None, help=argparse.SUPPRESS)
     parser.add_argument(
         "--analysis",
@@ -150,7 +150,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     if args.extension_modules is not None:
         parser.error(
             "--extension-modules was split in two: --nest-modules for compiled NEST modules "
-            "(e.g. from NESTML), --model-modules for Python modules with Brian2 models."
+            "(e.g. from NESTML), --extensions for Python modules with Brian2 models."
         )
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
@@ -178,7 +178,7 @@ def main(argv: list[str] | None = None) -> None:
         brian2_options = {
             "device": args.brian2_device,
             "codegen_target": args.brian2_codegen_target,
-            "model_modules": args.model_modules,
+            "extensions": args.extensions,
         }
         brian2_options = {name: value for name, value in brian2_options.items() if value is not None}
         backend_options.update(brian2_options)
@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(str(error))
         if brian2_options and simulation.backend_name != "brian2":
             sys.exit(
-                "--brian2-device, --brian2-codegen-target and --model-modules need the brian2 "
+                "--brian2-device, --brian2-codegen-target and --extensions need the brian2 "
                 f"backend (this run uses {simulation.backend_name})."
             )
         if args.nest_modules and simulation.backend_name != "nest":

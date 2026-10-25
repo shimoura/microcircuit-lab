@@ -2,8 +2,8 @@
 
 To add a stimulus type: write its class here (a subclass of ``StimulusBase``
 with its own ``type``), add it to ``StimulusConfig`` at the end of this file,
-and create its device in ``NestBackend.create_stimuli``
-(``backends/nest/simulator.py``). See "Changing the core" in CONTRIBUTING.md.
+and create it in each backend's ``create_stimuli`` (``backends/<name>/simulator.py``).
+See "Changing the core" in CONTRIBUTING.md.
 """
 
 from __future__ import annotations

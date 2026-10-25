@@ -5,7 +5,7 @@ definitions (models and the like, which the config files name).
 :func:`discover_builders` finds what ``microcircuit-lab generate`` can run;
 :func:`microcircuit_lab.analysis.run_command_plots.discover_plots` finds the plots in
 ``analyses/``; :func:`find_definitions` finds the objects a backend looks up by
-name, such as the Brian2 models in ``models/brian2/``. All import a folder of the
+name, such as the Brian2 models in ``extensions/brian2/``. All import a folder of the
 project with :func:`import_folder_modules`.
 
 A builder is any package with a callable ``main(argv=None)``. That is all the
@@ -51,7 +51,7 @@ def import_folder_modules(
     name), and the folder that holds that package is added to the front of
     ``sys.path``, as Python does for the folder of a script you run. So
     ``builders/`` is imported as ``builders`` (``builders.pd14``), and
-    ``models/brian2/`` with ``package="models.brian2"``, which keeps it apart
+    ``extensions/brian2/`` with ``package="extensions.brian2"``, which keeps it apart
     from the ``brian2`` package. Your project's files win over an installed
     package of the same name. With ``packages_only`` plain ``.py`` files are
     skipped. An error raised while importing propagates, so a broken module

@@ -259,7 +259,7 @@ def _with_backend(
         if "extension_modules" in given:
             raise ValueError(
                 "The backend option extension_modules was split in two: nest_modules for "
-                "compiled NEST modules (e.g. from NESTML), model_modules for Python modules "
+                "compiled NEST modules (e.g. from NESTML), extensions for Python modules "
                 "with Brian2 models."
             )
     if backend is None:

@@ -33,7 +33,7 @@ class PopulationEntry(FrozenConfig):
         examples=[{"V_m": {"distribution": "normal", "mean": -58.0, "std": 10.0}}],
         description="starting value of each state variable of the neuron model, e.g. V_m (mV): "
         "a number, or a distribution drawn per neuron: its name and its arguments, e.g. "
-        "{distribution: normal, mean: -58, std: 10} (for NEST, any function in nest.random); "
+        "{distribution: normal, mean: -58, std: 10}, which the simulator looks up; "
         "a variable left out starts at the model's default",
     )
     background_indegree: float = Field(

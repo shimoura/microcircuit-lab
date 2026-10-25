@@ -1,6 +1,6 @@
 """Tests for the Brian2 simulator backend.
 
-The networks use the models in ``models/brian2/``, found from the folder the
+The networks use the models in ``extensions/brian2/``, found from the folder the
 tests run from (the repository).
 """
 
@@ -38,7 +38,7 @@ pytestmark = pytest.mark.skipif(
     reason="brian2 is not installed",
 )
 
-# Found by the test that passes this module in model_modules.
+# Found by the test that passes this module in extensions.
 pacemaker = NeuronModel(
     name="pacemaker",
     equations="dV_m/dt = (E_L - V_m)/tau_m : volt\nE_L : volt\ntau_m : second",
@@ -231,7 +231,7 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
         weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
-    backend = _backend(_network("iaf_psc_exp", connections=[connection]), model_modules=[__name__])
+    backend = _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__])
     backend.build()
 
     # T is neurons 100-149 of the group (after S); each neuron to its neighbours.
@@ -251,7 +251,7 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
         DelayDistribution(mean=1.0, rel_std=0.0, distribution="by_target", parameters={"step": 0.1}),
     )
     shared = _row("T", "T", WeightDistribution(mean=7.0, rel_std=0.0, distribution="fixed", unit="PSC"), fixed_delay)
-    backend = _backend(_network("iaf_psc_exp", connections=[project, shared]), model_modules=[__name__])
+    backend = _backend(_network("iaf_psc_exp", connections=[project, shared]), extensions=[__name__])
     backend.build()
 
     import brian2 as b2
@@ -268,7 +268,7 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
 def test_a_project_weight_past_its_bound_is_clipped() -> None:
     weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="PSC", distribution="alternating")
     connection = _row("S", "T", weight, DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"))
-    backend = _backend(_network("iaf_psc_exp", connections=[connection]), model_modules=[__name__])
+    backend = _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__])
     backend.build()
 
     import brian2 as b2
@@ -283,9 +283,9 @@ def test_redraw_needs_the_distributions_redraw_rounds() -> None:
     connection = _row("S", "T", weight, DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"))
     network = _network("iaf_psc_exp", connections=[connection])
     with pytest.raises(ValueError, match="'no_rounds' has no redraw_rounds.*bound_mode: clip"):
-        _backend(network, model_modules=[__name__]).check()
+        _backend(network, extensions=[__name__]).check()
 
-    _backend(network.model_copy(update={"bound_mode": "clip"}), model_modules=[__name__]).check()
+    _backend(network.model_copy(update={"bound_mode": "clip"}), extensions=[__name__]).check()
 
 
 def test_an_unknown_rule_says_where_to_define_it() -> None:
@@ -297,7 +297,7 @@ def test_an_unknown_rule_says_where_to_define_it() -> None:
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
     backend = _backend(_network("iaf_psc_exp", connections=[connection]))
-    with pytest.raises(ValueError, match=r"no connection rule 'no_such_rule'.*ConnectionRule.*models/brian2/"):
+    with pytest.raises(ValueError, match=r"no connection rule 'no_such_rule'.*ConnectionRule.*extensions/brian2/"):
         backend.check()
 
 
@@ -331,7 +331,7 @@ def _synapse_network(neuron_model: str, synapse: str, parameters: dict, delay: f
 
 
 def test_stdp_changes_the_weights_when_both_neurons_spike() -> None:
-    backend = _backend(_synapse_network("pacemaker", "stdp", {}), model_modules=[__name__])
+    backend = _backend(_synapse_network("pacemaker", "stdp", {}), extensions=[__name__])
     backend.build()
     import brian2 as b2
 
@@ -344,7 +344,7 @@ def test_stdp_changes_the_weights_when_both_neurons_spike() -> None:
 
 def test_extra_pathway_has_its_own_delay() -> None:
     network = _synapse_network("pacemaker", "two_pathways", {"delay_slow": 7.0}, delay=2.0)
-    backend = _backend(network, model_modules=[__name__])
+    backend = _backend(network, extensions=[__name__])
     backend.build()
     import brian2 as b2
 
@@ -364,18 +364,18 @@ def test_receptor_port_by_name_is_the_variable_added_to() -> None:
         entry = SynapseEntry(model="static_synapse", receptor_port=port)
         return _network("two_inputs", connections=[connection], size=5, synapses={"named": entry})
 
-    backend = _backend(network("I_b"), model_modules=[__name__])
+    backend = _backend(network("I_b"), extensions=[__name__])
     backend.build()
     backend.simulate()
     group = backend._group_of["T"].neurons
     assert np.all(group.I_a[:] == 0) and np.any(group.I_b[:] != 0)
 
     with pytest.raises(ValueError, match="'named' sets receptor_port 'I_c'.*no variable of that name"):
-        _backend(network("I_c"), model_modules=[__name__]).check()
+        _backend(network("I_c"), extensions=[__name__]).check()
 
 
 def test_gap_junction_pulls_the_target_toward_the_source() -> None:
-    backend = _backend(_synapse_network("gap_neuron", "gap", {}), model_modules=[__name__])
+    backend = _backend(_synapse_network("gap_neuron", "gap", {}), extensions=[__name__])
     backend.build()
     import brian2 as b2
 
@@ -399,7 +399,7 @@ def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
 
 
 def test_model_from_a_model_module() -> None:
-    backend = _backend(_network("pacemaker", size=5), model_modules=[__name__])
+    backend = _backend(_network("pacemaker", size=5), extensions=[__name__])
     backend.build()
     backend.simulate()
 
@@ -409,7 +409,7 @@ def test_model_from_a_model_module() -> None:
 def test_missing_model_fails_before_the_run_folder_and_says_where_to_define_it(tmp_path: Path) -> None:
     config = SimulationConfig(output={"output_dir": tmp_path / "runs"}, backend={"name": "brian2", "options": NUMPY})
     simulation = Simulation(network=_network("no_such_model"), simulation_config=config, network_name="n")
-    with pytest.raises(ValueError, match=r"no neuron model 'no_such_model'.*models/brian2/.*--model-modules"):
+    with pytest.raises(ValueError, match=r"no neuron model 'no_such_model'.*extensions/brian2/.*--extensions"):
         simulation.run()
 
     assert not (tmp_path / "runs").exists()

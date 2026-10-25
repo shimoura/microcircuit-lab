@@ -3,13 +3,13 @@ Neuron and synapse models, and connection rules, for the Brian2 backend.
 
 Brian2 has no models of its own, so the project defines the ones its
 ``neurons.yaml`` and ``synapses.yaml`` name: as :class:`NeuronModel` and
-:class:`SynapseModel` objects in the Python files of ``models/brian2/``, or in
-modules given as ``model_modules``. The one model the backend has itself
+:class:`SynapseModel` objects in the Python files of ``extensions/brian2/``, or in
+the Python modules given as ``extensions``. The one model the backend has itself
 is ``static_synapse``. A ``rule`` in ``connectivity.yaml`` that is not one of
 the shared rules is a :class:`ConnectionRule` found the same way, and a weight
 or delay ``distribution`` that is not a shared one a :class:`Distribution`.
 
-Numbers in the config files are in NEST's units (mV, ms, pF, pA, nS, Hz), so the
+Numbers in the config files are in the package's units (mV, ms, pF, pA, nS, Hz), so the
 same files run on both simulators; the equations are written in Brian2's units.
 """
 
@@ -22,7 +22,7 @@ from typing import Any
 
 from microcircuit_lab.project_code import find_definitions
 
-MODELS_FOLDER = Path("models") / "brian2"
+EXTENSIONS_FOLDER = Path("extensions") / "brian2"
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class NeuronModel:
         (e.g. ``"I_syn_{port}"``). None: the model has no receptor ports.
     defaults
         Values of the parameters and of the initial state for what
-        ``neurons.yaml`` does not give, in NEST's units.
+        ``neurons.yaml`` does not give, in the package's units.
     """
 
     name: str
@@ -101,7 +101,7 @@ class SynapseModel:
         Brian2 chooses.
     defaults
         Values of the synapse's variables for what ``synapses.yaml`` does not
-        give, in NEST's units.
+        give, in the package's units.
     """
 
     name: str
@@ -175,17 +175,17 @@ class Distribution:
 KINDS = (NeuronModel, SynapseModel, ConnectionRule, Distribution)
 
 
-def load_models(model_modules: Sequence[str] = ()) -> dict[type, dict[str, Any]]:
+def load_models(extensions: Sequence[str] = ()) -> dict[type, dict[str, Any]]:
     """
     The project's definitions of each kind in :data:`KINDS`, by kind and name.
 
-    Every one at the top level of the files in ``models/brian2/`` (of the
-    folder you run from) and of the modules ``model_modules`` is found (see
+    Every one at the top level of the files in ``extensions/brian2/`` (of the
+    folder you run from) and of the modules ``extensions`` is found (see
     :func:`microcircuit_lab.project_code.find_definitions`). A project's own
     ``static_synapse`` replaces the backend's.
     """
 
-    found = find_definitions(MODELS_FOLDER, "models.brian2", model_modules, KINDS)
+    found = find_definitions(EXTENSIONS_FOLDER, "extensions.brian2", extensions, KINDS)
     found[SynapseModel].setdefault(STATIC_SYNAPSE.name, STATIC_SYNAPSE)
     return found
 
@@ -203,6 +203,6 @@ def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
     }[kind]
     return ValueError(
         f"Brian2 has no {what} {name!r} (named in {file}). Define it as a {cls} in a file of "
-        f"{MODELS_FOLDER}/ in the folder you run from (see the examples there), or in a "
-        f"module passed with --model-modules. Found: {sorted(known)}."
+        f"{EXTENSIONS_FOLDER}/ in the folder you run from (see the examples there), or in a "
+        f"module passed with --extensions. Found: {sorted(known)}."
     )

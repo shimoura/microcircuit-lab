@@ -116,7 +116,7 @@ class Brian2Backend:
         *,
         device: Literal["runtime", "cpp_standalone"] = "runtime",
         codegen_target: Literal["auto", "cython", "numpy"] = "auto",
-        model_modules: Sequence[str] = (),
+        extensions: Sequence[str] = (),
     ) -> None:
         """
         Parameters
@@ -133,9 +133,9 @@ class Brian2Backend:
             compiler). Compiling takes a while the first time a kind of
             network runs, and is kept for later runs; ``"numpy"`` compiles
             nothing, so it starts at once but runs slower.
-        model_modules
+        extensions
             Python modules that define neuron and synapse models, besides the
-            files in ``models/brian2/`` of the folder you run from.
+            files in ``extensions/brian2/`` of the folder you run from.
         """
 
         if device not in ("runtime", "cpp_standalone"):
@@ -149,7 +149,7 @@ class Brian2Backend:
         self._simulation_config = simulation_config
         self._device = device
         self._codegen_target = codegen_target
-        self._model_modules = model_modules
+        self._extensions = extensions
         self._rng = np.random.default_rng(simulation_config.rng_seed)
         self._standalone_dir: tempfile.TemporaryDirectory | None = None
         self._neuron_models: dict[str, models.NeuronModel] = {}
@@ -222,7 +222,7 @@ class Brian2Backend:
         needed but not set.
         """
 
-        found = models.load_models(self._model_modules)
+        found = models.load_models(self._extensions)
         self._neuron_models = found[models.NeuronModel]
         self._synapse_models = found[models.SynapseModel]
         self._connection_rules = found[models.ConnectionRule]
@@ -393,7 +393,7 @@ class Brian2Backend:
 
     def _set_group_values(self, group: _Group, values: dict[str, dict]) -> None:
         """Set the parameters and initial state of a group's neurons, given in
-        NEST's units: one array per variable, for all its populations."""
+        the package's units: one array per variable, for all its populations."""
 
         for name in sorted({name for pop in group.populations for name in values[pop]}):
             unit = _units(group.neurons.variables[name].dim, f"{name!r} of {group.model.name!r}")[1]
@@ -407,7 +407,7 @@ class Brian2Backend:
             setattr(group.neurons, name, array * getattr(b2, unit, 1))
 
     def _set_values(self, target, equations: b2.Equations, values: dict, where: str) -> None:
-        """Set the variables of synapses, given in NEST's units."""
+        """Set the variables of synapses, given in the package's units."""
 
         for name, value in values.items():
             if name not in equations.names:
