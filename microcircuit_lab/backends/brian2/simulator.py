@@ -468,13 +468,32 @@ class Brian2Backend:
 
         si_unit, unit = self._weight_units(target.populations[0], variable)
         model = self.synapse_model(synapse)
+
+        def code(on):
+            if isinstance(on, dict):
+                return {k: v.format(target=f"{variable}_post") for k, v in on.items()}
+            return on.format(target=f"{variable}_post")
+
+        pathways = {
+            *(model.on_pre if isinstance(model.on_pre, dict) else ["pre"] * bool(model.on_pre)),
+            *(model.on_post if isinstance(model.on_post, dict) else ["post"] * bool(model.on_post)),
+        }
+        for pathway in model.delays:
+            if pathway not in pathways:
+                raise ValueError(
+                    f"Synapse model {model.name!r} sets a delay for pathway {pathway!r}, "
+                    f"which its on_pre and on_post do not have; they have {sorted(pathways)}."
+                )
+        options = {} if model.method is None else {"method": model.method}
         synapses = b2.Synapses(
             source,
             target.neurons,
             model=f"w_syn : {si_unit}\n{model.model}",
-            on_pre=model.on_pre.format(target=f"{variable}_post"),
+            on_pre=code(model.on_pre),
+            on_post=code(model.on_post) or None,
             namespace={},
             name=name,
+            **options,
         )
         for arguments, namespace in calls:
             synapses.namespace.update(namespace)
@@ -484,9 +503,10 @@ class Brian2Backend:
             weights = {k: (abs(mean), *rest) for k, (mean, *rest) in weights.items()}
         bound_mode = self._network.bound_mode
         distributions.set_weights(synapses, "w_syn", index, weights, unit, bound_mode, projects["weight"])
-        distributions.set_delays(
-            synapses, index, delays, bound_mode, self._simulation_config.resolution, projects["delay"]
-        )
+        if "pre" in pathways:  # a gap junction has no pathway of spikes to delay
+            distributions.set_delays(
+                synapses, index, delays, bound_mode, self._simulation_config.resolution, projects["delay"]
+            )
 
         parameters = {} if synapse is None else self._network.synapses[synapse].parameters
         self._set_values(
@@ -495,6 +515,8 @@ class Brian2Backend:
             {**model.defaults, **parameters},
             f"synapse {synapse or model.name!r} (synapses.yaml)",
         )
+        for pathway, expression in model.delays.items():
+            getattr(synapses, pathway).delay = expression
         self.synapses.append(synapses)
 
     def create_connections(self) -> None:

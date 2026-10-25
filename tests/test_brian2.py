@@ -17,6 +17,7 @@ from microcircuit_lab.backends.brian2.models import (
     ConnectionRule,
     Distribution,
     NeuronModel,
+    SynapseModel,
 )
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
@@ -30,6 +31,7 @@ from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import DcStimulusConfig
+from microcircuit_lab.config.synapses import SynapseEntry
 
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("brian2") is None,
@@ -46,6 +48,52 @@ pacemaker = NeuronModel(
     excitatory="V_m",
     inhibitory="V_m",
     defaults={"E_L": -50.0, "tau_m": 10.0, "V_m": -70.0},
+)
+
+
+# Found by the tests of synapse models, with pacemaker above.
+stdp = SynapseModel(
+    name="stdp",
+    model="""
+    dapre/dt = -apre/tau_plus : 1 (event-driven)
+    dapost/dt = -apost/tau_minus : 1 (event-driven)
+    tau_plus : second (constant)
+    tau_minus : second (constant)
+    w_max : volt (constant)
+    """,
+    on_pre="""
+    {target} += w_syn
+    apre += 0.1
+    w_syn = clip(w_syn*(1 + apost), 0*mV, w_max)
+    """,
+    on_post="""
+    apost -= 0.1
+    w_syn = clip(w_syn*(1 + apre), 0*mV, w_max)
+    """,
+    defaults={"tau_plus": 20.0, "tau_minus": 20.0, "w_max": 10.0},
+)
+two_pathways = SynapseModel(
+    name="two_pathways",
+    model="delay_slow : second (constant)",
+    on_pre={"pre": "{target} += w_syn", "slow": "{target} += w_syn"},
+    delays={"slow": "delay_slow"},
+)
+gap_neuron = NeuronModel(
+    name="gap_neuron",
+    equations="dV_m/dt = (E_L - V_m)/tau_m + I_gap/C_m : volt\nI_gap : amp\n"
+    "E_L : volt\ntau_m : second\nC_m : farad\nI_e : amp",
+    threshold="V_m > 0*mV",
+    reset="V_m = -70*mV",
+    refractory="0*ms",
+    excitatory="V_m",
+    inhibitory="V_m",
+    defaults={"E_L": -70.0, "tau_m": 10.0, "C_m": 100.0, "V_m": -70.0, "I_gap": 0.0},
+)
+gap = SynapseModel(
+    name="gap",
+    model="I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)\ng_gap : siemens (constant)",
+    on_pre="",
+    defaults={"g_gap": 10.0},
 )
 
 
@@ -78,7 +126,7 @@ def _run(network_name: str, tmp_path: Path, t_sim: float = 200.0, backend_option
     return simulation
 
 
-def _network(neuron_model: str, connections=(), stimuli=(), size: int = 50) -> NetworkConfig:
+def _network(neuron_model: str, connections=(), stimuli=(), size: int = 50, synapses=None) -> NetworkConfig:
     neuron = NeuronConfig(name="plain", model=neuron_model, parameters=NeuronParams())
     populations = {
         "S": PopulationConfig(name="S", size=2 * size, neuron=neuron),
@@ -89,6 +137,7 @@ def _network(neuron_model: str, connections=(), stimuli=(), size: int = 50) -> N
         connections=list(connections),
         background_inputs={},
         stimuli=list(stimuli),
+        synapses=synapses or {},
         scaling=ScalingConfig(),
         reference=ReferenceConfig(full_mean_rates={"S": 5.0, "T": 5.0}),
     )
@@ -256,6 +305,52 @@ def test_redraw_keeps_the_sign_of_the_weights() -> None:
     assert weights.max() < 0.0
     # Redrawn, not clipped: about 16 % of them would be 0 after clipping.
     assert abs(weights.mean() + 10.0 * 1.29) < 1.0
+
+
+def _synapse_network(neuron_model: str, synapse: str, parameters: dict, delay: float = 1.0, weight: float = 1.0):
+    connection = _row(
+        "S", "T",
+        WeightDistribution(mean=weight, rel_std=0.0, unit="PSC", distribution="fixed"),
+        DelayDistribution(mean=delay, rel_std=0.0, distribution="fixed"),
+        synapse=synapse,
+    )
+    entry = SynapseEntry(model=synapse, parameters=parameters)
+    return _network(neuron_model, connections=[connection], size=5, synapses={synapse: entry})
+
+
+def test_stdp_changes_the_weights_when_both_neurons_spike() -> None:
+    backend = _backend(_synapse_network("pacemaker", "stdp", {}), model_modules=[__name__])
+    backend.build()
+    import brian2 as b2
+
+    before = backend.synapses[0].w_syn[:] / b2.mV
+    backend.simulate()
+    after = backend.synapses[0].w_syn[:] / b2.mV
+    assert np.allclose(before, 1.0)
+    assert not np.allclose(after, before)
+
+
+def test_extra_pathway_has_its_own_delay() -> None:
+    network = _synapse_network("pacemaker", "two_pathways", {"delay_slow": 7.0}, delay=2.0)
+    backend = _backend(network, model_modules=[__name__])
+    backend.build()
+    import brian2 as b2
+
+    (synapses,) = backend.synapses
+    assert np.allclose(synapses.slow.delay[:] / b2.ms, 7.0)
+    assert np.allclose(synapses.delay[:] / b2.ms, 2.0)
+
+
+def test_gap_junction_pulls_the_target_toward_the_source() -> None:
+    backend = _backend(_synapse_network("gap_neuron", "gap", {}), model_modules=[__name__])
+    backend.build()
+    import brian2 as b2
+
+    neurons = backend._groups[0].neurons
+    neurons.E_L[:10] = -50 * b2.mV  # S (10 neurons) holds near -50 mV; T would rest at -70 mV
+    backend.simulate()
+    assert np.mean(neurons.V_m[10:] / b2.mV) > -65.0
+    assert np.all(neurons.I_gap[10:] > 0 * b2.amp)
 
 
 def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:

@@ -617,6 +617,18 @@ my_lif = NeuronModel(
 - `I_e` is required: scaling adds its compensation currents to it. `I_stim` is the current of `dc` stimuli.
 - A connection adds its weight to `excitatory` or `inhibitory`, as its sign says, or to `receptor_port` (e.g. `"I_syn_{port}"`) if its synapse has a `receptor_port`. A weight onto a conductance adds its size, as in NEST.
 - A list parameter such as `tau_syn: [0.5, 2.0]` sets `tau_syn_1` and `tau_syn_2`; `equations` can be a function of the parameters when their number varies (see `iaf_psc_exp_multisynapse.py`).
+- A `SynapseModel` takes Brian2's own forms. `model` holds the synapse's variables (the weight `w_syn` is added), `on_pre` and `on_post` are code or a dict of pathways to code (`{target}` is the variable the connection adds to), `delays` gives an expression for the delay of each pathway other than `pre` (the connection's delay sets `pre`), and `method` is the integration method. A summed variable such as `I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)` makes a gap junction (with `on_pre=""`; the target neuron declares `I_gap`, with a default). `models/brian2/` has no NEST-matching `stdp_synapse`: write a model of your own; NEST's `stdp_synapse` parameters are not mapped.
+
+```python
+stdp = SynapseModel(
+    name="stdp",
+    model="dapre/dt = -apre/tau_plus : 1 (event-driven)\ndapost/dt = -apost/tau_minus : 1 (event-driven)\n"
+    "tau_plus : second (constant)\ntau_minus : second (constant)\nw_max : amp (constant)",
+    on_pre="{target} += w_syn\napre += 0.01\nw_syn = clip(w_syn + apost*pA, 0*pA, w_max)",
+    on_post="apost -= 0.012\nw_syn = clip(w_syn + apre*pA, 0*pA, w_max)",
+    defaults={"tau_plus": 20.0, "tau_minus": 20.0, "w_max": 100.0},
+)
+```
 
 ### Connection rules of your own
 

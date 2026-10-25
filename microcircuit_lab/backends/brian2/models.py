@@ -81,8 +81,23 @@ class SynapseModel:
         Brian2 equations of the synapse's own variables. The weight ``w_syn`` is
         added by the backend.
     on_pre
-        What a spike does when it arrives; ``{target}`` stands for the
-        variable of the target neuron that the connection adds to.
+        What a spike of the source does when it arrives: code, or a dict of
+        pathway names to code (as for ``brian2.Synapses``). ``{target}``
+        stands for the variable of the target neuron that the connection adds
+        to, in every pathway. Can be empty, e.g. for a gap junction; then the
+        connection's delay is not used.
+    on_post
+        What a spike of the target does at the synapse, in the same forms as
+        ``on_pre``. Empty: nothing.
+    delays
+        For each pathway other than the main ``pre`` one, a Brian2 expression
+        for its delay, e.g. ``{"slow": "delay_slow"}``. It can use the
+        synapse's own variables, which are set first. The delay of the
+        connection sets that of ``pre``. A pathway that on_pre and on_post do
+        not have is an error.
+    method
+        Brian2's integration method for the equations of ``model``. None:
+        Brian2 chooses.
     defaults
         Values of the synapse's variables for what ``synapses.yaml`` does not
         give, in NEST's units.
@@ -90,7 +105,10 @@ class SynapseModel:
 
     name: str
     model: str = ""
-    on_pre: str = "{target} += w_syn"
+    on_pre: str | dict[str, str] = "{target} += w_syn"
+    on_post: str | dict[str, str] = ""
+    delays: dict[str, str] = field(default_factory=dict)
+    method: str | None = None
     defaults: dict[str, Any] = field(default_factory=dict)
 
 
