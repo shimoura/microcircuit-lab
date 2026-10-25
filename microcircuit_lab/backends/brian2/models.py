@@ -4,7 +4,7 @@ Neuron and synapse models for the Brian2 backend.
 Brian2 has no models of its own, so the project defines the ones its
 ``neurons.yaml`` and ``synapses.yaml`` name: as :class:`NeuronModel` and
 :class:`SynapseModel` objects in the Python files of ``models/brian2/``, or in
-modules given as ``extension_modules``. The one model the backend has itself
+modules given as ``model_modules``. The one model the backend has itself
 is ``static_synapse``.
 
 Numbers in the config files are in NEST's units (mV, ms, pF, pA, nS, Hz), so the
@@ -13,13 +13,12 @@ same files run on both simulators; the equations are written in Brian2's units.
 
 from __future__ import annotations
 
-import importlib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.project_code import import_folder_modules
+from microcircuit_lab.project_code import find_definitions
 
 MODELS_FOLDER = Path("models") / "brian2"
 
@@ -97,42 +96,20 @@ STATIC_SYNAPSE = SynapseModel("static_synapse")
 
 
 def load_models(
-    extension_modules: Sequence[str] = (),
+    model_modules: Sequence[str] = (),
 ) -> tuple[dict[str, NeuronModel], dict[str, SynapseModel]]:
     """
     The neuron and synapse models of the project, by name.
 
     Every :class:`NeuronModel` and :class:`SynapseModel` at the top level of
     the files in ``models/brian2/`` (of the folder you run from) and of the
-    modules ``extension_modules`` is found. A module that fails to import
-    raises. A project's own ``static_synapse`` replaces the backend's.
-
-    Raises
-    ------
-    ValueError
-        If two different models have the same name.
+    modules ``model_modules`` is found (see
+    :func:`microcircuit_lab.project_code.find_definitions`). A project's own
+    ``static_synapse`` replaces the backend's.
     """
 
-    modules = list(import_folder_modules(MODELS_FOLDER, package="models.brian2").values())
-    modules += [importlib.import_module(name) for name in extension_modules]
-
-    neurons: dict[str, NeuronModel] = {}
-    synapses: dict[str, SynapseModel] = {}
-    for module in modules:
-        for item in vars(module).values():
-            if isinstance(item, NeuronModel):
-                found = neurons
-            elif isinstance(item, SynapseModel):
-                found = synapses
-            else:
-                continue
-            # The same object seen again, e.g. imported by another module.
-            if found.get(item.name, item) is not item:
-                raise ValueError(
-                    f"Two Brian2 models are named {item.name!r}; the second is in {module.__name__}."
-                )
-            found[item.name] = item
-
+    found = find_definitions(MODELS_FOLDER, "models.brian2", model_modules, (NeuronModel, SynapseModel))
+    neurons, synapses = found[NeuronModel], found[SynapseModel]
     synapses.setdefault(STATIC_SYNAPSE.name, STATIC_SYNAPSE)
     return neurons, synapses
 
@@ -145,5 +122,5 @@ def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
         f"Brian2 has no {kind} model {name!r} (named in {kind}s.yaml). Define it as a "
         f"{'NeuronModel' if kind == 'neuron' else 'SynapseModel'} in a file of "
         f"{MODELS_FOLDER}/ in the folder you run from (see the examples there), or in a "
-        f"module passed with --extension-modules. Models found: {sorted(known)}."
+        f"module passed with --model-modules. Models found: {sorted(known)}."
     )

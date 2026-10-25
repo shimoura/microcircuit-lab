@@ -1,12 +1,12 @@
 """
 Find the code of the project you run from: its builders, its analyses and its
-neuron and synapse models.
+definitions (models and the like, which the config files name).
 
 :func:`discover_builders` finds what ``microcircuit-lab generate`` can run;
 :func:`microcircuit_lab.analysis.run_command_plots.discover_plots` finds the plots in
-``analyses/``; :func:`microcircuit_lab.backends.brian2.models.load_models` finds
-the Brian2 models in ``models/brian2/``. All import a folder of the project with
-:func:`import_folder_modules`.
+``analyses/``; :func:`find_definitions` finds the objects a backend looks up by
+name, such as the Brian2 models in ``models/brian2/``. All import a folder of the
+project with :func:`import_folder_modules`.
 
 A builder is any package with a callable ``main(argv=None)``. That is all the
 shared command needs; how ``main`` reads its arguments or splits its code up
@@ -33,10 +33,11 @@ from __future__ import annotations
 import importlib
 import pkgutil
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from importlib.metadata import entry_points
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 BUILDER_ENTRY_POINT_GROUP = "microcircuit_lab.builders"
 
@@ -73,6 +74,42 @@ def import_folder_modules(
             continue
         modules[module_info.name] = importlib.import_module(f"{package}.{module_info.name}")
     return modules
+
+
+def find_definitions(
+    folder: str | Path, package: str, module_names: Sequence[str], kinds: Sequence[type]
+) -> dict[type, dict[str, Any]]:
+    """
+    The objects of each kind in ``kinds``, by their ``name``: every one at the
+    top level of the files in ``folder`` (imported as ``package``) and of the
+    modules ``module_names``.
+
+    A config file names a definition (``model: iaf_psc_exp``); the backend
+    looks it up here. A module that fails to import raises.
+
+    Raises
+    ------
+    ValueError
+        If two different objects of the same kind have the same name.
+    """
+
+    modules = list(import_folder_modules(folder, package=package).values())
+    modules += [importlib.import_module(name) for name in module_names]
+
+    found: dict[type, dict[str, Any]] = {kind: {} for kind in kinds}
+    for module in modules:
+        for item in vars(module).values():
+            kind = next((kind for kind in kinds if isinstance(item, kind)), None)
+            if kind is None:
+                continue
+            # The same object seen again, e.g. imported by another module.
+            if found[kind].get(item.name, item) is not item:
+                raise ValueError(
+                    f"Two {kind.__name__} objects are named {item.name!r}; the second is in "
+                    f"{module.__name__}."
+                )
+            found[kind][item.name] = item
+    return found
 
 
 def discover_builders(

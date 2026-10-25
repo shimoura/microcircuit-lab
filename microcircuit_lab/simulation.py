@@ -85,7 +85,7 @@ class Simulation:
             ``backend`` section of the simulation profile (``"nest"`` without it).
         backend_options
             Extra keyword arguments for the backend, passed through unchanged, e.g.
-            ``{"extension_modules": ["my_module"]}`` to load a NESTML model in NEST.
+            ``{"nest_modules": ["my_module"]}`` to load a NESTML model in NEST.
             They replace the profile's options of the same name. The profile's
             options are dropped when ``backend`` names another simulator.
 
@@ -212,6 +212,7 @@ class Simulation:
             simulation_config=self.simulation_config,
             **self.backend_options,
         )
+        self.backend.check()
         self.is_main_process = self.backend.rank() == 0
         self.output_dir = share_run_directory(
             self.simulation_config.output,
@@ -254,6 +255,13 @@ def _with_backend(
     config's ``backend`` section, whose options belong to its own simulator only."""
 
     configured = simulation_config.backend
+    for given in (configured.options, backend_options or {}):
+        if "extension_modules" in given:
+            raise ValueError(
+                "The backend option extension_modules was split in two: nest_modules for "
+                "compiled NEST modules (e.g. from NESTML), model_modules for Python modules "
+                "with Brian2 models."
+            )
     if backend is None:
         backend = configured.name
     options = configured.options if backend == configured.name else {}

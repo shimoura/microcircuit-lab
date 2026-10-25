@@ -37,14 +37,14 @@ class NestBackend:
         network: NetworkConfig,
         simulation_config: SimulationConfig,
         *,
-        extension_modules: Sequence[str] = (),
+        nest_modules: Sequence[str] = (),
     ) -> None:
         """
         Parameters
         ----------
         network, simulation_config
             The prepared network and the simulation settings.
-        extension_modules
+        nest_modules
             Names of compiled NEST modules to install before the network is
             built, for example a NESTML neuron model that ``neurons.yaml`` uses.
             They are installed again at every build, because NEST is reset each
@@ -53,7 +53,7 @@ class NestBackend:
 
         self._network = network
         self._simulation_config = simulation_config
-        self._extension_modules = extension_modules
+        self._nest_modules = nest_modules
         self._recordings_dir: Path | None = None
 
         self.populations: dict[str, nest.NodeCollection] = {}
@@ -94,8 +94,8 @@ class NestBackend:
 
         nest.ResetKernel()
 
-        for module in self._extension_modules:
-            logger.info("Installing extension module %s", module)
+        for module in self._nest_modules:
+            logger.info("Installing NEST module %s", module)
             nest.Install(module)
 
         nest.set(
@@ -111,6 +111,13 @@ class NestBackend:
                 data_path=str(self._recordings_dir),
                 overwrite_files=True,
             )
+
+    def check(self) -> None:
+        """
+        Raise if the network uses something NEST cannot build, before anything
+        is built. Nothing to check yet: neuron and synapse model names are
+        left to NEST, which knows them only once the modules are installed.
+        """
 
     def build(self) -> None:
         """

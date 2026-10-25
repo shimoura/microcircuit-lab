@@ -79,13 +79,21 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "slower. Overrides the simulation file's backend.options.",
     )
     parser.add_argument(
-        "--extension-modules",
+        "--nest-modules",
         nargs="+",
         default=None,
-        help="Module(s) that define neuron models used in neurons.yaml, loaded "
-        "before the network is built: compiled NEST modules (e.g. made by NESTML), "
-        "or Python modules with Brian2 models besides those in models/brian2/.",
+        help="With NEST: compiled NEST modules (e.g. made by NESTML) to install before "
+        "the network is built, for the models neurons.yaml and synapses.yaml name.",
     )
+    parser.add_argument(
+        "--model-modules",
+        nargs="+",
+        default=None,
+        help="With Brian2: Python modules that define models, besides the files in "
+        "models/brian2/.",
+    )
+    # Removed: split into --nest-modules and --model-modules.
+    parser.add_argument("--extension-modules", nargs="+", default=None, help=argparse.SUPPRESS)
     parser.add_argument(
         "--analysis",
         default=None,
@@ -139,6 +147,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
 
     args = parser.parse_args(argv)
+    if args.extension_modules is not None:
+        parser.error(
+            "--extension-modules was split in two: --nest-modules for compiled NEST modules "
+            "(e.g. from NESTML), --model-modules for Python modules with Brian2 models."
+        )
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
     return args
@@ -160,9 +173,13 @@ def main(argv: list[str] | None = None) -> None:
         network_name = simulation.network_name
     else:
         backend_options: dict[str, Any] = {}
-        if args.extension_modules:
-            backend_options["extension_modules"] = args.extension_modules
-        brian2_options = {"device": args.brian2_device, "codegen_target": args.brian2_codegen_target}
+        if args.nest_modules:
+            backend_options["nest_modules"] = args.nest_modules
+        brian2_options = {
+            "device": args.brian2_device,
+            "codegen_target": args.brian2_codegen_target,
+            "model_modules": args.model_modules,
+        }
         brian2_options = {name: value for name, value in brian2_options.items() if value is not None}
         backend_options.update(brian2_options)
         try:
@@ -177,9 +194,13 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(str(error))
         if brian2_options and simulation.backend_name != "brian2":
             sys.exit(
-                "--brian2-device and --brian2-codegen-target need the brian2 backend "
-                f"(this run uses {simulation.backend_name}): pass --backend brian2 or set "
+                "--brian2-device, --brian2-codegen-target and --model-modules need the brian2 "
+                f"backend (this run uses {simulation.backend_name}): pass --backend brian2 or set "
                 "backend.name in the simulation file."
+            )
+        if args.nest_modules and simulation.backend_name != "nest":
+            sys.exit(
+                f"--nest-modules needs the nest backend (this run uses {simulation.backend_name})."
             )
         simulation.run()
         # With MPI, the first process alone plots.

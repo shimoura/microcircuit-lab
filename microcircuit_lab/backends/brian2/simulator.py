@@ -107,7 +107,7 @@ class Brian2Backend:
         *,
         device: Literal["runtime", "cpp_standalone"] = "runtime",
         codegen_target: Literal["auto", "cython", "numpy"] = "auto",
-        extension_modules: Sequence[str] = (),
+        model_modules: Sequence[str] = (),
     ) -> None:
         """
         Parameters
@@ -124,7 +124,7 @@ class Brian2Backend:
             compiler). Compiling takes a while the first time a kind of
             network runs, and is kept for later runs; ``"numpy"`` compiles
             nothing, so it starts at once but runs slower.
-        extension_modules
+        model_modules
             Python modules that define neuron and synapse models, besides the
             files in ``models/brian2/`` of the folder you run from.
         """
@@ -140,7 +140,7 @@ class Brian2Backend:
         self._simulation_config = simulation_config
         self._device = device
         self._codegen_target = codegen_target
-        self._extension_modules = extension_modules
+        self._model_modules = model_modules
         self._rng = np.random.default_rng(simulation_config.rng_seed)
         self._standalone_dir: tempfile.TemporaryDirectory | None = None
         self._neuron_models: dict[str, models.NeuronModel] = {}
@@ -177,8 +177,7 @@ class Brian2Backend:
 
     def initialize(self) -> None:
         """
-        Reset Brian2, set the device, the time step and the seed, and find the
-        project's models.
+        Reset Brian2 and set the device, the time step and the seed.
         """
 
         # Brian2 keeps its device between networks: reset it, so that a second
@@ -204,13 +203,25 @@ class Brian2Backend:
         b2.seed(self._simulation_config.rng_seed)
         self._rng = np.random.default_rng(self._simulation_config.rng_seed)
 
-        self._neuron_models, self._synapse_models = models.load_models(self._extension_modules)
+    def check(self) -> None:
+        """
+        Find the project's models, and raise if a population or a
+        ``synapses.yaml`` entry names one that is not defined.
+        """
+
+        self._neuron_models, self._synapse_models = models.load_models(self._model_modules)
+        for population in self._network.populations:
+            self.neuron_model(population)
+        for synapse in self._network.synapses:
+            self.synapse_model(synapse)
 
     def build(self) -> None:
         """
-        Build the complete network.
+        Build the complete network. It calls :meth:`check` first, so a
+        backend used without ``Simulation`` also fails before building.
         """
 
+        self.check()
         self.initialize()
 
         self.create_populations()

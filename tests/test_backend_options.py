@@ -1,5 +1,5 @@
 """Tests for Simulation's choice of backend, its generic backend_options passthrough and
-NestBackend's extension_modules use of it (for loading compiled
+NestBackend's nest_modules use of it (for loading compiled
 NEST/NESTML models before the network is built).
 
 nest's module object rejects attribute assignment (nest.Install = ...
@@ -9,6 +9,7 @@ monkeypatching the `nest` name inside microcircuit_lab.backends.nest.simulator
 """
 
 import numpy as np
+import pytest
 
 import microcircuit_lab.backends.nest.simulator as nest_backend_module
 import microcircuit_lab.simulation as runner_module
@@ -39,6 +40,9 @@ class _FakeBackend:
         pass
 
     def prepare_output(self, run_dir):
+        pass
+
+    def check(self):
         pass
 
     def build(self):
@@ -79,12 +83,17 @@ def test_run_forwards_backend_options_to_the_backend_constructor(monkeypatch, tm
     simulation = Simulation.from_yaml(
         network_name="toy",
         simulation_name="toy",
-        backend_options={"extension_modules": ["some_module"]},
+        backend_options={"nest_modules": ["some_module"]},
     )
     _use_tmp_output(simulation, tmp_path)
     simulation.run()
 
-    assert _FakeBackend.last_kwargs == {"extension_modules": ["some_module"]}
+    assert _FakeBackend.last_kwargs == {"nest_modules": ["some_module"]}
+
+
+def test_the_removed_extension_modules_option_names_its_replacements():
+    with pytest.raises(ValueError, match="nest_modules.*model_modules"):
+        Simulation.from_yaml(network_name="toy", backend_options={"extension_modules": ["m"]})
 
 
 def test_run_without_backend_options_forwards_nothing_extra(monkeypatch, tmp_path):
@@ -135,7 +144,7 @@ class _FakeNest:
         pass
 
 
-def test_initialize_installs_configured_extension_modules(monkeypatch):
+def test_initialize_installs_configured_nest_modules(monkeypatch):
     fake_nest = _FakeNest()
     monkeypatch.setattr(nest_backend_module, "nest", fake_nest)
 
@@ -143,7 +152,7 @@ def test_initialize_installs_configured_extension_modules(monkeypatch):
     backend = NestBackend(
         network=simulation.network,
         simulation_config=simulation.simulation_config,
-        extension_modules=["module_a", "module_b"],
+        nest_modules=["module_a", "module_b"],
     )
 
     backend.initialize()

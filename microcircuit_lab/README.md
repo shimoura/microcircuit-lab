@@ -542,10 +542,16 @@ mpirun -n 4 microcircuit-lab run --network pd14
    ```python
    simulation = Simulation.from_yaml(
        network_name="toy_nestml",
-       backend_options={"extension_modules": ["my_module"]},
+       backend_options={"nest_modules": ["my_module"]},
    )
    ```
-   or `microcircuit-lab run --network toy_nestml --extension-modules my_module`.
+   or `microcircuit-lab run --network toy_nestml --nest-modules my_module`, or in the simulation file:
+   ```yaml
+   backend:
+     name: nest
+     options:
+       nest_modules: [my_module]
+   ```
 
 Don't commit the compiled output; it depends on the platform and the NEST version.
 
@@ -570,7 +576,7 @@ backend:
 
 `--backend`, the `--brian2-...` flags and the `backend`/`backend_options` arguments override it. The options belong to the simulator named with them: with `--backend nest`, a Brian2 profile's options are left out. The run's `config.yaml` records the simulator and options used.
 
-Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `models/brian2/` of your project, or in a module given with `--extension-modules`. A name it cannot find is an error that says so. This repository's [`models/brian2/`](../models/brian2/) has the NEST models the example networks use, `static_synapse` is built in, and `init --with-core` copies them into a project.
+Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `models/brian2/` of your project, or in a module given with `--model-modules`. A name it cannot find is an error that says so, before anything is built. This repository's [`models/brian2/`](../models/brian2/) has the NEST models the example networks use, `static_synapse` is built in, and `init --with-core` copies them into a project.
 
 ```python
 # models/brian2/my_lif.py

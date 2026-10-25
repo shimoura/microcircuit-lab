@@ -14,7 +14,7 @@ class SimulationBackend(Protocol):
     What ``Simulation.run()`` needs from a simulator.
 
     ``__init__`` may take extra keyword-only arguments that only that backend
-    uses (e.g. NestBackend's ``extension_modules``); ``Simulation`` passes its
+    uses (e.g. NestBackend's ``nest_modules``); ``Simulation`` passes its
     ``backend_options`` through unchanged.
     """
 
@@ -25,6 +25,12 @@ class SimulationBackend(Protocol):
     def prepare_output(self, run_dir: Path) -> None:
         """Called before ``build()`` when outputs are saved: a backend that can
         record straight to disk sets that up here; others may do nothing."""
+        ...
+
+    def check(self) -> None:
+        """Raise if the network names something this simulator does not have
+        (a model, a rule, ...). ``Simulation.run()`` calls it before the run
+        folder is made and the network built, so a wrong name fails at once."""
         ...
 
     def build(self) -> None: ...

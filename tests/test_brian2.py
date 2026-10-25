@@ -32,7 +32,7 @@ pytestmark = pytest.mark.skipif(
     reason="brian2 is not installed",
 )
 
-# Found by the test that passes this module as an extension module.
+# Found by the test that passes this module in model_modules.
 pacemaker = NeuronModel(
     name="pacemaker",
     equations="dV_m/dt = (E_L - V_m)/tau_m : volt\nE_L : volt\ntau_m : second\nI_e : amp",
@@ -177,18 +177,21 @@ def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
     assert max(times) < 155.0
 
 
-def test_model_from_an_extension_module() -> None:
-    backend = _backend(_network("pacemaker", size=5), extension_modules=[__name__])
+def test_model_from_a_model_module() -> None:
+    backend = _backend(_network("pacemaker", size=5), model_modules=[__name__])
     backend.build()
     backend.simulate()
 
     assert len(backend.get_spike_events("T")["times"]) > 0
 
 
-def test_missing_model_says_where_to_define_it() -> None:
-    backend = _backend(_network("no_such_model"))
-    with pytest.raises(ValueError, match=r"no neuron model 'no_such_model'.*models/brian2/.*--extension-modules"):
-        backend.build()
+def test_missing_model_fails_before_the_run_folder_and_says_where_to_define_it(tmp_path: Path) -> None:
+    config = SimulationConfig(output={"output_dir": tmp_path / "runs"}, backend={"name": "brian2", "options": NUMPY})
+    simulation = Simulation(network=_network("no_such_model"), simulation_config=config, network_name="n")
+    with pytest.raises(ValueError, match=r"no neuron model 'no_such_model'.*models/brian2/.*--model-modules"):
+        simulation.run()
+
+    assert not (tmp_path / "runs").exists()
 
 
 @pytest.mark.parametrize("network_name", ["toy_stimulated", "toy_two_areas_advanced"])
