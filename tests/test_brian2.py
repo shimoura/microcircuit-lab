@@ -13,7 +13,11 @@ import numpy as np
 import pytest
 
 from microcircuit_lab import Simulation
-from microcircuit_lab.backends.brian2.models import ConnectionRule, NeuronModel
+from microcircuit_lab.backends.brian2.models import (
+    ConnectionRule,
+    Distribution,
+    NeuronModel,
+)
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
@@ -45,8 +49,11 @@ pacemaker = NeuronModel(
 )
 
 
-# Found by the test of project rules, with pacemaker above.
+# Found by the tests of project rules and distributions, with pacemaker above.
 ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= width")
+by_target = Distribution(name="by_target", expression="mean * (1 + index_post) * step", redraw_rounds=0)
+alternating = Distribution(name="alternating", expression="mean * (1 - 2*(index_post % 2))", redraw_rounds=0)
+no_rounds = Distribution(name="no_rounds", expression="mean")
 
 
 # numpy compiles nothing: Cython would compile each test network first, which
@@ -169,6 +176,55 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
     # T is neurons 100-149 of the group (after S); each neuron to its neighbours.
     pairs = set(zip(backend.synapses[0].i[:].tolist(), backend.synapses[0].j[:].tolist()))
     assert pairs == {(a, b) for a in range(100, 150) for b in range(100, 150) if abs(a - b) == 1}
+
+
+def _row(source, target, weight, delay, **fields):
+    return ConnectionConfig(source=source, target=target, rule="all_to_all", weight=weight, delay=delay, **fields)
+
+
+def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
+    fixed_delay = DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed")
+    project = _row(
+        "S", "T",
+        WeightDistribution(mean=2.0, rel_std=0.0, unit="PSC", distribution="by_target", parameters={"step": 0.5}),
+        DelayDistribution(mean=1.0, rel_std=0.0, distribution="by_target", parameters={"step": 0.1}),
+    )
+    shared = _row("T", "T", WeightDistribution(mean=7.0, rel_std=0.0, distribution="fixed", unit="PSC"), fixed_delay)
+    backend = _backend(_network("iaf_psc_exp", connections=[project, shared]), model_modules=[__name__])
+    backend.build()
+
+    import brian2 as b2
+
+    (synapses,) = backend.synapses
+    from_s = synapses.i[:] < 100
+    index_post = synapses.j[:] - 100  # T is neurons 100-149 of the group
+    assert np.allclose(synapses.w_syn[:][from_s] / b2.pA, 2.0 * (1 + index_post[from_s]) * 0.5)
+    assert np.allclose(synapses.delay[:][from_s] / b2.ms, 1.0 * (1 + index_post[from_s]) * 0.1)
+    assert np.allclose(synapses.w_syn[:][~from_s] / b2.pA, 7.0)
+    assert np.allclose(synapses.delay[:][~from_s] / b2.ms, 1.0)
+
+
+def test_a_project_weight_past_its_bound_is_clipped() -> None:
+    weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="PSC", distribution="alternating")
+    connection = _row("S", "T", weight, DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"))
+    backend = _backend(_network("iaf_psc_exp", connections=[connection]), model_modules=[__name__])
+    backend.build()
+
+    import brian2 as b2
+
+    w = backend.synapses[0].w_syn[:] / b2.pA
+    odd = (backend.synapses[0].j[:] - 100) % 2 == 1
+    assert np.all(w[odd] == 0.0) and np.allclose(w[~odd], 3.0)
+
+
+def test_redraw_needs_the_distributions_redraw_rounds() -> None:
+    weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="PSC", distribution="no_rounds")
+    connection = _row("S", "T", weight, DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"))
+    network = _network("iaf_psc_exp", connections=[connection])
+    with pytest.raises(ValueError, match="'no_rounds' has no redraw_rounds.*bound_mode: clip"):
+        _backend(network, model_modules=[__name__]).check()
+
+    _backend(network.model_copy(update={"bound_mode": "clip"}), model_modules=[__name__]).check()
 
 
 def test_an_unknown_rule_says_where_to_define_it() -> None:

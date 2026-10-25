@@ -56,7 +56,9 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A weight or delay distribution</b></summary>
 
-1. `config/connectivity.py`: add its name to the `distribution` list of `WeightDistribution` or `DelayDistribution`.
+A distribution only one project needs doesn't go in the core: with Brian2 it is a `Distribution` in the project's `models/brian2/` (see "Distributions of your own" in the core's README). A shared one, which every simulator draws:
+
+1. `config/connectivity.py`: add its name to `SHARED_DISTRIBUTIONS`.
 2. `backends/nest/distributions.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
    `backends/brian2/distributions.py`: its Brian2 expression in `DRAWS`, and its chance of crossing a bound in `chance_below`.
 3. Test in `tests/test_bound_mode_and_tau_syn.py`.
@@ -117,7 +119,7 @@ A new package `backends/<name>/` and a line in `get_backend` and `read_saved_spi
 
 **No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `models/brian2/`, see "Running with Brian2" in the README) or for a new network (a network folder or a builder; see "Adding a new network" in the README).
 
-When a stimulus `type` or a `distribution` is not known, the error message points to this section.
+When a stimulus `type` is not known, the error message points to this section.
 
 ### An example: a single-spike stimulus
 

@@ -28,7 +28,7 @@ def test_distribution_is_inferred_from_spread_but_can_be_forced() -> None:
 def test_output_is_exactly_the_on_disk_schema_dump() -> None:
     assert weight(0.15, unit="PSP", rel_std=0.1) == WeightDistribution(
         mean=0.15, rel_std=0.1, distribution="normal", unit="PSP"
-    ).model_dump()
+    ).model_dump(exclude_none=True)
     # An unset minimum delay is left out of the file, not written as null.
     assert delay(1.5) == DelayDistribution(
         mean=1.5, rel_std=0.0, distribution="fixed"

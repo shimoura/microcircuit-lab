@@ -13,9 +13,9 @@ so a connection is described in one place only.
 A large network can keep its connections in a CSV file, named by
 ``connections_file`` in ``connectivity.yaml``, with the same columns. There the
 rule's number goes under its own name (``n_synapses``, ``indegree``,
-``outdegree`` or ``p``), as in the YAML file, a project rule's ``parameters``
-are written as JSON text (``{"width": 10}``), and a column with a default can
-be left out.
+``outdegree`` or ``p``), as in the YAML file, the ``parameters`` of a project
+rule or distribution are written as JSON text (``{"width": 10}``), and a column
+with a default can be left out.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from pydantic.fields import FieldInfo
 
 from microcircuit_lab.config.connectivity import (
     RULE_NUMBER,
+    SHARED_DISTRIBUTIONS,
     SHARED_RULES,
     ConnectionConfig,
     DelayDistribution,
@@ -55,12 +56,15 @@ COLUMNS = {
     "weight.mean": "number",
     "weight.rel_std": "number",
     "weight.distribution": "text",
+    "weight.parameters": "parameters",
     "weight.unit": "text",
     "delay.mean": "number",
     "delay.rel_std": "number",
     "delay.distribution": "text",
+    "delay.parameters": "parameters",
     "delay.minimum": "number",
 }
+PARAMETER_COLUMNS = [column for column, kind in COLUMNS.items() if kind == "parameters"]
 
 
 def _check_every_field_has_a_column() -> None:
@@ -140,8 +144,9 @@ class ConnectionTable:
             raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
                              f"under its name, one of {list(RULE_NUMBER.values())}.")
         columns = {name: _csv_column(frame[name]) for name in frame.columns}
-        if "parameters" in columns:
-            columns["parameters"] = _parameters_from_json(columns["parameters"], path)
+        for name in PARAMETER_COLUMNS:
+            if name in columns:
+                columns[name] = _parameters_from_json(columns[name], name, path)
 
         # The rule's number, from the column named after the rule.
         rule = columns.get("rule", _field("rule").default)
@@ -181,7 +186,8 @@ class ConnectionTable:
                 values = frame["number"].where(rows)
                 frame[name] = values if name == "p" else values.astype("Int64")
         frame = frame.drop(columns="number")
-        frame["parameters"] = [None if v is None else json.dumps(v) for v in frame["parameters"]]
+        for name in PARAMETER_COLUMNS:
+            frame[name] = [None if v is None else json.dumps(v) for v in frame[name]]
         for column in COLUMNS:
             field = _field(column) if column != "number" else None
             if field is None or field.is_required():
@@ -342,37 +348,44 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
             rows = np.flatnonzero(columns["rule"] == rule)
             if rows.size:
                 problems += _problems(name, columns["number"][rows], _checker(name, required=True), rows)
-    if {"rule", "number", "parameters"} & set(which):
+    if {"rule", "number", *PARAMETER_COLUMNS, "weight.distribution", "delay.distribution"} & set(which):
         problems += _rule_problems(columns)
     if problems:
         raise ValueError("\n".join(problems))
 
 
 def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
-    """A number for a rule that takes none, or parameters for a shared rule."""
+    """A number for a rule that takes none, or parameters for a shared rule or
+    distribution."""
+
+    def given(column: str) -> np.ndarray:
+        return np.array([value is not None for value in columns[column]], dtype=bool)
 
     rule = columns["rule"]
-    has_parameters = np.array([value is not None for value in columns["parameters"]], dtype=bool)
+    checks = [
+        ("rule", ~np.isin(rule, list(RULE_NUMBER)) & ~np.isnan(columns["number"]), "takes no number"),
+        ("rule", np.isin(rule, SHARED_RULES) & given("parameters"), "takes no parameters"),
+    ]
+    for group in ("weight", "delay"):
+        shared = np.isin(columns[f"{group}.distribution"], SHARED_DISTRIBUTIONS)
+        checks.append((f"{group}.distribution", shared & given(f"{group}.parameters"), "takes no parameters"))
     problems = []
-    for rows, what in (
-        (~np.isin(rule, list(RULE_NUMBER)) & ~np.isnan(columns["number"]), "takes no number"),
-        (np.isin(rule, SHARED_RULES) & has_parameters, "takes no parameters (only a project rule does)"),
-    ):
+    for column, rows, what in checks:
         if rows.any():
             i = int(np.flatnonzero(rows)[0])
-            problems.append(f"connections.{i}.rule: rule {rule[i]!r} {what}")
+            problems.append(f"connections.{i}.{column}: {columns[column][i]!r} {what} (only a project one does)")
     return problems
 
 
-def _parameters_from_json(values: np.ndarray, path: str | Path) -> np.ndarray:
-    """The parameters column of a CSV file: each cell's JSON text as a dict."""
+def _parameters_from_json(values: np.ndarray, column: str, path: str | Path) -> np.ndarray:
+    """A parameters column of a CSV file: each cell's JSON text as a dict."""
 
     parsed = np.empty(len(values), dtype=object)
     for i, text in enumerate(values):
         try:
             parsed[i] = None if text is None else json.loads(text)
         except json.JSONDecodeError as error:
-            raise ValueError(f"{path}: line {i + 2}, parameters: not JSON ({error.msg}): {text}") from None
+            raise ValueError(f"{path}: line {i + 2}, {column}: not JSON ({error.msg}): {text}") from None
     return parsed
 
 

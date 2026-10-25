@@ -13,6 +13,20 @@ from pydantic import Field, StrictBool, StrictFloat, StrictInt, model_validator
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
+#: The distributions every backend draws weights and delays from. Any other
+#: name is a project distribution, with ``parameters``, which the backend
+#: defines (see its ``models.py``).
+SHARED_DISTRIBUTIONS = ("normal", "uniform", "lognormal", "fixed")
+
+Parameters = dict[str, StrictInt | StrictFloat | StrictBool] | None
+
+
+def _check_parameters(distribution: str, parameters: Parameters) -> None:
+    if parameters is not None and distribution in SHARED_DISTRIBUTIONS:
+        raise ValueError(
+            f"distribution {distribution!r} takes no parameters (only a project distribution does)"
+        )
+
 
 class WeightDistribution(FrozenConfig):
     """
@@ -39,17 +53,19 @@ class WeightDistribution(FrozenConfig):
     )
     rel_std: float = Field(ge=0.0, examples=[0.1], description="standard deviation / |mean|")
 
-    # To add a distribution: list it here (and in DelayDistribution below if it
-    # applies to delays) and draw it in create_weight_spec /
-    # create_delay_parameter (backends/nest/distributions.py).
-    distribution: Literal[
-        "normal",
-        "uniform",
-        "lognormal",
-        "fixed",
-    ] = Field(
+    # To add a shared distribution: list it in SHARED_DISTRIBUTIONS and draw it
+    # in create_weight_spec / create_delay_parameter (backends/nest/distributions.py)
+    # and in backends/brian2/distributions.py.
+    distribution: str = Field(
         default="normal",
-        description="how each weight is drawn, with that mean and standard deviation",
+        description="how each weight is drawn, with that mean and standard deviation: normal, "
+        "uniform, lognormal or fixed; or the name of a project distribution, which the backend "
+        "defines, with parameters",
+    )
+    parameters: Parameters = Field(
+        default=None,
+        description="only for a project distribution: the values its expression uses, e.g. "
+        "{length: 20}",
     )
 
     unit: Literal[
@@ -61,15 +77,25 @@ class WeightDistribution(FrozenConfig):
         description="PSP: mV, converted to pA; PSC: pA, used as given; native: used as given (e.g. nS)",
     )
 
+    @model_validator(mode="after")
+    def _check_parameters(self) -> WeightDistribution:
+        _check_parameters(self.distribution, self.parameters)
+        return self
+
 
 class DelayDistribution(FrozenConfig):
     """Distribution describing synaptic delays."""
 
     mean: float = Field(gt=0.0, examples=[1.5], description="mean delay (ms)")
     rel_std: float = Field(ge=0.0, examples=[0.5], description="standard deviation / mean")
-    distribution: Literal["normal", "uniform", "lognormal", "fixed"] = Field(
+    distribution: str = Field(
         default="normal",
-        description="how each delay is drawn, with that mean and standard deviation",
+        description="how each delay is drawn, with that mean and standard deviation: normal, "
+        "uniform, lognormal or fixed; or the name of a project distribution, with parameters",
+    )
+    parameters: Parameters = Field(
+        default=None,
+        description="only for a project distribution: the values its expression uses",
     )
     minimum: float | None = Field(
         default=None,
@@ -78,6 +104,11 @@ class DelayDistribution(FrozenConfig):
         description="smallest allowed delay (ms) of a drawn delay, never below half the "
         "simulation step; omit for half the simulation step",
     )
+
+    @model_validator(mode="after")
+    def _check_parameters(self) -> DelayDistribution:
+        _check_parameters(self.distribution, self.parameters)
+        return self
 
 
 # The field holding the number each connection rule takes.
@@ -89,7 +120,7 @@ RULE_NUMBER = {
 }
 
 #: The rules every backend implements. Any other name is a project rule, which
-#: the backend defines (for Brian2, a ConnectionRule in models/brian2/).
+#: the backend defines (see its ``models.py``).
 SHARED_RULES = (*RULE_NUMBER, "one_to_one", "all_to_all")
 
 
@@ -123,7 +154,7 @@ class ConnectionConfig(FrozenConfig):
         description="how the synapses are placed: fixed_total_number, fixed_indegree, "
         "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
         "outdegree or p); one_to_one or all_to_all, with no number; or the name of a project "
-        "rule (Brian2: a ConnectionRule in models/brian2/), with parameters",
+        "rule, which the backend defines, with parameters",
     )
     n_synapses: int | None = Field(
         default=None,
@@ -143,7 +174,7 @@ class ConnectionConfig(FrozenConfig):
         le=1.0,
         description="pairwise_bernoulli: probability that a source-target pair is connected",
     )
-    parameters: dict[str, StrictInt | StrictFloat | StrictBool] | None = Field(
+    parameters: Parameters = Field(
         default=None,
         description="only for a project rule: the values its expressions use, e.g. "
         "{width: 10, p0: 0.5}",

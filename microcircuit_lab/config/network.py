@@ -27,7 +27,7 @@ from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
 )
-from microcircuit_lab.config.connectivity import ConnectivityFile
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, ConnectivityFile
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
@@ -161,6 +161,20 @@ class NetworkConfig(FrozenConfig):
                 f"{repeated}. A pair takes one entry per synapse; to connect it twice "
                 "(e.g. AMPA and NMDA), give each entry its own synapse."
             )
+        return self
+
+    @model_validator(mode="after")
+    def _check_project_distributions_on_connections_only(self) -> NetworkConfig:
+        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
+        for user, item in users:
+            for what in ("weight", "delay"):
+                distribution = getattr(item, what).distribution
+                if distribution not in SHARED_DISTRIBUTIONS:
+                    raise ValueError(
+                        f"The {user} has a {what} from project distribution {distribution!r}; "
+                        f"background inputs and stimuli take {', '.join(SHARED_DISTRIBUTIONS)} only."
+                    )
         return self
 
     @model_validator(mode="after")

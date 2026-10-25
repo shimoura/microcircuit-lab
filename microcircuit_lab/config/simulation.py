@@ -23,7 +23,7 @@ class BackendConfig(FrozenConfig):
         default={},
         examples=[{"device": "cpp_standalone"}],
         description="options of that simulator, passed to its backend as-is; the backend "
-        "validates them (see \"Running with Brian2\" in the README)",
+        "validates them (see the simulator's section in the README)",
     )
 
 

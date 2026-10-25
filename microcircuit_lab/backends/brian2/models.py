@@ -6,7 +6,8 @@ Brian2 has no models of its own, so the project defines the ones its
 :class:`SynapseModel` objects in the Python files of ``models/brian2/``, or in
 modules given as ``model_modules``. The one model the backend has itself
 is ``static_synapse``. A ``rule`` in ``connectivity.yaml`` that is not one of
-the shared rules is a :class:`ConnectionRule` found the same way.
+the shared rules is a :class:`ConnectionRule` found the same way, and a weight
+or delay ``distribution`` that is not a shared one a :class:`Distribution`.
 
 Numbers in the config files are in NEST's units (mV, ms, pF, pA, nS, Hz), so the
 same files run on both simulators; the equations are written in Brian2's units.
@@ -122,25 +123,52 @@ class ConnectionRule:
     n: str = "1"
 
 
-def load_models(
-    model_modules: Sequence[str] = (),
-) -> tuple[dict[str, NeuronModel], dict[str, SynapseModel], dict[str, ConnectionRule]]:
+@dataclass(frozen=True)
+class Distribution:
     """
-    The neuron and synapse models and the connection rules of the project,
-    by name.
+    A distribution of the project, for the weights or delays of connections.
 
-    Every :class:`NeuronModel`, :class:`SynapseModel` and
-    :class:`ConnectionRule` at the top level of the files in
-    ``models/brian2/`` (of the folder you run from) and of the modules
-    ``model_modules`` is found (see
+    Parameters
+    ----------
+    name
+        The name ``connectivity.yaml`` gives as a weight's or delay's
+        ``distribution``.
+    expression
+        A Brian2 expression for each synapse's value, as a number in the
+        package's units (pA or nS for a weight, ms for a delay). It can use
+        the connection's ``mean`` and ``rel_std``, its ``parameters``, the
+        variables of the pre- and post-synaptic neurons (``V_m_pre``), and
+        ``index_pre`` / ``index_post`` (see :class:`ConnectionRule`).
+    redraw_rounds
+        With the network's ``bound_mode: redraw``, how many times a value
+        past its bound (a weight of the other sign than ``mean``, a delay
+        below the minimum) is drawn again before it is clipped to the bound.
+        0 clips at once. Required with ``redraw``: how often the expression
+        crosses its bound is not known here.
+    """
+
+    name: str
+    expression: str
+    redraw_rounds: int | None = None
+
+
+#: What the project defines for Brian2, found by load_models.
+KINDS = (NeuronModel, SynapseModel, ConnectionRule, Distribution)
+
+
+def load_models(model_modules: Sequence[str] = ()) -> dict[type, dict[str, Any]]:
+    """
+    The project's definitions of each kind in :data:`KINDS`, by kind and name.
+
+    Every one at the top level of the files in ``models/brian2/`` (of the
+    folder you run from) and of the modules ``model_modules`` is found (see
     :func:`microcircuit_lab.project_code.find_definitions`). A project's own
     ``static_synapse`` replaces the backend's.
     """
 
-    kinds = (NeuronModel, SynapseModel, ConnectionRule)
-    found = find_definitions(MODELS_FOLDER, "models.brian2", model_modules, kinds)
+    found = find_definitions(MODELS_FOLDER, "models.brian2", model_modules, KINDS)
     found[SynapseModel].setdefault(STATIC_SYNAPSE.name, STATIC_SYNAPSE)
-    return found[NeuronModel], found[SynapseModel], found[ConnectionRule]
+    return found
 
 
 def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
@@ -152,6 +180,7 @@ def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
         "neuron": ("neuron model", "neurons.yaml", "NeuronModel"),
         "synapse": ("synapse model", "synapses.yaml", "SynapseModel"),
         "rule": ("connection rule", "connectivity.yaml", "ConnectionRule"),
+        "distribution": ("distribution", "connectivity.yaml", "Distribution"),
     }[kind]
     return ValueError(
         f"Brian2 has no {what} {name!r} (named in {file}). Define it as a {cls} in a file of "

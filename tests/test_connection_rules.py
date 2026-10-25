@@ -127,7 +127,7 @@ def test_one_to_one_needs_populations_of_the_same_size():
 
 def test_nest_rejects_a_project_rule_before_building():
     network = _network([_connection(rule="ring", parameters={"width": 2})])
-    with pytest.raises(ValueError, match="NEST has no connection rule 'ring'.*brian2"):
+    with pytest.raises(ValueError, match="NEST has no connection rule 'ring'.*not project rules"):
         NestBackend(network, SimulationConfig(print_time=False)).check()
 
 
@@ -154,11 +154,38 @@ def test_the_new_rules_scale_where_they_can():
     assert len(prepare_network(_network([connection], scaling=scaling)).connections) == 1
 
 
+def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
+    with pytest.raises(ValueError, match="takes no parameters"):
+        WeightDistribution(mean=1.0, rel_std=0.0, unit="PSC", distribution="normal", parameters={"a": 1})
+
+    def connection(weight="fixed", delay="fixed"):
+        params = {"weight": {"a": 1} if weight != "fixed" else None, "delay": {"a": 1} if delay != "fixed" else None}
+        return _connection(n_synapses=100).model_copy(update={
+            "weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="PSC", distribution=weight, parameters=params["weight"]),
+            "delay": DelayDistribution(mean=1.0, rel_std=0.0, distribution=delay, parameters=params["delay"]),
+        })
+
+    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
+    with pytest.raises(ValueError, match="weights from a project distribution cannot be scaled"):
+        prepare_network(_network([connection(weight="mine")], scaling=scaling))
+    prepare_network(_network([connection(delay="mine")], scaling=scaling))
+
+    network = _network([connection()])
+    background = network.background_inputs["S"].model_copy(
+        update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="PSC", distribution="mine", parameters={"a": 1})}
+    )
+    with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
+        NetworkConfig.model_validate({**network.model_dump(), "background_inputs": {**network.background_inputs, "S": background}})
+
+
 def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
     rows = [
         _connection(n_synapses=300),
         _connection(rule="one_to_one", source="S", target="S"),
         _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
+        _connection(source="T", target="S", n_synapses=10).model_copy(update={
+            "weight": WeightDistribution(mean=1.0, rel_std=0.0, unit="PSC", distribution="mine", parameters={"a": 1.5}),
+        }),
     ]
     table = ConnectionTable.from_yaml_rows(rows)
     table.write_csv(tmp_path / "connections.csv")

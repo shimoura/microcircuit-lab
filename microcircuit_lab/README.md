@@ -213,6 +213,7 @@ neurons:
 
 - **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the PSP conversion and the scaling compensation use that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
+- **Distributions.** A weight or delay is drawn from `normal` (default), `uniform`, `lognormal` or `fixed`, with its `mean` and `rel_std`, on every simulator. Any other name is a distribution of your own, with `parameters`, for the weights and delays of connections; for now Brian2 only (see [Distributions of your own](#distributions-of-your-own)).
 
 ### Connection rules and synapses
 
@@ -634,6 +635,27 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 ```
 
 In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). A network with such a rule runs on Brian2 only: NEST stops before building, and so does a scaled network, since the core can't know how the rule scales (scale it in its builder instead).
+
+### Distributions of your own
+
+A weight or delay `distribution` that is not a shared one is a `Distribution` in `models/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the connection's `mean` and `rel_std`, its `parameters`, the neurons' variables and `index_pre` / `index_post`:
+
+```python
+# models/brian2/distributions.py
+from microcircuit_lab.backends.brian2.models import Distribution
+
+decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index_post) / length)", redraw_rounds=0)
+```
+
+```yaml
+# connectivity.yaml
+- {source: E, target: E, rule: fixed_indegree, indegree: 100,
+   weight: {mean: 87.8, rel_std: 0, unit: PSC, distribution: decay, parameters: {length: 20}}, delay: {...}}
+```
+
+- `mean` is still required: its sign says whether the weight is excitatory or inhibitory, and the PSP conversion scales it (the expression then gets the converted `mean`).
+- A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
+- A scaled network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
 Brian2 spends time on every object it has, so the network is built from few: the populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has. The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs, also of the same network with other numbers. `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network. `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs. Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
 

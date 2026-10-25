@@ -140,8 +140,8 @@ connections:
     # optional, default fixed_total_number · text · how the synapses are placed:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
-    #   all_to_all, with no number; or the name of a project rule (Brian2: a
-    #   ConnectionRule in models/brian2/), with parameters
+    #   all_to_all, with no number; or the name of a project rule, which the backend
+    #   defines, with parameters
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
@@ -171,9 +171,13 @@ connections:
       mean: 0.15
       # required · number ≥ 0 · standard deviation / |mean|
       rel_std: 0.1
-      # optional, default normal · one of normal | uniform | lognormal | fixed · how
-      #   each weight is drawn, with that mean and standard deviation
+      # optional, default normal · text · how each weight is drawn, with that mean and
+      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
+      #   project distribution, which the backend defines, with parameters
       distribution: normal
+      # optional · mapping · only for a project distribution: the values its expression
+      #   uses, e.g. {length: 20}
+      parameters:
       # required · one of PSC | PSP | native · PSP: mV, converted to pA; PSC: pA, used
       #   as given; native: used as given (e.g. nS)
       unit: PSP
@@ -183,9 +187,13 @@ connections:
       mean: 1.5
       # required · number ≥ 0 · standard deviation / mean
       rel_std: 0.5
-      # optional, default normal · one of normal | uniform | lognormal | fixed · how
-      #   each delay is drawn, with that mean and standard deviation
+      # optional, default normal · text · how each delay is drawn, with that mean and
+      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
+      #   project distribution, with parameters
       distribution: normal
+      # optional · mapping · only for a project distribution: the values its expression
+      #   uses
+      parameters:
       # optional · number > 0 · smallest allowed delay (ms) of a drawn delay, never
       #   below half the simulation step; omit for half the simulation step
       minimum: 0.1
@@ -350,7 +358,7 @@ backend:
   #   with
   name: nest
   # optional, default empty · mapping · options of that simulator, passed to its backend
-  #   as-is; the backend validates them (see "Running with Brian2" in the README)
+  #   as-is; the backend validates them (see the simulator's section in the README)
   options:
     device: cpp_standalone
 # optional · what to record

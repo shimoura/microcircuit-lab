@@ -1,8 +1,9 @@
 """
 Weights, delays and per-neuron values drawn from their distributions in Brian2.
 
-The distributions are the NEST backend's (``backends/nest/distributions.py``),
-with the same means, standard deviations and bounds. Weights and delays are
+The shared distributions are the NEST backend's (``backends/nest/distributions.py``),
+with the same means, standard deviations and bounds; a project's own are a
+``Distribution`` (``models.py``), drawn from its expression. Weights and delays are
 drawn by Brian2 from string expressions, so the values of millions of synapses
 are never held in Python; per-neuron values are drawn with numpy. One
 expression draws the values of many connections: their numbers are read from
@@ -13,12 +14,14 @@ Brian2 generates one piece of code for all of them.
 from __future__ import annotations
 
 import math
+import re
 
 import brian2 as b2
 import numpy as np
 from brian2.devices.device import RuntimeDevice
 
 from microcircuit_lab.backends.brian2.connections import table
+from microcircuit_lab.backends.brian2.models import Distribution
 from microcircuit_lab.config.distributions import DrawnValue
 
 #: The distributions a per-neuron value can have: NEST's names (nest.random)
@@ -108,6 +111,39 @@ def chance_below(bound: float, mean: float, rel_std: float, distribution: str) -
     raise ValueError(f"Unsupported distribution: {distribution!r}")
 
 
+def _project_expression(distribution: Distribution, mean: float, rel_std: float, parameters: dict) -> str:
+    """A project distribution's expression with its ``mean``, ``rel_std`` and
+    ``parameters`` written in as numbers, so the entries of one Synapses
+    cannot mix up their values."""
+
+    values = {"mean": mean, "rel_std": rel_std, **parameters}
+    return re.sub(
+        r"\b[A-Za-z_]\w*\b",
+        lambda name: f"({values[name[0]]!r})" if name[0] in values else name[0],
+        distribution.expression,
+    )
+
+
+def _set_projects(target, variable, index, entries, unit, bound_mode, wrong, bound, projects) -> None:
+    """The values of the entries ``projects`` (``{k: (Distribution,
+    parameters)}``), from each distribution's expression; past the bound,
+    drawn again its ``redraw_rounds`` times (bound_mode "redraw"), then set to
+    the bound. One assignment per entry: each has its own expression."""
+
+    values = getattr(target, variable)
+    for k, (distribution, parameters) in projects.items():
+        mean, rel_std = entries[k][:2]
+        expression = f"({_project_expression(distribution, mean, rel_std, parameters)})*{unit}"
+        here = f"({index}) == {k}"
+        values[here] = expression
+        if wrong is None:
+            continue
+        rounds = distribution.redraw_rounds if bound_mode == "redraw" else 0
+        for _ in range(rounds):
+            values[f"{here} and {wrong}"] = expression
+        values[f"{here} and {wrong}"] = bound
+
+
 def set_drawn(
     target,
     variable: str,
@@ -118,6 +154,7 @@ def set_drawn(
     wrong: str | None = None,
     bound: str | None = None,
     out_of_bounds: list[tuple[int, float]] = (),
+    projects: dict[int, tuple[Distribution, dict]] | None = None,
 ) -> None:
     """
     Set ``variable`` of a Brian2 group or synapses to values drawn for each
@@ -129,7 +166,20 @@ def set_drawn(
     ``out_of_bounds`` gives, per entry, its number of values and the chance of
     each to be out of bounds. Brian2 does all this itself, also in C++
     standalone mode, where the values cannot be looked at before the run.
+
+    The entries in ``projects`` (``{k: (Distribution, parameters)}``) are
+    drawn from their project distribution instead (see _set_projects).
     """
+
+    projects = projects or {}
+    shared = {k: entry for k, entry in entries.items() if k not in projects}
+    if shared:
+        _set_shared(target, variable, index, shared, unit, bound_mode, wrong, bound, out_of_bounds)
+    _set_projects(target, variable, index, entries, unit, bound_mode, wrong, bound, projects)
+
+
+def _set_shared(target, variable, index, entries, unit, bound_mode, wrong, bound, out_of_bounds) -> None:
+    """set_drawn for the entries of shared distributions."""
 
     size = max(entries) + 1
     kinds, a, b, s = np.zeros(size, dtype=int), np.zeros(size), np.zeros(size), np.ones(size)
@@ -179,15 +229,19 @@ def set_weights(
     entries: dict[int, tuple[float, float, str, int]],
     unit: str,
     bound_mode: str,
+    projects: dict[int, tuple[Distribution, dict]] | None = None,
 ) -> None:
     """
     Draw the weights ``variable`` of ``target`` for each entry
     ``{k: (mean, rel_std, distribution, number of weights)}``, by ``index``
-    (see set_drawn).
+    (see set_drawn; ``projects`` too).
 
     A normal or uniform weight of the other sign than its mean is redrawn or
-    clipped to 0, as set by the network's ``bound_mode``; as in NEST.
+    clipped to 0, as set by the network's ``bound_mode``; as in NEST. So is a
+    project distribution's (see _set_projects).
     """
+
+    projects = projects or {}
 
     sign = np.zeros(max(entries) + 1)
     out_of_bounds = []
@@ -196,7 +250,7 @@ def set_weights(
         # A lognormal weight always has the sign of its mean; normal and uniform
         # ones are symmetric, so the chance of the other sign is that of a
         # weight of mean |mean| below 0.
-        if distribution != "lognormal":
+        if distribution != "lognormal" and k not in projects:
             out_of_bounds.append((number, chance_below(0.0, abs(mean), rel_std, distribution)))
     target.namespace[f"{variable}_sign"] = table(sign, f"{target.name}_{variable}_sign")
     set_drawn(
@@ -204,6 +258,7 @@ def set_weights(
         wrong=f"{variable}*{variable}_sign(({index})*second) < 0*{unit}",
         bound=f"0*{unit}",
         out_of_bounds=out_of_bounds,
+        projects=projects,
     )
 
 
@@ -213,6 +268,7 @@ def set_delays(
     entries: dict[int, tuple[float, float, str, float | None, int]],
     bound_mode: str,
     resolution: float,
+    projects: dict[int, tuple[Distribution, dict]] | None = None,
 ) -> None:
     """
     Draw the delays of ``synapses`` for each entry
@@ -222,9 +278,10 @@ def set_delays(
     A drawn delay below the minimum (``minimum``, or half the simulation
     step if not set; never below half the step) is redrawn or clipped to the
     minimum, as set by the network's ``bound_mode``. A fixed delay is used
-    as given. As in NEST.
+    as given. As in NEST. ``projects``: see set_drawn.
     """
 
+    projects = projects or {}
     minimum_delay = np.zeros(max(entries) + 1)
     out_of_bounds = []
     for k, (mean, rel_std, distribution, minimum, number) in entries.items():
@@ -232,7 +289,7 @@ def set_delays(
         # NaN is "not set" too
         if minimum is not None and minimum == minimum:
             minimum_delay[k] = max(minimum, minimum_delay[k])
-        if distribution != "fixed" and rel_std != 0.0:
+        if distribution != "fixed" and rel_std != 0.0 and k not in projects:
             out_of_bounds.append((number, chance_below(minimum_delay[k], mean, rel_std, distribution)))
     synapses.namespace["delay_minimum"] = table(minimum_delay, f"{synapses.name}_delay_minimum")
     set_drawn(
@@ -240,4 +297,5 @@ def set_delays(
         wrong=f"delay < delay_minimum(({index})*second)*ms",
         bound=f"delay_minimum(({index})*second)*ms",
         out_of_bounds=out_of_bounds,
+        projects=projects,
     )

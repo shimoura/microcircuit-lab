@@ -195,8 +195,7 @@ def main(argv: list[str] | None = None) -> None:
         if brian2_options and simulation.backend_name != "brian2":
             sys.exit(
                 "--brian2-device, --brian2-codegen-target and --model-modules need the brian2 "
-                f"backend (this run uses {simulation.backend_name}): pass --backend brian2 or set "
-                "backend.name in the simulation file."
+                f"backend (this run uses {simulation.backend_name})."
             )
         if args.nest_modules and simulation.backend_name != "nest":
             sys.exit(

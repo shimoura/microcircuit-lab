@@ -17,7 +17,7 @@ import numpy as np
 from microcircuit_lab.backends import population_spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.config.connection_table import COLUMNS
-from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -116,7 +116,8 @@ class NestBackend:
     def check(self) -> None:
         """
         Raise if the network uses something NEST cannot build, before anything
-        is built: a project connection rule (NEST runs the shared rules only).
+        is built: a project connection rule or distribution (NEST runs the
+        shared ones only).
         Neuron and synapse model names are left to NEST, which knows them only
         once the modules are installed.
         """
@@ -127,9 +128,16 @@ class NestBackend:
             rule = rules[project[0]]
             raise ValueError(
                 f"NEST has no connection rule {rule!r}: it runs the shared rules only "
-                f"({', '.join(SHARED_RULES)}). A rule of your own is a Brian2 project rule "
-                "(a ConnectionRule in models/brian2/); run this network with --backend brian2."
+                f"({', '.join(SHARED_RULES)}), not project rules."
             )
+        for what in ("weight", "delay"):
+            names = self._network.connections[f"{what}.distribution"]
+            project = np.flatnonzero(~np.isin(names, SHARED_DISTRIBUTIONS))
+            if project.size:
+                raise ValueError(
+                    f"NEST has no {what} distribution {names[project[0]]!r}: it draws from the shared "
+                    f"ones only ({', '.join(SHARED_DISTRIBUTIONS)}), not project distributions."
+                )
 
     def build(self) -> None:
         """
