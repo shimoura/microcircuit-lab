@@ -8,7 +8,9 @@ simulator's default synapse is used, on the default receptor port.
 
 from __future__ import annotations
 
-from pydantic import Field, StrictBool, StrictFloat, StrictInt
+from typing import Annotated
+
+from pydantic import Field, StrictBool, StrictFloat, StrictInt, StrictStr
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
@@ -34,13 +36,14 @@ class SynapseEntry(FrozenConfig):
         examples=[{"U": 0.5, "tau_rec": 800.0}],
         description="parameters passed to that model as-is; the backend validates them",
     )
-    receptor_port: int | None = Field(
+    receptor_port: (
+        Annotated[StrictInt, Field(ge=1)] | Annotated[StrictStr, Field(min_length=1)] | None
+    ) = Field(
         default=None,
-        ge=1,
         examples=[1],
-        description="receptor port of the target neuron (e.g. 1 for AMPA in a multisynapse "
-        "model); omit for the default port (0). PSP weights and the scaling compensation are "
-        "only computed for the default port",
+        description="receptor port of the target neuron: a number (e.g. 1 for AMPA in a "
+        "multisynapse model) or a name the target's model defines; omit for the default port "
+        "(0). PSP weights and the scaling compensation are only computed for the default port",
     )
 
 

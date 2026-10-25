@@ -19,6 +19,7 @@ population, from 1.
 
 from __future__ import annotations
 
+import functools
 import logging
 import tempfile
 from collections import defaultdict
@@ -68,6 +69,13 @@ def _units(dim, what: str) -> tuple[str, str]:
             "in mV, ms, pF, pA, nS, Hz or without a unit."
         )
     return UNITS[dim]
+
+
+@functools.cache
+def _variable_names(equations: str) -> set[str]:
+    """The variables of a model's equations (parsed once per text: a port name
+    is looked up for every connection onto the model)."""
+    return b2.Equations(equations).names
 
 
 def _by_port(parameters: dict) -> dict:
@@ -241,6 +249,13 @@ class Brian2Backend:
                         "or set bound_mode: clip in connectivity.yaml."
                     )
 
+        # A port name must be a variable of each target's model: once per pair.
+        named = {name for name in self._network.synapses if isinstance(self._network.receptor_port(name), str)}
+        if named:
+            for target, synapse in set(zip(table["target"].tolist(), table["synapse"].tolist())):
+                if synapse in named:
+                    self._target_variable(target, synapse, 0.0)
+
     def build(self) -> None:
         """
         Build the complete network. It calls :meth:`check` first, so a
@@ -406,12 +421,24 @@ class Brian2Backend:
     def _target_variable(self, target: str, synapse: str | None, weight_mean: float) -> str:
         """
         The variable of the target population that a connection adds to: the
-        one of its synapse's receptor port, or else the model's excitatory or
-        inhibitory one, as the weight's sign says (as in NEST).
+        one of its synapse's receptor port (a port name is the variable), or
+        else the model's excitatory or inhibitory one, as the weight's sign
+        says (as in NEST).
         """
 
         model = self.neuron_model(target)
         port = self._network.receptor_port(synapse)
+        if isinstance(port, str):
+            parameters = dict(self._network.populations[target].neuron.parameters)
+            text = model.equations(parameters) if callable(model.equations) else model.equations
+            names = _variable_names(text)
+            if port not in names:
+                raise ValueError(
+                    f"Synapse {synapse!r} sets receptor_port {port!r}, but the Brian2 model "
+                    f"{model.name!r} of {target!r} has no variable of that name; "
+                    f"it has {sorted(names)}."
+                )
+            return port
         if port is not None:
             if model.receptor_port is None:
                 raise ValueError(

@@ -119,9 +119,10 @@ synapses:
     parameters:
       U: 0.5
       tau_rec: 800.0
-    # optional · integer ≥ 1 · receptor port of the target neuron (e.g. 1 for AMPA in a
-    #   multisynapse model); omit for the default port (0). PSP weights and the scaling
-    #   compensation are only computed for the default port
+    # optional · receptor port of the target neuron: a number (e.g. 1 for AMPA in a
+    #   multisynapse model) or a name the target's model defines; omit for the default
+    #   port (0). PSP weights and the scaling compensation are only computed for the
+    #   default port
     receptor_port: 1
 ```
 

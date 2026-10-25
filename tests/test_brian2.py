@@ -89,6 +89,18 @@ gap_neuron = NeuronModel(
     inhibitory="V_m",
     defaults={"E_L": -70.0, "tau_m": 10.0, "C_m": 100.0, "V_m": -70.0, "I_gap": 0.0},
 )
+two_inputs = NeuronModel(
+    name="two_inputs",
+    equations="dV_m/dt = (E_L - V_m)/tau_m + (I_a + I_b)/C_m : volt\n"
+    "dI_a/dt = -I_a/tau_m : amp\ndI_b/dt = -I_b/tau_m : amp\n"
+    "E_L : volt\ntau_m : second\nC_m : farad\nI_e : amp",
+    threshold="V_m > -55*mV",
+    reset="V_m = -70*mV",
+    refractory="0*ms",
+    excitatory="I_a",
+    inhibitory="I_a",
+    defaults={"E_L": -50.0, "tau_m": 10.0, "C_m": 100.0, "V_m": -70.0},
+)
 gap = SynapseModel(
     name="gap",
     model="I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)\ng_gap : siemens (constant)",
@@ -339,6 +351,27 @@ def test_extra_pathway_has_its_own_delay() -> None:
     (synapses,) = backend.synapses
     assert np.allclose(synapses.slow.delay[:] / b2.ms, 7.0)
     assert np.allclose(synapses.delay[:] / b2.ms, 2.0)
+
+
+def test_receptor_port_by_name_is_the_variable_added_to() -> None:
+    def network(port):
+        connection = _row(
+            "S", "T",
+            WeightDistribution(mean=5.0, rel_std=0.0, unit="PSC", distribution="fixed"),
+            DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+            synapse="named",
+        )
+        entry = SynapseEntry(model="static_synapse", receptor_port=port)
+        return _network("two_inputs", connections=[connection], size=5, synapses={"named": entry})
+
+    backend = _backend(network("I_b"), model_modules=[__name__])
+    backend.build()
+    backend.simulate()
+    group = backend._group_of["T"].neurons
+    assert np.all(group.I_a[:] == 0) and np.any(group.I_b[:] != 0)
+
+    with pytest.raises(ValueError, match="'named' sets receptor_port 'I_c'.*no variable of that name"):
+        _backend(network("I_c"), model_modules=[__name__]).check()
 
 
 def test_gap_junction_pulls_the_target_toward_the_source() -> None:

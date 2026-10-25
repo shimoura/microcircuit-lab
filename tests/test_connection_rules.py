@@ -275,6 +275,27 @@ def test_receptor_ports(caplog):
     assert prepared.populations["T"].neuron.parameters.I_e == 0
 
 
+def test_receptor_port_by_name():
+    # No model with receptor_types takes the I_e of every neuron, so nothing is
+    # built: the spec of a connection onto T is what is looked at.
+    ht = NeuronConfig(name="ht", model="ht_neuron", parameters=NeuronParams())
+    for port, expected in (("NMDA", 2), ("AMPA", 1)):
+        synapses = {"named": SynapseEntry(model="static_synapse", receptor_port=port)}
+        network = _network([_connection(n_synapses=10, synapse="named")], synapses, target_neuron=ht)
+        backend = NestBackend(network, SimulationConfig(print_time=False))
+        assert backend.synapse_spec(1.0, 1.0, "named", "T")["receptor_type"] == expected
+        assert expected == nest.GetDefaults("ht_neuron")["receptor_types"][port]
+
+    synapses = {"named": SynapseEntry(model="static_synapse", receptor_port="NMDAR")}
+    network = _network([_connection(n_synapses=10, synapse="named")], synapses, target_neuron=ht)
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    with pytest.raises(ValueError, match="receptor_port 'NMDAR'.*'ht_neuron' of 'T' has the receptor types"):
+        backend.synapse_spec(1.0, 1.0, "named", "T")
+    # S is iaf_psc_exp, which has no receptor types
+    with pytest.raises(ValueError, match="'iaf_psc_exp' of 'S' has no receptor types"):
+        backend.synapse_spec(1.0, 1.0, "named", "S")
+
+
 def test_background_on_another_port():
     synapses = {"fast": SynapseEntry(model="static_synapse", receptor_port=1)}
     network = _network([_connection(n_synapses=10)], synapses, background_synapse="fast")

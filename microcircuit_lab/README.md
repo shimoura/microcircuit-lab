@@ -248,6 +248,7 @@ connections:
 ```
 
 - A pair can have one entry per synapse, as above.
+- A port can also be given by name (`receptor_port: AMPA`), which the simulator resolves: NEST looks it up in the `receptor_types` of the target's neuron model (e.g. `ht_neuron`), Brian2 takes it as the variable the connection adds to.
 - The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). On another port, weights must be `PSC` or `native`. The input lost by scaling is compensated only for current weights (`PSP`, `PSC`) on the default port, not for `native` weights (e.g. conductances) or other ports; a warning lists those connections. A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
 - With a plastic synapse, the PSP conversion and the scaling compensation use the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a `PSP` weight is the amplitude at u·x = 1: with U = 0.5 the first spike gives half of it.
 - A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
@@ -615,7 +616,7 @@ my_lif = NeuronModel(
 - Values in the config files and in `defaults` are in NEST's units (mV, ms, pF, pA, nS, Hz); the equations use Brian2's.
 - Every parameter is declared in the equations. A parameter in `neurons.yaml` that the model does not have, or one with no value, is an error.
 - `I_e` is required: scaling adds its compensation currents to it. `I_stim` is the current of `dc` stimuli.
-- A connection adds its weight to `excitatory` or `inhibitory`, as its sign says, or to `receptor_port` (e.g. `"I_syn_{port}"`) if its synapse has a `receptor_port`. A weight onto a conductance adds its size, as in NEST.
+- A connection adds its weight to `excitatory` or `inhibitory`, as its sign says, or to `receptor_port` (e.g. `"I_syn_{port}"`) if its synapse has a `receptor_port`; a port given by name is that variable (e.g. `g_ampa`). A weight onto a conductance adds its size, as in NEST.
 - A list parameter such as `tau_syn: [0.5, 2.0]` sets `tau_syn_1` and `tau_syn_2`; `equations` can be a function of the parameters when their number varies (see `iaf_psc_exp_multisynapse.py`).
 - A `SynapseModel` takes Brian2's own forms. `model` holds the synapse's variables (the weight `w_syn` is added), `on_pre` and `on_post` are code or a dict of pathways to code (`{target}` is the variable the connection adds to), `delays` gives an expression for the delay of each pathway other than `pre` (the connection's delay sets `pre`), and `method` is the integration method. A summed variable such as `I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)` makes a gap junction (with `on_pre=""`; the target neuron declares `I_gap`, with a default). `models/brian2/` has no NEST-matching `stdp_synapse`: write a model of your own; NEST's `stdp_synapse` parameters are not mapped.
 

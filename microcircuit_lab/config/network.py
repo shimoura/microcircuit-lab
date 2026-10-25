@@ -246,7 +246,7 @@ class NetworkConfig(FrozenConfig):
                 user = f"connection {table['source'][first]} -> {table['target'][first]}"
                 raise ValueError(
                     f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[name].receptor_port} (synapse {name!r}). "
+                    f"{self.synapses[name].receptor_port!r} (synapse {name!r}). "
                     "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
                     "default port only; give this weight as unit: PSC or native."
                 )
@@ -270,12 +270,12 @@ class NetworkConfig(FrozenConfig):
             if self.synapses[item.synapse].receptor_port is not None and item.weight.unit == "PSP":
                 raise ValueError(
                     f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[item.synapse].receptor_port} (synapse {item.synapse!r}). "
+                    f"{self.synapses[item.synapse].receptor_port!r} (synapse {item.synapse!r}). "
                     "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
                     "default port only; give this weight as unit: PSC or native."
                 )
         return self
 
-    def receptor_port(self, synapse: str | None) -> int | None:
+    def receptor_port(self, synapse: str | None) -> int | str | None:
         """The receptor port of a synapse name (``None``: the default port)."""
         return None if synapse is None else self.synapses[synapse].receptor_port

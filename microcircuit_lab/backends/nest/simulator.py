@@ -63,6 +63,7 @@ class NestBackend:
         self.multimeter: nest.NodeCollection | None = None
         self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
+        self._receptor_types: dict[str, dict] = {}
 
     def version(self) -> str:
         return nest.__version__
@@ -210,17 +211,30 @@ class NestBackend:
         for name, entry in self._network.synapses.items():
             nest.CopyModel(entry.model, name, entry.parameters)
 
-    def synapse_spec(self, weight, delay, synapse: str | None) -> dict:
+    def synapse_spec(self, weight, delay, synapse: str | None, target: str) -> dict:
         """
-        The ``syn_spec`` of a connection: its weight and delay (made by
-        distributions.py), and its synapse model and receptor port if it names
-        a synapses.yaml entry.
+        The ``syn_spec`` of a connection onto the population ``target``: its
+        weight and delay (made by distributions.py), and its synapse model and
+        receptor port if it names a synapses.yaml entry. A port given by name
+        is looked up in the ``receptor_types`` of the target's neuron model.
         """
 
         spec = {"weight": weight, "delay": delay}
         if synapse is not None:
             spec["synapse_model"] = synapse
             receptor_port = self._network.receptor_port(synapse)
+            if isinstance(receptor_port, str):
+                model = self._network.populations[target].neuron.model
+                if model not in self._receptor_types:
+                    self._receptor_types[model] = nest.GetDefaults(model).get("receptor_types", {})
+                names = self._receptor_types[model]
+                if receptor_port not in names:
+                    raise ValueError(
+                        f"Synapse {synapse!r} sets receptor_port {receptor_port!r}, but the "
+                        f"NEST model {model!r} of {target!r} "
+                        + (f"has the receptor types {sorted(names)}." if names else "has no receptor types.")
+                    )
+                receptor_port = names[receptor_port]
             if receptor_port is not None:
                 spec["receptor_type"] = receptor_port
         return spec
@@ -301,7 +315,7 @@ class NestBackend:
                     self.populations[source],
                     self.populations[target],
                     conn_spec=conn_spec,
-                    syn_spec=self.synapse_spec(weight, delay, synapse),
+                    syn_spec=self.synapse_spec(weight, delay, synapse, target),
                 )
 
     def get_population(
@@ -425,7 +439,7 @@ class NestBackend:
             nest.Connect(
                 self.background_generators[pop_name],
                 self.get_population(pop_name),
-                syn_spec=self.synapse_spec(weight, delay, input_cfg.synapse),
+                syn_spec=self.synapse_spec(weight, delay, input_cfg.synapse, pop_name),
             )
 
     def create_stimuli(self) -> None:
@@ -475,12 +489,13 @@ class NestBackend:
         """
 
         for stimulus, device in self.stimulus_generators:
-            syn_spec = None
             if not isinstance(stimulus, DcStimulusConfig):
                 weight, delay = self.weight_and_delay(stimulus.weight, stimulus.delay)
-                syn_spec = self.synapse_spec(weight, delay, stimulus.synapse)
 
             for target in stimulus.targets:
+                syn_spec = None
+                if not isinstance(stimulus, DcStimulusConfig):
+                    syn_spec = self.synapse_spec(weight, delay, stimulus.synapse, target)
                 nest.Connect(device, self.get_population(target), syn_spec=syn_spec)
 
     def simulate(self) -> None:
