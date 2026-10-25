@@ -36,11 +36,12 @@ class NeuronModel:
         The name ``neurons.yaml`` gives as ``model``.
     equations
         Brian2 equations, with every parameter declared (``C_m : farad``).
-        They need an input current ``I_e : amp``, as every NEST model has:
-        every population sets it, and scaling adds its compensation currents
-        to it. Using ``I_stim`` in them adds the current of ``dc`` stimuli. For a
-        model whose equations depend on its parameters, a function of the
-        population's ``parameters`` that returns the equations.
+        A constant input current ``I_e : amp`` is needed only where
+        ``neurons.yaml`` sets it or scaling adds its compensation currents to
+        it (give it a default of 0.0 then). Using ``I_stim`` in them adds the
+        current of ``dc`` stimuli. For a model whose equations depend on its
+        parameters, a function of the population's ``parameters`` that returns
+        the equations.
     threshold, reset, refractory, method
         As for ``brian2.NeuronGroup``.
     excitatory, inhibitory

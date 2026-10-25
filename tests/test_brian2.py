@@ -41,7 +41,7 @@ pytestmark = pytest.mark.skipif(
 # Found by the test that passes this module in model_modules.
 pacemaker = NeuronModel(
     name="pacemaker",
-    equations="dV_m/dt = (E_L - V_m)/tau_m : volt\nE_L : volt\ntau_m : second\nI_e : amp",
+    equations="dV_m/dt = (E_L - V_m)/tau_m : volt\nE_L : volt\ntau_m : second",
     threshold="V_m > -55*mV",
     reset="V_m = -70*mV",
     refractory="0*ms",
@@ -81,7 +81,7 @@ two_pathways = SynapseModel(
 gap_neuron = NeuronModel(
     name="gap_neuron",
     equations="dV_m/dt = (E_L - V_m)/tau_m + I_gap/C_m : volt\nI_gap : amp\n"
-    "E_L : volt\ntau_m : second\nC_m : farad\nI_e : amp",
+    "E_L : volt\ntau_m : second\nC_m : farad",
     threshold="V_m > 0*mV",
     reset="V_m = -70*mV",
     refractory="0*ms",
@@ -93,7 +93,7 @@ two_inputs = NeuronModel(
     name="two_inputs",
     equations="dV_m/dt = (E_L - V_m)/tau_m + (I_a + I_b)/C_m : volt\n"
     "dI_a/dt = -I_a/tau_m : amp\ndI_b/dt = -I_b/tau_m : amp\n"
-    "E_L : volt\ntau_m : second\nC_m : farad\nI_e : amp",
+    "E_L : volt\ntau_m : second\nC_m : farad",
     threshold="V_m > -55*mV",
     reset="V_m = -70*mV",
     refractory="0*ms",

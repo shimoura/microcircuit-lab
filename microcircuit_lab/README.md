@@ -288,7 +288,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 | `preserve_mean_input: false` | $J/\sqrt{k}$ | none | lower: $\sqrt{k}\,\mu$ | kept |
 | `preserve_variance: false` | $J/k$ | none | kept | larger: $\sigma^2/k$ |
 
-- The DC is added to each population's `I_e`, so the `I_e` in a run's saved `config.yaml` is the one you wrote plus the DC.
+- The DC is added to each population's `I_e`, so the `I_e` in a run's saved `config.yaml` is the one you wrote plus the DC. `I_e` is sent to the simulator only when a neuron entry sets it or a DC is added, so a model without `I_e` works when it needs no DC; when it does, the run stops with an error naming it.
 - The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input: false` compensates the background input only, and needs no rates.
 - With `background_mode: mean_current`, the background current is already that of the full-scale network, so only the recurrent input is compensated.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
@@ -609,13 +609,13 @@ my_lif = NeuronModel(
     excitatory="I_syn_ex",
     inhibitory="I_syn_in",
     defaults={"E_L": -70.0, "C_m": 250.0, "tau_m": 10.0, "tau_syn_ex": 2.0, "tau_syn_in": 2.0,
-              "t_ref": 2.0, "V_th": -55.0, "V_reset": -70.0, "V_m": -70.0},
+              "t_ref": 2.0, "V_th": -55.0, "V_reset": -70.0, "V_m": -70.0, "I_e": 0.0},
 )
 ```
 
 - Values in the config files and in `defaults` are in NEST's units (mV, ms, pF, pA, nS, Hz); the equations use Brian2's.
 - Every parameter is declared in the equations. A parameter in `neurons.yaml` that the model does not have, or one with no value, is an error.
-- `I_e` is required: scaling adds its compensation currents to it. `I_stim` is the current of `dc` stimuli.
+- `I_e` is needed only where `neurons.yaml` sets it or scaling adds its compensation current to it; a model that declares it gives it a default (0.0). `I_stim` is the current of `dc` stimuli.
 - A connection adds its weight to `excitatory` or `inhibitory`, as its sign says, or to `receptor_port` (e.g. `"I_syn_{port}"`) if its synapse has a `receptor_port`; a port given by name is that variable (e.g. `g_ampa`). A weight onto a conductance adds its size, as in NEST.
 - A list parameter such as `tau_syn: [0.5, 2.0]` sets `tau_syn_1` and `tau_syn_2`; `equations` can be a function of the parameters when their number varies (see `iaf_psc_exp_multisynapse.py`).
 - A `SynapseModel` takes Brian2's own forms. `model` holds the synapse's variables (the weight `w_syn` is added), `on_pre` and `on_post` are code or a dict of pathways to code (`{target}` is the variable the connection adds to), `delays` gives an expression for the delay of each pathway other than `pre` (the connection's delay sets `pre`), and `method` is the integration method. A summed variable such as `I_gap_post = g_gap*(V_m_pre - V_m_post) : amp (summed)` makes a gap junction (with `on_pre=""`; the target neuron declares `I_gap`, with a default). `models/brian2/` has no NEST-matching `stdp_synapse`: write a model of your own; NEST's `stdp_synapse` parameters are not mapped.

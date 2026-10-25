@@ -329,6 +329,8 @@ class Brian2Backend:
                 raise ValueError(
                     f"{pop_name!r} (neurons.yaml) sets {unknown}, which its Brian2 model "
                     f"{model.name!r} does not have; it has {sorted(equations.names)}."
+                    + (" I_e is also set by a compensation current (scaling, background_mode: "
+                       "mean_current)." if "I_e" in unknown else "")
                 )
 
             group = by_equations.setdefault((model.name, str(equations)), _Group(model, equations))

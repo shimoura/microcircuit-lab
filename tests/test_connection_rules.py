@@ -272,19 +272,24 @@ def test_receptor_ports(caplog):
     assert "background input lost by scaling is not compensated for T" in caplog.text
     # S's background input is on the default port, so S alone is compensated
     assert prepared.populations["S"].neuron.parameters.I_e > 0
-    assert prepared.populations["T"].neuron.parameters.I_e == 0
+    assert prepared.populations["T"].neuron.parameters.I_e is None  # nothing added, left unset
 
 
 def test_receptor_port_by_name():
-    # No model with receptor_types takes the I_e of every neuron, so nothing is
-    # built: the spec of a connection onto T is what is looked at.
+    # ht_neuron has named receptors and no I_e, which is left unset here.
     ht = NeuronConfig(name="ht", model="ht_neuron", parameters=NeuronParams())
-    for port, expected in (("NMDA", 2), ("AMPA", 1)):
+    for port in ("NMDA", "AMPA"):
         synapses = {"named": SynapseEntry(model="static_synapse", receptor_port=port)}
-        network = _network([_connection(n_synapses=10, synapse="named")], synapses, target_neuron=ht)
-        backend = NestBackend(network, SimulationConfig(print_time=False))
-        assert backend.synapse_spec(1.0, 1.0, "named", "T")["receptor_type"] == expected
-        assert expected == nest.GetDefaults("ht_neuron")["receptor_types"][port]
+        network = _network(
+            [_connection(n_synapses=10, synapse="named")], synapses, background_synapse="named", target_neuron=ht
+        )
+        backend, connections = _built_connections(network)
+        # GetConnections shows NEST's internal port, not the receptor_type given.
+        assert len(connections) == 10
+        assert backend.synapse_spec(1.0, 1.0, "named", "T")["receptor_type"] == (
+            nest.GetDefaults("ht_neuron")["receptor_types"][port]
+        )
+        nest.ResetKernel()
 
     synapses = {"named": SynapseEntry(model="static_synapse", receptor_port="NMDAR")}
     network = _network([_connection(n_synapses=10, synapse="named")], synapses, target_neuron=ht)
@@ -294,6 +299,15 @@ def test_receptor_port_by_name():
     # S is iaf_psc_exp, which has no receptor types
     with pytest.raises(ValueError, match="'iaf_psc_exp' of 'S' has no receptor types"):
         backend.synapse_spec(1.0, 1.0, "named", "S")
+
+
+def test_a_model_without_I_e_says_so_when_it_gets_one():
+    ht = NeuronConfig(name="ht", model="ht_neuron", parameters=NeuronParams(I_e=5.0))
+    synapses = {"named": SynapseEntry(model="static_synapse", receptor_port="AMPA")}
+    network = _network([_connection(n_synapses=10, synapse="named")], synapses, background_synapse="named", target_neuron=ht)
+    with pytest.raises(ValueError, match="'ht_neuron' has no I_e"):
+        _built_connections(network)
+    nest.ResetKernel()
 
 
 def test_background_on_another_port():
@@ -332,6 +346,6 @@ def test_native_weights_are_not_compensated(caplog):
     with caplog.at_level(logging.WARNING):
         prepared = prepare_network(scaled)
     assert "not compensated for S -> T" in caplog.text
-    assert all(p.neuron.parameters.I_e == 0 for p in prepared.populations.values())
+    assert all(p.neuron.parameters.I_e is None for p in prepared.populations.values())
     with pytest.raises(ValueError, match="native or uses another port"):
         prepare_network(scaled.model_copy(update={"background_mode": "mean_current"}))

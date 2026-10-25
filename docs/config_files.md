@@ -84,10 +84,10 @@ neurons:
     # required · text · the simulator's neuron model name, e.g. iaf_psc_exp
     model: iaf_psc_exp
     # required · parameters passed to that model as-is; keys are model-specific and the
-    #   backend validates them (I_e defaults to 0.0); a value is a number, a list of
-    #   numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a distribution
-    #   drawn per neuron like in initial_state (I_e and the parameters a PSP weight is
-    #   converted with must be numbers)
+    #   backend validates them (I_e is passed only when set); a value is a number, a
+    #   list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a
+    #   distribution drawn per neuron like in initial_state (I_e and the parameters a
+    #   PSP weight is converted with must be numbers)
     parameters:
       C_m: 250.0
       tau_m: 10.0

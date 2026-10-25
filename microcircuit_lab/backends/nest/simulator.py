@@ -197,7 +197,14 @@ class NestBackend:
         value given as a distribution is drawn for every neuron.
         """
 
-        for values in (dict(pop_cfg.neuron.parameters), pop_cfg.initial_state):
+        parameters = dict(pop_cfg.neuron.parameters)
+        if "I_e" in parameters and "I_e" not in nest.GetDefaults(pop_cfg.neuron.model):
+            raise ValueError(
+                f"Population {pop_cfg.name!r}: the NEST model {pop_cfg.neuron.model!r} has no I_e, "
+                "which neurons.yaml sets or a compensation current (scaling, background_mode: "
+                "mean_current) adds to."
+            )
+        for values in (parameters, pop_cfg.initial_state):
             nodes.set(
                 {name: distributions.per_neuron_value(value) for name, value in values.items()}
             )
