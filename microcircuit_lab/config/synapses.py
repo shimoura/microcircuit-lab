@@ -10,7 +10,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import Field, StrictBool, StrictFloat, StrictInt, StrictStr
+from pydantic import (
+    Field,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+    StrictStr,
+    field_validator,
+)
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
@@ -45,6 +52,14 @@ class SynapseEntry(FrozenConfig):
         "multisynapse model) or a name the target's model defines; omit for the default port "
         "(0). PSP weights and the scaling compensation are only computed for the default port",
     )
+
+    @field_validator("receptor_port")
+    @classmethod
+    def _port_number_as_number(cls, port: int | str | None) -> int | str | None:
+        # A port name is never only digits; "1" in quotes is a number written as text.
+        if isinstance(port, str) and port.isdigit():
+            raise ValueError(f"a port number is written without quotes: receptor_port: {port}")
+        return port
 
 
 class SynapsesFile(FrozenConfig):

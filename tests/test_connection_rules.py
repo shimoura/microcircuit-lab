@@ -299,6 +299,9 @@ def test_receptor_port_by_name():
     # S is iaf_psc_exp, which has no receptor types
     with pytest.raises(ValueError, match="'iaf_psc_exp' of 'S' has no receptor types"):
         backend.synapse_spec(1.0, 1.0, "named", "S")
+    # A number in quotes is not taken as a name.
+    with pytest.raises(ValueError, match="without quotes: receptor_port: 1"):
+        SynapseEntry(model="static_synapse", receptor_port="1")
 
 
 def test_a_model_without_I_e_says_so_when_it_gets_one():

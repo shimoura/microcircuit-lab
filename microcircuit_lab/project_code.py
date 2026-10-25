@@ -56,17 +56,18 @@ def import_folder_modules(
     package of the same name. With ``packages_only`` plain ``.py`` files are
     skipped. An error raised while importing propagates, so a broken module
     fails loudly instead of silently disappearing. A folder that does not
-    exist gives ``{}``.
+    exist gives ``{}``; its root is still added, so other modules there
+    (e.g. given with ``--extensions``) are found either way.
     """
 
     folder = Path(folder).resolve()
-    if not folder.is_dir():
-        return {}
-
     package = package or folder.name
     root = folder.parents[package.count(".")]
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
+
+    if not folder.is_dir():
+        return {}
 
     modules: dict[str, ModuleType] = {}
     for module_info in pkgutil.iter_modules([str(folder)]):

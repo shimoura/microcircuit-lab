@@ -479,6 +479,8 @@ simulation.run()
 print(simulation.output_dir)   # where this run was saved
 ```
 
+The simulator is part of these settings (`backend`), so a new `SimulationConfig` runs on its own `backend` (NEST if not set), not on the one given to `from_yaml`. `model_copy` keeps it.
+
 **A batch.** Each run is independent (the simulator starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
 
 ```python

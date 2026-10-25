@@ -218,8 +218,9 @@ class Brian2Backend:
         """
         Find the project's models, connection rules and distributions, and
         raise if a population, a ``synapses.yaml`` entry or a connection names
-        one that is not defined, or if a distribution's ``redraw_rounds`` is
-        needed but not set.
+        one that is not defined, if a distribution's ``redraw_rounds`` is
+        needed but not set, or if a project rule with several synapses per
+        pair is used without multapses.
         """
 
         found = models.load_models(self._extensions)
@@ -248,6 +249,18 @@ class Brian2Backend:
                         "set how many times a value past its bound is drawn again (0: clip at once), "
                         "or set bound_mode: clip in connectivity.yaml."
                     )
+
+        # Brian2 makes n synapses for each pair a project rule picks, so such a
+        # rule cannot keep a connection free of multapses.
+        several = [name for name, rule in self._connection_rules.items() if rule.n != "1"]
+        if several:
+            rows = np.flatnonzero(np.isin(table["rule"], several) & (table["allow_multapses"] == False))  # noqa: E712
+            if rows.size:
+                rule = table["rule"][rows[0]]
+                raise ValueError(
+                    f"connections.{rows[0]}: rule {rule!r} makes n = {self._connection_rules[rule].n} synapses "
+                    "per pair, which allow_multapses: false does not allow."
+                )
 
         # A port name must be a variable of each target's model: once per pair.
         named = {name for name in self._network.synapses if isinstance(self._network.receptor_port(name), str)}

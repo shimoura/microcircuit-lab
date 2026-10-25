@@ -378,14 +378,18 @@ def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
 
 
 def _parameters_from_json(values: np.ndarray, column: str, path: str | Path) -> np.ndarray:
-    """A parameters column of a CSV file: each cell's JSON text as a dict."""
+    """A parameters column of a CSV file: each cell's JSON text as a dict.
+    Each distinct text is parsed once, and its rows share the dict."""
 
     parsed = np.empty(len(values), dtype=object)
+    known: dict[str | None, dict | None] = {None: None}
     for i, text in enumerate(values):
-        try:
-            parsed[i] = None if text is None else json.loads(text)
-        except json.JSONDecodeError as error:
-            raise ValueError(f"{path}: line {i + 2}, {column}: not JSON ({error.msg}): {text}") from None
+        if text not in known:
+            try:
+                known[text] = json.loads(text)
+            except json.JSONDecodeError as error:
+                raise ValueError(f"{path}: line {i + 2}, {column}: not JSON ({error.msg}): {text}") from None
+        parsed[i] = known[text]
     return parsed
 
 

@@ -114,6 +114,7 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 by_target = Distribution(name="by_target", expression="mean * (1 + index_post) * step", redraw_rounds=0)
 alternating = Distribution(name="alternating", expression="mean * (1 - 2*(index_post % 2))", redraw_rounds=0)
 no_rounds = Distribution(name="no_rounds", expression="mean")
+same_index_twice = ConnectionRule(name="same_index_twice", condition="index_pre == index_post", n="2")
 
 
 # numpy compiles nothing: Cython would compile each test network first, which
@@ -317,6 +318,37 @@ def test_redraw_keeps_the_sign_of_the_weights() -> None:
     assert weights.max() < 0.0
     # Redrawn, not clipped: about 16 % of them would be 0 after clipping.
     assert abs(weights.mean() + 10.0 * 1.29) < 1.0
+
+
+def test_lognormal_next_to_another_distribution_in_one_synapses() -> None:
+    delay = DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed")
+    lognormal = _row("S", "T", WeightDistribution(mean=50.0, rel_std=0.2, unit="PSC", distribution="lognormal"), delay)
+    normal = _row("T", "T", WeightDistribution(mean=20.0, rel_std=0.2, unit="PSC", distribution="normal"), delay)
+    backend = _backend(_network("iaf_psc_exp", connections=[lognormal, normal]))
+    backend.build()
+
+    import brian2 as b2
+
+    (synapses,) = backend.synapses
+    w = synapses.w_syn[:] / b2.pA
+    from_s = synapses.i[:] < 100
+    assert not np.isnan(w).any()
+    assert abs(w[from_s].mean() - 50.0) < 2.0 and w[from_s].min() > 0.0
+    assert abs(w[~from_s].mean() - 20.0) < 2.0 and w[~from_s].min() > 0.0
+
+
+def test_a_project_rule_with_several_synapses_per_pair_needs_multapses() -> None:
+    connection = ConnectionConfig(
+        source="S",
+        target="T",
+        rule="same_index_twice",
+        allow_multapses=False,
+        weight=WeightDistribution(mean=1.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+    )
+    backend = _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__])
+    with pytest.raises(ValueError, match="'same_index_twice' makes n = 2 synapses per pair"):
+        backend.check()
 
 
 def _synapse_network(neuron_model: str, synapse: str, parameters: dict, delay: float = 1.0, weight: float = 1.0):

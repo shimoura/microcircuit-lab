@@ -13,6 +13,7 @@ Brian2 generates one piece of code for all of them.
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 
@@ -23,6 +24,8 @@ from brian2.devices.device import RuntimeDevice
 from microcircuit_lab.backends.brian2.connections import table
 from microcircuit_lab.backends.brian2.models import Distribution
 from microcircuit_lab.config.distributions import DrawnValue
+
+logger = logging.getLogger(__name__)
 
 #: The distributions a per-neuron value can have: NEST's names (nest.random)
 #: and arguments, and how numpy draws them.
@@ -35,9 +38,9 @@ PER_NEURON_DRAWS = {
 
 #: With bound_mode "redraw", values out of bounds are drawn again until fewer
 #: than LEFT_OUT of them are expected (at most MAX_REDRAW_ROUNDS times); the
-#: rest are clipped. Each round is one more piece of code for Brian2, so a
-#: bound that is (almost) never crossed (fewer than NEVER expected) is not
-#: checked at all.
+#: rest are clipped (with a warning if more are expected). Each round is one
+#: more piece of code for Brian2, so a bound that is (almost) never crossed
+#: (fewer than NEVER expected) is not checked at all.
 LEFT_OUT = 1e-3
 MAX_REDRAW_ROUNDS = 50
 NEVER = 1e-9
@@ -75,9 +78,10 @@ DRAWS = {
 def _numbers(mean: float, rel_std: float, distribution: str) -> tuple[str, float, float, float]:
     """The kind of draw (see DRAWS) and its numbers a, b and s, for a value with
     mean ``mean`` and standard deviation ``|mean| * rel_std``. A uniform value
-    spans mean ± sqrt(3) * std; a lognormal one has the sign of its mean."""
+    spans mean ± sqrt(3) * std; a lognormal one has the sign of its mean. A
+    value with no spread (std 0, e.g. mean 0) is fixed."""
 
-    if distribution == "fixed" or rel_std == 0.0:
+    if distribution == "fixed" or rel_std == 0.0 or mean == 0.0:
         return "normal", mean, 0.0, 1.0
     std = abs(mean * rel_std)
     if distribution == "normal":
@@ -94,7 +98,7 @@ def _numbers(mean: float, rel_std: float, distribution: str) -> tuple[str, float
 def chance_below(bound: float, mean: float, rel_std: float, distribution: str) -> float:
     """The chance that a value drawn as by set_drawn is below ``bound``."""
 
-    if distribution == "fixed" or rel_std == 0.0:
+    if distribution == "fixed" or rel_std == 0.0 or mean == 0.0:
         return float(mean < bound)
     std = abs(mean * rel_std)
     if distribution == "normal":
@@ -195,30 +199,57 @@ def _set_shared(target, variable, index, entries, unit, bound_mode, wrong, bound
     def read(name: str) -> str:
         return f"{variable}_{name}(({index})*second)"
 
-    used = sorted(set(kinds[list(entries)]))
-    parts = [DRAWS[names[kind]].format(a=read("a"), b=read("b"), s=read("s")) for kind in used]
-    if len(parts) == 1:
-        expression = f"{parts[0]}*{unit}"
-    else:
-        expression = "(" + " + ".join(
-            f"int({read('kind')} == {kind})*{part}" for kind, part in zip(used, parts)
+    def expression(kinds_here: list[int]) -> str:
+        parts = [DRAWS[names[kind]].format(a=read("a"), b=read("b"), s=read("s")) for kind in kinds_here]
+        if len(parts) == 1:
+            return f"{parts[0]}*{unit}"
+        return "(" + " + ".join(
+            f"int({read('kind')} == {kind})*{part}" for kind, part in zip(kinds_here, parts)
         ) + f")*{unit}"
-    setattr(target, variable, expression)
+
+    # One expression for all kinds, except lognormal next to another kind: it
+    # gets its own assignment, since Brian2 allows one randn() per expression
+    # and exp() of another kind's numbers could overflow (0*inf is NaN).
+    used = sorted(set(kinds[list(entries)]))
+    lognormal = names.index("lognormal")
+    others = [kind for kind in used if kind != lognormal]
+    if lognormal in used and others:
+        assignments = [
+            (f"{read('kind')} != {lognormal}", expression(others)),
+            (f"{read('kind')} == {lognormal}", expression([lognormal])),
+        ]
+    else:
+        assignments = [(None, expression(used))]
+    values = getattr(target, variable)
+    for condition, drawn in assignments:
+        if condition is None:
+            setattr(target, variable, drawn)
+        else:
+            values[condition] = drawn
 
     def expected(rounds: int) -> float:
         return sum(n * chance ** (rounds + 1) for n, chance in out_of_bounds)
 
     if wrong is None or expected(0) < NEVER:
         return
-    values = getattr(target, variable)
     if bound_mode == "redraw":
         look = isinstance(b2.get_device(), RuntimeDevice)
         rounds = 0
         while expected(rounds) >= LEFT_OUT and rounds < MAX_REDRAW_ROUNDS:
             if look and len(values[wrong]) == 0:
                 break
-            values[wrong] = expression
+            for condition, drawn in assignments:
+                values[wrong if condition is None else f"({wrong}) and {condition}"] = drawn
             rounds += 1
+        if rounds == MAX_REDRAW_ROUNDS:
+            # In C++ standalone mode the values are known only when it runs.
+            left = len(values[wrong]) if look else expected(rounds)
+            if left >= LEFT_OUT:
+                logger.warning(
+                    "%s of %s: about %d values are still out of bounds after %d redraws and are set "
+                    "to the bound; their distribution lies mostly past it.",
+                    variable, target.name, math.ceil(left), MAX_REDRAW_ROUNDS,
+                )
     values[wrong] = bound
 
 
