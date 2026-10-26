@@ -28,7 +28,6 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import DcStimulusConfig
 from microcircuit_lab.config.synapses import SynapseEntry
@@ -148,10 +147,9 @@ def _network(neuron_model: str, connections=(), stimuli=(), size: int = 50, syna
     return NetworkConfig(
         populations=populations,
         connections=list(connections),
-        background_inputs={},
+        poisson_background={},
         stimuli=list(stimuli),
         synapses=synapses or {},
-        scaling=ScalingConfig(),
         reference=ReferenceConfig(full_mean_rates={"S": 5.0, "T": 5.0}),
     )
 
@@ -212,7 +210,7 @@ def test_each_connection_rule(rule: str, number_kwargs: dict, check) -> None:
     connection = ConnectionConfig(
         target="T",
         rule=rule,
-        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
         **number_kwargs,
     )
@@ -229,7 +227,7 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
         rule="ring",
         parameters={"width": 1},
         allow_autapses=False,
-        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
     backend = _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__])
@@ -248,10 +246,10 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
     fixed_delay = DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed")
     project = _row(
         "S", "T",
-        WeightDistribution(mean=2.0, rel_std=0.0, unit="PSC", distribution="by_target", parameters={"step": 0.5}),
+        WeightDistribution(mean=2.0, rel_std=0.0, unit="pA", distribution="by_target", parameters={"step": 0.5}),
         DelayDistribution(mean=1.0, rel_std=0.0, distribution="by_target", parameters={"step": 0.1}),
     )
-    shared = _row("T", "T", WeightDistribution(mean=7.0, rel_std=0.0, distribution="fixed", unit="PSC"), fixed_delay)
+    shared = _row("T", "T", WeightDistribution(mean=7.0, rel_std=0.0, distribution="fixed", unit="pA"), fixed_delay)
     backend = _backend(_network("iaf_psc_exp", connections=[project, shared]), extensions=[__name__])
     backend.build()
 
@@ -267,7 +265,7 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
 
 
 def test_a_project_weight_past_its_bound_is_clipped() -> None:
-    weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="PSC", distribution="alternating")
+    weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="pA", distribution="alternating")
     connection = _row("S", "T", weight, DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"))
     backend = _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__])
     backend.build()
@@ -280,7 +278,7 @@ def test_a_project_weight_past_its_bound_is_clipped() -> None:
 
 
 def test_redraw_needs_the_distributions_redraw_rounds() -> None:
-    weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="PSC", distribution="no_rounds")
+    weight = WeightDistribution(mean=3.0, rel_std=0.0, unit="pA", distribution="no_rounds")
     connection = _row("S", "T", weight, DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"))
     network = _network("iaf_psc_exp", connections=[connection])
     with pytest.raises(ValueError, match="'no_rounds' has no redraw_rounds.*bound_mode: clip"):
@@ -294,7 +292,7 @@ def test_an_unknown_rule_says_where_to_define_it() -> None:
         source="S",
         target="T",
         rule="no_such_rule",
-        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
     backend = _backend(_network("iaf_psc_exp", connections=[connection]))
@@ -308,7 +306,7 @@ def test_redraw_keeps_the_sign_of_the_weights() -> None:
         target="T",
         rule="fixed_indegree",
         indegree=20,
-        weight=WeightDistribution(mean=-10.0, rel_std=1.0, distribution="normal", unit="PSC"),
+        weight=WeightDistribution(mean=-10.0, rel_std=1.0, distribution="normal", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
     backend = _backend(_network("iaf_psc_exp", connections=[connection]))
@@ -322,8 +320,8 @@ def test_redraw_keeps_the_sign_of_the_weights() -> None:
 
 def test_lognormal_next_to_another_distribution_in_one_synapses() -> None:
     delay = DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed")
-    lognormal = _row("S", "T", WeightDistribution(mean=50.0, rel_std=0.2, unit="PSC", distribution="lognormal"), delay)
-    normal = _row("T", "T", WeightDistribution(mean=20.0, rel_std=0.2, unit="PSC", distribution="normal"), delay)
+    lognormal = _row("S", "T", WeightDistribution(mean=50.0, rel_std=0.2, unit="pA", distribution="lognormal"), delay)
+    normal = _row("T", "T", WeightDistribution(mean=20.0, rel_std=0.2, unit="pA", distribution="normal"), delay)
     backend = _backend(_network("iaf_psc_exp", connections=[lognormal, normal]))
     backend.build()
 
@@ -343,7 +341,7 @@ def test_a_project_rule_with_several_synapses_per_pair_needs_multapses() -> None
         target="T",
         rule="same_index_twice",
         allow_multapses=False,
-        weight=WeightDistribution(mean=1.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+        weight=WeightDistribution(mean=1.0, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
     backend = _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__])
@@ -354,7 +352,7 @@ def test_a_project_rule_with_several_synapses_per_pair_needs_multapses() -> None
 def _synapse_network(neuron_model: str, synapse: str, parameters: dict, delay: float = 1.0, weight: float = 1.0):
     connection = _row(
         "S", "T",
-        WeightDistribution(mean=weight, rel_std=0.0, unit="PSC", distribution="fixed"),
+        WeightDistribution(mean=weight, rel_std=0.0, unit="mV", distribution="fixed"),
         DelayDistribution(mean=delay, rel_std=0.0, distribution="fixed"),
         synapse=synapse,
     )
@@ -389,7 +387,7 @@ def test_receptor_port_by_name_is_the_variable_added_to() -> None:
     def network(port):
         connection = _row(
             "S", "T",
-            WeightDistribution(mean=5.0, rel_std=0.0, unit="PSC", distribution="fixed"),
+            WeightDistribution(mean=5.0, rel_std=0.0, unit="pA", distribution="fixed"),
             DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
             synapse="named",
         )

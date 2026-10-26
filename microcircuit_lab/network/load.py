@@ -7,7 +7,7 @@ Two functions, for the two things you may want:
   (every field against the models in :mod:`microcircuit_lab.config`, and the
   references between files: a population names an existing neuron, a
   connection names existing populations). Use it to inspect or change a
-  network before it is prepared, e.g. to set another scaling.
+  network before it is prepared, e.g. to scale it.
 * :func:`load_network`: the same network prepared for the simulation (see
   :func:`microcircuit_lab.network.prepare.prepare_network`). This is what
   ``Simulation.from_yaml`` and ``microcircuit-lab run`` use, and what a builder
@@ -54,8 +54,9 @@ def load_network(folder: str | Path) -> NetworkConfig:
     Returns
     -------
     NetworkConfig
-        The network ready to simulate: weights in pA, scaling applied and
-        compensation currents added.
+        The network ready to simulate: each background rate per synapse
+        turned into the rate of its generator (see
+        :func:`~microcircuit_lab.network.prepare.prepare_network`).
     """
 
     return prepare_network(read_network(folder))
@@ -73,8 +74,8 @@ def read_network(folder: str | Path) -> NetworkConfig:
     Returns
     -------
     NetworkConfig
-        The network as described by its files (weights still in the units
-        they were written in, no scaling applied).
+        The network as described by its files, e.g. to change it, or to
+        scale it with :func:`~microcircuit_lab.builder_tools.scaling.scale_network`.
     """
 
     return assemble_network(read_network_files(folder))
@@ -100,7 +101,7 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         "populations": read_yaml(folder / manifest.populations),
         "neurons": read_yaml(folder / manifest.neurons),
         "connectivity": connectivity,
-        "background_inputs": read_yaml(folder / manifest.background_inputs),
+        "poisson_background": read_yaml(folder / manifest.poisson_background),
     }
     if manifest.scaling is not None:
         parts["scaling"] = read_yaml(folder / manifest.scaling)
@@ -179,7 +180,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             name=name,
             model=entry.model,
             parameters=entry.parameters,
-            psp_conversion_aliases=entry.psp_conversion_aliases,
         )
         for name, entry in directory.neurons.neurons.items()
     }
@@ -198,7 +198,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             size=entry.size,
             neuron=neurons[entry.neuron],
             initial_state=entry.initial_state,
-            background_indegree=entry.background_indegree,
         )
 
     connections = directory.connection_table
@@ -211,18 +210,17 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
                 f"Connection {role} population '{unknown[0]}' is not defined in populations.yaml."
             )
 
-    for name in directory.background_inputs.background_inputs:
+    for name in directory.poisson_background.poisson_background:
         if name not in populations:
             raise ValueError(
-                f"background_inputs.yaml references population '{name}', "
+                f"poisson_background.yaml references population '{name}', "
                 "which is not defined in populations.yaml."
             )
 
     return NetworkConfig(
         populations=populations,
         connections=connections,
-        background_inputs=dict(directory.background_inputs.background_inputs),
-        background_mode=directory.background_inputs.background_mode,
+        poisson_background=dict(directory.poisson_background.poisson_background),
         bound_mode=directory.connectivity.bound_mode,
         stimuli=directory.stimuli.stimuli,
         scaling=directory.scaling,

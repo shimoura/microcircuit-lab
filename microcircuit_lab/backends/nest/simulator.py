@@ -151,8 +151,8 @@ class NestBackend:
             self.create_multimeters()
             self.connect_multimeters()
 
-        self.create_background_inputs()
-        self.connect_background_inputs()
+        self.create_poisson_background()
+        self.connect_poisson_background()
 
         if self._network.stimuli:
             self.create_stimuli()
@@ -194,8 +194,8 @@ class NestBackend:
         if "I_e" in parameters and "I_e" not in nest.GetDefaults(pop_cfg.neuron.model):
             raise ValueError(
                 f"Population {pop_cfg.name!r}: the NEST model {pop_cfg.neuron.model!r} has no I_e, "
-                "which neurons.yaml sets or a compensation current (scaling, background_mode: "
-                "mean_current) adds to."
+                "which neurons.yaml sets, or a constant current "
+                "written by a builder (scaling, replace_background_by_mean_current) adds to."
             )
         for values in (parameters, pop_cfg.initial_state):
             nodes.set(
@@ -390,29 +390,18 @@ class NestBackend:
                 nodes,
             )
 
-    def create_background_inputs(self) -> None:
+    def create_poisson_background(self) -> None:
         """
         Create one background Poisson generator per configured population, or
         one per ``generator`` name for the populations that share one.
-
-        Does nothing when background_mode is "mean_current": prepare_network has
-        already added the background input to each neuron's I_e as a constant
-        current (see NetworkConfig.background_mode).
         """
-
-        if self._network.background_mode == "mean_current":
-            logger.info(
-                "background_mode='mean_current': background drive is constant current "
-                "(I_e), skipping Poisson generators."
-            )
-            return
 
         logger.info("Creating background Poisson generators:")
 
         # Populations with the same ``generator`` name share one generator
         # (each neuron still gets its own spike train); the others get their own.
         shared: dict[str, nest.NodeCollection] = {}
-        for pop_name, input_cfg in self._network.background_inputs.items():
+        for pop_name, input_cfg in self._network.poisson_background.items():
             logger.info(
                 "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
@@ -429,13 +418,13 @@ class NestBackend:
                 pg = shared[input_cfg.generator]
             self.background_generators[pop_name] = pg
 
-    def connect_background_inputs(self) -> None:
+    def connect_poisson_background(self) -> None:
         """
         Connect background Poisson generators to populations.
         """
 
         for pop_name in self.background_generators:
-            input_cfg = self._network.background_inputs[pop_name]
+            input_cfg = self._network.poisson_background[pop_name]
             weight, delay = self.weight_and_delay(input_cfg.weight, input_cfg.delay)
             nest.Connect(
                 self.background_generators[pop_name],

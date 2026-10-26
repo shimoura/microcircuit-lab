@@ -10,24 +10,23 @@ from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistri
 
 
 def test_weight_carries_the_unit_through() -> None:
-    assert weight(0.15, unit="PSP", rel_std=0.1) == {
-        "mean": 0.15, "rel_std": 0.1, "distribution": "normal", "unit": "PSP",
+    assert weight(87.8, unit="pA", rel_std=0.1) == {
+        "mean": 87.8, "rel_std": 0.1, "distribution": "normal", "unit": "pA",
     }
-    assert weight(-10.0, unit="PSC")["unit"] == "PSC"
-    assert weight(1.0, unit="native")["unit"] == "native"
+    assert weight(1.0, unit="nS")["unit"] == "nS"
 
 
 def test_distribution_is_inferred_from_spread_but_can_be_forced() -> None:
-    assert weight(0.15, unit="PSP")["distribution"] == "fixed"          # no spread
-    assert weight(0.15, unit="PSP", rel_std=0.1)["distribution"] == "normal"
+    assert weight(87.8, unit="pA")["distribution"] == "fixed"          # no spread
+    assert weight(87.8, unit="pA", rel_std=0.1)["distribution"] == "normal"
     assert delay(1.5)["distribution"] == "fixed"
     assert delay(1.5, rel_std=0.5)["distribution"] == "normal"
     assert delay(1.5, rel_std=0.5, distribution="lognormal")["distribution"] == "lognormal"
 
 
 def test_output_is_exactly_the_on_disk_schema_dump() -> None:
-    assert weight(0.15, unit="PSP", rel_std=0.1) == WeightDistribution(
-        mean=0.15, rel_std=0.1, distribution="normal", unit="PSP"
+    assert weight(87.8, unit="pA", rel_std=0.1) == WeightDistribution(
+        mean=87.8, rel_std=0.1, distribution="normal", unit="pA"
     ).model_dump(exclude_none=True)
     # An unset minimum delay is left out of the file, not written as null.
     assert delay(1.5) == DelayDistribution(

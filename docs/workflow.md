@@ -22,7 +22,7 @@ In the diagrams on this page, a dashed box runs only when *the condition in ital
 
 Optional: the YAML files can also be written by hand. A builder is a folder `builders/<model>/` with a `main(argv)`, run by `microcircuit-lab generate <model>`.
 
-**Code:** `cli/generate.py`, `builder_tools.py`
+**Code:** `cli/generate.py`, `builder_tools/`
 
 ## 1 · Check
 
@@ -43,20 +43,16 @@ What each field accepts: [config_files.md](config_files.md).
 
 **In:** the network, as written. **Out:** the network, ready to simulate. The files themselves are not changed.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 15, "padding": 5}}}%%
-flowchart LR
-  U["mV → pA<br/><i>if unit: PSP</i>"]:::opt --> K["scale<br/><i>if scaling.yaml</i>"]:::opt --> D["DC for input lost<br/><i>if scaling.yaml</i>"]:::opt --> R["rate × indegree<br/><b>always</b>"] --> M["constant current<br/><i>if mean_current</i>"]:::opt
-  classDef opt stroke-dasharray: 5 4,fill:#ffffff
-```
+One step: **rate × indegree**. Each population's background is one Poisson generator, firing at the rate per synapse times the number of synapses.
 
-- **mV → pA:** a weight written as the size of a PSP becomes the current that gives it.
-- **scale:** fewer neurons and synapses, stronger weights.
-- **DC for input lost:** the mean input of the missing synapses, as a constant current.
-- **rate × indegree:** each population's background is one Poisson generator, firing at the rate per synapse times the number of synapses.
-- **constant current:** the background becomes its mean, a constant current.
+Everything else is simulated as written. Builder steps write their result into the folder:
 
-So with weights in pA (`unit: PSC`) and no `scaling.yaml`, everything is simulated as written, except that the background rate is multiplied by the indegree. To see the two ends:
+| Step (`builder_tools`) | What the folder shows |
+|---|---|
+| `scale_network` | the scaled numbers, the compensation current in `I_e`, and `scaling.yaml` (README, "Scaling a network") |
+| `replace_background_by_mean_current` | no background input, its mean current in `I_e` |
+
+To see the two ends:
 
 ```python
 from microcircuit_lab.network.load import read_network, load_network
@@ -65,7 +61,7 @@ written = read_network("configs/network/pd14")    # as written
 prepared = load_network("configs/network/pd14")   # ready to simulate
 ```
 
-**Code:** `network/prepare.py` (the order), `network/psp_psc_conversion.py`, `network/scaling.py`, `network/compensation.py`
+**Code:** `network/prepare.py`; the builder steps in `builder_tools/`
 
 ## 3 · Simulate
 
@@ -126,8 +122,8 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | a file is refused | the module named after the file, in `config/` |
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
 | the simulator "has no" model, rule, distribution or receptor | its `check()`, in `backends/<name>/simulator.py`; for Brian2, `extensions/brian2/` |
-| weights or sizes differ from the files | step 2: compare `read_network` and `load_network` |
-| rates drop in a scaled run | `network/compensation.py`; full-scale rates in `reference.yaml` |
+| a background rate differs from the files | step 2: compare `read_network` and `load_network` |
+| rates drop in a scaled run | `builder_tools/scaling.py`, `builder_tools/constant_current.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 3: the `create_...` method for that part, in `backends/nest/simulator.py` |
 | something looks wrong in Brian2 | step 3: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/simulator.py` |
 | the run went to the wrong folder | the `output` section of the simulation file |

@@ -30,13 +30,13 @@ from pydantic_core import PydanticUndefined
 
 from microcircuit_lab.analysis import PLOT_REGISTRY
 from microcircuit_lab.config.analysis import AnalysisConfig
-from microcircuit_lab.config.background_inputs import BackgroundInputsFile
 from microcircuit_lab.config.connectivity import ConnectivityFile
 from microcircuit_lab.config.network import NetworkManifest
 from microcircuit_lab.config.neurons import NeuronParams, NeuronsFile
+from microcircuit_lab.config.poisson_background import PoissonBackgroundFile
 from microcircuit_lab.config.populations import PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.config.scaling import ScalingRecord
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import StimuliFile
 from microcircuit_lab.config.synapses import SynapsesFile
@@ -52,16 +52,16 @@ FILES = [
     ("neurons.yaml", NeuronsFile, "The neuron models, by name. Several populations can share one."),
     ("synapses.yaml", SynapsesFile, "Optional: synapse models and receptor ports, by name. Without it, every connection uses the default synapse."),
     ("connectivity.yaml", ConnectivityFile, "The connections between populations."),
-    ("background_inputs.yaml", BackgroundInputsFile, "The always-on Poisson input of each population."),
+    ("poisson_background.yaml", PoissonBackgroundFile, "The background Poisson input of each population: synapses per neuron and their rate. Other always-on inputs are stimuli without start/stop."),
     ("stimuli.yaml", StimuliFile, "Optional: inputs for an experiment, applied as written (never scaled)."),
-    ("scaling.yaml", ScalingConfig, "Optional: how to downscale the network; see \"Scaling a network\" in the README. Without it, the network runs at full scale."),
+    ("scaling.yaml", ScalingRecord, "Only in a scaled network: how it was scaled, written by `scale_network` and never applied (the other files hold the scaled numbers); see \"Scaling a network\" in the README."),
     ("reference.yaml", ReferenceConfig, "Optional: published values to compare with, and to compensate a scaled network."),
 ]
 SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration, seed, threads, what to record and save.")
 ANALYSIS = ("analysis/<name>.yaml", AnalysisConfig, "Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.")
 
 # An example key for the fields that are a mapping keyed by name.
-KEY_EXAMPLES = {"neurons": "excitatory", "synapses": "depressing", "background_inputs": "L23_E"}
+KEY_EXAMPLES = {"neurons": "excitatory", "synapses": "depressing", "poisson_background": "L23_E"}
 
 # The picture: excerpts of the toy network, population names in blue and
 # neuron names in orange. In the lines, [E] marks a population name, {excitatory}
@@ -77,9 +77,9 @@ EXCERPTS = [
     ("connectivity.yaml", "uses population names", None, [
         "connections:", "  - source: [E]", "    target: [I]", "    n_synapses: 64000",
         "    weight: …", "    delay: …"]),
-    ("background_inputs.yaml", "uses population names", None, [
-        "background_inputs:", "  [E]:", "    rate: 8.0", "    weight: …",
-        "  [I]:", "    rate: 8.0", "    weight: …"]),
+    ("poisson_background.yaml", "uses population names", None, [
+        "poisson_background:", "  [E]:", "    rate: 8.0", "    indegree: 1000", "    weight: …",
+        "  [I]:", "    rate: 8.0", "    indegree: 1000", "    weight: …"]),
     ("stimuli.yaml", "uses population names", None, [
         "stimuli:", "  - type: dc", "    targets: \\[[E]\\]", "    amplitude: 200.0",
         "    start: 500.0", "    stop: 600.0"]),

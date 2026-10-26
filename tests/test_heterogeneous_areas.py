@@ -14,7 +14,7 @@ import pytest
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
-from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.builder_tools import scale_network
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.prepare import prepare_network
 
@@ -24,7 +24,7 @@ NETWORK = "configs/network/toy_two_areas"
 def _config(**scaling):
     config = assemble_network(read_network_files(NETWORK))
     if scaling:
-        config = config.model_copy(update={"scaling": ScalingConfig(**scaling)})
+        config = scale_network(config, scaled_from="toy_two_areas", **scaling)
     return config
 
 
@@ -37,7 +37,7 @@ def _mean_input(network) -> dict[str, float]:
     current = {}
     for name, population in network.populations.items():
         parameters = population.neuron.parameters
-        background = network.background_inputs[name]
+        background = network.poisson_background[name]
         total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.mean * background.rate
         current[name] = total
 
@@ -80,9 +80,10 @@ def test_a_single_area_network_has_no_areas():
     assert list_areas(simulation) == []
 
 
-def test_psp_weights_are_converted_with_each_target_neuron():
+def test_weights_follow_each_target_neuron():
     """A__L23_PV and A__L5_PV use different neuron entries that differ only
-    in C_m, so the same PSP gives PSCs in the ratio of their capacitances."""
+    in C_m, so the builder writes the same PSP as currents in the ratio of
+    their capacitances."""
     network = prepare_network(_config())
     psc = {
         connection["target"]: connection["weight"]["mean"]

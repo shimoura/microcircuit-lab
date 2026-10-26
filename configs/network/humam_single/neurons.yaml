@@ -1,10 +1,11 @@
 # Compensated for 33 area(s) not simulated: each population's I_e includes a DC current for the cortical input it would otherwise be missing (see humam.build._compute_missing_area_dc).
-# I_e compensation range: 2.261 to 19.282 pA.
+# I_e compensation range: 2.261 to 19.282 pA, before the current that replaces the input lost by scaling (scaling.yaml) is added.
 # Regenerate with --no-compensate-missing-areas for a genuinely isolated area instead (no compensation).
 neurons:
   L23_E:
     model: iaf_psc_exp
     parameters:
+      I_e: 605.1503690793172
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -13,10 +14,10 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 19.282148923335694
   L23_I:
     model: iaf_psc_exp
     parameters:
+      I_e: 272.5112545136912
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
@@ -25,10 +26,10 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 6.207518079154232
   L5_E:
     model: iaf_psc_exp
     parameters:
+      I_e: 618.826448076429
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -37,10 +38,10 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 3.664816912648344
   L5_I:
     model: iaf_psc_exp
     parameters:
+      I_e: 268.564243908712
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
@@ -49,10 +50,10 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 2.260507474174987
   L6_E:
     model: iaf_psc_exp
     parameters:
+      I_e: 679.3186901901909
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -61,10 +62,10 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 5.570237010812596
   L6_I:
     model: iaf_psc_exp
     parameters:
+      I_e: 270.63199068898984
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
@@ -73,4 +74,3 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 4.328254254452894

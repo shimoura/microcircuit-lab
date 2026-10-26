@@ -19,10 +19,6 @@ from pydantic import (
     model_validator,
 )
 
-from microcircuit_lab.config.background_inputs import (
-    BackgroundInputConfig,
-    BackgroundInputsFile,
-)
 from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
@@ -30,9 +26,13 @@ from microcircuit_lab.config.connection_table import (
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, ConnectivityFile
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
+from microcircuit_lab.config.poisson_background import (
+    PoissonBackgroundConfig,
+    PoissonBackgroundFile,
+)
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.config.scaling import ScalingRecord
 from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
     StimuliFile,
@@ -47,15 +47,15 @@ class NetworkManifest(FrozenConfig):
     populations: str = Field(examples=["populations.yaml"], description="file holding the populations list")
     neurons: str = Field(examples=["neurons.yaml"], description="file holding the neuron definitions")
     connectivity: str = Field(examples=["connectivity.yaml"], description="file holding the connection list")
-    background_inputs: str = Field(
-        examples=["background_inputs.yaml"],
-        description="file holding the background-input entries"
+    poisson_background: str = Field(
+        examples=["poisson_background.yaml"],
+        description="file holding the background Poisson input of each population",
     )
     scaling: str | None = Field(
         default=None,
         examples=["scaling.yaml"],
-        description="file holding the scaling parameters; omit the key to run the network "
-        "at full scale",
+        description="file recording how this network was scaled (written by scale_network, "
+        "never applied); omit the key for a network that was not scaled",
     )
     reference: str | None = Field(
         default=None,
@@ -74,6 +74,16 @@ class NetworkManifest(FrozenConfig):
         "default synapse everywhere",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_background_inputs(cls, data):
+        if isinstance(data, dict) and "background_inputs" in data:
+            raise ValueError(
+                "background_inputs was renamed: write `poisson_background: poisson_background.yaml` "
+                "in network.yaml (and rename the file and its top-level key the same way)"
+            )
+        return data
+
 
 class NetworkDirectory(FrozenConfig):
     """The whole ``configs/network/<name>/`` directory, validated at once.
@@ -90,8 +100,8 @@ class NetworkDirectory(FrozenConfig):
     populations: PopulationsFile
     neurons: NeuronsFile
     connectivity: ConnectivityFile
-    background_inputs: BackgroundInputsFile
-    scaling: ScalingConfig = Field(default_factory=ScalingConfig)
+    poisson_background: PoissonBackgroundFile
+    scaling: ScalingRecord | None = None
     reference: ReferenceConfig | None = None
     stimuli: StimuliFile = Field(default_factory=StimuliFile)
     synapses: SynapsesFile = Field(default_factory=SynapsesFile)
@@ -102,15 +112,6 @@ class NetworkDirectory(FrozenConfig):
 class NetworkConfig(FrozenConfig):
     """
     The whole network, read from the YAML files in ``configs/network/``.
-
-    background_mode:
-        "poisson" (default): each population gets its background input from
-        independent Poisson generators.
-        "mean_current": the Poisson input of every population is replaced by a
-        constant current of the same mean (Potjans & Diesmann 2014, Fig. 5).
-        The rate, weight and delay in ``background_inputs`` are used to compute
-        that mean (step ``replace_background_by_mean_current`` in
-        ``network/compensation.py``). No Poisson generator is created.
 
     bound_mode:
         What to do with a drawn weight or delay that falls outside its
@@ -132,11 +133,11 @@ class NetworkConfig(FrozenConfig):
         PlainSerializer(lambda table: table.to_yaml_rows(), return_type=list),
     ]
 
-    background_inputs: dict[str, BackgroundInputConfig]
-    background_mode: Literal["poisson", "mean_current"] = "poisson"
+    poisson_background: dict[str, PoissonBackgroundConfig]
     bound_mode: Literal["redraw", "clip"] = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
-    scaling: ScalingConfig
+    # How the network was scaled, if it was; never applied (see config/scaling.py).
+    scaling: ScalingRecord | None = None
 
     reference: ReferenceConfig | None = None
     synapses: dict[str, SynapseEntry] = Field(default_factory=dict)
@@ -165,7 +166,7 @@ class NetworkConfig(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_project_distributions_on_connections_only(self) -> NetworkConfig:
-        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users = [(f"background input of {name}", b) for name, b in self.poisson_background.items()]
         users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
         for user, item in users:
             for what in ("weight", "delay"):
@@ -194,26 +195,20 @@ class NetworkConfig(FrozenConfig):
     @model_validator(mode="after")
     def _check_shared_generators(self) -> NetworkConfig:
         groups: dict[str, list[str]] = {}
-        for name, entry in self.background_inputs.items():
+        for name, entry in self.poisson_background.items():
             if entry.generator is not None:
                 groups.setdefault(entry.generator, []).append(name)
-        if groups and self.background_mode == "mean_current":
-            raise ValueError(
-                f"background_inputs.yaml: generator {sorted(groups)[0]!r} is set, but "
-                "background_mode is mean_current, which creates no generators."
-            )
         # One generator fires at one rate (rate x indegree) through one synapse
         # model (the simulator connects a device through one model). Rate and
         # indegree are compared one by one, not their product: that holds
         # whether the network is prepared or not (a prepared rate is already
-        # rate x indegree), and after any K_scaling.
-        indegree = {name: pop.background_indegree for name, pop in self.populations.items()}
+        # rate x indegree), and after any scaling.
         for generator, names in groups.items():
             inputs = {
                 name: (
-                    self.background_inputs[name].rate,
-                    indegree.get(name),
-                    self.background_inputs[name].synapse,
+                    self.poisson_background[name].rate,
+                    self.poisson_background[name].indegree,
+                    self.poisson_background[name].synapse,
                 )
                 for name in names
             }
@@ -221,8 +216,8 @@ class NetworkConfig(FrozenConfig):
             different = [name for name in names if inputs[name] != inputs[first]]
             if different:
                 raise ValueError(
-                    f"background_inputs.yaml: the populations of generator {generator!r} need "
-                    "the same rate, background_indegree and synapse (rate, indegree, synapse): "
+                    f"poisson_background.yaml: the populations of generator {generator!r} need "
+                    "the same rate, indegree and synapse: "
                     f"{first} has {inputs[first]}, {different[0]} has {inputs[different[0]]}."
                 )
         return self
@@ -233,25 +228,14 @@ class NetworkConfig(FrozenConfig):
         table = self.connections
         synapse = table["synapse"]
         for name in sorted({s for s in synapse.tolist() if s is not None}):
-            uses = synapse == name
-            first = int(np.flatnonzero(uses)[0])
-            user = f"connection {table['source'][first]} -> {table['target'][first]}"
             if name not in self.synapses:
+                first = int(np.flatnonzero(synapse == name)[0])
+                user = f"connection {table['source'][first]} -> {table['target'][first]}"
                 raise ValueError(
                     f"The {user} uses synapse {name!r}, which is not defined in synapses.yaml."
                 )
-            psp = uses & (table["weight.unit"] == "PSP")
-            if self.synapses[name].receptor_port is not None and psp.any():
-                first = int(np.flatnonzero(psp)[0])
-                user = f"connection {table['source'][first]} -> {table['target'][first]}"
-                raise ValueError(
-                    f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[name].receptor_port!r} (synapse {name!r}). "
-                    "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
-                    "default port only; give this weight as unit: PSC or native."
-                )
 
-        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users = [(f"background input of {name}", b) for name, b in self.poisson_background.items()]
         users += [
             (f"stimulus of {s.targets}", s)
             for s in self.stimuli
@@ -264,15 +248,6 @@ class NetworkConfig(FrozenConfig):
                 raise ValueError(
                     f"The {user} uses synapse {item.synapse!r}, which is not defined in "
                     "synapses.yaml."
-                )
-            # The PSP-to-PSC conversion uses tau_syn_ex/tau_syn_in, the time
-            # constants of the default port; another port has its own.
-            if self.synapses[item.synapse].receptor_port is not None and item.weight.unit == "PSP":
-                raise ValueError(
-                    f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[item.synapse].receptor_port!r} (synapse {item.synapse!r}). "
-                    "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
-                    "default port only; give this weight as unit: PSC or native."
                 )
         return self
 

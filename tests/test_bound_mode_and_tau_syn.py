@@ -10,8 +10,12 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
-from microcircuit_lab.config.background_inputs import BackgroundInputConfig
+from microcircuit_lab.builder_tools import (
+    delay,
+    scale_network,
+    weight,
+    write_network_directory,
+)
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
@@ -19,9 +23,9 @@ from microcircuit_lab.config.connectivity import (
 )
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import load_network
 from microcircuit_lab.network.prepare import prepare_network
@@ -32,9 +36,7 @@ TAU_SYN_EX = 2.0
 def _network(
     *,
     tau_syn_in: float,
-    background_indegree: float = 0.0,
     connections: list[ConnectionConfig] | None = None,
-    scaling: ScalingConfig | None = None,
     reference: ReferenceConfig | None = None,
     bound_mode: str = "redraw",
 ) -> NetworkConfig:
@@ -49,21 +51,19 @@ def _network(
     populations = {
         name: PopulationConfig(
             name=name, size=100, neuron=neuron, initial_state={"V_m": {"distribution": "normal", "mean": -58.0, "std": 5.0}},
-            background_indegree=background_indegree,
         )
         for name in ("E", "I")
     }
     return NetworkConfig(
         populations=populations,
         connections=connections or [],
-        background_inputs={},
-        scaling=scaling or ScalingConfig(),
+        poisson_background={},
         reference=reference,
         bound_mode=bound_mode,
     )
 
 
-def _psc(mean: float, unit: str = "PSC") -> WeightDistribution:
+def _psc(mean: float, unit: str = "pA") -> WeightDistribution:
     return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
 
 
@@ -83,18 +83,17 @@ def _compensation_into_E(tau_syn_in: float) -> float:
             ConnectionConfig(source="E", target="E", n_synapses=1000, weight=_psc(50.0), delay=_fixed_delay()),
             ConnectionConfig(source="I", target="E", n_synapses=1000, weight=_psc(-200.0), delay=_fixed_delay()),
         ],
-        scaling=ScalingConfig(K_scaling=0.25),
         reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
     )
     config = config.model_copy(
         update={
-            "background_inputs": {
-                name: BackgroundInputConfig(rate=0.0, weight=_psc(0.0), delay=_fixed_delay())
+            "poisson_background": {
+                name: PoissonBackgroundConfig(rate=0.0, indegree=0.0, weight=_psc(0.0), delay=_fixed_delay())
                 for name in ("E", "I")
             }
         }
     )
-    derived = prepare_network(config)
+    derived = scale_network(config, N_scaling=1.0, K_scaling=0.25, scaled_from="test")
     return derived.populations["E"].neuron.parameters.I_e
 
 
@@ -115,56 +114,24 @@ def test_compensation_is_unchanged_when_both_time_constants_are_equal() -> None:
     assert _compensation_into_E(TAU_SYN_EX) == pytest.approx(expected)
 
 
-def test_compensation_sign_rule_also_holds_for_weights_given_as_psp() -> None:
-    """A PSP weight keeps its sign when converted to a PSC, so an inhibitory
-    PSP is compensated with tau_syn_in just like an inhibitory PSC."""
-    from microcircuit_lab.network.psp_psc_conversion import psp_to_psc_iaf_psc_exp
-
-    tau_syn_in = 4.0
-    config = _network(
-        tau_syn_in=tau_syn_in,
-        connections=[
-            ConnectionConfig(source="I", target="E", n_synapses=1000, weight=_psc(-0.5, "PSP"), delay=_fixed_delay()),
-        ],
-        scaling=ScalingConfig(K_scaling=0.25),
-        reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
-    )
-    config = config.model_copy(
-        update={
-            "background_inputs": {
-                name: BackgroundInputConfig(rate=0.0, weight=_psc(0.0), delay=_fixed_delay())
-                for name in ("E", "I")
-            }
-        }
-    )
-    psc = psp_to_psc_iaf_psc_exp(psp=-0.5, C_m=250.0, tau_m=10.0, tau_syn=tau_syn_in)
-    expected = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * psc * 10.0 * 8.0
-
-    derived = prepare_network(config)
-
-    assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected)
-
-
 def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitory_input() -> None:
     tau_syn_in = 4.0
     config = _network(
         tau_syn_in=tau_syn_in,
-        background_indegree=100.0,
-        scaling=ScalingConfig(K_scaling=0.25),
         reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
     )
     config = config.model_copy(
         update={
-            "background_inputs": {
-                "E": BackgroundInputConfig(rate=8.0, weight=_psc(-30.0), delay=_fixed_delay()),
-                "I": BackgroundInputConfig(rate=8.0, weight=_psc(30.0), delay=_fixed_delay()),
+            "poisson_background": {
+                "E": PoissonBackgroundConfig(rate=8.0, indegree=100.0, weight=_psc(-30.0), delay=_fixed_delay()),
+                "I": PoissonBackgroundConfig(rate=8.0, indegree=100.0, weight=_psc(30.0), delay=_fixed_delay()),
             }
         }
     )
     expected_E = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * -30.0 * 100.0 * 8.0
     expected_I = 0.001 * (1.0 - np.sqrt(0.25)) * TAU_SYN_EX * 30.0 * 100.0 * 8.0
 
-    derived = prepare_network(config)
+    derived = scale_network(config, N_scaling=1.0, K_scaling=0.25, scaled_from="test")
 
     assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected_E)
     assert derived.populations["I"].neuron.parameters.I_e == pytest.approx(expected_I)
@@ -183,15 +150,15 @@ def _write(tmp_path: Path, **overrides) -> Path:
     parts = dict(
         path=tmp_path / "net",
         populations=[
-            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}, "background_indegree": 10},
+            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}},
         ],
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
             {"source": "E", "target": "E", "n_synapses": 20,
-             "weight": weight(0.15, unit="PSP", rel_std=0.1),
+             "weight": weight(87.8, unit="pA", rel_std=0.1),
              "delay": delay(1.5, rel_std=0.5, minimum=0.1)},
         ],
-        background_inputs={"E": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)}},
+        poisson_background={"E": {"rate": 8.0, "indegree": 10, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}},
     )
     parts.update(overrides)
     write_network_directory(**parts)
@@ -232,7 +199,7 @@ def _draw_synapses(
     enough that many draws fall outside their range; return both lists."""
     import nest
 
-    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution=distribution, unit="PSC")
+    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution=distribution, unit="pA")
     wide_delay = DelayDistribution(mean=1.0, rel_std=rel_std, distribution=distribution, minimum=minimum)
     config = _network(
         tau_syn_in=TAU_SYN_EX,

@@ -1,9 +1,9 @@
 # Manifest: maps each part of the network to its file in this directory.
-# All six entries below are required; add `stimuli: stimuli.yaml` to also
-# load a stimuli file. Unknown keys here are rejected.
+# The first four entries are required; reference, stimuli, synapses and
+# scaling (the record of a scaled network) are optional. Unknown keys here
+# are rejected.
 populations: populations.yaml
 neurons: neurons.yaml
 connectivity: connectivity.yaml
-background_inputs: background_inputs.yaml
-scaling: scaling.yaml
+poisson_background: poisson_background.yaml
 reference: reference.yaml

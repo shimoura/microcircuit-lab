@@ -1,9 +1,0 @@
-# All fields are optional; these are the defaults (no scaling applied).
-# Increase N_scaling/K_scaling toward 1.0 to approach the full-scale network
-# described above, or decrease them to run faster during development.
-N_scaling: 1.0
-K_scaling: 1.0
-
-preserve_mean_input: true
-preserve_variance: true
-compensate_recurrent_input: true

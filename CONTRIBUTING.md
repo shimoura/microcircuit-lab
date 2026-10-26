@@ -24,7 +24,7 @@ flowchart TD
   B --> T["tests/test_stimuli.py"]
 ```
 
-Anything that changes numbers before the simulation (units, scaling, compensation) is a step of `prepare_network` in `network/prepare.py`; the steps that add currents are in `network/compensation.py`. The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
+The files hold the numbers that are simulated; the only change at run time is the background rate per synapse into the rate of its generator (`network/prepare.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
 
 ### Does your idea fit what already exists?
 
@@ -81,16 +81,16 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 1. `config/connectivity.py`: add it to `ConnectionConfig` (a field), or to `SHARED_RULES` (a rule; to `RULE_NUMBER` too if it takes a number).
 2. `config/connection_table.py`: add a field's column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
 3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column; `backends/brian2/simulator.py` too, and a rule in `backends/brian2/connections.py`: its counts in `_counts` if it takes a number, its `connect` call in `_single`.
-4. If scaling or the indegrees depend on it: `network/mean_input.py` (`expected_synapses`) and `network/prepare.py` (`_check_connections_can_scale` for a rule that can't follow the scaling), on whole columns.
+4. If scaling or the indegrees depend on it: `builder_tools/mean_input.py` (`expected_synapses`) and `builder_tools/scaling.py` (`_check_connections_can_scale` for a rule that can't follow the scaling), on whole columns.
 5. Test in `tests/test_connection_rules.py`.
 </details>
 
 <details>
 <summary><b>A scaling or compensation option</b></summary>
 
-1. `config/scaling.py`: the option.
-2. `network/scaling.py`: the formula.
-3. `network/prepare.py` (or `network/compensation.py`, for a compensation current): use it in the right step of `prepare_network`.
+1. `builder_tools/scaling.py`: the option, as an argument of `scale_network`, and its formula.
+2. The same option in the `parameters` of the record it writes (`ScalingRecord`, `config/scaling.py`, is `scaling.yaml`).
+3. `builder_tools/constant_current.py`, for a compensation current.
 4. Test in `tests/test_scaling.py` or `tests/test_scaling_compensation.py`, and in `tests/test_heterogeneous_areas.py` if it depends on cell types.
 </details>
 
@@ -129,7 +129,7 @@ When a stimulus `type` is not known, the error message points to this section.
      - type: spike
        targets: [L4_E]
        spike_times: [500.0]
-       weight: {mean: 87.8, rel_std: 0.0, unit: PSC}
+       weight: {mean: 87.8, rel_std: 0.0, unit: pA}
        delay: {mean: 1.5, rel_std: 0.0}
    ```
 2. Running it fails with `stimuli.yaml: stimuli.0: Input tag 'spike' ... does not match any of the expected tags` and points here.
@@ -156,6 +156,6 @@ When a stimulus `type` is not known, the error message points to this section.
 
 - Use plain names close to the papers and reference codes (`N_scaling`, `K_ext`, `tau_syn_ex`), no extra layers, no logic written twice.
 - Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks, together with a `description` (with its unit) and, for a required field, `examples=[...]`: [docs/config_files.md](docs/config_files.md) is written from them.
-- Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `run_folder.register_artifact`, `network/psp_psc_conversion.py`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
+- Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `run_folder.register_artifact`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
-- Keep the field names of the config models stable (`populations`, `size`, `background_indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason. Rename a field only when its old name is wrong or misleading. The old name then fails with a message giving the new one (no conversion is kept), and the rename is listed in the release notes. Command-line flags, backend options and folder names follow the same rule but matter less, because they don't end up in a run folder.
+- Keep the field names of the config models stable (`populations`, `size`, `indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason. Rename a field only when its old name is wrong or misleading. The old name then fails with a message giving the new one (no conversion is kept), and the rename is listed in the release notes. Command-line flags, backend options and folder names follow the same rule but matter less, because they don't end up in a run folder.

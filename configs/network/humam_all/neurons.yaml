@@ -1,7 +1,8 @@
 neurons:
-  E:
+  bankssts__L23_E:
     model: iaf_psc_exp
     parameters:
+      I_e: 566.7364403119627
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -10,10 +11,10 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 0.0
-  I:
+  bankssts__L23_I:
     model: iaf_psc_exp
     parameters:
+      I_e: 257.607472869074
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
@@ -22,4 +23,3027 @@ neurons:
       tau_m: 10.0
       tau_syn_ex: 2.0
       tau_syn_in: 2.0
-      I_e: 0.0
+  bankssts__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  bankssts__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  bankssts__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  bankssts__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  bankssts__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  bankssts__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalanteriorcingulate__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalanteriorcingulate__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalanteriorcingulate__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalanteriorcingulate__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalanteriorcingulate__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalanteriorcingulate__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalmiddlefrontal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalmiddlefrontal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalmiddlefrontal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalmiddlefrontal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalmiddlefrontal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  caudalmiddlefrontal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  cuneus__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  entorhinal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  entorhinal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  entorhinal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  entorhinal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.6074728690739
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  entorhinal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  entorhinal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  fusiform__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119626
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiorparietal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.6074728690739
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  inferiortemporal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  isthmuscingulate__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.6074728690739
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateraloccipital__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateraloccipital__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.6074728690739
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateraloccipital__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateraloccipital__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateraloccipital__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587572
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateraloccipital__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587572
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lateralorbitofrontal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.6074728690739
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  lingual__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.6074728690739
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  medialorbitofrontal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119626
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  middletemporal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parahippocampal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parahippocampal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parahippocampal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parahippocampal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  paracentral__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587572
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsopercularis__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsorbitalis__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119626
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsorbitalis__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsorbitalis__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsorbitalis__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsorbitalis__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parsorbitalis__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  parstriangularis__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  pericalcarine__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  postcentral__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  posteriorcingulate__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precentral__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precentral__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precentral__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precentral__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precentral__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precentral__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119626
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  precuneus__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralanteriorcingulate__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralanteriorcingulate__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralanteriorcingulate__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralanteriorcingulate__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralanteriorcingulate__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralanteriorcingulate__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.746906358757
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  rostralmiddlefrontal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorfrontal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiorparietal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.073262327561
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  superiortemporal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  supramarginal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119628
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587572
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  frontalpole__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119626
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275609
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587572
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  temporalpole__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587571
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  transversetemporal__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 566.7364403119627
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 595.0732623275608
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.60747286907394
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 651.7469063587572
+      C_m: 220.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0
+  insula__L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 257.607472869074
+      C_m: 100.0
+      E_L: -70.0
+      V_reset: -70.0
+      V_th: -45.0
+      t_ref: 2.0
+      tau_m: 10.0
+      tau_syn_ex: 2.0
+      tau_syn_in: 2.0

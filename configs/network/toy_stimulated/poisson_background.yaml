@@ -1,12 +1,17 @@
-background_inputs:
+# Background: each neuron of a population gets `indegree` independent Poisson
+# synapses, each firing at `rate` (spikes/s). Other always-on inputs (a constant
+# current, a Poisson train, an inhomogeneous Poisson input) are stimuli.yaml
+# entries without start/stop.
+poisson_background:
 
   E:
     rate: 8.0
+    indegree: 1000
     weight:
-      mean: 0.15
+      mean: 87.80849352920843  # a 0.15 mV PSP
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -14,30 +19,31 @@ background_inputs:
 
   I:
     rate: 8.0
+    indegree: 1000
     weight:
-      mean: 0.15
+      mean: 87.80849352920843  # a 0.15 mV PSP
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
       distribution: fixed
 
-  # Unlike E/I above, this weight is a synaptic conductance (nS), not a
-  # PSP amplitude: aeif_cond_exp has no PSP-to-PSC conversion, so it must
-  # be given as unit: native. 0.6 nS is sized so background alone (at
-  # this rate * background_indegree) brings the mean membrane potential
+  # Unlike E/I above, this weight is a synaptic conductance (unit: nS),
+  # since aeif_cond_exp is conductance-based. 0.6 nS is sized so background alone (at
+  # this rate * indegree) brings the mean membrane potential
   # to within a few mV of V_th, the same "near-threshold, fluctuation
   # driven" regime E/I sits in; see connectivity.yaml for how that value
   # was derived.
   E_adex:
     rate: 8.0
+    indegree: 1000
     weight:
       mean: 1.2
       rel_std: 0.0
       distribution: fixed
-      unit: native
+      unit: nS
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -45,11 +51,12 @@ background_inputs:
 
   I_adex:
     rate: 8.0
+    indegree: 1000
     weight:
       mean: 1.2
       rel_std: 0.0
       distribution: fixed
-      unit: native
+      unit: nS
     delay:
       mean: 1.5
       rel_std: 0.0

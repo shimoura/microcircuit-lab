@@ -23,7 +23,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.network.load import load_network
+from microcircuit_lab.builder_tools import mean_current, scale_network, write_network
+from microcircuit_lab.builder_tools.write import POISSON_BACKGROUND_HEADER
+from microcircuit_lab.network.load import load_network, read_network
 from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
 LAYER_ALIAS = {
@@ -153,8 +155,6 @@ def _build_population_entries(
                 )
                 labels.append((idx, label))
 
-                k_ext = float(synapses_external.loc[idx]) / float(n)
-
                 population_entries.append(
                     {
                         "name": label,
@@ -163,7 +163,6 @@ def _build_population_entries(
                         "initial_state": {
                             "V_m": {"distribution": "normal", "mean": V0_MEAN, "std": V0_SD}
                         },
-                        "background_indegree": k_ext,
                     }
                 )
 
@@ -227,7 +226,7 @@ def _build_connections(
                         "mean": mean_psc,
                         "rel_std": abs(sd_psc / mean_psc),
                         "distribution": "normal",
-                        "unit": "PSC",
+                        "unit": "pA",
                     },
                     "delay": {
                         "mean": delay_mean,
@@ -259,12 +258,9 @@ def _compute_missing_area_dc(
     connections it would receive from areas outside ``selected_areas``,
     if the full multi-area network were simulated.
 
-    Reuses network_compensation_current -- the same function that
-    compensates for K_scaling downscaling -- with K_scaling=0.0. That
-    factor normally expresses "what fraction of a connection's input
-    survived scaling"; 0.0 means none of it survived (the source area
-    isn't simulated at all), so the *entire* contribution is compensated
-    rather than just the fraction lost to scaling.
+    The current is the whole mean input from those areas, which are not
+    simulated at all: the sum of ``mean_current(weight, indegree, rate,
+    tau_syn)`` over its inputs, with weights in pA and rates in spikes/s.
 
     Each input is compensated with the target's ``tau_syn_ex`` or
     ``tau_syn_in``, by the sign of its weight (in HuMAM all inter-area
@@ -276,16 +272,13 @@ def _compute_missing_area_dc(
     if not other_areas:
         return {}
 
-    from microcircuit_lab.network.compensation import network_compensation_current
-
     compensation: dict[str, float] = {}
 
     for tgt_idx, tgt_label in labels:
         target_params = neuron_params[tgt_idx[2]]
         n_target = float(neuron_numbers.loc[tgt_idx])
 
-        excitatory_input = 0.0
-        inhibitory_input = 0.0
+        current = 0.0
         for src_area in other_areas:
             for layer in layers:
                 for pop in pops:
@@ -303,23 +296,10 @@ def _compute_missing_area_dc(
                     rate = float(base_theory_rates.loc[src_idx])
 
                     indegree = n_synapses / n_target
-                    if mean_psc > 0.0:
-                        excitatory_input += mean_psc * indegree * rate
-                    else:
-                        inhibitory_input += mean_psc * indegree * rate
+                    tau_syn = target_params["tau_syn_ex" if mean_psc > 0.0 else "tau_syn_in"]
+                    current += mean_current(mean_psc, indegree, rate, tau_syn)
 
-        compensation[tgt_label] = float(
-            network_compensation_current(
-                network_input=excitatory_input,
-                tau_syn=target_params["tau_syn_ex"],
-                K_scaling=0.0,
-            )
-            + network_compensation_current(
-                network_input=inhibitory_input,
-                tau_syn=target_params["tau_syn_in"],
-                K_scaling=0.0,
-            )
-        )
+        compensation[tgt_label] = float(current)
 
     return compensation
 
@@ -343,9 +323,11 @@ def _build_reference_rates(
     }
 
 
-def _build_background_inputs(
+def _build_poisson_background(
     *,
     labels: list[tuple[tuple[str, str, str], str]],
+    sizes: dict[str, int],
+    synapses_external: Any,
     rate_ext: Any,
     weights_ext: Any,
     weights_ext_sd: Any,
@@ -353,19 +335,20 @@ def _build_background_inputs(
     """Poisson background as in HuMAM main: PSC weights (pA) drawn from a normal
     and clipped at 0, delay fixed at the resolution."""
 
-    background_inputs: dict[str, dict[str, Any]] = {}
+    poisson_background: dict[str, dict[str, Any]] = {}
 
     for idx, label in labels:
         ext_mean_psc = float(weights_ext.loc[idx])
         ext_sd_psc = float(weights_ext_sd.loc[idx])
 
-        background_inputs[label] = {
+        poisson_background[label] = {
             "rate": float(rate_ext.loc[idx]),
+            "indegree": float(synapses_external.loc[idx]) / float(sizes[label]),
             "weight": {
                 "mean": ext_mean_psc,
                 "rel_std": abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0,
                 "distribution": "normal",
-                "unit": "PSC",
+                "unit": "pA",
             },
             "delay": {
                 "mean": RESOLUTION,
@@ -374,7 +357,7 @@ def _build_background_inputs(
             },
         }
 
-    return background_inputs
+    return poisson_background
 
 
 def generate_humam_configs(
@@ -466,8 +449,10 @@ def generate_humam_configs(
         delay_distribution=data.net_yaml["delay_distribution"],
     )
 
-    background_inputs = _build_background_inputs(
+    poisson_background = _build_poisson_background(
         labels=labels,
+        sizes={entry["name"]: entry["size"] for entry in population_entries},
+        synapses_external=data.synapses_external,
         rate_ext=data.rate_ext,
         weights_ext=data.weights_ext,
         weights_ext_sd=data.weights_ext_sd,
@@ -488,14 +473,6 @@ def generate_humam_configs(
             neuron_params=neuron_params,
         )
 
-    scaling = {
-        "N_scaling": n_scaling,
-        "K_scaling": k_scaling,
-        "preserve_mean_input": True,
-        "preserve_variance": True,
-        "compensate_recurrent_input": False,
-    }
-
     reference = {
         "full_mean_rates": _build_reference_rates(
             labels=labels,
@@ -507,8 +484,7 @@ def generate_humam_configs(
         "populations": "populations.yaml",
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
-        "background_inputs": "background_inputs.yaml",
-        "scaling": "scaling.yaml",
+        "poisson_background": "poisson_background.yaml",
         "reference": "reference.yaml",
     }
 
@@ -569,8 +545,7 @@ def generate_humam_configs(
         "populations.yaml": {"populations": population_entries},
         "neurons.yaml": neurons,
         "connectivity.yaml": {"bound_mode": "clip", "connections": connections},
-        "background_inputs.yaml": {"background_inputs": background_inputs},
-        "scaling.yaml": scaling,
+        "poisson_background.yaml": {"poisson_background": poisson_background},
         "reference.yaml": reference,
     }
 
@@ -586,7 +561,8 @@ def generate_humam_configs(
                 f"Compensated for {other_area_count} area(s) not simulated: each "
                 "population's I_e includes a DC current for the cortical input it "
                 "would otherwise be missing (see humam.build._compute_missing_area_dc).\n"
-                f"I_e compensation range: {min(values):.3f} to {max(values):.3f} pA.\n"
+                f"I_e compensation range: {min(values):.3f} to {max(values):.3f} pA, before the "
+                "current that replaces the input lost by scaling (scaling.yaml) is added.\n"
                 "Regenerate with --no-compensate-missing-areas for a genuinely "
                 "isolated area instead (no compensation)."
             )
@@ -604,20 +580,36 @@ def generate_humam_configs(
     flow_style_fields = {
         "populations.yaml": "populations",
         "connectivity.yaml": "connections",
-        "background_inputs.yaml": "background_inputs",
+        "poisson_background.yaml": "poisson_background",
     }
     for name, payload in yaml_payloads.items():
         field = flow_style_fields.get(name)
         if field is not None:
             payload = {**payload, field: flow_records(payload[field])}
-        header = neurons_header if name == "neurons.yaml" else None
+        header = {"neurons.yaml": neurons_header, "poisson_background.yaml": POISSON_BACKGROUND_HEADER}.get(name)
         write_yaml(network_dir / name, payload, header_comment=header)
+
+    # HuMAM is written scaled: the files hold the numbers that are simulated,
+    # and scaling.yaml records how they were made. Only the background input
+    # lost by scaling is compensated (the recurrent rates are not known).
+    if n_scaling != 1.0 or k_scaling != 1.0:
+        scaled = scale_network(
+            read_network(network_dir),
+            N_scaling=n_scaling,
+            K_scaling=k_scaling,
+            scaled_from=f"humam --area {area}",
+            compensate_recurrent_input=False,
+        )
+        write_network(scaled, network_dir)
+        if neurons_header is not None:
+            write_yaml(network_dir / "neurons.yaml", read_yaml(network_dir / "neurons.yaml"), header_comment=neurons_header)
 
     write_yaml(simulation_path, simulation_cfg)
 
     if export_json:
-        for name, payload in yaml_payloads.items():
-            _write_json(network_dir / name.replace(".yaml", ".json"), payload)
+        # The files as written, scaled if they were.
+        for path in sorted(network_dir.glob("*.yaml")):
+            _write_json(path.with_suffix(".json"), read_yaml(path))
         _write_json(
             simulation_path.with_suffix(".json"),
             simulation_cfg,

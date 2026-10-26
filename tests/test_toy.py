@@ -17,9 +17,9 @@ from microcircuit_lab.network.prepare import prepare_network
 def test_prepare_network_gives_the_total_background_rate():
     network = prepare_network(assemble_network(read_network_files("configs/network/toy")))
 
-    # background rate (Hz) * background_indegree, per prepare_network
-    assert network.background_inputs["E"].rate == 8.0 * 1000
-    assert network.background_inputs["I"].rate == 8.0 * 1000
+    # background rate (Hz) * indegree, per prepare_network
+    assert network.poisson_background["E"].rate == 8.0 * 1000
+    assert network.poisson_background["I"].rate == 8.0 * 1000
 
 
 def test_simulation_from_yaml_defaults_to_toy():

@@ -27,11 +27,11 @@ class SynapseEntry(FrozenConfig):
     One entry of ``synapses.yaml`` (the file key is the synapse's name).
 
     Weight and delay are not set here: each connection draws its own, and it
-    is the model's ``weight``. With a plastic model, the weights the core
-    converts (``unit: PSP``) and compensates (scaling) are the initial ones;
-    with short-term plasticity (e.g. ``tsodyks2_synapse``) each spike
-    transmits weight x u x x, so a PSP weight is the amplitude at u x = 1
-    (half of it on the first spike with U = 0.5).
+    is the model's ``weight``. With a plastic model, the weights the scaling
+    compensates are the initial ones; with short-term plasticity (e.g.
+    ``tsodyks2_synapse``) each spike transmits weight x u x x, so a weight
+    converted from a PSP gives that PSP at u x = 1 (half of it on the first
+    spike with U = 0.5).
     """
 
     model: str = Field(

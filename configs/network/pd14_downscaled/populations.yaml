@@ -1,0 +1,65 @@
+populations:
+- name: L23_E
+  size: 2068
+  neuron: L23_E
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -68.28
+      std: 5.36
+- name: L23_I
+  size: 583
+  neuron: L23_I
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -63.16
+      std: 4.57
+- name: L4_E
+  size: 2192
+  neuron: L4_E
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -63.33
+      std: 4.74
+- name: L4_I
+  size: 548
+  neuron: L4_I
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -63.45
+      std: 4.94
+- name: L5_E
+  size: 485
+  neuron: L5_E
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -63.11
+      std: 4.94
+- name: L5_I
+  size: 106
+  neuron: L5_I
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -61.66
+      std: 4.55
+- name: L6_E
+  size: 1440
+  neuron: L6_E
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -66.72
+      std: 5.46
+- name: L6_I
+  size: 295
+  neuron: L6_I
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -61.43
+      std: 4.48

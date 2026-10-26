@@ -30,7 +30,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import (
+    delay,
+    psp_to_psc_iaf_psc_exp,
+    scale_network,
+    weight,
+    write_network,
+    write_network_directory,
+)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -45,17 +52,21 @@ def main(argv: list[str] | None = None) -> None:
         prog="microcircuit-lab generate {name}", description="Generate the {name} network config."
     )
     parser.add_argument("--config-dir", default="configs")
+    parser.add_argument("--network-name", default="{name}")
+    parser.add_argument("--n-scaling", type=float, default=1.0, help="multiplies the number of neurons")
+    parser.add_argument("--k-scaling", type=float, default=1.0, help="multiplies the synapses per neuron")
     args = parser.parse_args(argv)
+    folder = Path(args.config_dir) / "network" / args.network_name
 
     # populations.yaml: one entry per population. initial_state: each neuron's
-    # starting membrane potential (mV), drawn from a normal distribution;
-    # background_indegree is optional (default 0.0). All fields: docs/config_files.md.
+    # starting membrane potential (mV), drawn from a normal distribution.
+    # All fields: docs/config_files.md.
     initial_state = {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}
     populations = [
         {"name": "E", "size": 800, "neuron": "lif",
-         "initial_state": initial_state, "background_indegree": 1000},
+         "initial_state": initial_state},
         {"name": "I", "size": 200, "neuron": "lif",
-         "initial_state": initial_state, "background_indegree": 1000},
+         "initial_state": initial_state},
     ]
 
     # neurons.yaml: neuron name -> NEST model + its parameters. The parameters
@@ -72,35 +83,55 @@ def main(argv: list[str] | None = None) -> None:
         },
     }
 
+    # The weights are written as the simulator gets them: currents in pA for
+    # iaf_psc_exp. This model gives them as PSP amplitudes (mV), so they are
+    # converted with the neuron's parameters (tau_syn_in for inhibition).
+    lif = neurons["lif"]["parameters"]
+    w_exc = psp_to_psc_iaf_psc_exp(0.15, C_m=lif["C_m"], tau_m=lif["tau_m"], tau_syn=lif["tau_syn_ex"])
+    w_inh = psp_to_psc_iaf_psc_exp(-0.6, C_m=lif["C_m"], tau_m=lif["tau_m"], tau_syn=lif["tau_syn_in"])
+
     # connectivity.yaml: one entry per connection. n_synapses is the total for
-    # the connection (indegree * target size). The weight unit is "PSP" (mV,
-    # converted to pA), "PSC" (pA) or "native"; delay is in ms. rel_std sets the
-    # spread: 0 gives one fixed value, above 0 a normal distribution; pass
-    # distribution= for another one.
+    # the connection (indegree * target size). The weight unit is "pA", "nS"
+    # or "mV"; delay is in ms. rel_std sets the spread: 0 gives one fixed
+    # value, above 0 a normal distribution; pass distribution= for another one.
     connections = [
         {"source": "E", "target": "E", "n_synapses": 64000,
-         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+         "weight": weight(w_exc, unit="pA", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
         {"source": "E", "target": "I", "n_synapses": 16000,
-         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+         "weight": weight(w_exc, unit="pA", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
         {"source": "I", "target": "E", "n_synapses": 16000,
-         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+         "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
         {"source": "I", "target": "I", "n_synapses": 4000,
-         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+         "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
     ]
 
-    # background_inputs.yaml: population name -> its always-on Poisson input.
-    background_inputs = {
-        "E": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
-        "I": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
+    # poisson_background.yaml: population name -> its background Poisson input:
+    # each neuron gets `indegree` independent synapses, each firing at `rate`
+    # (spikes/s). Other always-on inputs are stimuli without start/stop.
+    poisson_background = {
+        "E": {"rate": 8.0, "indegree": 1000, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
+        "I": {"rate": 8.0, "indegree": 1000, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
     }
 
-    write_network_directory(
-        Path(args.config_dir) / "network" / "{name}",
+    network = write_network_directory(
+        folder,
         populations=populations,
         neurons=neurons,
         connections=connections,
-        background_inputs=background_inputs,
+        poisson_background=poisson_background,
     )
+
+    # A smaller copy (--n-scaling, --k-scaling) is written scaled: its files
+    # hold the numbers that are simulated, and scaling.yaml records how. The
+    # lost recurrent input is not replaced, since this network gives no
+    # reference rates (reference=...); for other scaling rules, call your own
+    # function instead of scale_network.
+    if args.n_scaling != 1.0 or args.k_scaling != 1.0:
+        scaled = scale_network(
+            network, N_scaling=args.n_scaling, K_scaling=args.k_scaling,
+            scaled_from="{name}", compensate_recurrent_input=False,
+        )
+        write_network(scaled, folder)
 '''
 
 

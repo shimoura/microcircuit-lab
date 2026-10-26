@@ -1,12 +1,11 @@
 # A small excitatory/inhibitory recurrent network in the spirit of Brunel
 # (2000): sparse random connectivity, inhibition ~4x stronger than
 # excitation (see connectivity.yaml), driven by strong external Poisson
-# background input (background_indegree * background_inputs.yaml rate). At these
+# background input (indegree * rate in poisson_background.yaml). At these
 # values the network spikes at ~20 Hz per population -- tune
-# background_indegree down for sparser, more fluctuation-driven firing.
+# the indegree down for sparser, more fluctuation-driven firing.
 #
-# Each population names its neuron, a key in neurons.yaml; background_indegree
-# is optional (default: 0.0).
+# Each population names its neuron, a key in neurons.yaml.
 #
 # All fields: the core's docs/config_files.md.
 populations:
@@ -16,11 +15,9 @@ populations:
     neuron: excitatory
     initial_state:
       V_m: {distribution: normal, mean: -65.0, std: 5.0}
-    background_indegree: 1000
 
   - name: I
     size: 200
     neuron: inhibitory
     initial_state:
       V_m: {distribution: normal, mean: -65.0, std: 5.0}
-    background_indegree: 1000

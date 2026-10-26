@@ -22,7 +22,7 @@ class StimulusBase(FrozenConfig):
 
     A stimulus is applied to some populations during part of the run, exactly as
     configured and on top of the background input and the recurrent activity.
-    Scaling does not change it. A ``background_inputs`` entry is the always-on
+    Scaling does not change it. A ``poisson_background`` entry is the always-on
     input instead.
     """
 

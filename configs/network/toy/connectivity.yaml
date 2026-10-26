@@ -1,9 +1,9 @@
-# Each weight.mean below is a PSP amplitude (mV); weight.unit is
-# required (no default) and gets converted to a simulator quantity
-# assuming iaf_psc_exp neurons. If your neuron model has no PSP
-# conversion formula (e.g. conductance-based), set weight.unit to PSC
-# (already a current amplitude in pA) or native (used exactly as given,
-# no interpretation) instead. A distribution is optional (default: normal).
+# Each weight.mean is what the simulator gets, in weight.unit: pA (a
+# current, as iaf_psc_exp takes), nS (a conductance) or mV. Nothing is
+# converted. The weights here were chosen as PSP amplitudes (the comment
+# after each value) and converted to pA once, with
+# builder_tools.psp_to_psc_iaf_psc_exp and the target's C_m, tau_m and
+# tau_syn. A distribution is optional (default: normal).
 #
 # All fields: the core's docs/config_files.md.
 connections:
@@ -12,10 +12,10 @@ connections:
     target: E
     n_synapses: 64000
     weight:
-      mean: 0.15
+      mean: 87.80849352920843  # a 0.15 mV PSP
       rel_std: 0.1
       distribution: normal
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -25,10 +25,10 @@ connections:
     target: E
     n_synapses: 16000
     weight:
-      mean: -0.6
+      mean: -351.23397411683374  # a -0.6 mV PSP
       rel_std: 0.1
       distribution: normal
-      unit: PSP
+      unit: pA
     delay:
       mean: 0.75
       rel_std: 0.5
@@ -38,10 +38,10 @@ connections:
     target: I
     n_synapses: 16000
     weight:
-      mean: 0.15
+      mean: 87.80849352920843  # a 0.15 mV PSP
       rel_std: 0.1
       distribution: normal
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.5
@@ -51,10 +51,10 @@ connections:
     target: I
     n_synapses: 4000
     weight:
-      mean: -0.6
+      mean: -351.23397411683374  # a -0.6 mV PSP
       rel_std: 0.1
       distribution: normal
-      unit: PSP
+      unit: pA
     delay:
       mean: 0.75
       rel_std: 0.5

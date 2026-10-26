@@ -31,10 +31,10 @@ populations: populations.yaml
 neurons: neurons.yaml
 # required · text · file holding the connection list
 connectivity: connectivity.yaml
-# required · text · file holding the background-input entries
-background_inputs: background_inputs.yaml
-# optional · text · file holding the scaling parameters; omit the key to run the network
-#   at full scale
+# required · text · file holding the background Poisson input of each population
+poisson_background: poisson_background.yaml
+# optional · text · file recording how this network was scaled (written by
+#   scale_network, never applied); omit the key for a network that was not scaled
 scaling: scaling.yaml
 # optional · text · file holding the reference rates; omit the key for none
 reference: reference.yaml
@@ -53,7 +53,7 @@ The populations: size, neuron and initial state.
 # required · list of entries · one entry per population
 populations:
   # required · text · unique population name; referenced by connectivity,
-  #   background_inputs, stimuli and reference
+  #   poisson_background, stimuli and reference
   - name: L23_E
     # required · integer > 0 · number of neurons
     size: 20683
@@ -66,9 +66,6 @@ populations:
     #   the simulator looks up; a variable left out starts at the model's default
     initial_state:
       V_m: {distribution: normal, mean: -58.0, std: 10.0}
-    # optional, default 0.0 · number ≥ 0 · background-input connections per neuron;
-    #   multiplies the rate in background_inputs.yaml
-    background_indegree: 2510.0
 ```
 
 ### neurons.yaml
@@ -85,8 +82,7 @@ neurons:
     # required · parameters passed to that model as-is; keys are model-specific and the
     #   backend validates them (I_e is passed only when set); a value is a number, a
     #   list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a
-    #   distribution drawn per neuron like in initial_state (I_e and the parameters a
-    #   PSP weight is converted with must be numbers)
+    #   distribution drawn per neuron like in initial_state (I_e must be a number)
     parameters:
       C_m: 250.0
       tau_m: 10.0
@@ -96,9 +92,6 @@ neurons:
       V_th: -50.0
       V_reset: -65.0
       t_ref: 2.0
-    # optional, default empty · mapping · only for `unit: PSP` connections whose neuron
-    #   names C_m/tau_m/tau_syn_ex/tau_syn_in differently, e.g. {C_m: cm}
-    psp_conversion_aliases: {}
 ```
 
 ### synapses.yaml
@@ -178,9 +171,9 @@ connections:
       # optional · mapping · only for a project distribution: the values its expression
       #   uses, e.g. {length: 20}
       parameters:
-      # required · one of PSC | PSP | native · PSP: mV, converted to pA; PSC: pA, used
-      #   as given; native: used as given (e.g. nS)
-      unit: PSP
+      # required · one of pA | nS | mV · the unit of the weight: pA (a current), nS (a
+      #   conductance) or mV (a jump of the membrane potential); nothing is converted
+      unit: pA
     # required · delay of each synapse
     delay:
       # required · number > 0 · mean delay (ms)
@@ -206,20 +199,22 @@ connections_file:
 bound_mode: redraw
 ```
 
-### background_inputs.yaml
+### poisson_background.yaml
 
-The always-on Poisson input of each population.
+The background Poisson input of each population: synapses per neuron and their rate. Other always-on inputs are stimuli without start/stop.
 
 ```yaml
 # required · mapping · one entry per population, keyed by its name; a population left
 #   out gets none
-background_inputs:
+poisson_background:
   L23_E:
-    # required · number ≥ 0 · background Poisson rate per connection (spikes/s)
+    # required · number ≥ 0 · firing rate of each Poisson synapse (spikes/s)
     rate: 8.0
-    # required · weight of each background connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
-    # required · delay of each background connection
+    # required · number ≥ 0 · Poisson synapses per neuron
+    indegree: 1600
+    # required · weight of each Poisson synapse
+    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    # required · delay of each Poisson synapse
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
@@ -227,14 +222,9 @@ background_inputs:
     #   give the same name share one generator, and each neuron still gets its own
     #   independent spike train. Saves memory when many populations have the same input,
     #   but gives other random draws than one generator each. They need the same rate,
-    #   background_indegree and synapse (a generator connects through one synapse
-    #   model). Omit for a generator of its own
+    #   indegree and synapse (a generator connects through one synapse model). Omit for
+    #   a generator of its own
     generator: L23_E
-# optional, default poisson · one of poisson | mean_current · 'mean_current' replaces
-#   each population's Poisson input by its mean, a constant current (Potjans & Diesmann
-#   2014, Fig. 5); for a constant input of your own, use I_e in neurons.yaml or a dc
-#   stimulus
-background_mode: poisson
 ```
 
 ### stimuli.yaml
@@ -271,7 +261,7 @@ stimuli:
     # required · number ≥ 0 · spike rate (spikes/s)
     rate: 50.0
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
+    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
@@ -292,7 +282,7 @@ stimuli:
     #   (spikes/s), one per time
     rate_values: [20.0, 0.0]
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
+    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
@@ -301,23 +291,19 @@ stimuli:
 
 ### scaling.yaml
 
-Optional: how to downscale the network; see "Scaling a network" in the README. Without it, the network runs at full scale.
+Only in a scaled network: how it was scaled, written by `scale_network` and never applied (the other files hold the scaled numbers); see "Scaling a network" in the README.
 
 ```yaml
-# optional, default 1.0 · number > 0 · multiplies the number of neurons
-N_scaling: 1.0
-# optional, default 1.0 · number > 0 · multiplies the indegrees (synapses per neuron)
-K_scaling: 1.0
-# optional, default true · true or false · add a DC current that restores the mean input
-#   lost by scaling
-preserve_mean_input: true
-# optional, default true · true or false · true: weights / sqrt(K_scaling), keeps the
-#   fluctuations; false: weights / K_scaling, keeps the mean and needs no DC current
-preserve_variance: true
-# optional, default true · true or false · the DC current also replaces the lost
-#   recurrent input (needs reference.full_mean_rates); false: only the lost background
-#   input
-compensate_recurrent_input: true
+# required · text · the full-scale network this one was scaled from (or the builder
+#   command that makes it)
+scaled_from: pd14
+# required · text · the function that scaled it
+scaled_with: microcircuit_lab.builder_tools.scaling.scale_network
+# required · mapping · the arguments the function was given (its own, e.g. N_scaling and
+#   K_scaling)
+parameters:
+  N_scaling: 0.1
+  K_scaling: 0.1
 ```
 
 ### reference.yaml

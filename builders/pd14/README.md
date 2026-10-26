@@ -16,16 +16,32 @@ microcircuit-lab generate pd14
 microcircuit-lab run --network pd14
 ```
 
-For the publication's Fig. 5, which replaces the Poisson background by a constant current of the same mean, write a second network:
+For the publication's Fig. 5, which replaces the Poisson background by a constant current of the same mean (a step after scaling, before writing), write a second network:
 
 ```bash
-microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current
-microcircuit-lab run --network pd14_mean_current
+microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current
+microcircuit-lab run --network pd14_mean_current --simulation pd14 --analysis pd14
+
+# quick check: scaled by 0.1, then the background replaced
+microcircuit-lab generate pd14 --n-scaling 0.1 --k-scaling 0.1 --background mean_current \
+    --network-name pd14_downscaled_mean_current
+microcircuit-lab run --network pd14_downscaled_mean_current --simulation pd14_downscaled --analysis pd14
 ```
 
-The full network has 77,169 neurons and about 300 million synapses; building it needs about 15 GB of memory. For a quick check, set `N_scaling` and `K_scaling` below 1 in `configs/network/pd14/scaling.yaml` (see "Scaling a network" in `microcircuit_lab/README.md`).
+The full network has 77,169 neurons and about 300 million synapses; building it needs about 15 GB of memory. For a quick check, run `configs/network/pd14_downscaled/` (N and K scaled by 0.1), made by
+
+```bash
+microcircuit-lab generate pd14 --n-scaling 0.1 --k-scaling 0.1 --network-name pd14_downscaled
+microcircuit-lab run --network pd14_downscaled --analysis pd14
+```
+
+(see "Scaling a network" in `microcircuit_lab/README.md`).
 
 ## Files
 
 - `data.py`: the PD14 parameters, each with its source.
-- `build.py`: writes `configs/network/pd14/` from `data.py`; connection probabilities become synapse numbers with `num_synapses_from_conn_prob` from `microcircuit_lab.builder_tools`. `main(argv)` is the entry point `microcircuit-lab generate pd14` calls.
+- `build.py`: writes `configs/network/pd14/` from `data.py`; connection probabilities become synapse numbers with `num_synapses_from_conn_prob`, and the PSPs (mV) the currents (pA) that give them with `psp_to_psc_iaf_psc_exp`, both from `microcircuit_lab.builder_tools`. `main(argv)` is the entry point `microcircuit-lab generate pd14` calls.
+
+## Scaled network
+
+At N and K scaled by 0.1, most rates are within 10–20 % of the full network; L2/3 E is lower (0.5 instead of 0.9 spikes/s).

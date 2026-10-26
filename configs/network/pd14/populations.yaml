@@ -7,7 +7,6 @@ populations:
       distribution: normal
       mean: -68.28
       std: 5.36
-  background_indegree: 1600
 - name: L23_I
   size: 5834
   neuron: inhibitory
@@ -16,7 +15,6 @@ populations:
       distribution: normal
       mean: -63.16
       std: 4.57
-  background_indegree: 1500
 - name: L4_E
   size: 21915
   neuron: excitatory
@@ -25,7 +23,6 @@ populations:
       distribution: normal
       mean: -63.33
       std: 4.74
-  background_indegree: 2100
 - name: L4_I
   size: 5479
   neuron: inhibitory
@@ -34,7 +31,6 @@ populations:
       distribution: normal
       mean: -63.45
       std: 4.94
-  background_indegree: 1900
 - name: L5_E
   size: 4850
   neuron: excitatory
@@ -43,7 +39,6 @@ populations:
       distribution: normal
       mean: -63.11
       std: 4.94
-  background_indegree: 2000
 - name: L5_I
   size: 1065
   neuron: inhibitory
@@ -52,7 +47,6 @@ populations:
       distribution: normal
       mean: -61.66
       std: 4.55
-  background_indegree: 1900
 - name: L6_E
   size: 14395
   neuron: excitatory
@@ -61,7 +55,6 @@ populations:
       distribution: normal
       mean: -66.72
       std: 5.46
-  background_indegree: 2900
 - name: L6_I
   size: 2948
   neuron: inhibitory
@@ -70,4 +63,3 @@ populations:
       distribution: normal
       mean: -61.43
       std: 4.48
-  background_indegree: 2100

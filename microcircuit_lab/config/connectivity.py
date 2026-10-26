@@ -7,9 +7,16 @@ inputs and stimuli.
 from __future__ import annotations
 
 import math
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, StrictBool, StrictFloat, StrictInt, model_validator
+from pydantic import (
+    BeforeValidator,
+    Field,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+    model_validator,
+)
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
@@ -19,6 +26,21 @@ from microcircuit_lab.config.frozen_config import FrozenConfig
 SHARED_DISTRIBUTIONS = ("normal", "uniform", "lognormal", "fixed")
 
 Parameters = dict[str, StrictInt | StrictFloat | StrictBool] | None
+
+
+#: The weight units of earlier versions, and what to write instead.
+OLD_UNITS = {
+    "PSP": "unit: PSP was removed, so that the files show the weight the simulator gets: convert the "
+    "PSP in the builder (e.g. builder_tools.psp_to_psc_iaf_psc_exp) and write unit: pA",
+    "PSC": "unit: PSC is now written unit: pA",
+    "native": "unit: native was removed: write the weight's unit, pA, nS or mV",
+}
+
+
+def _refuse_old_unit(unit):
+    if isinstance(unit, str) and unit in OLD_UNITS:
+        raise ValueError(OLD_UNITS[unit])
+    return unit
 
 
 def _check_parameters(distribution: str, parameters: Parameters) -> None:
@@ -32,19 +54,11 @@ class WeightDistribution(FrozenConfig):
     """
     Distribution of synaptic weights.
 
-    ``unit`` is required and has no default, so a forgotten field cannot run with
-    the wrong conversion. It sets what ``mean`` means:
-
-    - "PSP": amplitude of the post-synaptic potential (mV). ``prepare_network``
-      converts it to a current amplitude. This only makes sense for a
-      current-based integrate-and-fire neuron with exponential synaptic
-      currents; ``network.psp_psc_conversion.convert_psp_to_psc`` lists the neuron parameters
-      it needs.
-    - "PSC": amplitude of the post-synaptic current (pA), used as given.
-    - "native": used exactly as given, in the unit of the neuron model (for
-      example nS for a conductance-based model). Use it when no PSP conversion
-      exists for the neuron. Its mean current is unknown, so the scaling
-      compensation leaves it out.
+    ``mean`` is the weight the simulator gets, and ``unit`` says its unit:
+    ``pA`` (a current), ``nS`` (a conductance) or ``mV`` (a jump of the
+    membrane potential). The core converts nothing with it; it is required,
+    so the files say what each number is. Only current weights (``pA``) are
+    in the scaling's compensation, whose mean current needs them.
     """
 
     mean: float = Field(
@@ -68,13 +82,10 @@ class WeightDistribution(FrozenConfig):
         "{length: 20}",
     )
 
-    unit: Literal[
-        "PSC",
-        "PSP",
-        "native",
-    ] = Field(
-        examples=["PSP"],
-        description="PSP: mV, converted to pA; PSC: pA, used as given; native: used as given (e.g. nS)",
+    unit: Annotated[Literal["pA", "nS", "mV"], BeforeValidator(_refuse_old_unit)] = Field(
+        examples=["pA"],
+        description="the unit of the weight: pA (a current), nS (a conductance) or mV (a jump of the "
+        "membrane potential); nothing is converted",
     )
 
     @model_validator(mode="after")
@@ -142,8 +153,8 @@ class ConnectionConfig(FrozenConfig):
     ``parameters`` instead of a number.
 
     The core computes with the expected number of synapses
-    (``network.mean_input.expected_synapses``) and scales the given number
-    with the network (``network.scaling.scale_rule_number``). Any other rule
+    (``builder_tools.mean_input.expected_synapses``), and ``scale_network`` scales
+    the given number (``builder_tools.scaling.scale_rule_number``). Any other rule
     cannot be scaled yet.
     """
 

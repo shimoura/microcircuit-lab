@@ -1,14 +1,8 @@
 """From a network folder to the network the simulator builds.
 
 ``load.py`` reads and checks the files and ``prepare.py`` gets the network
-ready for the simulation, in these steps:
-
-- ``psp_psc_conversion.py``: PSP weights (mV) to currents (pA);
-- ``scaling.py``: fewer neurons and synapses, rescaled weights;
-- ``compensation.py``: constant currents for the mean input that scaling or
-  ``background_mode: mean_current`` remove;
-- ``mean_input.py``: indegrees, mean currents and time constants, used by the
-  compensation.
+ready for the simulation (the background input, see ``prepare_network``).
+Scaling and the constant currents are in ``builder_tools/``.
 """
 
 from .load import load_network, read_network

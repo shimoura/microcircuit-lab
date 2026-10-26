@@ -20,7 +20,7 @@ microcircuit-lab generate humam --area all --n-scaling 0.004 --k-scaling 0.004 -
 
 `--area <name>` picks another area (names from `data/net.yaml`, `area_list`). A single area gets a constant current in place of the input from the areas it is cut off from (`--no-compensate-missing-areas` turns it off).
 
-The command generates configurations under `configs/network/` and `configs/simulation/`.
+The command generates configurations under `configs/network/` and `configs/simulation/`. The network is written scaled (`--n-scaling`, `--k-scaling`, 0.001 by default): its files hold the numbers that are simulated, with the current that replaces the background input lost by scaling in `I_e`, and `scaling.yaml` records how it was made. The recurrent input is not compensated (`compensate_recurrent_input=False`), since its full-scale rates are not given.
 
 Generation only writes portable configuration files. Run them separately with `microcircuit-lab run`. Use `microcircuit-lab generate humam --help` for the available generation options.
 
@@ -28,7 +28,7 @@ Generation only writes portable configuration files. Run them separately with `m
 
 The builder reproduces how HuMAM `main` ([INM-6/human-multi-area-model](https://github.com/INM-6/human-multi-area-model), commit `cab39b3`, `src/simulation.py`, `src/default_sim_params.py`) builds the network:
 
-- weights are written in pA (`unit: PSC`), as in the bundled data; normal, and clipped at 0 keeping their sign (`bound_mode: clip`);
+- weights are written in pA (`unit: pA`), as in the bundled data; normal, and clipped at 0 keeping their sign (`bound_mode: clip`);
 - delays follow `delay_distribution` in `data/net.yaml` (lognormal), clipped at a minimum of the resolution (0.1 ms), locally and between areas;
 - the background input has a fixed delay of the resolution;
 - initial membrane potentials are drawn from a normal with mean −150 mV and SD 50 mV;

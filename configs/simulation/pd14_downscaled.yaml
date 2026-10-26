@@ -1,0 +1,19 @@
+# A quick look at PD14: configs/network/pd14_downscaled is pd14 with N and K
+# scaled by 0.1 (see its scaling.yaml). Plots as for pd14:
+#   microcircuit-lab run --network pd14_downscaled --analysis pd14
+t_sim: 1000.0
+resolution: 0.1
+rng_seed: 42
+local_num_threads: 4
+print_time: true
+
+recording:
+  spike_recording: true
+  voltage_recording: false
+  voltage_interval: 1.0
+
+output:
+  output_dir: "output/pd14_downscaled"
+  overwrite: false
+  save_metadata: true
+  save_config: true

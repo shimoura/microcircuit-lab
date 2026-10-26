@@ -10,18 +10,10 @@ from __future__ import annotations
 import numpy as np
 
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.psp_psc_conversion import (
-    convert_psp_weight,
-    convert_psp_weights,
-)
 
 
-def full_num_neurons(network: NetworkConfig) -> np.ndarray:
-    """
-    Return the full neuron numbers as a vector.
-
-    These correspond to the biological (unscaled) network.
-    """
+def num_neurons(network: NetworkConfig) -> np.ndarray:
+    """Return the neuron number of each population, as a vector."""
 
     return np.asarray(
         [pop.size for pop in network.populations.values()],
@@ -74,13 +66,13 @@ def expected_synapses_per_connection(network: NetworkConfig) -> np.ndarray:
     )
 
 
-def full_num_synapses(network: NetworkConfig) -> np.ndarray:
+def num_synapses(network: NetworkConfig) -> np.ndarray:
     """
-    Return the full synapse numbers as a matrix (target x source).
+    Return the synapse numbers as a matrix (target x source).
 
-    These correspond to the biological (unscaled) network. Each entry is the
-    expected number of synapses of the pair, summed over its connections
-    (several when a pair is connected through several synapses).
+    Each entry is the expected number of synapses of the pair, summed over
+    its connections (several when a pair is connected through several
+    synapses).
     """
 
     pop_names = list(network.populations.keys())
@@ -98,11 +90,11 @@ def full_num_synapses(network: NetworkConfig) -> np.ndarray:
 
 def indegree_matrix(network: NetworkConfig) -> np.ndarray:
     """
-    Return the biological indegree matrix.
+    Return the indegree matrix (target x source): synapses per target neuron.
     """
 
-    neurons = full_num_neurons(network)
-    synapses = full_num_synapses(network)
+    neurons = num_neurons(network)
+    synapses = num_synapses(network)
 
     return synapses / neurons[:, np.newaxis]
 
@@ -118,16 +110,21 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
         raise ValueError(
             f"reference.full_mean_rates has no rate for population(s) {missing}. The DC "
             "compensation of a scaled network needs the full-scale mean rate of every "
-            "population; add them to reference.yaml, or set compensate_recurrent_input: "
-            "false (background only) or preserve_mean_input: false (no DC) in scaling.yaml."
+            "population; add them to reference.yaml, or scale with compensate_recurrent_input "
+            "false (background only) or preserve_mean_input false (no current)."
         )
 
     return np.asarray([rates[name] for name in network.populations], dtype=float)
 
 
 def background_indegrees(network: NetworkConfig) -> np.ndarray:
+    """The number of background Poisson synapses per neuron of each population, 0 for
+    one without background input."""
     return np.asarray(
-        [pop.background_indegree for pop in network.populations.values()],
+        [
+            network.poisson_background[name].indegree if name in network.poisson_background else 0.0
+            for name in network.populations
+        ],
         dtype=float,
     )
 
@@ -136,7 +133,7 @@ def background_weights(network: NetworkConfig) -> np.ndarray:
     """The background weight of each population, 0 for one without background input."""
     return np.asarray(
         [
-            network.background_inputs[name].weight.mean if name in network.background_inputs else 0.0
+            network.poisson_background[name].weight.mean if name in network.poisson_background else 0.0
             for name in network.populations
         ],
         dtype=float,
@@ -148,52 +145,19 @@ def background_rates(network: NetworkConfig) -> np.ndarray:
     without background input."""
     return np.asarray(
         [
-            network.background_inputs[name].rate if name in network.background_inputs else 0.0
+            network.poisson_background[name].rate if name in network.poisson_background else 0.0
             for name in network.populations
         ],
         dtype=float,
     )
 
 
-def background_psc_weights(
-    network: NetworkConfig,
-) -> np.ndarray:
-    """
-    Return the background input weights as PSC amplitudes (pA), 0 for a
-    population without background input.
-
-    Only ``unit: PSP`` weights are converted, and only for a population
-    whose neuron parameters support it (see network.psp_psc_conversion.convert_psp_to_psc);
-    any other unit (``PSC``, ``native``, ...) is returned unchanged.
-    """
-
-    values = []
-    for name in network.populations:
-        input_cfg = network.background_inputs.get(name)
-
-        if input_cfg is None:
-            values.append(0.0)
-            continue
-        if input_cfg.weight.unit != "PSP":
-            values.append(input_cfg.weight.mean)
-            continue
-
-        target = network.populations[name]
-        values.append(convert_psp_weight(target, input_cfg.weight.mean))
-
-    return np.asarray(values, dtype=float)
-
-
 def mean_psc_matrix(
     network: NetworkConfig,
 ) -> np.ndarray:
     """
-    Return the biological mean PSC matrix (pA, target x source).
-
-    Only ``unit: PSP`` connections are converted, and only for a target
-    population whose neuron parameters support it (see
-    network.psp_psc_conversion.convert_psp_to_psc); any other unit (``PSC``,
-    ``native``, ...) is used unchanged. A pair connected through several
+    Return the mean weight matrix (target x source), weights as given; the
+    compensation uses only those in pA. A pair connected through several
     synapses gets the mean over all its synapses.
     """
 
@@ -201,8 +165,7 @@ def mean_psc_matrix(
     n = len(pop_names)
     table = network.connections
 
-    psp = table["weight.unit"] == "PSP"
-    weight = convert_psp_weights(network, psp) if psp.any() else table["weight.mean"]
+    weight = table["weight.mean"]
     synapses = expected_synapses_per_connection(network)
     pair = (table.population_index("target", pop_names), table.population_index("source", pop_names))
 
@@ -253,9 +216,8 @@ def tau_syn_ex(
     Return the excitatory synaptic time constant for each population
     (only for those ``needed``, if given; 0 for the others).
 
-    Used by DC-current scaling compensation, which shares the same
-    current-based-synapse assumption as the PSP-to-PSC conversion; see
-    convert_psp_weight.
+    Used by DC-current scaling compensation, which assumes current-based
+    synapses with exponential currents.
     """
 
     return _tau_syn(network, "tau_syn_ex", needed)
@@ -279,42 +241,10 @@ def synaptic_tau(
     Return the synaptic time constant (ms) of the input of each population,
     given its mean PSC (one value per population): the population's
     ``tau_syn_ex`` for a positive PSC and its ``tau_syn_in`` for a negative
-    one, the same sign rule the PSP-to-PSC conversion uses. A population
+    one (the weight's sign picks the receptor, as in NEST). A population
     without input (PSC 0) gets 0, and its time constants are not read.
     """
 
     excitatory = tau_syn_ex(network, needed=mean_PSC > 0)
     inhibitory = tau_syn_in(network, needed=mean_PSC < 0)
     return np.where(mean_PSC < 0, inhibitory, excitatory)
-
-
-def network_mean_input(
-    mean_PSC_matrix: np.ndarray,
-    indegree_matrix: np.ndarray,
-    mean_rates: np.ndarray,
-) -> np.ndarray:
-    """
-    Compute the mean recurrent synaptic input used for DC compensation
-    when scaling synaptic weights.
-
-    Parameters
-    ----------
-    mean_PSC_matrix
-        Matrix of mean PSC amplitudes (pA).
-
-    indegree_matrix
-        Matrix of indegrees.
-
-    mean_rates
-        Mean firing rate of each source population (Hz).
-
-    Returns
-    -------
-    np.ndarray
-        Mean recurrent input for each target population.
-    """
-
-    return np.sum(
-        mean_PSC_matrix * indegree_matrix * mean_rates,
-        axis=1,
-    )
