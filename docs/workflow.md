@@ -122,7 +122,7 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | a file is refused | the module named after the file, in `config/` |
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
 | the simulator "has no" model, rule, distribution or receptor | its `check()`, in `backends/<name>/simulator.py`; for Brian2, `extensions/brian2/` |
-| weights or sizes differ from the files | step 2: compare `read_network` and `load_network` |
+| a background rate differs from the files | step 2: compare `read_network` and `load_network` |
 | rates drop in a scaled run | `builder_tools/scaling.py`, `builder_tools/constant_current.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 3: the `create_...` method for that part, in `backends/nest/simulator.py` |
 | something looks wrong in Brian2 | step 3: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/simulator.py` |

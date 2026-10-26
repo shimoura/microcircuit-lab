@@ -24,7 +24,7 @@ flowchart TD
   B --> T["tests/test_stimuli.py"]
 ```
 
-The files hold the numbers that are simulated: the core converts nothing at run time, except the background rate per synapse into the rate of its generator (or a constant current), in `prepare_network` (`network/prepare.py`). Scaling writes a new network folder (`scale_network` in `builder_tools/scaling.py`; its currents are in `builder_tools/constant_current.py`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
+The files hold the numbers that are simulated; the only change at run time is the background rate per synapse into the rate of its generator (`network/prepare.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
 
 ### Does your idea fit what already exists?
 
@@ -89,7 +89,7 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 <summary><b>A scaling or compensation option</b></summary>
 
 1. `builder_tools/scaling.py`: the option, as an argument of `scale_network`, and its formula.
-2. `config/scaling.py`: the field that records it in `scaling.yaml`.
+2. The same option in the `parameters` of the record it writes (`ScalingRecord`, `config/scaling.py`, is `scaling.yaml`).
 3. `builder_tools/constant_current.py`, for a compensation current.
 4. Test in `tests/test_scaling.py` or `tests/test_scaling_compensation.py`, and in `tests/test_heterogeneous_areas.py` if it depends on cell types.
 </details>

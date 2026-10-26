@@ -53,7 +53,7 @@ Next:
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
-- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator . Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
+- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator. Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
 The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
@@ -207,7 +207,7 @@ poisson_background:
 Other always-on inputs (a constant current, a Poisson train, an inhomogeneous Poisson input) are `stimuli.yaml` entries without `start` and `stop`.
 
 - **A mean current instead of the Poisson input**: the builder step `replace_background_by_mean_current` (`microcircuit_lab.builder_tools`) adds the mean of that input to `I_e` and removes the input from the files (`poisson_background` empty): the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Apply it after `scale_network` and before `write_network`. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current`.
-- **A constant current of your own** is not a background mode; it adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
+- **A constant current of your own** adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
 - **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
 ### Weights and delays
@@ -269,7 +269,7 @@ connections:
 
 - A pair can have one entry per synapse, as above.
 - A port can also be given by name (`receptor_port: AMPA`), which the simulator resolves: NEST looks it up in the `receptor_types` of the target's neuron model (e.g. `ht_neuron`), Brian2 takes it as the variable the connection adds to.
-- The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). The input lost by scaling is compensated only for weights in pA on the default port, not for other units (e.g. conductances) or other ports; a warning lists those connections. A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
+- The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). The input lost by scaling is compensated only for weights in pA on the default port; with other units (e.g. conductances) or ports, scaling stops with an error (see [Scaling a network](#scaling-a-network)). A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
 - With a plastic synapse, the scaling compensation uses the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a weight converted from a PSP gives that PSP at u·x = 1: with U = 0.5 the first spike gives half of it.
 - A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
 
@@ -339,10 +339,10 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 
 - The DC is added to each population's `I_e` in the scaled files (a population gets a neuron entry of its own when its current differs from the others'). `I_e` is sent to the simulator only when a neuron entry sets it or a DC is added, so a model without `I_e` works when it needs no DC; when it does, the run stops with an error naming it.
 - The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input=False` compensates the background input only, and needs no rates.
-- The DC is known only for weights in pA on the default receptor port; another unit (e.g. nS) or port stops the scaling with an error, unless `preserve_mean_input=False`.
+- The DC is known only for weights in pA on the default receptor port; another unit (e.g. nS) or port stops the scaling with an error, unless `preserve_mean_input=False` or `preserve_variance=False` (no DC needed).
 - With `replace_background_by_mean_current` after scaling, the current is computed from the scaled background, and the DC adds the lost part, so together they are the full-scale mean.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
-- These are the mean and variance only. A scaled network is close to the full one, not equal: PD14 at $k = 0.1$ has most rates within 10–20 %, and L2/3 E lower (0.5 instead of 0.9 spikes/s).
+- These are the mean and variance only. A scaled network is close to the full one, not equal; compare its rates with `reference.yaml` (the example numbers are in the [PD14 README](../builders/pd14/README.md)).
 - A connection left with less than one synapse is dropped.
 
 <a id="adding-a-new-model"></a>
@@ -391,7 +391,7 @@ write_network_directory(
 ```
 
 - A builder is found by its folder `builders/<model>/` with a `main(argv=None)`; there is no list to edit. `microcircuit-lab generate` with no name lists what it found.
-- `builder_tools` also has `num_synapses_from_conn_prob` and `psp_to_psc_iaf_psc_exp`.
+- `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
@@ -738,7 +738,7 @@ microcircuit_lab/
 ├── backends/          the simulators (NEST, Brian2), and reading back a saved run
 ├── analysis/          measures and plots
 ├── cli/               the microcircuit-lab command
-├── builder_tools/     what a builder needs, in one import (also scaling)
+├── builder_tools/     what a builder needs, in one import (also scaling and the constant-current steps)
 ├── run_folder.py      run folders and their metadata
 ├── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 └── yaml_files.py      reading and writing YAML
