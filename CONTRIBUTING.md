@@ -114,7 +114,7 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 <details>
 <summary><b>A simulator</b></summary>
 
-A new package `backends/<name>/` and a line in `get_backend` and `read_saved_spikes`; see "Adding a backend" in the README.
+A new package `backends/<name>/` and a line in `get_backend`, `read_saved_spikes` and `read_recording`; see "Adding a backend" in the README.
 </details>
 
 **No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Running with Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).

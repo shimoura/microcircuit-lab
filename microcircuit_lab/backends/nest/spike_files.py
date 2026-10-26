@@ -24,6 +24,7 @@ from microcircuit_lab.backends.population_spikes import (
     empty_spikes,
     read_csv_spikes,
     sort_by_sender,
+    sort_recording,
     write_csv_spikes,
 )
 
@@ -32,6 +33,7 @@ __all__ = [
     "read_ascii_spikes",
     "read_csv_spikes",
     "read_saved_spikes",
+    "read_saved_variable",
     "write_csv_spikes",
 ]
 
@@ -78,4 +80,32 @@ def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
     raise ValueError(
         f"No spike recordings under {recordings_dir} (expected 'spikes-*.dat' or "
         "'spikes.csv'). Simulate the run again with spike_recording enabled."
+    )
+
+
+def read_saved_variable(
+    recordings_dir: Path, variable: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    A variable a finished run recorded, from NEST's files
+    ``<variable>-*.dat`` (columns ``sender``, ``time_ms`` and the variable),
+    as ``(senders, times, values)`` sorted by sender, then time.
+
+    Raises
+    ------
+    ValueError
+        If the folder has no file of that variable.
+    """
+
+    paths = sorted(Path(recordings_dir).glob(f"{variable}-*.dat"))
+    if not paths:
+        raise ValueError(
+            f"No recording of {variable!r} under {recordings_dir} (expected "
+            f"'{variable}-*.dat'). Simulate the run again with it in recording.variables."
+        )
+    tables = [pd.read_csv(path, sep="\t", comment="#") for path in paths]
+    return sort_recording(
+        np.concatenate([table["sender"].to_numpy() for table in tables]).astype(int),
+        np.concatenate([table["time_ms"].to_numpy() for table in tables]).astype(float),
+        np.concatenate([table[variable].to_numpy() for table in tables]).astype(float),
     )

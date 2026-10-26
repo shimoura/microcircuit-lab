@@ -565,15 +565,31 @@ Runs in one script go one after another. For runs in parallel, start several scr
 
 ```text
 output/<network>/<timestamp>/
-├── recordings/     spikes (and voltages), written by the simulator
+├── recordings/     spikes (and recorded variables), written by the simulator
 ├── plots/          made by microcircuit-lab run
 ├── config.yaml     the prepared network and the simulation settings used
 └── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one.
-- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `voltage.csv`) at the end. `simulation.backend.get_spike_events(population)` reads them back.
-- Voltages (`recording.voltage_recording: true`) are recorded for 5 neurons per population by default (`recording.voltage_sample_size`; `null` for all).
+- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `<variable>.csv`) at the end. `simulation.backend.get_spike_events(population)` reads them back.
+- Any neuron variable can be recorded, not only the membrane potential. Name it as the simulator does, in the simulation file. NEST writes `<variable>-<id>-<thread>.dat`, Brian2 `<variable>.csv`:
+
+  ```yaml
+  recording:
+    variables:
+      V_m: {interval: 1.0, sample_size: 5}          # 5 neurons per population, every 1 ms
+      I_syn_ex: {interval: 1.0, populations: [E]}   # synaptic input (g_ex for conductance-based models), all neurons of E
+  ```
+
+  | Field | Meaning | Default |
+  | :--- | :--- | :--- |
+  | `interval` | ms between two samples | 1.0 |
+  | `sample_size` | the first N neurons of each population | all |
+  | `populations` | which populations | all |
+
+- A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
+- To read a finished run without the simulator: `microcircuit_lab.backends.read_recording(run_dir, "V_m")` returns `(senders, times_ms, values)`, sorted by sender, then time (also `Simulation.from_run_dir(run_dir).backend.get_recording("V_m")`).
 
 ### Several MPI processes
 
@@ -758,7 +774,7 @@ register_plot("spectrogram", plot_spectrogram,
 ## Adding a backend
 
 1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
-2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
+2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes` and `read_recording`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
 3. Add its name to `BackendName` (`microcircuit_lab/config/simulation.py`). Select it with `backend: {name: <name>, options: {...}}` in the simulation file, or `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; the options go to its constructor unchanged.
 
 ## Testing

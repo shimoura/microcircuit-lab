@@ -332,7 +332,7 @@ def save_run_outputs(
         )
 
     recording = simulation_config.recording
-    if recording.spike_recording or recording.voltage_recording:
+    if recording.spike_recording or recording.variables:
         for path in backend.save_recordings(run_dir):
             register_artifact(run_dir, "recordings", path)
 

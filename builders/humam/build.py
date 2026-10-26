@@ -523,8 +523,6 @@ def generate_humam_configs(
         "print_time": False,
         "recording": {
             "spike_recording": True,
-            "voltage_recording": False,
-            "voltage_interval": 1.0,
         },
         "output": {
             "output_dir": f"output/{simulation_name}",

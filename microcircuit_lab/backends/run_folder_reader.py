@@ -15,7 +15,11 @@ from pathlib import Path
 
 import numpy as np
 
-from microcircuit_lab.backends import population_spikes, read_saved_spikes
+from microcircuit_lab.backends import (
+    population_spikes,
+    read_recording,
+    read_saved_spikes,
+)
 
 
 class RunFolderReader:
@@ -71,6 +75,11 @@ class RunFolderReader:
         stats = self._metadata["populations"][population]
         first_gid = stats["first_gid"]
         return population_spikes.spikes_in_id_range(senders, times, first_gid, first_gid + stats["size"] - 1)
+
+    def get_recording(self, variable: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return a recorded variable as ``(senders, times, values)``; see ``read_recording``."""
+
+        return read_recording(self.run_dir, variable)
 
     def version(self) -> str | None:
         """The simulator version recorded in metadata.json, if the run has one."""

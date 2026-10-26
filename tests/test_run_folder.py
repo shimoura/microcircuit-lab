@@ -5,10 +5,12 @@ from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
+import pytest
 import yaml
 
+from microcircuit_lab.backends import read_recording
 from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.backends.nest.spike_files import read_saved_variable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
@@ -111,14 +113,17 @@ def test_memory_mode_fallback_writes_csv_when_no_prepare_output(tmp_path: Path) 
         assert len(rows) > 1
 
 
-def test_voltage_recording_writes_native_ascii_files(tmp_path: Path) -> None:
+def test_variables_are_written_as_native_ascii_files(tmp_path: Path) -> None:
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
         {
             "t_sim": 100.0,
             "local_num_threads": 2,
             "print_time": False,
-            "recording": {"spike_recording": True, "voltage_recording": True, "voltage_interval": 1.0},
+            "recording": {
+                "spike_recording": True,
+                "variables": {"V_m": {"interval": 1.0}, "I_syn_ex": {"interval": 2.0}},
+            },
         }
     )
 
@@ -127,18 +132,19 @@ def test_voltage_recording_writes_native_ascii_files(tmp_path: Path) -> None:
     backend.build()
     backend.simulate()
 
-    voltage_files = sorted((tmp_path / "recordings").glob("voltage-*.dat"))
-    assert voltage_files
-    content = voltage_files[0].read_text()
-    assert "V_m" in content
+    for name in ("V_m", "I_syn_ex"):
+        files = sorted((tmp_path / "recordings").glob(f"{name}-*.dat"))
+        assert files
+        assert name in files[0].read_text()
 
     saved = backend.save_recordings(tmp_path)
-    assert any("voltage" in str(path) for path in saved)
+    assert any("V_m-" in str(path) for path in saved)
+    assert any("I_syn_ex-" in str(path) for path in saved)
 
 
-def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> None:
+def test_variables_gate_covers_configs_without_spikes(tmp_path: Path) -> None:
     """save_run_outputs must persist recordings even when spike_recording
-    is off and only voltage_recording is on."""
+    is off and only variables are recorded."""
 
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
@@ -146,7 +152,7 @@ def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> N
             "t_sim": 100.0,
             "local_num_threads": 2,
             "print_time": False,
-            "recording": {"spike_recording": False, "voltage_recording": True},
+            "recording": {"spike_recording": False, "variables": {"V_m": {}}},
             "output": {"output_dir": str(tmp_path), "overwrite": True},
         }
     )
@@ -166,9 +172,13 @@ def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> N
         backend_name="nest",
     )
 
-    assert sorted((tmp_path / "recordings").glob("voltage-*.dat"))
+    assert sorted((tmp_path / "recordings").glob("V_m-*.dat"))
     metadata = json.loads((tmp_path / "metadata.json").read_text())
-    assert any("voltage" in entry for entry in metadata["artifacts"]["recordings"])
+    assert any("V_m" in entry for entry in metadata["artifacts"]["recordings"])
+
+    senders, times, values = read_recording(tmp_path, "V_m")
+    assert len(senders) == len(times) == len(values) > 0
+    assert (np.diff(senders) >= 0).all()
 
 
 def test_metadata_includes_provenance(tmp_path: Path) -> None:
@@ -284,8 +294,8 @@ def test_register_artifact_appends_and_is_noop_without_metadata(tmp_path: Path) 
     assert metadata["artifacts"]["plots"] == ["plots/raster.png"]
 
 
-def test_voltage_recording_subsampling(tmp_path: Path) -> None:
-    """voltage_sample_size records the first N neurons of every population."""
+def test_variable_sample_size_and_populations(tmp_path: Path) -> None:
+    """sample_size records the first N neurons of each listed population."""
 
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
@@ -295,9 +305,7 @@ def test_voltage_recording_subsampling(tmp_path: Path) -> None:
             "print_time": False,
             "recording": {
                 "spike_recording": False,
-                "voltage_recording": True,
-                "voltage_interval": 1.0,
-                "voltage_sample_size": 3,
+                "variables": {"V_m": {"sample_size": 3}},
             },
         }
     )
@@ -307,12 +315,23 @@ def test_voltage_recording_subsampling(tmp_path: Path) -> None:
     backend.build()
     backend.simulate()
 
-    voltage_files = sorted((tmp_path / "recordings").glob("voltage-*.dat"))
-    assert voltage_files
-    data = pd.read_csv(voltage_files[0], sep="\t", comment="#")
-    senders = set(data["sender"].unique())
-    assert len(senders) == 6
-    assert senders == {1, 2, 3, 801, 802, 803}
+    senders, _, _ = read_saved_variable(tmp_path / "recordings", "V_m")
+    assert set(senders) == {1, 2, 3, 801, 802, 803}
+
+
+def test_unknown_recorded_population_fails(tmp_path: Path) -> None:
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {"recording": {"variables": {"V_m": {"populations": ["no_such_population"]}}}}
+    )
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    with pytest.raises(ValueError, match="unknown population.*no_such_population"):
+        backend.build()
+
+
+def test_voltage_fields_were_removed() -> None:
+    with pytest.raises(ValueError, match=r"voltage_recording.*variables: \{V_m"):
+        SimulationConfig.model_validate({"recording": {"voltage_recording": True}})
 
 
 def test_a_run_folder_is_read_back(tmp_path: Path) -> None:

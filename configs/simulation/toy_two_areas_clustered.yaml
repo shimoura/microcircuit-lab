@@ -6,8 +6,7 @@ print_time: true
 
 recording:
   spike_recording: true
-  voltage_recording: false
-  voltage_interval: 1.0
+  # variables: {V_m: {interval: 1.0, sample_size: 5}}
 
 output:
   output_dir: "output/toy_two_areas_clustered"

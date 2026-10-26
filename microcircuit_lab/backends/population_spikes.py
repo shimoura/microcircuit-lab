@@ -31,6 +31,15 @@ def sort_by_sender(senders: np.ndarray, times: np.ndarray) -> tuple[np.ndarray, 
     return senders[order], times[order]
 
 
+def sort_recording(
+    senders: np.ndarray, times: np.ndarray, values: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The samples of a recorded variable sorted by sender, then by time."""
+
+    order = np.lexsort((times, senders))
+    return senders[order], times[order], values[order]
+
+
 def spikes_in_id_range(
     senders: np.ndarray, times: np.ndarray, first_id: int, last_id: int
 ) -> dict:

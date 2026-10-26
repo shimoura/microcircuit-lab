@@ -61,6 +61,17 @@ UNITS = {
 }
 
 
+#: The factor that gives a recorded variable in the unit of the config files
+#: (mV, ms, pA, nS, Hz) from Brian2's base unit; any other dimension is saved in
+#: Brian2's base unit.
+RECORDING_SCALE = {
+    b2.volt.dim: 1e3,
+    b2.second.dim: 1e3,
+    b2.amp.dim: 1e12,
+    b2.siemens.dim: 1e9,
+}
+
+
 def _units(dim, what: str) -> tuple[str, str]:
     """The name in equations and NEST's unit of the dimension of ``what``."""
 
@@ -176,7 +187,8 @@ class Brian2Backend:
         self.stimulus_generators: list[b2.PoissonGroup] = []
         self.synapses: list[b2.Synapses] = []
         self.spike_recorders: list[tuple[_Group, b2.SpikeMonitor]] = []
-        self.multimeters: list[tuple[_Group, b2.StateMonitor]] = []
+        #: The monitors of each recorded variable: one per group.
+        self.multimeters: dict[str, list[tuple[_Group, b2.StateMonitor]]] = {}
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
     def version(self) -> str:
@@ -319,7 +331,7 @@ class Brian2Backend:
         if self._simulation_config.recording.spike_recording:
             self.create_spike_recorders()
 
-        if self._simulation_config.recording.voltage_recording:
+        if self._simulation_config.recording.variables:
             self.create_multimeters()
 
         self.create_poisson_background()
@@ -697,22 +709,27 @@ class Brian2Backend:
 
     def create_multimeters(self) -> None:
         """
-        Create one monitor of the membrane potential per group, of the first
-        ``voltage_sample_size`` neurons of each population (all, if not set).
+        Create, for each variable of ``recording.variables``, one state monitor
+        per group: of the first ``sample_size`` neurons (all, if not set) of
+        the populations the variable is recorded from.
         """
 
         recording = self._simulation_config.recording
-        for group in self._groups:
-            record = np.concatenate([
-                start + np.arange(min(recording.voltage_sample_size or size, size))
-                for start, size in zip(group.starts, (self._network.populations[p].size for p in group.populations))
-            ])
-            self.multimeters.append(
-                (group, b2.StateMonitor(
-                    group.neurons, "V_m", record=record, dt=recording.voltage_interval * b2.ms,
-                    name=f"{group.neurons.name}_voltage",
-                ))
-            )
+        for name, variable in recording.variables.items():
+            recorded = recording.recorded_populations(name, self.populations)
+            self.multimeters[name] = []
+            for group in self._groups:
+                record = []
+                for pop, start in zip(group.populations, group.starts):
+                    if pop in recorded:
+                        size = self._network.populations[pop].size
+                        record.append(start + np.arange(min(variable.sample_size or size, size)))
+                if record:
+                    monitor = b2.StateMonitor(
+                        group.neurons, name, record=np.concatenate(record),
+                        dt=variable.interval * b2.ms, name=f"{group.neurons.name}_{name}",
+                    )
+                    self.multimeters[name].append((group, monitor))
 
     def _node_ids(self, group: _Group, indices: np.ndarray) -> np.ndarray:
         """The NEST-style node IDs of neurons of a group, from their indices in it."""
@@ -895,7 +912,7 @@ class Brian2Backend:
             *self.stimulus_generators,
             *self.synapses,
             *(monitor for _, monitor in self.spike_recorders),
-            *(monitor for _, monitor in self.multimeters),
+            *(monitor for monitors in self.multimeters.values() for _, monitor in monitors),
         )
         network.run(self._simulation_config.t_sim * b2.ms)
         self._cached_spikes = None
@@ -951,9 +968,13 @@ class Brian2Backend:
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
-        Write the spikes as ``recordings/spikes.csv`` and, if recorded, the
-        membrane potentials as ``recordings/voltage.csv`` (columns ``sender``,
-        ``time_ms`` and ``V_m``, as NEST's voltage files), and return the files.
+        Write the spikes as ``recordings/spikes.csv`` and each recorded variable
+        as ``recordings/<variable>.csv`` (columns ``sender``, ``time_ms`` and the
+        variable's name, as NEST's files), and return the files.
+
+        A variable is saved in the unit of the config files: mV, ms, pA, nS, Hz
+        (spikes/s) or without a unit. Any other dimension is saved in Brian2's
+        base unit (SI).
         """
 
         recordings_dir = Path(run_dir) / "recordings"
@@ -965,25 +986,30 @@ class Brian2Backend:
             population_spikes.write_csv_spikes(path, *self._load_spikes())
             paths.append(path)
 
-        if self.multimeters:
+        for name, monitors in self.multimeters.items():
             tables = []
-            for group, monitor in self.multimeters:
-                times = np.asarray(monitor.t / b2.ms)
+            for group, monitor in monitors:
+                # A sample at t is the state at t, as in NEST; NEST has no
+                # sample at t = 0 (the initial state), so it is left out here too.
+                after_start = np.asarray(monitor.t / b2.ms) > 0
+                times = np.asarray(monitor.t / b2.ms)[after_start]
                 senders = self._node_ids(group, np.asarray(monitor.record))
-                voltages = np.asarray(monitor.V_m / b2.mV)
+                quantity = getattr(monitor, name)
+                scale = RECORDING_SCALE.get(b2.get_dimensions(quantity), 1.0)
+                values = np.asarray(quantity)[:, after_start] * scale
                 tables.append(
                     np.column_stack(
-                        [np.repeat(senders, len(times)), np.tile(times, len(senders)), voltages.ravel()]
+                        [np.repeat(senders, len(times)), np.tile(times, len(senders)), values.ravel()]
                     )
                 )
-            path = recordings_dir / "voltage.csv"
+            path = recordings_dir / f"{name}.csv"
             np.savetxt(
                 path,
                 np.concatenate(tables),
                 delimiter=",",
-                header="sender,time_ms,V_m",
+                header=f"sender,time_ms,{name}",
                 comments="",
-                fmt=["%d", "%.3f", "%.3f"],
+                fmt=["%d", "%.3f", "%.6g"],
             )
             paths.append(path)
 

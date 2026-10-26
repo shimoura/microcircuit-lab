@@ -80,7 +80,7 @@ flowchart LR
 | :--- | :--- |
 | a synapse entry | a copy of its synapse model, under the entry's name |
 | a population | its neurons: `nest.Create(model, size)` |
-| `recording` in the simulation file | a `spike_recorder` (and a `multimeter` for voltages) |
+| `recording` in the simulation file | a `spike_recorder` (and a `multimeter` for each variable in `recording.variables`) |
 | a background input | a `poisson_generator`, shared by populations with the same `generator:` |
 | a stimulus | a `dc_generator`, `poisson_generator` or `inhomogeneous_poisson_generator` |
 | a connection (one row) | one `nest.Connect`, with its rule, weight and delay |

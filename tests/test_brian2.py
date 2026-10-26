@@ -28,7 +28,7 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.simulation import RecordingConfig, SimulationConfig
 from microcircuit_lab.config.stimuli import DcStimulusConfig
 from microcircuit_lab.config.synapses import SynapseEntry
 
@@ -176,6 +176,32 @@ def test_toy_runs_and_replots_without_brian2(tmp_path: Path) -> None:
     replotted = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)
     n_spikes = sum(len(simulation.backend.get_spike_events(p)["times"]) for p in simulation.network.populations)
     assert int(replotted.stdout.split()[-1]) == n_spikes
+
+
+def test_recorded_variables_are_saved_in_config_units(tmp_path: Path) -> None:
+    from microcircuit_lab.backends import read_recording
+
+    simulation = Simulation.from_yaml(network_name="toy", backend="brian2", backend_options=NUMPY)
+    recording = {"V_m": {"sample_size": 3}, "I_syn_ex": {"sample_size": 3, "populations": ["I"]}}
+    simulation.simulation_config = simulation.simulation_config.model_copy(
+        update={
+            "t_sim": 50.0,
+            "print_time": False,
+            "recording": RecordingConfig(variables=recording),
+            "output": simulation.simulation_config.output.model_copy(
+                update={"output_dir": tmp_path, "overwrite": True}
+            ),
+        }
+    )
+    simulation.run()
+
+    senders, times, values = read_recording(tmp_path, "V_m")
+    assert len(set(senders)) == 3 * len(simulation.network.populations)
+    assert (np.diff(senders) >= 0).all()
+    # Brian2 keeps volts: the file has mV.
+    assert -100 < values.min() and values.max() < 0
+    only = read_recording(tmp_path, "I_syn_ex")[0]
+    assert set(only) == set(simulation.backend.get_population("I")[:3])
 
 
 def _distinct_pairs(syn) -> bool:
