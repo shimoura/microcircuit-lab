@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.frozen_config import FrozenConfig
@@ -52,9 +50,15 @@ class BackgroundInputsFile(FrozenConfig):
     background_inputs: dict[str, BackgroundInputConfig] = Field(
         description="one entry per population, keyed by its name; a population left out gets none",
     )
-    background_mode: Literal["poisson", "mean_current"] = Field(
-        default="poisson",
-        description="'mean_current' replaces each population's Poisson input by its mean, "
-        "a constant current (Potjans & Diesmann 2014, Fig. 5); for a constant input of your "
-        "own, use I_e in neurons.yaml or a dc stimulus",
-    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_background_mode(cls, data):
+        if isinstance(data, dict) and "background_mode" in data:
+            raise ValueError(
+                "background_mode was removed: the files show what runs. To replace the background "
+                "by its mean current, write the network with replace_background_by_mean_current "
+                "(microcircuit_lab.builder_tools), e.g. the pd14 builder's --background "
+                "mean_current, and remove background_mode from this file"
+            )
+        return data

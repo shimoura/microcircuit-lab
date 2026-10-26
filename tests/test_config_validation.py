@@ -48,7 +48,6 @@ def test_toy_directory_matches_the_schema() -> None:
     assert isinstance(directory, NetworkDirectory)
     assert {p.name for p in directory.populations.populations} == {"E", "I"}
     assert set(directory.neurons.neurons) == {"excitatory", "inhibitory"}
-    assert directory.background_inputs.background_mode == "poisson"
     assert directory.stimuli.stimuli == []
 
 

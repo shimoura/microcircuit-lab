@@ -22,7 +22,6 @@ def write_network_directory(
     neurons: Mapping[str, Mapping[str, Any]],
     connections: Iterable[Mapping[str, Any]] | ConnectionTable,
     background_inputs: Mapping[str, Mapping[str, Any]],
-    background_mode: Literal["poisson", "mean_current"] = "poisson",
     bound_mode: Literal["redraw", "clip"] = "redraw",
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
@@ -54,8 +53,6 @@ def write_network_directory(
         written as ``connections.csv``.
     background_inputs
         ``{population name: {"rate": ..., "weight": ..., "delay": ...}}``.
-    background_mode
-        ``"poisson"`` or ``"mean_current"``; written only when ``"mean_current"``.
     bound_mode
         ``"redraw"`` or ``"clip"``; written only when ``"clip"``.
     scaling
@@ -115,8 +112,6 @@ def write_network_directory(
         connectivity_payload["connections"] = flow_records(list(connections))
 
     background_payload: dict[str, Any] = {}
-    if background_mode != "poisson":
-        background_payload["background_mode"] = background_mode
     background_payload["background_inputs"] = table(dict(background_inputs))
 
     # connections (and, with compact, populations / background_inputs) go
@@ -196,7 +191,6 @@ def write_network(
         neurons=neurons,
         connections=network.connections if csv else network.connections.to_yaml_rows(),
         background_inputs={name: dump(item) for name, item in network.background_inputs.items()},
-        background_mode=network.background_mode,
         bound_mode=network.bound_mode,
         scaling=None if network.scaling is None else dump(network.scaling),
         reference=None if network.reference is None else network.reference.full_mean_rates,

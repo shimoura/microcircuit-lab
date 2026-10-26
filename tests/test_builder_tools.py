@@ -78,14 +78,6 @@ def test_manifest_uses_the_conventional_names(tmp_path: Path) -> None:
     }
 
 
-def test_background_mode_is_written_only_when_not_poisson(tmp_path: Path) -> None:
-    write_network_directory(**_parts(tmp_path))
-    assert "background_mode" not in _load(tmp_path, "background_inputs.yaml")
-
-    write_network_directory(**_parts(tmp_path, background_mode="mean_current"))
-    assert _load(tmp_path, "background_inputs.yaml")["background_mode"] == "mean_current"
-
-
 def test_stimuli_adds_both_the_file_and_the_manifest_key(tmp_path: Path) -> None:
     write_network_directory(
         **_parts(tmp_path, stimuli=[{"type": "dc", "targets": ["E"], "amplitude": 100.0}])

@@ -226,11 +226,6 @@ background_inputs:
     #   background_indegree and synapse (a generator connects through one synapse
     #   model). Omit for a generator of its own
     generator: L23_E
-# optional, default poisson · one of poisson | mean_current · 'mean_current' replaces
-#   each population's Poisson input by its mean, a constant current (Potjans & Diesmann
-#   2014, Fig. 5); for a constant input of your own, use I_e in neurons.yaml or a dc
-#   stimulus
-background_mode: poisson
 ```
 
 ### stimuli.yaml

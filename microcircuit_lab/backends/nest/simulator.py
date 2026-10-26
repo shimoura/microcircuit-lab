@@ -194,8 +194,8 @@ class NestBackend:
         if "I_e" in parameters and "I_e" not in nest.GetDefaults(pop_cfg.neuron.model):
             raise ValueError(
                 f"Population {pop_cfg.name!r}: the NEST model {pop_cfg.neuron.model!r} has no I_e, "
-                "which neurons.yaml sets or a compensation current (scaling, background_mode: "
-                "mean_current) adds to."
+                "which neurons.yaml sets, or a constant current "
+                "written by a builder (scaling, replace_background_by_mean_current) adds to."
             )
         for values in (parameters, pop_cfg.initial_state):
             nodes.set(
@@ -394,18 +394,7 @@ class NestBackend:
         """
         Create one background Poisson generator per configured population, or
         one per ``generator`` name for the populations that share one.
-
-        Does nothing when background_mode is "mean_current": prepare_network has
-        already added the background input to each neuron's I_e as a constant
-        current (see NetworkConfig.background_mode).
         """
-
-        if self._network.background_mode == "mean_current":
-            logger.info(
-                "background_mode='mean_current': background drive is constant current "
-                "(I_e), skipping Poisson generators."
-            )
-            return
 
         logger.info("Creating background Poisson generators:")
 

@@ -103,15 +103,6 @@ class NetworkConfig(FrozenConfig):
     """
     The whole network, read from the YAML files in ``configs/network/``.
 
-    background_mode:
-        "poisson" (default): each population gets its background input from
-        independent Poisson generators.
-        "mean_current": the Poisson input of every population is replaced by a
-        constant current of the same mean (Potjans & Diesmann 2014, Fig. 5).
-        The rate, weight and delay in ``background_inputs`` are used to compute
-        that mean (step ``replace_background_by_mean_current`` in
-        ``builder_tools/constant_current.py``). No Poisson generator is created.
-
     bound_mode:
         What to do with a drawn weight or delay that falls outside its
         allowed range (a weight of the wrong sign, a delay below its
@@ -133,7 +124,6 @@ class NetworkConfig(FrozenConfig):
     ]
 
     background_inputs: dict[str, BackgroundInputConfig]
-    background_mode: Literal["poisson", "mean_current"] = "poisson"
     bound_mode: Literal["redraw", "clip"] = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     # How the network was scaled, if it was; never applied (see config/scaling.py).
@@ -198,11 +188,6 @@ class NetworkConfig(FrozenConfig):
         for name, entry in self.background_inputs.items():
             if entry.generator is not None:
                 groups.setdefault(entry.generator, []).append(name)
-        if groups and self.background_mode == "mean_current":
-            raise ValueError(
-                f"background_inputs.yaml: generator {sorted(groups)[0]!r} is set, but "
-                "background_mode is mean_current, which creates no generators."
-            )
         # One generator fires at one rate (rate x indegree) through one synapse
         # model (the simulator connects a device through one model). Rate and
         # indegree are compared one by one, not their product: that holds

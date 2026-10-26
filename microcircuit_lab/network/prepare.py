@@ -3,8 +3,9 @@ Prepare a network for the simulation: the steps between the network as
 written in the files and the network the simulator builds.
 
 The files hold the numbers that are simulated (a scaled network is written
-scaled, see ``builder_tools/scaling.py``), so only two steps remain, both about the
-background input: :func:`prepare_network` lists them.
+scaled, see ``builder_tools/scaling.py``; a background replaced by its mean
+current is written replaced, see ``builder_tools/constant_current.py``), so
+only one step remains: :func:`prepare_network`.
 """
 
 from __future__ import annotations
@@ -16,12 +17,8 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
     """
     Return the network ready to simulate; ``config`` itself is not changed.
 
-    The steps, in order:
-
-    1. with ``background_mode: mean_current``, replace the background input by
-       a constant current of the same mean, added to ``I_e`` (its rates become 0);
-    2. turn each population's background rate per synapse into the rate of
-       its Poisson generator (rate x indegree).
+    The only step: turn each population's background rate per synapse into the
+    rate of its Poisson generator (rate x indegree).
 
     Parameters
     ----------
@@ -32,18 +29,10 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
     Returns
     -------
     NetworkConfig
-        A new network description with the background rates per generator,
-        or the background's current in ``I_e``.
+        A new network description with the background rates per generator.
     """
 
-    # Imported here: builder_tools/write.py imports network.load, which imports this
-    # module. Goes away when this step leaves prepare_network.
-    from microcircuit_lab.builder_tools.constant_current import (
-        replace_background_by_mean_current,
-    )
-
-    network = replace_background_by_mean_current(config.model_copy(deep=True))
-    return _background_rate_per_neuron(network)
+    return _background_rate_per_neuron(config)
 
 
 def _background_rate_per_neuron(

@@ -5,7 +5,7 @@ Constant currents: the steps that add a constant current to ``I_e``.
 (a step of :func:`~microcircuit_lab.builder_tools.scaling.scale_network`, from the
 full-scale network ``original``); ``replace_background_by_mean_current``
 replaces the background Poisson input by a constant current of the same mean
-(a step of :func:`~microcircuit_lab.network.prepare.prepare_network`). The
+(a step a builder applies before writing the network). The
 formula of these currents is :func:`mean_current`, at the end of the file.
 
 It assumes current-based synapses with exponential currents: a spike of
@@ -47,9 +47,9 @@ def compensate_lost_mean_input(
     scaling keeps the mean. Whether it runs is set by ``preserve_variance``
     and ``preserve_mean_input`` (the latter turns compensation on or off);
     ``compensate_recurrent_input`` decides whether the recurrent input
-    is compensated too. The background input is always compensated, also with
-    ``background_mode: mean_current``: its current is then computed from the
-    scaled background, which this one completes to the full-scale mean.
+    is compensated too. The background input is always compensated; if
+    :func:`replace_background_by_mean_current` follows, it computes its current
+    from the scaled background, which this one completes to the full-scale mean.
     """
 
     if not preserve_variance or not preserve_mean_input:
@@ -143,23 +143,29 @@ def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
     """
     Replace the background Poisson input by a constant current of the same mean.
 
-    Does nothing unless ``background_mode`` is "mean_current" (see Potjans &
-    Diesmann 2014, Fig. 5).
+    The current (pA) is the mean of the background input as the network gives
+    it (rate per synapse, indegree, weight), added to ``I_e`` (see Potjans &
+    Diesmann 2014, Fig. 5). The returned network has no background input left:
+    ``background_inputs`` is empty and every ``background_indegree`` is 0.
 
-    The current is the mean of the background input as the files give it
-    (rate per synapse, indegree, weight). The background rates are then set to
-    0, so the backend creates no Poisson generator for them.
+    Parameters
+    ----------
+    network
+        The network, with its background weights in pA on the default receptor
+        port.
+
+    Returns
+    -------
+    NetworkConfig
+        A new network without background input.
     """
-
-    if network.background_mode != "mean_current":
-        return network
 
     unknown = _background_without_known_current(network)
     if unknown:
         raise ValueError(
-            f"background_mode: mean_current needs the mean background current, which is only known "
-            f"for weights in pA on the default receptor port; the background input of {unknown} "
-            "has another unit or uses another port. Use background_mode: poisson."
+            f"The mean background current is known only for weights in pA on the default "
+            f"receptor port; the background input of {unknown} has another unit or uses "
+            "another port."
         )
 
     weight = background_weights(network)
@@ -171,11 +177,11 @@ def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
     )
 
     network = _add_to_I_e(network, dc_current)
-    background_inputs = {
-        name: input_cfg.model_copy(update={"rate": 0.0})
-        for name, input_cfg in network.background_inputs.items()
+    populations = {
+        name: population.model_copy(update={"background_indegree": 0.0})
+        for name, population in network.populations.items()
     }
-    return network.model_copy(update={"background_inputs": background_inputs})
+    return network.model_copy(update={"populations": populations, "background_inputs": {}})
 
 
 def _add_to_I_e(network: NetworkConfig, current: np.ndarray) -> NetworkConfig:

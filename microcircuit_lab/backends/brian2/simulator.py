@@ -286,9 +286,8 @@ class Brian2Backend:
         for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
             users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
         for name, background in self._network.background_inputs.items():
-            if self._poisson_background(name) is not None:
-                key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
-                users.setdefault(key, f"background input of {name!r}")
+            key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
+            users.setdefault(key, f"background input of {name!r}")
         for stimulus in self._network.stimuli:
             if not isinstance(stimulus, DcStimulusConfig):
                 for target in stimulus.targets:
@@ -387,8 +386,8 @@ class Brian2Backend:
                 raise ValueError(
                     f"{pop_name!r} (neurons.yaml) sets {unknown}, which its Brian2 model "
                     f"{model.name!r} does not have; it has {sorted(equations.names)}."
-                    + (" I_e is also set by a compensation current (scaling, background_mode: "
-                       "mean_current)." if "I_e" in unknown else "")
+                    + (" I_e can also be a constant current written by a builder "
+                       "(scaling, replace_background_by_mean_current)." if "I_e" in unknown else "")
                 )
 
             group = by_equations.setdefault((model.name, str(equations)), _Group(model, equations))
@@ -723,20 +722,13 @@ class Brian2Backend:
         first_ids = np.asarray([self.first_ids[pop] for pop in group.populations])
         return first_ids[population] + indices - starts[population]
 
-    def _poisson_background(self, pop_name: str):
-        """The background input of a population if it is Poisson input, else None."""
-
-        if self._network.background_mode == "mean_current":
-            return None
-        return self._network.background_inputs.get(pop_name)
-
     def _background_variables(self, group: _Group) -> dict[str, list[str]]:
         """The variables the group's Poisson background inputs add to, each
         with its populations."""
 
         variables: dict[str, list[str]] = defaultdict(list)
         for pop_name in group.populations:
-            background = self._poisson_background(pop_name)
+            background = self._network.background_inputs.get(pop_name)
             if background is not None:
                 variable = self._target_variable(pop_name, background.synapse, background.weight.mean)
                 variables[variable].append(pop_name)
@@ -763,10 +755,6 @@ class Brian2Backend:
         """
         Give each configured population its background Poisson input.
 
-        Does nothing when background_mode is "mean_current": prepare_network has
-        already added the background input to each neuron's I_e as a constant
-        current (see NetworkConfig.background_mode).
-
         As from NEST's poisson_generator, each neuron gets its own Poisson
         number of spikes at each step, at the prepared rate (rate x indegree),
         also for populations that share a ``generator``, each with the weight
@@ -774,13 +762,6 @@ class Brian2Backend:
         for all of them. The input's delay is left out: it only shifts a
         stationary Poisson train in time.
         """
-
-        if self._network.background_mode == "mean_current":
-            logger.info(
-                "background_mode='mean_current': background drive is constant current "
-                "(I_e), skipping Poisson generators."
-            )
-            return
 
         for group in self._groups:
             variables = self._background_variables(group)

@@ -53,7 +53,7 @@ Next:
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
-- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator (or a constant current, with `background_mode: mean_current`). Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
+- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator . Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
 The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
@@ -199,7 +199,7 @@ stimuli:
 
 `background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`).
 
-- **`background_mode: mean_current`** (at the top of the file) replaces that Poisson input by its mean, a constant current: the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current`.
+- **A mean current instead of the Poisson input**: the builder step `replace_background_by_mean_current` (`microcircuit_lab.builder_tools`) adds the mean of that input to `I_e` and removes the input from the files (`background_inputs` empty, `background_indegree` 0): the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Apply it after `scale_network` and before `write_network`. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current`.
 - **A constant current of your own** is not a background mode; it adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
 - **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `background_indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
@@ -333,7 +333,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 - The DC is added to each population's `I_e` in the scaled files (a population gets a neuron entry of its own when its current differs from the others'). `I_e` is sent to the simulator only when a neuron entry sets it or a DC is added, so a model without `I_e` works when it needs no DC; when it does, the run stops with an error naming it.
 - The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input=False` compensates the background input only, and needs no rates.
 - The DC is known only for weights in pA on the default receptor port; another unit (e.g. nS) or port stops the scaling with an error, unless `preserve_mean_input=False`.
-- With `background_mode: mean_current`, the run computes the background current from the scaled background, and the DC adds the lost part, so together they are the full-scale mean.
+- With `replace_background_by_mean_current` after scaling, the current is computed from the scaled background, and the DC adds the lost part, so together they are the full-scale mean.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
 - These are the mean and variance only. A scaled network is close to the full one, not equal: PD14 at $k = 0.1$ has most rates within 10–20 %, and L2/3 E lower (0.5 instead of 0.9 spikes/s).
 - A connection left with less than one synapse is dropped.

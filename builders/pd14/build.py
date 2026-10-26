@@ -5,9 +5,9 @@ Turns the Potjans & Diesmann (2014) parameters in ``data.py`` into a full
 (connection probabilities converted to absolute synapse numbers), background
 inputs, scaling and reference rates.
 
-``--background-mode mean_current`` replaces the Poisson background by a constant current
-of equal mean, the comparison of the publication's Fig. 5
-(``microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current``).
+``--background mean_current`` replaces the Poisson background by a constant current
+of equal mean (after scaling, before writing), the comparison of the publication's Fig. 5
+(``microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current``).
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from microcircuit_lab.builder_tools import (
     delay,
     num_synapses_from_conn_prob,
     psp_to_psc_iaf_psc_exp,
+    replace_background_by_mean_current,
     scale_network,
     weight,
     write_network,
@@ -120,7 +121,6 @@ def generate_pd14(
     *,
     config_dir: str | Path = "configs",
     network_name: str = "pd14",
-    background_mode: str = "poisson",
 ) -> NetworkConfig:
     """Write ``<config_dir>/network/<network_name>/`` for PD14 and validate it."""
 
@@ -130,7 +130,6 @@ def generate_pd14(
         neurons=_build_neurons(),
         connections=_build_connections(),
         background_inputs=_build_background_inputs(),
-        background_mode=background_mode,
         reference=dict(zip(data.populations, data.full_mean_rates.tolist())),
         compact=False,
     )
@@ -146,23 +145,27 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network-name", default="pd14")
-    parser.add_argument("--background-mode", choices=("poisson", "mean_current"), default="poisson")
+    parser.add_argument(
+        "--background", choices=("poisson", "mean_current"), default="poisson",
+        help="mean_current: replace the Poisson background by a constant current of the same mean",
+    )
     parser.add_argument("--n-scaling", type=float, default=1.0, help="multiplies the number of neurons")
     parser.add_argument("--k-scaling", type=float, default=1.0, help="multiplies the synapses per neuron")
     args = parser.parse_args(argv)
 
     folder = Path(args.config_dir) / "network" / args.network_name
-    network = generate_pd14(
-        config_dir=args.config_dir,
-        network_name=args.network_name,
-        background_mode=args.background_mode,
-    )
-    # A scaled network is written scaled: its files hold the numbers that are
-    # simulated, and scaling.yaml records how they were made.
-    if args.n_scaling != 1.0 or args.k_scaling != 1.0:
-        scaled_from = "pd14" + (" --background-mode mean_current" if args.background_mode == "mean_current" else "")
-        scaled = scale_network(network, N_scaling=args.n_scaling, K_scaling=args.k_scaling, scaled_from=scaled_from)
-        write_network(scaled, folder, compact=False)
+    network = generate_pd14(config_dir=args.config_dir, network_name=args.network_name)
+    # The files hold the numbers that are simulated, so scaling and the
+    # mean current replacing the background are steps applied before writing
+    # (in this order: the scaled background is the one replaced). scaling.yaml
+    # records how the scaled numbers were made.
+    scaled = args.n_scaling != 1.0 or args.k_scaling != 1.0
+    if scaled:
+        network = scale_network(network, N_scaling=args.n_scaling, K_scaling=args.k_scaling, scaled_from="pd14")
+    if args.background == "mean_current":
+        network = replace_background_by_mean_current(network)
+    if scaled or args.background == "mean_current":
+        write_network(network, folder, compact=False)
     print(f"Generated and validated {folder}")
 
 

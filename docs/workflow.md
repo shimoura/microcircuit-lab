@@ -43,17 +43,16 @@ What each field accepts: [config_files.md](config_files.md).
 
 **In:** the network, as written. **Out:** the network, ready to simulate. The files themselves are not changed.
 
-```mermaid
-%%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 15, "padding": 5}}}%%
-flowchart LR
-  M["constant current<br/><i>if mean_current</i>"]:::opt --> R["rate × indegree<br/><b>always</b>"]
-  classDef opt stroke-dasharray: 5 4,fill:#ffffff
-```
+One step: **rate × indegree**. Each population's background is one Poisson generator, firing at the rate per synapse times the number of synapses.
 
-- **constant current:** the background becomes its mean, a constant current added to `I_e`, and its rate 0.
-- **rate × indegree:** each population's background is one Poisson generator, firing at the rate per synapse times the number of synapses.
+Everything else is simulated as written. Builder steps write their result into the folder:
 
-Everything else is simulated as written: a scaled network is a folder of its own, written by `scale_network` with the scaled numbers and the compensation current in `I_e` (README, "Scaling a network"). To see the two ends:
+| Step (`builder_tools`) | What the folder shows |
+|---|---|
+| `scale_network` | the scaled numbers, the compensation current in `I_e`, and `scaling.yaml` (README, "Scaling a network") |
+| `replace_background_by_mean_current` | no background input, its mean current in `I_e` |
+
+To see the two ends:
 
 ```python
 from microcircuit_lab.network.load import read_network, load_network
@@ -62,7 +61,7 @@ written = read_network("configs/network/pd14")    # as written
 prepared = load_network("configs/network/pd14")   # ready to simulate
 ```
 
-**Code:** `network/prepare.py`, `builder_tools/constant_current.py` (`replace_background_by_mean_current`)
+**Code:** `network/prepare.py`; the builder steps in `builder_tools/`
 
 ## 3 · Simulate
 

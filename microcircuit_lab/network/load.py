@@ -55,8 +55,7 @@ def load_network(folder: str | Path) -> NetworkConfig:
     -------
     NetworkConfig
         The network ready to simulate: each background rate per synapse
-        turned into the rate of its generator, or into a constant current
-        with ``background_mode: mean_current`` (see
+        turned into the rate of its generator (see
         :func:`~microcircuit_lab.network.prepare.prepare_network`).
     """
 
@@ -223,7 +222,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
         populations=populations,
         connections=connections,
         background_inputs=dict(directory.background_inputs.background_inputs),
-        background_mode=directory.background_inputs.background_mode,
         bound_mode=directory.connectivity.bound_mode,
         stimuli=directory.stimuli.stimuli,
         scaling=directory.scaling,

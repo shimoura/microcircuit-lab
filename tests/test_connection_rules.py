@@ -6,7 +6,10 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
-from microcircuit_lab.builder_tools import scale_network
+from microcircuit_lab.builder_tools import (
+    replace_background_by_mean_current,
+    scale_network,
+)
 from microcircuit_lab.builder_tools.mean_input import expected_synapses, num_synapses
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connection_table import ConnectionTable
@@ -308,9 +311,8 @@ def test_a_model_without_I_e_says_so_when_it_gets_one():
 def test_background_on_another_port():
     synapses = {"fast": SynapseEntry(model="static_synapse", receptor_port=1)}
     network = _network([_connection(n_synapses=10)], synapses, background_synapse="fast")
-    dc = network.model_copy(update={"background_mode": "mean_current"})
-    with pytest.raises(ValueError, match="background_mode: mean_current needs the mean background current"):
-        prepare_network(dc)
+    with pytest.raises(ValueError, match="mean background current is known only"):
+        replace_background_by_mean_current(network)
 
 
 def test_advanced_example_uses_every_feature():
@@ -342,5 +344,5 @@ def test_conductance_weights_stop_the_compensation():
         _scaled(network, K_scaling=0.5)
     scaled = _scaled(network, K_scaling=0.5, preserve_mean_input=False)
     assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
-    with pytest.raises(ValueError, match="has another unit or uses another port"):
-        prepare_network(network.model_copy(update={"background_mode": "mean_current"}))
+    with pytest.raises(ValueError, match="mean background current is known only"):
+        replace_background_by_mean_current(network)

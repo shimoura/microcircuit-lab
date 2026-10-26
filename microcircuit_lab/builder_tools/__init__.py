@@ -28,6 +28,9 @@ quantities it uses).
 * :func:`scale_network` returns a network scaled down (fewer neurons and
   synapses, stronger weights, the lost mean input as a current), and
   :func:`write_network` writes such a network as a folder.
+* :func:`replace_background_by_mean_current` returns the network with its
+  background Poisson input replaced by a constant current of the same mean,
+  to apply before writing it.
 * :func:`mean_current` is the constant current (pA) with the mean of a
   Poisson input, for a builder that adds the input of areas it leaves out.
 * :func:`weight` and :func:`delay` build the ``weight`` / ``delay`` entries
@@ -45,7 +48,10 @@ written any other way are checked the same way when the network is loaded.
 
 from __future__ import annotations
 
-from microcircuit_lab.builder_tools.constant_current import mean_current
+from microcircuit_lab.builder_tools.constant_current import (
+    mean_current,
+    replace_background_by_mean_current,
+)
 from microcircuit_lab.builder_tools.entries import (
     delay,
     num_synapses_from_conn_prob,
@@ -61,6 +67,7 @@ __all__ = [
     "num_synapses_from_conn_prob",
     "psc_to_psp",
     "psp_to_psc_iaf_psc_exp",
+    "replace_background_by_mean_current",
     "scale_network",
     "weight",
     "write_network",

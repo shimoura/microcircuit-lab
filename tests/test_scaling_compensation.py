@@ -5,13 +5,16 @@ from __future__ import annotations
 
 import pytest
 
-from microcircuit_lab.builder_tools import scale_network, write_network
+from microcircuit_lab.builder_tools import (
+    replace_background_by_mean_current,
+    scale_network,
+    write_network,
+)
 from microcircuit_lab.network.load import (
     assemble_network,
     read_network,
     read_network_files,
 )
-from microcircuit_lab.network.prepare import prepare_network
 
 
 def _toy():
@@ -52,7 +55,7 @@ def test_a_population_without_background_input_gets_no_background_current() -> N
     network = network.model_copy(update={"background_inputs": {"E": network.background_inputs["E"]}})
 
     scaled = _scaled(network, compensate_recurrent_input=False)
-    mean_current = prepare_network(network.model_copy(update={"background_mode": "mean_current"}))
+    mean_current = replace_background_by_mean_current(network)
 
     for prepared in (scaled, mean_current):
         assert prepared.populations["E"].neuron.parameters.I_e > 0
