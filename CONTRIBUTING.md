@@ -49,7 +49,7 @@ Click the kind of change. Each recipe ends with a test and a line in the README.
 
 1. `config/stimuli.py`: add a class next to the others, and add it to `StimulusConfig` at the end of the file.
 2. `backends/nest/simulator.py`, `create_stimuli`: create its NEST device. Change `connect_stimuli` only if it connects differently.
-   `backends/brian2/simulator.py`: its rate or current over time in `_stimulus_curve` (or its own Brian2 objects in `create_stimuli`).
+   `backends/brian2/inputs.py`: its rate or current over time in `_stimulus_curve` (or its own Brian2 objects in `create_stimuli`).
 3. Test in `tests/test_stimuli.py`.
 
 The [worked example](#an-example-a-single-spike-stimulus) below does exactly this.
@@ -100,7 +100,7 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 <summary><b>Something to record</b></summary>
 
 1. `config/simulation.py`: add it to `RecordingConfig`.
-2. `backends/nest/simulator.py`: a `create_*`/`connect_*` pair, and reading it back; `backends/brian2/simulator.py`: a Brian2 monitor in a `create_*` method, and writing it in `save_recordings`.
+2. `backends/nest/simulator.py`: a `create_*`/`connect_*` pair, and reading it back; `backends/brian2/recording.py`: a Brian2 monitor in a `create_*` function, and writing it in `save_recordings`.
 3. `run_folder/write.py`, if it is saved in the run folder, and `run_folder/read.py` if `read_run` should give it.
 4. Test in `tests/test_run_folder.py`.
 </details>
@@ -144,6 +144,11 @@ When a stimulus `type` is not known, the error message points to this section.
        spike_times: list[float] = Field(min_length=1, description="ms")
        weight: WeightDistribution
        delay: DelayDistribution
+       synapse: str | None = Field(
+           default=None,
+           examples=["depressing"],
+           description="name of an entry in synapses.yaml; omit for the default synapse",
+       )
    ```
 4. In `NestBackend.create_stimuli`, create its device:
    ```python
@@ -151,7 +156,7 @@ When a stimulus `type` is not known, the error message points to this section.
        model = "spike_generator"
        params["spike_times"] = stimulus.spike_times
    ```
-   Connecting it needs nothing new: every stimulus except `dc` connects with its own weight and delay.
+   Connecting it needs nothing new: every stimulus except `dc` connects with its own weight, delay and synapse, like `poisson`.
 5. A test in `tests/test_stimuli.py`, and the new type in the README's list of stimuli.
 
 ## Code style

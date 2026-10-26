@@ -106,7 +106,7 @@ Good to know:
 - Run the commands from the project folder; that is where `builders/`, `analyses/`, `configs/` and `extensions/` are looked for.
 - With `--with-core`, the copy of the core is yours: change it and commit it with your project. Your edits take effect at once, and each run's `metadata.json` records your project's git commit, which then covers the core too.
 - A later core release is not applied to the copy by itself; compare and merge it by hand if you want it. To propose a change to the original core, see [CONTRIBUTING.md](../CONTRIBUTING.md).
-- The examples (every builder and config) are copied too, and are yours as well. A name that already exists is skipped, so `microcircuit-lab init . --with-core` is safe in an existing repository.
+- The examples (every builder, config and `extensions/` model) are copied too, and are yours as well. A name that already exists is skipped, so `microcircuit-lab init . --with-core` is safe in an existing repository.
 
 ## Installation
 
@@ -117,9 +117,9 @@ pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircu
 This installs the latest version. For a fixed one, add its tag from the [releases](https://github.com/shimoura/microcircuit-lab/releases) to the address: `...microcircuit-lab@<tag>`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
 
 - conda-forge: `mamba install -c conda-forge nest-simulator`
-- from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and `scripts/install_nest_from_source.sh` (`NEST_WITH_MPI=ON` for MPI)
+- from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and [`scripts/install_nest_from_source.sh`](https://github.com/shimoura/microcircuit-lab/blob/main/scripts/install_nest_from_source.sh) in the repository (`NEST_WITH_MPI=ON` for MPI)
 
-All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
+Python 3.12 or newer is needed. All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
 
 To run on Brian2 instead of NEST, install `[brian2]` (`pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"`); see [Running with Brian2](#running-with-brian2).
 
@@ -158,7 +158,7 @@ configs/
   ```
   `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
-- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run before anything is built, saying so:
+- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a project distribution before):
 
   | Field | Shared | Any other name |
   |---|---|---|
@@ -229,7 +229,7 @@ current = psp_to_psc_iaf_psc_exp(0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5)   # 8
 weight(current, unit="pA", rel_std=0.1)
 ```
 
-The formula holds for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants); use `tau_syn_in` for an inhibitory weight. Keep the PSP in a comment next to the value if you write the file by hand, as `configs/network/toy/` does.
+The formula holds for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants); for an inhibitory weight, pass `tau_syn=<tau_syn_in>`. Keep the PSP in a comment next to the value if you write the file by hand, as `configs/network/toy/` does.
 
 - **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
@@ -275,7 +275,7 @@ connections:
 
 ### Large files
 
-A builder writes long tables (`connectivity.yaml` of a multi-area model) one record per line, `- {source: ..., target: ..., weight: {...}, ...}`: `humam_all` has about 8,400 lines instead of 100,000. It is plain YAML and loads like any other. `write_network_directory` does this for you.
+A builder writes long tables (`connectivity.yaml` of a multi-area model) one record per line, `- {source: ..., target: ..., weight: {...}, ...}`: `humam_all` has about 7,600 lines instead of 100,000. It is plain YAML and loads like any other. `write_network_directory` does this for you.
 
 For millions of connections, YAML gets slow to write and read. `connectivity.yaml` can then name a CSV file instead of listing the rows:
 
@@ -434,7 +434,7 @@ The spike files are read once, at the first `run.spikes(...)`.
 | File | What it holds |
 |---|---|
 | `metadata.json` → `populations` | per population: `size`, `first_node_id`, `last_node_id` (one block of node IDs), spike counts |
-| `recordings/spikes-*.dat` (NEST) | tab-separated `sender`, `time_ms`, after `#` comment lines; one file per process |
+| `recordings/spikes-*.dat` (NEST) | tab-separated `sender`, `time_ms`, after `#` comment lines; one file per thread |
 | `recordings/spikes.csv` (Brian2) | `sender,time_ms` |
 | `recordings/<variable>-*.dat` / `<variable>.csv` | `sender`, `time_ms`, the variable |
 | `config.yaml` | the network and the simulation settings as run |
@@ -539,7 +539,7 @@ The command and a script run the same steps (check, simulate, save); the command
 | many runs (seeds, a sweep) | a shell loop | a Python loop, below |
 | plots | made from `configs/analysis/toy.yaml` | call the plot functions, or `run --run-dir <folder>` afterwards |
 
-Scripts go in your project's `experiments/` and run from the project folder (`python experiments/my_sweep.py`), so that `configs/` and `output/` are found. A worked example: `experiments/toy/background_drive_sweep.py`.
+Scripts go in your project's `experiments/` and run from the project folder (`python experiments/my_sweep.py`), so that `configs/` and `output/` are found. A worked example, in the repository: [`experiments/toy/background_drive_sweep.py`](https://github.com/shimoura/microcircuit-lab/blob/main/experiments/toy/background_drive_sweep.py).
 
 **Other settings.** The settings are a `SimulationConfig` (fields: [docs/config_files.md](../docs/config_files.md)); replace it before `run()`:
 
@@ -669,7 +669,7 @@ Don't commit the compiled output; it depends on the platform and the NEST versio
 
 ## Running with Brian2
 
-The same config files run on [Brian2](https://brian2.readthedocs.io): install it with `pip install -e ".[brian2]"`, then
+The same config files run on [Brian2](https://brian2.readthedocs.io): install it with `pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"` (in a clone: `pip install -e ".[brian2]"`), then
 
 ```bash
 microcircuit-lab run --network toy --backend brian2
