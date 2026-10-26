@@ -25,7 +25,7 @@ from microcircuit_lab.backends.spikes import spikes_in_id_range
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.config.yaml_files import read_yaml
 
 
 class Spikes(NamedTuple):

@@ -18,7 +18,7 @@ from pathlib import Path
 from microcircuit_lab.backends.interface import SimulationBackend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
-from microcircuit_lab.yaml_files import flow_records, write_yaml
+from microcircuit_lab.config.yaml_files import flow_records, write_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ def save_run_config(
     """Save the network as given and the simulation config.
 
     connections/populations/poisson_background are written one-record-per-line
-    (see yaml_files.flow_records) since a full-scale network can have
+    (see config.yaml_files.flow_records) since a full-scale network can have
     thousands of connection entries. Above 20,000 connections,
     they go to ``connections.csv`` instead, named by ``connections_file`` in
     ``config.yaml``.

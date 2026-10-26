@@ -786,7 +786,7 @@ Change the core when an idea doesn't fit what the config files can say (a new st
 
 ```text
 microcircuit_lab/
-├── config/            what each YAML file may contain (one module per file)
+├── config/            what each YAML file may contain (one module per file), and reading and writing YAML
 ├── network/           reading, checking and preparing a network
 ├── simulation.py      Simulation: load and run
 ├── backends/          the simulators (NEST, Brian2), and the readers of their files
@@ -794,8 +794,7 @@ microcircuit_lab/
 ├── cli/               the microcircuit-lab command
 ├── builder_tools/     what a builder needs, in one import (also scaling and the constant-current steps)
 ├── run_folder/        write.py makes a run folder and its metadata, read.py reads it back (read_run)
-├── project_code.py    finds the builders/, analyses/ and extensions/ of a project
-└── yaml_files.py      reading and writing YAML
+└── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 ```
 
 Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `extensions/` hold the examples, laid out like a project's.

@@ -14,9 +14,9 @@ from typing import Any
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import BackendConfig, SimulationConfig
+from microcircuit_lab.config.yaml_files import read_yaml
 from microcircuit_lab.network.load import read_network
 from microcircuit_lab.run_folder.write import save_run_outputs, share_run_directory
-from microcircuit_lab.yaml_files import read_yaml
 
 logger = logging.getLogger(__name__)
 

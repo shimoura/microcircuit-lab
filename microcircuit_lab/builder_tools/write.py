@@ -11,8 +11,8 @@ from typing import Any, Literal
 
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.yaml_files import flow_records, write_yaml
 from microcircuit_lab.network.load import read_network
-from microcircuit_lab.yaml_files import flow_records, write_yaml
 
 POISSON_BACKGROUND_HEADER = (
     "Background: each neuron of a population gets `indegree` independent Poisson\n"

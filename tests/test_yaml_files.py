@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
+from microcircuit_lab.config.yaml_files import flow_records, read_yaml, write_yaml
 
 
 def test_write_yaml_roundtrips_through_read_yaml(tmp_path: Path) -> None:

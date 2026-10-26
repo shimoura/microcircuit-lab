@@ -28,7 +28,7 @@ from microcircuit_lab.config.network import (
 )
 from microcircuit_lab.config.neurons import NeuronConfig
 from microcircuit_lab.config.populations import PopulationConfig
-from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.config.yaml_files import read_yaml
 
 # Shown under an error about an unknown stimulus type, so whoever wants to add
 # one knows where to look. (An unknown distribution or rule is a project one,

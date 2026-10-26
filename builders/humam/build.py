@@ -25,8 +25,8 @@ from typing import Any
 
 from microcircuit_lab.builder_tools import mean_current, scale_network, write_network
 from microcircuit_lab.builder_tools.write import POISSON_BACKGROUND_HEADER
+from microcircuit_lab.config.yaml_files import flow_records, read_yaml, write_yaml
 from microcircuit_lab.network.load import read_network
-from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
 LAYER_ALIAS = {
     "II/III": "L23",

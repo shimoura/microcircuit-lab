@@ -16,7 +16,7 @@ import microcircuit_lab.simulation as runner_module
 from microcircuit_lab import Simulation
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.config.yaml_files import read_yaml
 
 
 class _FakeBackend:
