@@ -225,8 +225,8 @@ def write_run_metadata(
     population (if spikes were recorded) and a list of the files of the run, to
     which :func:`register_artifact` adds.
 
-    ``first_gid`` and ``size`` give the node IDs of each population, which are
-    one contiguous block. :func:`~microcircuit_lab.run_folder.read.read_run` uses
+    ``first_node_id`` and ``last_node_id`` give the node IDs of each population,
+    which are one contiguous block. :func:`~microcircuit_lab.run_folder.read.read_run` uses
     them to read a saved run without simulating it again.
     """
 
@@ -234,9 +234,11 @@ def write_run_metadata(
     populations = {}
 
     for pop_name, pop_cfg in network.populations.items():
+        node_ids = backend.get_population(pop_name).tolist()
         stats = {
             "size": pop_cfg.size,
-            "first_gid": int(backend.get_population(pop_name).tolist()[0]),
+            "first_node_id": int(node_ids[0]),
+            "last_node_id": int(node_ids[-1]),
         }
 
         if simulation_config.recording.spike_recording:

@@ -429,6 +429,22 @@ run.folder                       # the run folder, a pathlib.Path
 
 The spike files are read once, at the first `run.spikes(...)`.
 
+**Without the package** (another language, another tool), the run folder is plain files:
+
+| File | What it holds |
+|---|---|
+| `metadata.json` → `populations` | per population: `size`, `first_node_id`, `last_node_id` (one block of node IDs), spike counts |
+| `recordings/spikes-*.dat` (NEST) | tab-separated `sender`, `time_ms`, after `#` comment lines; one file per process |
+| `recordings/spikes.csv` (Brian2) | `sender,time_ms` |
+| `recordings/<variable>-*.dat` / `<variable>.csv` | `sender`, `time_ms`, the variable |
+| `config.yaml` | the network and the simulation settings as run |
+
+```python
+import json
+populations = json.load(open("output/toy/<timestamp>/metadata.json"))["populations"]
+populations["E"]["first_node_id"], populations["E"]["last_node_id"]   # 1, 800
+```
+
 ### Use the bundled functions
 
 ```python

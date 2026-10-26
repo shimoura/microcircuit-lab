@@ -62,12 +62,8 @@ def compute_neuron_firing_rates(
         senders, times = run.spikes(pop_name)
 
         mask = (times >= begin) & (times < end)
-        sender_counts = dict(zip(*np.unique(senders[mask], return_counts=True)))
-        counts = np.fromiter(
-            (sender_counts.get(gid, 0) for gid in nodes),
-            dtype=float,
-            count=len(nodes),
-        )
+        # A population's node IDs are one block, so a neuron's index is its offset.
+        counts = np.bincount(senders[mask] - nodes[0], minlength=len(nodes)).astype(float)
         rates[pop_name] = counts / duration_s
 
     return rates

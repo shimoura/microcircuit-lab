@@ -77,10 +77,10 @@ class Run:
         self._spikes: Spikes | None = None
 
     def node_ids(self, population: str) -> np.ndarray:
-        """The node IDs of a population: one block, from its ``first_gid`` in ``metadata.json``."""
+        """The node IDs of a population: one block, ``first_node_id`` to ``last_node_id`` in ``metadata.json``."""
 
         stats = self._population_stats(population)
-        return np.arange(stats["first_gid"], stats["first_gid"] + stats["size"])
+        return np.arange(stats["first_node_id"], stats["last_node_id"] + 1)
 
     def spikes(self, population: str) -> Spikes:
         """
@@ -158,7 +158,7 @@ def read_run(run_dir: str | Path) -> Run:
     ValueError
         If the run has no ``config.yaml`` (``output.save_config: false``) or no
         ``metadata.json`` (``output.save_metadata: false``), or the metadata
-        lacks the ``first_gid`` of a population (simulate the run again).
+        lacks the node IDs of a population (simulate the run again).
     """
 
     folder = Path(run_dir)
@@ -196,11 +196,11 @@ def read_run(run_dir: str | Path) -> Run:
     metadata = json.loads(metadata_path.read_text())
     missing = [
         name for name in network.populations
-        if "first_gid" not in metadata.get("populations", {}).get(name, {})
+        if "first_node_id" not in metadata.get("populations", {}).get(name, {})
     ]
     if missing:
         raise ValueError(
-            f"metadata.json in {folder} has no 'first_gid' for population(s) {missing}. "
+            f"metadata.json in {folder} has no 'first_node_id' for population(s) {missing}. "
             "Simulate the run again to write it."
         )
 

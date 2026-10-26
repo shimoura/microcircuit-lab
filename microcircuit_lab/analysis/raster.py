@@ -103,11 +103,11 @@ def plot_raster(
             keep = np.linspace(0, len(nodes) - 1, cap, dtype=int)
             nodes = nodes[keep]
 
-        row_by_gid = {int(gid): offset + row for row, gid in enumerate(nodes)}
         senders, times = run.spikes(pop_name)
         mask = (times >= begin) & (times <= end) & np.isin(senders, nodes)
         times, senders = times[mask], senders[mask]
-        rows = np.fromiter((row_by_gid[int(gid)] for gid in senders), dtype=int)
+        # Each kept neuron gets one row; nodes is sorted.
+        rows = offset + np.searchsorted(nodes, senders)
         color = population_color(pop_name, index, style)
 
         if len(times):

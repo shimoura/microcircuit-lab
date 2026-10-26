@@ -78,7 +78,6 @@ def compute_neuron_isi_cv(
         times, senders = times[mask], senders[mask]
 
         cvs = np.full(len(nodes), np.nan)
-        row_by_gid = {int(gid): row for row, gid in enumerate(nodes)}
 
         order = np.argsort(senders)
         senders_sorted, times_sorted = senders[order], times[order]
@@ -89,9 +88,8 @@ def compute_neuron_isi_cv(
         for sender, start, count in zip(unique_senders, start_idx, counts):
             if count < min_spikes:
                 continue
-            row = row_by_gid.get(int(sender))
-            if row is None:
-                continue
+            # A population's node IDs are one block, so a neuron's row is its offset.
+            row = int(sender) - int(nodes[0])
 
             isi = np.diff(np.sort(times_sorted[start : start + count]))
             if isi.mean() > 0:
