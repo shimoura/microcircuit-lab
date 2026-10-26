@@ -13,7 +13,7 @@ network folder ``configs/network/<name>/``::
         connections=[{"source": "E", "target": "E", "n_synapses": 8000,
                       "weight": weight(87.8, unit="pA", rel_std=0.1),
                       "delay": delay(1.5, rel_std=0.5)}],
-        background_inputs={"E": {"rate": 8.0, "weight": weight(87.8, unit="pA"),
+        poisson_background={"E": {"rate": 8.0, "indegree": 1600, "weight": weight(87.8, unit="pA"),
                                  "delay": delay(1.5)}},
     )
 

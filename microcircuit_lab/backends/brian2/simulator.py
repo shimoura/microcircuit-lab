@@ -285,7 +285,7 @@ class Brian2Backend:
                    (table["weight.mean"] >= 0).tolist(), table["weight.unit"].tolist())
         for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
             users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
-        for name, background in self._network.background_inputs.items():
+        for name, background in self._network.poisson_background.items():
             key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
             users.setdefault(key, f"background input of {name!r}")
         for stimulus in self._network.stimuli:
@@ -322,7 +322,7 @@ class Brian2Backend:
         if self._simulation_config.recording.voltage_recording:
             self.create_multimeters()
 
-        self.create_background_inputs()
+        self.create_poisson_background()
 
         if self._network.stimuli:
             self.create_stimuli()
@@ -364,7 +364,7 @@ class Brian2Backend:
         ``index`` within its population (for connection rules). A group with
         ``dc`` stimuli reads its current from one table of all their currents,
         at each neuron's ``dc_index``. A group with Poisson background input
-        has the variables of that input (see create_background_inputs).
+        has the variables of that input (see create_poisson_background).
         """
 
         by_equations: dict[tuple[str, str], _Group] = {}
@@ -728,7 +728,7 @@ class Brian2Backend:
 
         variables: dict[str, list[str]] = defaultdict(list)
         for pop_name in group.populations:
-            background = self._network.background_inputs.get(pop_name)
+            background = self._network.poisson_background.get(pop_name)
             if background is not None:
                 variable = self._target_variable(pop_name, background.synapse, background.weight.mean)
                 variables[variable].append(pop_name)
@@ -751,7 +751,7 @@ class Brian2Backend:
         lines += [f"background_{variable} : 1 (constant)" for variable in variables]
         return b2.Equations("\n".join(lines))
 
-    def create_background_inputs(self) -> None:
+    def create_poisson_background(self) -> None:
         """
         Give each configured population its background Poisson input.
 
@@ -771,7 +771,7 @@ class Brian2Backend:
             for variable, pops in variables.items():
                 rates = np.zeros(group.size)
                 for pop_name in pops:
-                    background = self._network.background_inputs[pop_name]
+                    background = self._network.poisson_background[pop_name]
                     if self.synapse_model(background.synapse) is not self._synapse_models["static_synapse"]:
                         raise NotImplementedError(
                             f"The background input of {pop_name!r} uses synapse {background.synapse!r}; "

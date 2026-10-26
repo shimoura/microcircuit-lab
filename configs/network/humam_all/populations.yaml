@@ -1,255 +1,255 @@
 populations:
-- {name: bankssts__L23_E, size: 157, neuron: bankssts__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.94032292358804}
-- {name: bankssts__L23_I, size: 84, neuron: bankssts__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.006552823920265}
-- {name: bankssts__L4_E, size: 70, neuron: bankssts__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.609173762945915}
-- {name: bankssts__L4_I, size: 18, neuron: bankssts__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.741633766233765}
-- {name: bankssts__L5_E, size: 81, neuron: bankssts__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.675403747534517}
-- {name: bankssts__L5_I, size: 23, neuron: bankssts__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.741633566433567}
-- {name: bankssts__L6_E, size: 58, neuron: bankssts__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.079335351589375}
-- {name: bankssts__L6_I, size: 9, neuron: bankssts__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.60917328825021}
-- {name: caudalanteriorcingulate__L23_E, size: 53, neuron: caudalanteriorcingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.568867440625237}
-- {name: caudalanteriorcingulate__L23_I, size: 28, neuron: caudalanteriorcingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 24.90831341600902}
-- {name: caudalanteriorcingulate__L5_E, size: 48, neuron: caudalanteriorcingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 33.211084490547094}
-- {name: caudalanteriorcingulate__L5_I, size: 13, neuron: caudalanteriorcingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.55053024911032}
-- {name: caudalanteriorcingulate__L6_E, size: 73, neuron: caudalanteriorcingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 48.15607236158933}
-- {name: caudalanteriorcingulate__L6_I, size: 12, neuron: caudalanteriorcingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 34.871638804968114}
-- {name: caudalmiddlefrontal__L23_E, size: 106, neuron: caudalmiddlefrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.604318510702445}
-- {name: caudalmiddlefrontal__L23_I, size: 57, neuron: caudalmiddlefrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.87904849884527}
-- {name: caudalmiddlefrontal__L5_E, size: 37, neuron: caudalmiddlefrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 34.505397970200825}
-- {name: caudalmiddlefrontal__L5_I, size: 10, neuron: caudalmiddlefrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 32.780128637059725}
-- {name: caudalmiddlefrontal__L6_E, size: 53, neuron: caudalmiddlefrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 50.03282713712425}
-- {name: caudalmiddlefrontal__L6_I, size: 9, neuron: caudalmiddlefrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 36.23066790697674}
-- {name: cuneus__L23_E, size: 141, neuron: cuneus__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 12.00480303588117}
-- {name: cuneus__L23_I, size: 76, neuron: cuneus__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 11.254502787419797}
-- {name: cuneus__L4_E, size: 73, neuron: cuneus__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.756304016658447}
-- {name: cuneus__L4_I, size: 19, neuron: cuneus__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.255703978561122}
-- {name: cuneus__L5_E, size: 46, neuron: cuneus__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.00600383743241}
-- {name: cuneus__L5_I, size: 13, neuron: cuneus__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.255703153988868}
-- {name: cuneus__L6_E, size: 44, neuron: cuneus__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.758705495709332}
-- {name: cuneus__L6_I, size: 7, neuron: cuneus__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.756305103757711}
-- {name: entorhinal__L23_E, size: 64, neuron: entorhinal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 45.14370851316695}
-- {name: entorhinal__L23_I, size: 34, neuron: entorhinal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 42.32222676579926}
-- {name: entorhinal__L5_E, size: 19, neuron: entorhinal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 56.42963570975249}
-- {name: entorhinal__L5_I, size: 5, neuron: entorhinal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 53.608153038259566}
-- {name: entorhinal__L6_E, size: 26, neuron: entorhinal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 81.82297186779401}
-- {name: entorhinal__L6_I, size: 4, neuron: entorhinal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 59.251116147308785}
-- {name: fusiform__L23_E, size: 169, neuron: fusiform__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.797468213017751}
-- {name: fusiform__L23_I, size: 91, neuron: fusiform__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.810126417582419}
-- {name: fusiform__L4_E, size: 63, neuron: fusiform__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.73417696202532}
-- {name: fusiform__L4_I, size: 17, neuron: fusiform__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.75949333333333}
-- {name: fusiform__L5_E, size: 66, neuron: fusiform__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.746835354449473}
-- {name: fusiform__L5_I, size: 19, neuron: fusiform__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.75949347593583}
-- {name: fusiform__L6_E, size: 55, neuron: fusiform__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.632911162388233}
-- {name: fusiform__L6_I, size: 9, neuron: fusiform__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.734177147918512}
-- {name: inferiorparietal__L23_E, size: 101, neuron: inferiorparietal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.512183984220908}
-- {name: inferiorparietal__L23_I, size: 55, neuron: inferiorparietal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.355172454212454}
-- {name: inferiorparietal__L4_E, size: 111, neuron: inferiorparietal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 24.29724151898734}
-- {name: inferiorparietal__L4_I, size: 29, neuron: inferiorparietal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.98321850340136}
-- {name: inferiorparietal__L5_E, size: 31, neuron: inferiorparietal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.140229992229994}
-- {name: inferiorparietal__L5_I, size: 9, neuron: inferiorparietal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.983217630853993}
-- {name: inferiorparietal__L6_E, size: 89, neuron: inferiorparietal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 33.55333351361096}
-- {name: inferiorparietal__L6_I, size: 14, neuron: inferiorparietal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 24.297241417497233}
-- {name: inferiortemporal__L23_E, size: 92, neuron: inferiortemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.196095844972067}
-- {name: inferiortemporal__L23_I, size: 49, neuron: inferiortemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.246339763332793}
-- {name: inferiortemporal__L4_E, size: 68, neuron: inferiortemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.944875761837785}
-- {name: inferiortemporal__L4_I, size: 18, neuron: inferiortemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.045364197530866}
-- {name: inferiortemporal__L5_E, size: 125, neuron: inferiortemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.995119743589743}
-- {name: inferiortemporal__L5_I, size: 35, neuron: inferiortemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.045363636363636}
-- {name: inferiortemporal__L6_E, size: 144, neuron: inferiortemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.542923698781838}
-- {name: inferiortemporal__L6_I, size: 24, neuron: inferiortemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.94487551020408}
-- {name: isthmuscingulate__L23_E, size: 84, neuron: isthmuscingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.767950167064438}
-- {name: isthmuscingulate__L23_I, size: 45, neuron: isthmuscingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.657453191489363}
-- {name: isthmuscingulate__L4_E, size: 44, neuron: isthmuscingulate__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.320434782608697}
-- {name: isthmuscingulate__L4_I, size: 12, neuron: isthmuscingulate__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.09944099378882}
-- {name: isthmuscingulate__L5_E, size: 59, neuron: isthmuscingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.2099379217274}
-- {name: isthmuscingulate__L5_I, size: 17, neuron: isthmuscingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.099441148325358}
-- {name: isthmuscingulate__L6_E, size: 69, neuron: isthmuscingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 32.204409913544666}
-- {name: isthmuscingulate__L6_I, size: 11, neuron: isthmuscingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.320434844192633}
-- {name: lateraloccipital__L23_E, size: 128, neuron: lateraloccipital__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.915539208969168}
-- {name: lateraloccipital__L23_I, size: 69, neuron: lateraloccipital__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.795817929438982}
-- {name: lateraloccipital__L5_E, size: 44, neuron: lateraloccipital__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.39442380952381}
-- {name: lateraloccipital__L5_I, size: 12, neuron: lateraloccipital__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.274702597402598}
-- {name: lateraloccipital__L6_E, size: 40, neuron: lateraloccipital__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 32.471914716382386}
-- {name: lateraloccipital__L6_I, size: 7, neuron: lateraloccipital__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.514146163215592}
-- {name: lateralorbitofrontal__L23_E, size: 62, neuron: lateralorbitofrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.475593076923076}
-- {name: lateralorbitofrontal__L23_I, size: 34, neuron: lateralorbitofrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.508368571428571}
-- {name: lateralorbitofrontal__L4_E, size: 43, neuron: lateralorbitofrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.311715705578997}
-- {name: lateralorbitofrontal__L4_I, size: 11, neuron: lateralorbitofrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.377267019400353}
-- {name: lateralorbitofrontal__L5_E, size: 66, neuron: lateralorbitofrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.34449133089133}
-- {name: lateralorbitofrontal__L5_I, size: 18, neuron: lateralorbitofrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.377266666666667}
-- {name: lateralorbitofrontal__L6_E, size: 69, neuron: lateralorbitofrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.049512325581397}
-- {name: lateralorbitofrontal__L6_I, size: 11, neuron: lateralorbitofrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.311715714285715}
-- {name: lingual__L23_E, size: 146, neuron: lingual__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 13.109705554340696}
-- {name: lingual__L23_I, size: 79, neuron: lingual__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 12.290348951723438}
-- {name: lingual__L4_E, size: 72, neuron: lingual__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.206488557269335}
-- {name: lingual__L4_I, size: 19, neuron: lingual__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.567775450356097}
-- {name: lingual__L5_E, size: 58, neuron: lingual__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.38713190780339}
-- {name: lingual__L5_I, size: 16, neuron: lingual__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.567775535318729}
-- {name: lingual__L6_E, size: 49, neuron: lingual__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.7613414553836}
-- {name: lingual__L6_I, size: 8, neuron: lingual__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.20648938321537}
-- {name: medialorbitofrontal__L23_E, size: 64, neuron: medialorbitofrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.53469130732375}
-- {name: medialorbitofrontal__L23_I, size: 35, neuron: medialorbitofrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.063773052923505}
-- {name: medialorbitofrontal__L4_E, size: 17, neuron: medialorbitofrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 30.88928254580521}
-- {name: medialorbitofrontal__L4_I, size: 4, neuron: medialorbitofrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.947444646098003}
-- {name: medialorbitofrontal__L5_E, size: 45, neuron: medialorbitofrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 29.418363861824623}
-- {name: medialorbitofrontal__L5_I, size: 13, neuron: medialorbitofrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.9474459798995}
-- {name: medialorbitofrontal__L6_E, size: 51, neuron: medialorbitofrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 42.65662792166772}
-- {name: medialorbitofrontal__L6_I, size: 8, neuron: medialorbitofrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 30.889282250242484}
-- {name: middletemporal__L23_E, size: 92, neuron: middletemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.196203910614527}
-- {name: middletemporal__L23_I, size: 49, neuron: middletemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.246441238450316}
-- {name: middletemporal__L4_E, size: 68, neuron: middletemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.945017580872012}
-- {name: middletemporal__L4_I, size: 18, neuron: middletemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.045492063492063}
-- {name: middletemporal__L5_E, size: 125, neuron: middletemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.99525487179487}
-- {name: middletemporal__L5_I, size: 35, neuron: middletemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.045492272727273}
-- {name: middletemporal__L6_E, size: 144, neuron: middletemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.543119601328904}
-- {name: middletemporal__L6_I, size: 24, neuron: middletemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.94501768707483}
-- {name: parahippocampal__L23_E, size: 117, neuron: parahippocampal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.50362408323384}
-- {name: parahippocampal__L23_I, size: 63, neuron: parahippocampal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.347147545137787}
-- {name: parahippocampal__L5_E, size: 57, neuron: parahippocampal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.129530002790958}
-- {name: parahippocampal__L5_I, size: 16, neuron: parahippocampal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.97305393369619}
-- {name: paracentral__L23_E, size: 169, neuron: paracentral__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 8.919145859525107}
-- {name: paracentral__L23_I, size: 91, neuron: paracentral__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 8.361699207048458}
-- {name: paracentral__L4_E, size: 205, neuron: paracentral__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 11.706378958459347}
-- {name: paracentral__L4_I, size: 54, neuron: paracentral__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.591485613623018}
-- {name: paracentral__L5_E, size: 29, neuron: paracentral__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 11.148932171070554}
-- {name: paracentral__L5_I, size: 8, neuron: paracentral__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.591486238532111}
-- {name: paracentral__L6_E, size: 63, neuron: paracentral__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.165951845499016}
-- {name: paracentral__L6_I, size: 10, neuron: paracentral__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 11.706379391100704}
-- {name: parsopercularis__L23_E, size: 99, neuron: parsopercularis__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.172951654150598}
-- {name: parsopercularis__L23_I, size: 53, neuron: parsopercularis__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.724642291745194}
-- {name: parsopercularis__L4_E, size: 32, neuron: parsopercularis__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 30.414498883097544}
-- {name: parsopercularis__L4_I, size: 9, neuron: parsopercularis__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.517880485527545}
-- {name: parsopercularis__L5_E, size: 43, neuron: parsopercularis__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.966189508990965}
-- {name: parsopercularis__L5_I, size: 12, neuron: parsopercularis__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.517880409646516}
-- {name: parsopercularis__L6_E, size: 65, neuron: parsopercularis__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 42.00097503059976}
-- {name: parsopercularis__L6_I, size: 11, neuron: parsopercularis__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 30.4144992481203}
-- {name: parsorbitalis__L23_E, size: 78, neuron: parsorbitalis__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.92138358974359}
-- {name: parsorbitalis__L23_I, size: 42, neuron: parsorbitalis__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.23879695238095}
-- {name: parsorbitalis__L5_E, size: 65, neuron: parsorbitalis__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 33.65172944492097}
-- {name: parsorbitalis__L5_I, size: 18, neuron: parsorbitalis__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.96914273300022}
-- {name: parsorbitalis__L6_E, size: 57, neuron: parsorbitalis__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 48.79500759707372}
-- {name: parsorbitalis__L6_I, size: 9, neuron: parsorbitalis__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 35.334316335350046}
-- {name: parstriangularis__L23_E, size: 83, neuron: parstriangularis__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.186569869101096}
-- {name: parstriangularis__L23_I, size: 45, neuron: parstriangularis__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.86240940078938}
-- {name: parstriangularis__L4_E, size: 49, neuron: parstriangularis__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.807373006740093}
-- {name: parstriangularis__L4_I, size: 13, neuron: parstriangularis__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.15905132962276}
-- {name: parstriangularis__L5_E, size: 26, neuron: parstriangularis__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.483212273011898}
-- {name: parstriangularis__L5_I, size: 7, neuron: parstriangularis__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.159052164261933}
-- {name: parstriangularis__L6_E, size: 67, neuron: parstriangularis__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 38.40065796719741}
-- {name: parstriangularis__L6_I, size: 11, neuron: parstriangularis__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.807373529411766}
-- {name: pericalcarine__L23_E, size: 117, neuron: pericalcarine__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 5.879403076923077}
-- {name: pericalcarine__L23_I, size: 63, neuron: pericalcarine__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 5.511940317460318}
-- {name: pericalcarine__L4_E, size: 375, neuron: pericalcarine__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 7.71671645996542}
-- {name: pericalcarine__L4_I, size: 100, neuron: pericalcarine__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 6.98179105436441}
-- {name: pericalcarine__L5_E, size: 38, neuron: pericalcarine__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 7.349253561253561}
-- {name: pericalcarine__L5_I, size: 11, neuron: pericalcarine__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 6.981791245791246}
-- {name: pericalcarine__L6_E, size: 134, neuron: pericalcarine__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.656418008348242}
-- {name: pericalcarine__L6_I, size: 22, neuron: pericalcarine__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 7.716716483516484}
-- {name: postcentral__L23_E, size: 92, neuron: postcentral__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 8.636358824809575}
-- {name: postcentral__L23_I, size: 49, neuron: postcentral__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 8.096586209683938}
-- {name: postcentral__L4_E, size: 370, neuron: postcentral__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 11.335220902304448}
-- {name: postcentral__L4_I, size: 98, neuron: postcentral__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.255676027676028}
-- {name: postcentral__L5_E, size: 33, neuron: postcentral__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.795448595848598}
-- {name: postcentral__L5_I, size: 9, neuron: postcentral__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.25567619047619}
-- {name: postcentral__L6_E, size: 69, neuron: postcentral__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.65340023255814}
-- {name: postcentral__L6_I, size: 11, neuron: postcentral__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 11.33522142857143}
-- {name: posteriorcingulate__L23_E, size: 85, neuron: posteriorcingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.471331696259917}
-- {name: posteriorcingulate__L23_I, size: 46, neuron: posteriorcingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.37937344325557}
-- {name: posteriorcingulate__L4_E, size: 67, neuron: posteriorcingulate__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.931122830200014}
-- {name: posteriorcingulate__L4_I, size: 18, neuron: posteriorcingulate__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.747206507004066}
-- {name: posteriorcingulate__L5_E, size: 50, neuron: posteriorcingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.839164548817756}
-- {name: posteriorcingulate__L5_I, size: 14, neuron: posteriorcingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.747206159110352}
-- {name: posteriorcingulate__L6_E, size: 64, neuron: posteriorcingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.66678872180451}
-- {name: posteriorcingulate__L6_I, size: 10, neuron: posteriorcingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.931122401847578}
-- {name: precentral__L23_E, size: 99, neuron: precentral__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 29.71300314288017}
-- {name: precentral__L23_I, size: 53, neuron: precentral__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.855940432537604}
-- {name: precentral__L5_E, size: 42, neuron: precentral__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 37.14125414781297}
-- {name: precentral__L5_I, size: 12, neuron: precentral__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 35.284191176470586}
-- {name: precentral__L6_E, size: 86, neuron: precentral__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 53.85481823255814}
-- {name: precentral__L6_I, size: 14, neuron: precentral__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 38.998316571428575}
-- {name: precuneus__L23_E, size: 115, neuron: precuneus__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.04933356555664}
-- {name: precuneus__L23_I, size: 62, neuron: precuneus__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.921250097037134}
-- {name: precuneus__L4_E, size: 92, neuron: precuneus__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.68975032736796}
-- {name: precuneus__L4_I, size: 24, neuron: precuneus__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.43358357963875}
-- {name: precuneus__L5_E, size: 32, neuron: precuneus__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.561667159763314}
-- {name: precuneus__L5_I, size: 9, neuron: precuneus__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.43358391608392}
-- {name: precuneus__L6_E, size: 54, neuron: precuneus__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 32.71441711389386}
-- {name: precuneus__L6_I, size: 9, neuron: precuneus__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.689750915750917}
-- {name: rostralanteriorcingulate__L23_E, size: 53, neuron: rostralanteriorcingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.568211852189087}
-- {name: rostralanteriorcingulate__L23_I, size: 28, neuron: rostralanteriorcingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 24.907698421645996}
-- {name: rostralanteriorcingulate__L5_E, size: 48, neuron: rostralanteriorcingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 33.21026468127823}
-- {name: rostralanteriorcingulate__L5_I, size: 13, neuron: rostralanteriorcingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.549752075919336}
-- {name: rostralanteriorcingulate__L6_E, size: 73, neuron: rostralanteriorcingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 48.15488397004974}
-- {name: rostralanteriorcingulate__L6_I, size: 12, neuron: rostralanteriorcingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 34.870778113460894}
-- {name: rostralmiddlefrontal__L23_E, size: 90, neuron: rostralmiddlefrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.226395492257865}
-- {name: rostralmiddlefrontal__L23_I, size: 49, neuron: rostralmiddlefrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.899745880026366}
-- {name: rostralmiddlefrontal__L4_E, size: 48, neuron: rostralmiddlefrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.859643914949945}
-- {name: rostralmiddlefrontal__L4_I, size: 13, neuron: rostralmiddlefrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.20634422657952}
-- {name: rostralmiddlefrontal__L5_E, size: 33, neuron: rostralmiddlefrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.53299419448476}
-- {name: rostralmiddlefrontal__L5_I, size: 9, neuron: rostralmiddlefrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.206344768439106}
-- {name: rostralmiddlefrontal__L6_E, size: 56, neuron: rostralmiddlefrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 38.47284186412771}
-- {name: rostralmiddlefrontal__L6_I, size: 9, neuron: rostralmiddlefrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.85964467897977}
-- {name: superiorfrontal__L23_E, size: 100, neuron: superiorfrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 24.061271152458097}
-- {name: superiorfrontal__L23_I, size: 54, neuron: superiorfrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.557441763479297}
-- {name: superiorfrontal__L4_E, size: 29, neuron: superiorfrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.580418520072737}
-- {name: superiorfrontal__L4_I, size: 8, neuron: superiorfrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.57276}
-- {name: superiorfrontal__L5_E, size: 35, neuron: superiorfrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 30.076588984979516}
-- {name: superiorfrontal__L5_I, size: 10, neuron: superiorfrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.57275998386446}
-- {name: superiorfrontal__L6_E, size: 61, neuron: superiorfrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 43.611053949524745}
-- {name: superiorfrontal__L6_I, size: 10, neuron: superiorfrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.580418848167543}
-- {name: superiorparietal__L23_E, size: 115, neuron: superiorparietal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.049839208582974}
-- {name: superiorparietal__L23_I, size: 62, neuron: superiorparietal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.92172441454263}
-- {name: superiorparietal__L4_E, size: 92, neuron: superiorparietal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.690413967699694}
-- {name: superiorparietal__L4_I, size: 24, neuron: superiorparietal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.434183908045977}
-- {name: superiorparietal__L5_E, size: 32, neuron: superiorparietal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.56229881656805}
-- {name: superiorparietal__L5_I, size: 9, neuron: superiorparietal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.434183566433568}
-- {name: superiorparietal__L6_E, size: 54, neuron: superiorparietal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 32.715333631484796}
-- {name: superiorparietal__L6_I, size: 9, neuron: superiorparietal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.69041391941392}
-- {name: superiortemporal__L23_E, size: 121, neuron: superiortemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.338469081885854}
-- {name: superiortemporal__L23_I, size: 65, neuron: superiortemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.254814869431645}
-- {name: superiortemporal__L4_E, size: 57, neuron: superiortemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.75674064697609}
-- {name: superiortemporal__L4_I, size: 15, neuron: superiortemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.589431746031746}
-- {name: superiortemporal__L5_E, size: 62, neuron: superiortemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.673086410256413}
-- {name: superiortemporal__L5_I, size: 18, neuron: superiortemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.58943181818182}
-- {name: superiortemporal__L6_E, size: 70, neuron: superiortemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 31.425975308641977}
-- {name: superiortemporal__L6_I, size: 11, neuron: superiortemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.756740740740742}
-- {name: supramarginal__L23_E, size: 178, neuron: supramarginal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.894575798470536}
-- {name: supramarginal__L23_I, size: 96, neuron: supramarginal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 13.963664828738512}
-- {name: supramarginal__L4_E, size: 130, neuron: supramarginal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.549130719357827}
-- {name: supramarginal__L4_I, size: 34, neuron: supramarginal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.687308710801393}
-- {name: supramarginal__L5_E, size: 53, neuron: supramarginal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.618219723446284}
-- {name: supramarginal__L5_I, size: 15, neuron: supramarginal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.687309267241382}
-- {name: supramarginal__L6_E, size: 77, neuron: supramarginal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.996418604651165}
-- {name: supramarginal__L6_I, size: 13, neuron: supramarginal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.54913015873016}
-- {name: frontalpole__L23_E, size: 90, neuron: frontalpole__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 15.372927892976588}
-- {name: frontalpole__L23_I, size: 48, neuron: frontalpole__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 14.412119917184265}
-- {name: frontalpole__L4_E, size: 76, neuron: frontalpole__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.176967932489454}
-- {name: frontalpole__L4_I, size: 20, neuron: frontalpole__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.255351587301586}
-- {name: frontalpole__L5_E, size: 49, neuron: frontalpole__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 19.216160039113433}
-- {name: frontalpole__L5_I, size: 14, neuron: frontalpole__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.255351632476163}
-- {name: frontalpole__L6_E, size: 72, neuron: frontalpole__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 27.863431893687707}
-- {name: frontalpole__L6_I, size: 12, neuron: frontalpole__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.176967346938774}
-- {name: temporalpole__L23_E, size: 90, neuron: temporalpole__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.565249867374003}
-- {name: temporalpole__L23_I, size: 49, neuron: temporalpole__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 20.21742167487685}
-- {name: temporalpole__L4_E, size: 24, neuron: temporalpole__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.30439088607595}
-- {name: temporalpole__L4_I, size: 6, neuron: temporalpole__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.60873396825397}
-- {name: temporalpole__L5_E, size: 87, neuron: temporalpole__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 26.956562454212452}
-- {name: temporalpole__L5_I, size: 25, neuron: temporalpole__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 25.608734415584415}
-- {name: temporalpole__L6_E, size: 134, neuron: temporalpole__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 39.08701550387597}
-- {name: temporalpole__L6_I, size: 22, neuron: temporalpole__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 28.304390476190477}
-- {name: transversetemporal__L23_E, size: 183, neuron: transversetemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 10.29334106576212}
-- {name: transversetemporal__L23_I, size: 98, neuron: transversetemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 9.650007234301972}
-- {name: transversetemporal__L4_E, size: 208, neuron: transversetemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 13.510010165184244}
-- {name: transversetemporal__L4_I, size: 55, neuron: transversetemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 12.22334265227783}
-- {name: transversetemporal__L5_E, size: 78, neuron: transversetemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 12.866676307692307}
-- {name: transversetemporal__L5_I, size: 22, neuron: transversetemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 12.223342545454544}
-- {name: transversetemporal__L6_E, size: 67, neuron: transversetemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 18.656680739415624}
-- {name: transversetemporal__L6_I, size: 11, neuron: transversetemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 13.510010256410256}
-- {name: insula__L23_E, size: 98, neuron: insula__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 17.702895400895404}
-- {name: insula__L23_I, size: 53, neuron: insula__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 16.59646439909297}
-- {name: insula__L4_E, size: 78, neuron: insula__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.23505012274959}
-- {name: insula__L4_I, size: 21, neuron: insula__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.02218818549163}
-- {name: insula__L5_E, size: 60, neuron: insula__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 22.128619334347913}
-- {name: insula__L5_I, size: 17, neuron: insula__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 21.02218864382919}
-- {name: insula__L6_E, size: 71, neuron: insula__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 32.08649789597711}
-- {name: insula__L6_I, size: 12, neuron: insula__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 23.235050310130944}
+- {name: bankssts__L23_E, size: 157, neuron: bankssts__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L23_I, size: 84, neuron: bankssts__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L4_E, size: 70, neuron: bankssts__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L4_I, size: 18, neuron: bankssts__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L5_E, size: 81, neuron: bankssts__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L5_I, size: 23, neuron: bankssts__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L6_E, size: 58, neuron: bankssts__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: bankssts__L6_I, size: 9, neuron: bankssts__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalanteriorcingulate__L23_E, size: 53, neuron: caudalanteriorcingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalanteriorcingulate__L23_I, size: 28, neuron: caudalanteriorcingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalanteriorcingulate__L5_E, size: 48, neuron: caudalanteriorcingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalanteriorcingulate__L5_I, size: 13, neuron: caudalanteriorcingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalanteriorcingulate__L6_E, size: 73, neuron: caudalanteriorcingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalanteriorcingulate__L6_I, size: 12, neuron: caudalanteriorcingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalmiddlefrontal__L23_E, size: 106, neuron: caudalmiddlefrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalmiddlefrontal__L23_I, size: 57, neuron: caudalmiddlefrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalmiddlefrontal__L5_E, size: 37, neuron: caudalmiddlefrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalmiddlefrontal__L5_I, size: 10, neuron: caudalmiddlefrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalmiddlefrontal__L6_E, size: 53, neuron: caudalmiddlefrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: caudalmiddlefrontal__L6_I, size: 9, neuron: caudalmiddlefrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L23_E, size: 141, neuron: cuneus__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L23_I, size: 76, neuron: cuneus__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L4_E, size: 73, neuron: cuneus__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L4_I, size: 19, neuron: cuneus__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L5_E, size: 46, neuron: cuneus__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L5_I, size: 13, neuron: cuneus__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L6_E, size: 44, neuron: cuneus__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: cuneus__L6_I, size: 7, neuron: cuneus__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: entorhinal__L23_E, size: 64, neuron: entorhinal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: entorhinal__L23_I, size: 34, neuron: entorhinal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: entorhinal__L5_E, size: 19, neuron: entorhinal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: entorhinal__L5_I, size: 5, neuron: entorhinal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: entorhinal__L6_E, size: 26, neuron: entorhinal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: entorhinal__L6_I, size: 4, neuron: entorhinal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L23_E, size: 169, neuron: fusiform__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L23_I, size: 91, neuron: fusiform__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L4_E, size: 63, neuron: fusiform__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L4_I, size: 17, neuron: fusiform__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L5_E, size: 66, neuron: fusiform__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L5_I, size: 19, neuron: fusiform__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L6_E, size: 55, neuron: fusiform__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: fusiform__L6_I, size: 9, neuron: fusiform__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L23_E, size: 101, neuron: inferiorparietal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L23_I, size: 55, neuron: inferiorparietal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L4_E, size: 111, neuron: inferiorparietal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L4_I, size: 29, neuron: inferiorparietal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L5_E, size: 31, neuron: inferiorparietal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L5_I, size: 9, neuron: inferiorparietal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L6_E, size: 89, neuron: inferiorparietal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiorparietal__L6_I, size: 14, neuron: inferiorparietal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L23_E, size: 92, neuron: inferiortemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L23_I, size: 49, neuron: inferiortemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L4_E, size: 68, neuron: inferiortemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L4_I, size: 18, neuron: inferiortemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L5_E, size: 125, neuron: inferiortemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L5_I, size: 35, neuron: inferiortemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L6_E, size: 144, neuron: inferiortemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: inferiortemporal__L6_I, size: 24, neuron: inferiortemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L23_E, size: 84, neuron: isthmuscingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L23_I, size: 45, neuron: isthmuscingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L4_E, size: 44, neuron: isthmuscingulate__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L4_I, size: 12, neuron: isthmuscingulate__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L5_E, size: 59, neuron: isthmuscingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L5_I, size: 17, neuron: isthmuscingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L6_E, size: 69, neuron: isthmuscingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: isthmuscingulate__L6_I, size: 11, neuron: isthmuscingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateraloccipital__L23_E, size: 128, neuron: lateraloccipital__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateraloccipital__L23_I, size: 69, neuron: lateraloccipital__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateraloccipital__L5_E, size: 44, neuron: lateraloccipital__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateraloccipital__L5_I, size: 12, neuron: lateraloccipital__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateraloccipital__L6_E, size: 40, neuron: lateraloccipital__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateraloccipital__L6_I, size: 7, neuron: lateraloccipital__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L23_E, size: 62, neuron: lateralorbitofrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L23_I, size: 34, neuron: lateralorbitofrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L4_E, size: 43, neuron: lateralorbitofrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L4_I, size: 11, neuron: lateralorbitofrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L5_E, size: 66, neuron: lateralorbitofrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L5_I, size: 18, neuron: lateralorbitofrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L6_E, size: 69, neuron: lateralorbitofrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lateralorbitofrontal__L6_I, size: 11, neuron: lateralorbitofrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L23_E, size: 146, neuron: lingual__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L23_I, size: 79, neuron: lingual__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L4_E, size: 72, neuron: lingual__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L4_I, size: 19, neuron: lingual__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L5_E, size: 58, neuron: lingual__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L5_I, size: 16, neuron: lingual__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L6_E, size: 49, neuron: lingual__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: lingual__L6_I, size: 8, neuron: lingual__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L23_E, size: 64, neuron: medialorbitofrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L23_I, size: 35, neuron: medialorbitofrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L4_E, size: 17, neuron: medialorbitofrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L4_I, size: 4, neuron: medialorbitofrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L5_E, size: 45, neuron: medialorbitofrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L5_I, size: 13, neuron: medialorbitofrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L6_E, size: 51, neuron: medialorbitofrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: medialorbitofrontal__L6_I, size: 8, neuron: medialorbitofrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L23_E, size: 92, neuron: middletemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L23_I, size: 49, neuron: middletemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L4_E, size: 68, neuron: middletemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L4_I, size: 18, neuron: middletemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L5_E, size: 125, neuron: middletemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L5_I, size: 35, neuron: middletemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L6_E, size: 144, neuron: middletemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: middletemporal__L6_I, size: 24, neuron: middletemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parahippocampal__L23_E, size: 117, neuron: parahippocampal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parahippocampal__L23_I, size: 63, neuron: parahippocampal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parahippocampal__L5_E, size: 57, neuron: parahippocampal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parahippocampal__L5_I, size: 16, neuron: parahippocampal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L23_E, size: 169, neuron: paracentral__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L23_I, size: 91, neuron: paracentral__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L4_E, size: 205, neuron: paracentral__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L4_I, size: 54, neuron: paracentral__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L5_E, size: 29, neuron: paracentral__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L5_I, size: 8, neuron: paracentral__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L6_E, size: 63, neuron: paracentral__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: paracentral__L6_I, size: 10, neuron: paracentral__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L23_E, size: 99, neuron: parsopercularis__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L23_I, size: 53, neuron: parsopercularis__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L4_E, size: 32, neuron: parsopercularis__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L4_I, size: 9, neuron: parsopercularis__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L5_E, size: 43, neuron: parsopercularis__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L5_I, size: 12, neuron: parsopercularis__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L6_E, size: 65, neuron: parsopercularis__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsopercularis__L6_I, size: 11, neuron: parsopercularis__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsorbitalis__L23_E, size: 78, neuron: parsorbitalis__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsorbitalis__L23_I, size: 42, neuron: parsorbitalis__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsorbitalis__L5_E, size: 65, neuron: parsorbitalis__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsorbitalis__L5_I, size: 18, neuron: parsorbitalis__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsorbitalis__L6_E, size: 57, neuron: parsorbitalis__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parsorbitalis__L6_I, size: 9, neuron: parsorbitalis__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L23_E, size: 83, neuron: parstriangularis__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L23_I, size: 45, neuron: parstriangularis__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L4_E, size: 49, neuron: parstriangularis__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L4_I, size: 13, neuron: parstriangularis__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L5_E, size: 26, neuron: parstriangularis__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L5_I, size: 7, neuron: parstriangularis__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L6_E, size: 67, neuron: parstriangularis__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: parstriangularis__L6_I, size: 11, neuron: parstriangularis__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L23_E, size: 117, neuron: pericalcarine__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L23_I, size: 63, neuron: pericalcarine__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L4_E, size: 375, neuron: pericalcarine__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L4_I, size: 100, neuron: pericalcarine__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L5_E, size: 38, neuron: pericalcarine__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L5_I, size: 11, neuron: pericalcarine__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L6_E, size: 134, neuron: pericalcarine__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: pericalcarine__L6_I, size: 22, neuron: pericalcarine__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L23_E, size: 92, neuron: postcentral__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L23_I, size: 49, neuron: postcentral__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L4_E, size: 370, neuron: postcentral__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L4_I, size: 98, neuron: postcentral__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L5_E, size: 33, neuron: postcentral__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L5_I, size: 9, neuron: postcentral__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L6_E, size: 69, neuron: postcentral__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: postcentral__L6_I, size: 11, neuron: postcentral__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L23_E, size: 85, neuron: posteriorcingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L23_I, size: 46, neuron: posteriorcingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L4_E, size: 67, neuron: posteriorcingulate__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L4_I, size: 18, neuron: posteriorcingulate__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L5_E, size: 50, neuron: posteriorcingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L5_I, size: 14, neuron: posteriorcingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L6_E, size: 64, neuron: posteriorcingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: posteriorcingulate__L6_I, size: 10, neuron: posteriorcingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precentral__L23_E, size: 99, neuron: precentral__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precentral__L23_I, size: 53, neuron: precentral__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precentral__L5_E, size: 42, neuron: precentral__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precentral__L5_I, size: 12, neuron: precentral__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precentral__L6_E, size: 86, neuron: precentral__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precentral__L6_I, size: 14, neuron: precentral__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L23_E, size: 115, neuron: precuneus__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L23_I, size: 62, neuron: precuneus__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L4_E, size: 92, neuron: precuneus__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L4_I, size: 24, neuron: precuneus__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L5_E, size: 32, neuron: precuneus__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L5_I, size: 9, neuron: precuneus__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L6_E, size: 54, neuron: precuneus__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: precuneus__L6_I, size: 9, neuron: precuneus__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralanteriorcingulate__L23_E, size: 53, neuron: rostralanteriorcingulate__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralanteriorcingulate__L23_I, size: 28, neuron: rostralanteriorcingulate__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralanteriorcingulate__L5_E, size: 48, neuron: rostralanteriorcingulate__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralanteriorcingulate__L5_I, size: 13, neuron: rostralanteriorcingulate__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralanteriorcingulate__L6_E, size: 73, neuron: rostralanteriorcingulate__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralanteriorcingulate__L6_I, size: 12, neuron: rostralanteriorcingulate__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L23_E, size: 90, neuron: rostralmiddlefrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L23_I, size: 49, neuron: rostralmiddlefrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L4_E, size: 48, neuron: rostralmiddlefrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L4_I, size: 13, neuron: rostralmiddlefrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L5_E, size: 33, neuron: rostralmiddlefrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L5_I, size: 9, neuron: rostralmiddlefrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L6_E, size: 56, neuron: rostralmiddlefrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: rostralmiddlefrontal__L6_I, size: 9, neuron: rostralmiddlefrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L23_E, size: 100, neuron: superiorfrontal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L23_I, size: 54, neuron: superiorfrontal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L4_E, size: 29, neuron: superiorfrontal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L4_I, size: 8, neuron: superiorfrontal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L5_E, size: 35, neuron: superiorfrontal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L5_I, size: 10, neuron: superiorfrontal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L6_E, size: 61, neuron: superiorfrontal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorfrontal__L6_I, size: 10, neuron: superiorfrontal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L23_E, size: 115, neuron: superiorparietal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L23_I, size: 62, neuron: superiorparietal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L4_E, size: 92, neuron: superiorparietal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L4_I, size: 24, neuron: superiorparietal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L5_E, size: 32, neuron: superiorparietal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L5_I, size: 9, neuron: superiorparietal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L6_E, size: 54, neuron: superiorparietal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiorparietal__L6_I, size: 9, neuron: superiorparietal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L23_E, size: 121, neuron: superiortemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L23_I, size: 65, neuron: superiortemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L4_E, size: 57, neuron: superiortemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L4_I, size: 15, neuron: superiortemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L5_E, size: 62, neuron: superiortemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L5_I, size: 18, neuron: superiortemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L6_E, size: 70, neuron: superiortemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: superiortemporal__L6_I, size: 11, neuron: superiortemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L23_E, size: 178, neuron: supramarginal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L23_I, size: 96, neuron: supramarginal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L4_E, size: 130, neuron: supramarginal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L4_I, size: 34, neuron: supramarginal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L5_E, size: 53, neuron: supramarginal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L5_I, size: 15, neuron: supramarginal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L6_E, size: 77, neuron: supramarginal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: supramarginal__L6_I, size: 13, neuron: supramarginal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L23_E, size: 90, neuron: frontalpole__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L23_I, size: 48, neuron: frontalpole__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L4_E, size: 76, neuron: frontalpole__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L4_I, size: 20, neuron: frontalpole__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L5_E, size: 49, neuron: frontalpole__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L5_I, size: 14, neuron: frontalpole__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L6_E, size: 72, neuron: frontalpole__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: frontalpole__L6_I, size: 12, neuron: frontalpole__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L23_E, size: 90, neuron: temporalpole__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L23_I, size: 49, neuron: temporalpole__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L4_E, size: 24, neuron: temporalpole__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L4_I, size: 6, neuron: temporalpole__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L5_E, size: 87, neuron: temporalpole__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L5_I, size: 25, neuron: temporalpole__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L6_E, size: 134, neuron: temporalpole__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: temporalpole__L6_I, size: 22, neuron: temporalpole__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L23_E, size: 183, neuron: transversetemporal__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L23_I, size: 98, neuron: transversetemporal__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L4_E, size: 208, neuron: transversetemporal__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L4_I, size: 55, neuron: transversetemporal__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L5_E, size: 78, neuron: transversetemporal__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L5_I, size: 22, neuron: transversetemporal__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L6_E, size: 67, neuron: transversetemporal__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: transversetemporal__L6_I, size: 11, neuron: transversetemporal__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L23_E, size: 98, neuron: insula__L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L23_I, size: 53, neuron: insula__L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L4_E, size: 78, neuron: insula__L4_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L4_I, size: 21, neuron: insula__L4_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L5_E, size: 60, neuron: insula__L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L5_I, size: 17, neuron: insula__L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L6_E, size: 71, neuron: insula__L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: insula__L6_I, size: 12, neuron: insula__L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}

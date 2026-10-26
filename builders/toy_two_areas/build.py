@@ -38,7 +38,6 @@ def build_populations() -> list[dict[str, Any]]:
             "initial_state": {
                 "V_m": {"distribution": "normal", "mean": data.V0_MEAN, "std": data.V0_STD}
             },
-            "background_indegree": data.K_EXT[cell_type],
         }
         for area, layer, cell_type, size, neuron in data.POPULATIONS
     ]
@@ -105,10 +104,11 @@ def build_connections() -> list[dict[str, Any]]:
     return connections
 
 
-def build_background_inputs() -> dict[str, dict[str, Any]]:
+def build_poisson_background() -> dict[str, dict[str, Any]]:
     return {
         population_name(area, layer, cell_type): {
             "rate": data.BG_RATE,
+            "indegree": data.K_EXT[cell_type],
             "weight": weight(current(data.BG_PSP, neuron), unit="pA"),
             "delay": delay(data.BG_DELAY),
         }
@@ -128,7 +128,7 @@ def generate_toy_two_areas(
         populations=build_populations(),
         neurons=build_neurons(),
         connections=build_connections(),
-        background_inputs=build_background_inputs(),
+        poisson_background=build_poisson_background(),
         reference=data.FULL_MEAN_RATES,
         compact=False,
     )

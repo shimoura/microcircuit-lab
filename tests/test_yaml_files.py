@@ -29,14 +29,14 @@ def test_flow_records_list_is_one_line_per_record(tmp_path: Path) -> None:
 
 
 def test_flow_records_dict_is_one_line_per_value(tmp_path: Path) -> None:
-    path = tmp_path / "background_inputs.yaml"
+    path = tmp_path / "poisson_background.yaml"
     records = {"E": {"rate": 8.0}, "I": {"rate": 8.0}}
 
-    write_yaml(path, {"background_inputs": flow_records(records)})
+    write_yaml(path, {"poisson_background": flow_records(records)})
 
     lines = path.read_text().splitlines()
-    assert lines == ["background_inputs:", "  E: {rate: 8.0}", "  I: {rate: 8.0}"]
-    assert read_yaml(path) == {"background_inputs": records}
+    assert lines == ["poisson_background:", "  E: {rate: 8.0}", "  I: {rate: 8.0}"]
+    assert read_yaml(path) == {"poisson_background": records}
 
 
 def test_header_comment_is_prefixed_and_parses_as_comments(tmp_path: Path) -> None:

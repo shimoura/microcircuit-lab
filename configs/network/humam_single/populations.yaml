@@ -1,7 +1,7 @@
 populations:
-- {name: L23_E, size: 13, neuron: L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 6.642052963047272}
-- {name: L23_I, size: 7, neuron: L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 6.226924605411499}
-- {name: L5_E, size: 12, neuron: L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 8.302566170319558}
-- {name: L5_I, size: 3, neuron: L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 7.887438018979834}
-- {name: L6_E, size: 18, neuron: L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 12.038720992512435}
-- {name: L6_I, size: 3, neuron: L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}, background_indegree: 8.717694528365223}
+- {name: L23_E, size: 13, neuron: L23_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: L23_I, size: 7, neuron: L23_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: L5_E, size: 12, neuron: L5_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: L5_I, size: 3, neuron: L5_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: L6_E, size: 18, neuron: L6_E, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}
+- {name: L6_I, size: 3, neuron: L6_I, initial_state: {V_m: {distribution: normal, mean: -150.0, std: 50.0}}}

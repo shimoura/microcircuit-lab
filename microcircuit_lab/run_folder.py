@@ -137,7 +137,7 @@ def save_run_config(
 ) -> Path:
     """Save the prepared network (after prepare_network) and the simulation config.
 
-    connections/populations/background_inputs are written one-record-per-line
+    connections/populations/poisson_background are written one-record-per-line
     (see yaml_files.flow_records) since a full-scale network can have
     thousands of connection entries. Above 20,000 connections,
     they go to ``connections.csv`` instead, named by ``connections_file`` in
@@ -151,7 +151,7 @@ def save_run_config(
         network_payload["connections_file"] = "connections.csv"
     else:
         network_payload["connections"] = flow_records(network.connections.to_yaml_rows())
-    for field in ("populations", "background_inputs"):
+    for field in ("populations", "poisson_background"):
         network_payload[field] = flow_records(network_payload[field])
 
     payload = {

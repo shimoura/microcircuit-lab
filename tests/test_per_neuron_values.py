@@ -45,7 +45,7 @@ def _network(C_m) -> NetworkConfig:
     return NetworkConfig(
         populations={"E": population},
         connections=[connection],
-        background_inputs={},
+        poisson_background={},
     )
 
 

@@ -147,7 +147,7 @@ def _network(neuron_model: str, connections=(), stimuli=(), size: int = 50, syna
     return NetworkConfig(
         populations=populations,
         connections=list(connections),
-        background_inputs={},
+        poisson_background={},
         stimuli=list(stimuli),
         synapses=synapses or {},
         reference=ReferenceConfig(full_mean_rates={"S": 5.0, "T": 5.0}),

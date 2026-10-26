@@ -7,7 +7,7 @@ its neuron entry filled in.
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from microcircuit_lab.config.distributions import PerNeuronValue
 from microcircuit_lab.config.frozen_config import FrozenConfig
@@ -20,7 +20,7 @@ class PopulationEntry(FrozenConfig):
     name: str = Field(
         examples=["L23_E"],
         description="unique population name; referenced by connectivity, "
-        "background_inputs, stimuli and reference",
+        "poisson_background, stimuli and reference",
     )
     size: int = Field(gt=0, examples=[20683], description="number of neurons")
     neuron: str = Field(
@@ -36,13 +36,18 @@ class PopulationEntry(FrozenConfig):
         "{distribution: normal, mean: -58, std: 10}, which the simulator looks up; "
         "a variable left out starts at the model's default",
     )
-    background_indegree: float = Field(
-        default=0.0,
-        ge=0.0,
-        examples=[2510.0],
-        description="background-input connections per neuron; multiplies the "
-        "rate in background_inputs.yaml",
-    )
+
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_background_indegree(cls, data):
+        if isinstance(data, dict) and "background_indegree" in data:
+            raise ValueError(
+                f"background_indegree of population {data.get('name')!r} was moved: put it in "
+                "the population's entry of poisson_background.yaml as `indegree`, next to "
+                "`rate`, and remove it from populations.yaml"
+            )
+        return data
 
 
 class PopulationsFile(FrozenConfig):
@@ -60,4 +65,3 @@ class PopulationConfig(FrozenConfig):
     neuron: NeuronConfig
 
     initial_state: dict[str, PerNeuronValue] = Field(default_factory=dict)
-    background_indegree: float = Field(default=0.0, ge=0.0)

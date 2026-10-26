@@ -143,7 +143,7 @@ configs/
 │   ├── neurons.yaml             neuron models and parameters
 │   ├── connectivity.yaml        rules, synapse numbers, weights, delays
 │   ├── synapses.yaml            optional: synapse models, receptor ports
-│   ├── background_inputs.yaml   background Poisson input
+│   ├── poisson_background.yaml  background Poisson input
 │   ├── stimuli.yaml             optional: inputs for experiments
 │   ├── scaling.yaml             only in a scaled network: how it was scaled
 │   └── reference.yaml           optional: reference rates
@@ -197,11 +197,18 @@ stimuli:
 
 ### Background input
 
-`background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`).
+`poisson_background.yaml` is the background Poisson input of each population: each neuron gets `indegree` independent Poisson synapses, each firing at `rate` (spikes/s), with the `weight` and `delay` of an entry.
 
-- **A mean current instead of the Poisson input**: the builder step `replace_background_by_mean_current` (`microcircuit_lab.builder_tools`) adds the mean of that input to `I_e` and removes the input from the files (`background_inputs` empty, `background_indegree` 0): the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Apply it after `scale_network` and before `write_network`. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current`.
+```yaml
+poisson_background:
+  E: {rate: 8.0, indegree: 1600, weight: {mean: 87.8, rel_std: 0.0, distribution: fixed, unit: pA}, delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}}
+```
+
+Other always-on inputs (a constant current, a Poisson train, an inhomogeneous Poisson input) are `stimuli.yaml` entries without `start` and `stop`.
+
+- **A mean current instead of the Poisson input**: the builder step `replace_background_by_mean_current` (`microcircuit_lab.builder_tools`) adds the mean of that input to `I_e` and removes the input from the files (`poisson_background` empty): the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Apply it after `scale_network` and before `write_network`. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current`.
 - **A constant current of your own** is not a background mode; it adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
-- **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `background_indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
+- **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
 ### Weights and delays
 
@@ -379,7 +386,7 @@ write_network_directory(
     connections=[{"source": "E", "target": "I", "n_synapses": 5000,
                   "weight": weight(87.8, unit="pA", rel_std=0.1),
                   "delay": delay(1.5, rel_std=0.5)}, ...],
-    background_inputs={...},
+    poisson_background={...},
 )
 ```
 
@@ -535,9 +542,9 @@ from microcircuit_lab import Simulation, prepare_network, read_network
 from microcircuit_lab.config.simulation import SimulationConfig
 
 network = read_network("configs/network/toy")
-populations = {name: pop.model_copy(update={"background_indegree": 2000})
-               for name, pop in network.populations.items()}
-network = prepare_network(network.model_copy(update={"populations": populations}))
+poisson_background = {name: entry.model_copy(update={"indegree": 2000})
+                      for name, entry in network.poisson_background.items()}
+network = prepare_network(network.model_copy(update={"poisson_background": poisson_background}))
 
 simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy_k2000")
 simulation.run()

@@ -11,7 +11,6 @@ from microcircuit_lab.builder_tools import (
     scale_network,
 )
 from microcircuit_lab.builder_tools.mean_input import expected_synapses, num_synapses
-from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
@@ -20,6 +19,7 @@ from microcircuit_lab.config.connectivity import (
 )
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -51,13 +51,13 @@ def _network(connections, synapses=None, background_synapse=None, target_neuron=
             name=name,
             size=size,
             neuron=target_neuron if (name == "T" and target_neuron) else neuron,
-            background_indegree=100,
         )
         for name, size in SIZES.items()
     }
     background = {
-        name: BackgroundInputConfig(
+        name: PoissonBackgroundConfig(
             rate=8.0,
+            indegree=100,
             weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
             delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
             synapse=background_synapse if name == "T" else None,
@@ -67,7 +67,7 @@ def _network(connections, synapses=None, background_synapse=None, target_neuron=
     return NetworkConfig(
         populations=populations,
         connections=connections,
-        background_inputs=background,
+        poisson_background=background,
         reference=ReferenceConfig(full_mean_rates={"S": 5.0, "T": 5.0}),
         synapses=synapses or {},
     )
@@ -175,11 +175,11 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
     _scaled(_network([connection(delay="mine")]), 0.5, 0.5, preserve_mean_input=False)
 
     network = _network([connection()])
-    background = network.background_inputs["S"].model_copy(
+    background = network.poisson_background["S"].model_copy(
         update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1})}
     )
     with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
-        NetworkConfig.model_validate({**network.model_dump(), "background_inputs": {**network.background_inputs, "S": background}})
+        NetworkConfig.model_validate({**network.model_dump(), "poisson_background": {**network.poisson_background, "S": background}})
 
 
 def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
@@ -336,9 +336,9 @@ def test_conductance_weights_stop_the_compensation():
         name: input_cfg.model_copy(
             update={"weight": input_cfg.weight.model_copy(update={"unit": "nS"})}
         )
-        for name, input_cfg in network.background_inputs.items()
+        for name, input_cfg in network.poisson_background.items()
     }
-    network = network.model_copy(update={"background_inputs": background})
+    network = network.model_copy(update={"poisson_background": background})
 
     with pytest.raises(ValueError, match="connection S -> T has unit nS"):
         _scaled(network, K_scaling=0.5)

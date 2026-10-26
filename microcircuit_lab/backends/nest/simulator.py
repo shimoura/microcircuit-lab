@@ -151,8 +151,8 @@ class NestBackend:
             self.create_multimeters()
             self.connect_multimeters()
 
-        self.create_background_inputs()
-        self.connect_background_inputs()
+        self.create_poisson_background()
+        self.connect_poisson_background()
 
         if self._network.stimuli:
             self.create_stimuli()
@@ -390,7 +390,7 @@ class NestBackend:
                 nodes,
             )
 
-    def create_background_inputs(self) -> None:
+    def create_poisson_background(self) -> None:
         """
         Create one background Poisson generator per configured population, or
         one per ``generator`` name for the populations that share one.
@@ -401,7 +401,7 @@ class NestBackend:
         # Populations with the same ``generator`` name share one generator
         # (each neuron still gets its own spike train); the others get their own.
         shared: dict[str, nest.NodeCollection] = {}
-        for pop_name, input_cfg in self._network.background_inputs.items():
+        for pop_name, input_cfg in self._network.poisson_background.items():
             logger.info(
                 "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
@@ -418,13 +418,13 @@ class NestBackend:
                 pg = shared[input_cfg.generator]
             self.background_generators[pop_name] = pg
 
-    def connect_background_inputs(self) -> None:
+    def connect_poisson_background(self) -> None:
         """
         Connect background Poisson generators to populations.
         """
 
         for pop_name in self.background_generators:
-            input_cfg = self._network.background_inputs[pop_name]
+            input_cfg = self._network.poisson_background[pop_name]
             weight, delay = self.weight_and_delay(input_cfg.weight, input_cfg.delay)
             nest.Connect(
                 self.background_generators[pop_name],

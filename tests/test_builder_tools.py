@@ -28,10 +28,8 @@ def _parts(tmp_path: Path, **overrides):
     parts = dict(
         path=tmp_path / "net",
         populations=[
-            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}},
-             "background_indegree": 10},
-            {"name": "I", "size": 2, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}},
-             "background_indegree": 10},
+            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}},
+            {"name": "I", "size": 2, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}},
         ],
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
@@ -41,8 +39,8 @@ def _parts(tmp_path: Path, **overrides):
             for s in ("E", "I")
             for t in ("E", "I")
         ],
-        background_inputs={
-            p: {"rate": 8.0, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}
+        poisson_background={
+            p: {"rate": 8.0, "indegree": 10, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}
             for p in ("E", "I")
         },
     )
@@ -60,7 +58,7 @@ def test_writes_every_file_and_returns_the_validated_config(tmp_path: Path) -> N
     # scaling, reference, stimuli and synapses are optional: not given, not written
     assert {p.name for p in (tmp_path / "net").glob("*.yaml")} == {
         "network.yaml", "populations.yaml", "neurons.yaml", "connectivity.yaml",
-        "background_inputs.yaml",
+        "poisson_background.yaml",
     }
     assert set(config.populations) == {"E", "I"}
     assert config.populations["E"].size == 8
@@ -74,7 +72,7 @@ def test_manifest_uses_the_conventional_names(tmp_path: Path) -> None:
         "populations": "populations.yaml",
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
-        "background_inputs": "background_inputs.yaml",
+        "poisson_background": "poisson_background.yaml",
     }
 
 

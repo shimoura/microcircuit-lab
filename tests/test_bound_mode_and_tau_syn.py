@@ -16,7 +16,6 @@ from microcircuit_lab.builder_tools import (
     weight,
     write_network_directory,
 )
-from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
@@ -24,6 +23,7 @@ from microcircuit_lab.config.connectivity import (
 )
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -36,7 +36,6 @@ TAU_SYN_EX = 2.0
 def _network(
     *,
     tau_syn_in: float,
-    background_indegree: float = 0.0,
     connections: list[ConnectionConfig] | None = None,
     reference: ReferenceConfig | None = None,
     bound_mode: str = "redraw",
@@ -52,14 +51,13 @@ def _network(
     populations = {
         name: PopulationConfig(
             name=name, size=100, neuron=neuron, initial_state={"V_m": {"distribution": "normal", "mean": -58.0, "std": 5.0}},
-            background_indegree=background_indegree,
         )
         for name in ("E", "I")
     }
     return NetworkConfig(
         populations=populations,
         connections=connections or [],
-        background_inputs={},
+        poisson_background={},
         reference=reference,
         bound_mode=bound_mode,
     )
@@ -89,8 +87,8 @@ def _compensation_into_E(tau_syn_in: float) -> float:
     )
     config = config.model_copy(
         update={
-            "background_inputs": {
-                name: BackgroundInputConfig(rate=0.0, weight=_psc(0.0), delay=_fixed_delay())
+            "poisson_background": {
+                name: PoissonBackgroundConfig(rate=0.0, indegree=0.0, weight=_psc(0.0), delay=_fixed_delay())
                 for name in ("E", "I")
             }
         }
@@ -120,14 +118,13 @@ def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitor
     tau_syn_in = 4.0
     config = _network(
         tau_syn_in=tau_syn_in,
-        background_indegree=100.0,
         reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
     )
     config = config.model_copy(
         update={
-            "background_inputs": {
-                "E": BackgroundInputConfig(rate=8.0, weight=_psc(-30.0), delay=_fixed_delay()),
-                "I": BackgroundInputConfig(rate=8.0, weight=_psc(30.0), delay=_fixed_delay()),
+            "poisson_background": {
+                "E": PoissonBackgroundConfig(rate=8.0, indegree=100.0, weight=_psc(-30.0), delay=_fixed_delay()),
+                "I": PoissonBackgroundConfig(rate=8.0, indegree=100.0, weight=_psc(30.0), delay=_fixed_delay()),
             }
         }
     )
@@ -153,7 +150,7 @@ def _write(tmp_path: Path, **overrides) -> Path:
     parts = dict(
         path=tmp_path / "net",
         populations=[
-            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}, "background_indegree": 10},
+            {"name": "E", "size": 8, "neuron": "n", "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}},
         ],
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
@@ -161,7 +158,7 @@ def _write(tmp_path: Path, **overrides) -> Path:
              "weight": weight(87.8, unit="pA", rel_std=0.1),
              "delay": delay(1.5, rel_std=0.5, minimum=0.1)},
         ],
-        background_inputs={"E": {"rate": 8.0, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}},
+        poisson_background={"E": {"rate": 8.0, "indegree": 10, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}},
     )
     parts.update(overrides)
     write_network_directory(**parts)

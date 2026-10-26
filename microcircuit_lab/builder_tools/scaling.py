@@ -169,16 +169,16 @@ def scale_weights(network: NetworkConfig, K_scaling: float, preserve_variance: b
         "weight.mean": network.connections["weight.mean"] / divisor
     })
 
-    # Background inputs.
-    background_inputs = {}
+    # Background Poisson input.
+    poisson_background = {}
 
-    for pop_name, input_cfg in network.background_inputs.items():
+    for pop_name, input_cfg in network.poisson_background.items():
         mean = input_cfg.weight.mean / divisor
         weight = input_cfg.weight.model_copy(update={"mean": mean})
-        background_inputs[pop_name] = input_cfg.model_copy(update={"weight": weight})
+        poisson_background[pop_name] = input_cfg.model_copy(update={"weight": weight})
 
     return network.model_copy(
-        update={"connections": connections, "background_inputs": background_inputs}
+        update={"connections": connections, "poisson_background": poisson_background}
     )
 
 
@@ -213,11 +213,11 @@ def _scale_indegrees(
     the constant currents are scaled in later steps.
     """
 
-    # Scale background indegrees
-    populations = {}
-    for name, population in network.populations.items():
-        scaled_indegree = population.background_indegree * K_scaling
-        populations[name] = population.model_copy(update={"background_indegree": scaled_indegree})
+    # Scale the background indegrees.
+    poisson_background = {
+        name: entry.model_copy(update={"indegree": entry.indegree * K_scaling})
+        for name, entry in network.poisson_background.items()
+    }
 
     # Scale the number each connection rule takes (n_synapses, indegree, ...),
     # for all connections at once.
@@ -239,7 +239,7 @@ def _scale_indegrees(
     # A connection scaled to no synapse is left out.
     connections = table.with_columns(copy=False, number=scaled).keep_rows(scaled != 0)
 
-    return network.model_copy(update={"populations": populations, "connections": connections})
+    return network.model_copy(update={"poisson_background": poisson_background, "connections": connections})
 
 
 def _check_connections_can_scale(

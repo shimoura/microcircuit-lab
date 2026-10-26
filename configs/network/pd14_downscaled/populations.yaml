@@ -7,7 +7,6 @@ populations:
       distribution: normal
       mean: -68.28
       std: 5.36
-  background_indegree: 160.0
 - name: L23_I
   size: 583
   neuron: L23_I
@@ -16,7 +15,6 @@ populations:
       distribution: normal
       mean: -63.16
       std: 4.57
-  background_indegree: 150.0
 - name: L4_E
   size: 2192
   neuron: L4_E
@@ -25,7 +23,6 @@ populations:
       distribution: normal
       mean: -63.33
       std: 4.74
-  background_indegree: 210.0
 - name: L4_I
   size: 548
   neuron: L4_I
@@ -34,7 +31,6 @@ populations:
       distribution: normal
       mean: -63.45
       std: 4.94
-  background_indegree: 190.0
 - name: L5_E
   size: 485
   neuron: L5_E
@@ -43,7 +39,6 @@ populations:
       distribution: normal
       mean: -63.11
       std: 4.94
-  background_indegree: 200.0
 - name: L5_I
   size: 106
   neuron: L5_I
@@ -52,7 +47,6 @@ populations:
       distribution: normal
       mean: -61.66
       std: 4.55
-  background_indegree: 190.0
 - name: L6_E
   size: 1440
   neuron: L6_E
@@ -61,7 +55,6 @@ populations:
       distribution: normal
       mean: -66.72
       std: 5.46
-  background_indegree: 290.0
 - name: L6_I
   size: 295
   neuron: L6_I
@@ -70,4 +63,3 @@ populations:
       distribution: normal
       mean: -61.43
       std: 4.48
-  background_indegree: 210.0

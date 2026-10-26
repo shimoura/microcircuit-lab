@@ -52,7 +52,7 @@ def test_background_only_compensation_works_without_reference() -> None:
 
 def test_a_population_without_background_input_gets_no_background_current() -> None:
     network = _toy()
-    network = network.model_copy(update={"background_inputs": {"E": network.background_inputs["E"]}})
+    network = network.model_copy(update={"poisson_background": {"E": network.poisson_background["E"]}})
 
     scaled = _scaled(network, compensate_recurrent_input=False)
     mean_current = replace_background_by_mean_current(network)

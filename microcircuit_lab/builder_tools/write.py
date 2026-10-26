@@ -14,6 +14,13 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.load import read_network
 from microcircuit_lab.yaml_files import flow_records, write_yaml
 
+POISSON_BACKGROUND_HEADER = (
+    "Background: each neuron of a population gets `indegree` independent Poisson\n"
+    "synapses, each firing at `rate` (spikes/s). Other always-on inputs (a constant\n"
+    "current, a Poisson train, an inhomogeneous Poisson input) are stimuli.yaml\n"
+    "entries without start/stop."
+)
+
 
 def write_network_directory(
     path: str | Path,
@@ -21,7 +28,7 @@ def write_network_directory(
     populations: Iterable[Mapping[str, Any]],
     neurons: Mapping[str, Mapping[str, Any]],
     connections: Iterable[Mapping[str, Any]] | ConnectionTable,
-    background_inputs: Mapping[str, Mapping[str, Any]],
+    poisson_background: Mapping[str, Mapping[str, Any]],
     bound_mode: Literal["redraw", "clip"] = "redraw",
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
@@ -42,7 +49,7 @@ def write_network_directory(
         files are overwritten.
     populations
         One dict per population (``name``, ``size``, ``neuron``,
-        ``initial_state``, ``background_indegree``).
+        ``initial_state``).
     neurons
         ``{neuron name: {"model": ..., "parameters": {...}}}``.
     connections
@@ -51,8 +58,8 @@ def write_network_directory(
         ``synapse``). Or, for a large network, a
         :class:`~microcircuit_lab.config.connection_table.ConnectionTable`,
         written as ``connections.csv``.
-    background_inputs
-        ``{population name: {"rate": ..., "weight": ..., "delay": ...}}``.
+    poisson_background
+        ``{population name: {"rate": ..., "indegree": ..., "weight": ..., "delay": ...}}``.
     bound_mode
         ``"redraw"`` or ``"clip"``; written only when ``"clip"``.
     scaling
@@ -68,7 +75,7 @@ def write_network_directory(
         ``None`` writes no ``synapses.yaml``.
     compact
         Connections are always written one per line. ``True`` writes populations
-        and background inputs the same way; ``False`` writes them in block
+        and the Poisson background the same way; ``False`` writes them in block
         style, easier to read for a small network.
 
     Returns
@@ -86,7 +93,7 @@ def write_network_directory(
         "populations": "populations.yaml",
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
-        "background_inputs": "background_inputs.yaml",
+        "poisson_background": "poisson_background.yaml",
     }
     # The optional files, written only when given.
     optional = {
@@ -111,10 +118,7 @@ def write_network_directory(
     else:
         connectivity_payload["connections"] = flow_records(list(connections))
 
-    background_payload: dict[str, Any] = {}
-    background_payload["background_inputs"] = table(dict(background_inputs))
-
-    # connections (and, with compact, populations / background_inputs) go
+    # connections (and, with compact, populations / poisson_background) go
     # one-record-per-line: they run to thousands of uniform rows for
     # multi-area networks and the compact form parses identically (see the
     # package README). neurons / scaling / reference stay in block style.
@@ -123,14 +127,15 @@ def write_network_directory(
         "populations.yaml": {"populations": table(list(populations))},
         "neurons.yaml": {"neurons": dict(neurons)},
         "connectivity.yaml": connectivity_payload,
-        "background_inputs.yaml": background_payload,
+        "poisson_background.yaml": {"poisson_background": table(dict(poisson_background))},
     }
     for part, payload in optional.items():
         if payload is not None:
             payloads[f"{part}.yaml"] = payload
 
     for name, payload in payloads.items():
-        write_yaml(directory / name, payload)
+        header = POISSON_BACKGROUND_HEADER if name == "poisson_background.yaml" else None
+        write_yaml(directory / name, payload, header_comment=header)
 
     return read_network(directory)
 
@@ -190,7 +195,7 @@ def write_network(
         populations=populations,
         neurons=neurons,
         connections=network.connections if csv else network.connections.to_yaml_rows(),
-        background_inputs={name: dump(item) for name, item in network.background_inputs.items()},
+        poisson_background={name: dump(item) for name, item in network.poisson_background.items()},
         bound_mode=network.bound_mode,
         scaling=None if network.scaling is None else dump(network.scaling),
         reference=None if network.reference is None else network.reference.full_mean_rates,

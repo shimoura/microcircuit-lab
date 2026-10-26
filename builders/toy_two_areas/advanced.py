@@ -29,8 +29,8 @@ from typing import Any
 
 from builders.toy_two_areas import data
 from builders.toy_two_areas.build import (
-    build_background_inputs,
     build_neurons,
+    build_poisson_background,
     build_populations,
     connection_probability,
     current,
@@ -171,10 +171,10 @@ def connections() -> list[dict[str, Any]]:
     return rows
 
 
-def background_inputs() -> dict[str, dict[str, Any]]:
+def poisson_background() -> dict[str, dict[str, Any]]:
     """The background input of toy_two_areas. A neuron with receptor ports has
     no default port, so its background input names the excitatory one."""
-    inputs = build_background_inputs()
+    inputs = build_poisson_background()
     receptor_port_input = inputs[data.RECEPTOR_PORT_POPULATION]
     receptor_port_input["synapse"] = SYNAPSE_OF_PORT["excitatory"]
     receptor_port_input["weight"] = weight_onto_port(data.BG_PSP, "excitatory")
@@ -194,6 +194,6 @@ def generate_toy_two_areas_advanced(
         neurons=neurons(),
         synapses=synapses(),
         connections=connections(),
-        background_inputs=background_inputs(),
+        poisson_background=poisson_background(),
         compact=False,
     )

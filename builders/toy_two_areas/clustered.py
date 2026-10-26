@@ -18,7 +18,7 @@ is a common one for clustered networks:
   cluster i of one area is "the same cluster" as cluster i of the other.
 * **Background:** every neuron keeps its background indegree; the clusters of
   a population share one Poisson generator (``generator:`` in
-  ``background_inputs.yaml``), and each neuron still gets its own spike train.
+  ``poisson_background.yaml``), and each neuron still gets its own spike train.
 
 It is written at full scale, with no reference rates, as the advanced
 variant.
@@ -32,9 +32,9 @@ from typing import Any
 
 from builders.toy_two_areas import data
 from builders.toy_two_areas.build import (
-    build_background_inputs,
     build_connections,
     build_neurons,
+    build_poisson_background,
     build_populations,
 )
 from microcircuit_lab.builder_tools import write_network_directory
@@ -98,12 +98,12 @@ def clustered_connections(
     return connections
 
 
-def clustered_background_inputs(clusters: int) -> dict[str, dict[str, Any]]:
+def clustered_poisson_background(clusters: int) -> dict[str, dict[str, Any]]:
     """The background input of each cluster: its population's, through one
     generator shared by the population's clusters."""
     return {
         cluster_name(population, i): {**entry, "generator": population}
-        for population, entry in build_background_inputs().items()
+        for population, entry in build_poisson_background().items()
         for i in range(clusters)
     }
 
@@ -125,5 +125,5 @@ def generate_toy_two_areas_clustered(
         populations=clustered_populations(clusters),
         neurons=build_neurons(),
         connections=clustered_connections(clusters, within, between),
-        background_inputs=clustered_background_inputs(clusters),
+        poisson_background=clustered_poisson_background(clusters),
     )

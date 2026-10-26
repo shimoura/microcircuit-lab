@@ -44,7 +44,7 @@ def test_reference_matrices():
 def test_scale_network_keeps_the_original_network():
     original = assemble_network(read_network_files("configs/network/toy"))
     original_size = original.populations["E"].size
-    original_indegree = original.populations["E"].background_indegree
+    original_indegree = original.poisson_background["E"].indegree
 
     # Only the N/K arithmetic: no compensation.
     derived = scale_network(
@@ -52,9 +52,9 @@ def test_scale_network_keeps_the_original_network():
     )
 
     assert original.populations["E"].size == original_size
-    assert original.populations["E"].background_indegree == original_indegree
+    assert original.poisson_background["E"].indegree == original_indegree
     assert derived.populations["E"].size == round(original_size * 0.2)
-    assert derived.populations["E"].background_indegree == pytest.approx(original_indegree * 0.2)
+    assert derived.poisson_background["E"].indegree == pytest.approx(original_indegree * 0.2)
     assert original is not derived and original.populations["E"] is not derived.populations["E"]
 
 
@@ -89,7 +89,7 @@ def test_background_indegrees():
     K_ext = background_indegrees(network)
 
     assert K_ext.shape == (len(network.populations),)
-    expected = [pop.background_indegree for pop in network.populations.values()]
+    expected = [network.poisson_background[name].indegree for name in network.populations]
     assert list(K_ext) == expected
 
 
@@ -103,5 +103,5 @@ def test_background_weights():
 
     assert weights.shape == (len(network.populations),)
 
-    expected = [network.background_inputs[name].weight.mean for name in network.populations]
+    expected = [network.poisson_background[name].weight.mean for name in network.populations]
     assert np.allclose(weights, expected)

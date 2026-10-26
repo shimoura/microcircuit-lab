@@ -55,7 +55,6 @@ def _build_populations() -> list[dict[str, Any]]:
             "initial_state": {
                 "V_m": {"distribution": "normal", "mean": data.V0_mean[index], "std": data.V0_std[index]}
             },
-            "background_indegree": int(data.K_ext[index]),
         }
         for index, population in enumerate(data.populations)
     ]
@@ -106,14 +105,15 @@ def _build_connections() -> list[dict[str, Any]]:
     return connections
 
 
-def _build_background_inputs() -> dict[str, dict[str, Any]]:
+def _build_poisson_background() -> dict[str, dict[str, Any]]:
     return {
         population: {
             "rate": data.bg_rate,
+            "indegree": int(data.K_ext[index]),
             "weight": weight(_current(data.PSP_exc_mean), unit="pA"),
             "delay": delay(data.delay_poisson),
         }
-        for population in data.populations
+        for index, population in enumerate(data.populations)
     }
 
 
@@ -129,7 +129,7 @@ def generate_pd14(
         populations=_build_populations(),
         neurons=_build_neurons(),
         connections=_build_connections(),
-        background_inputs=_build_background_inputs(),
+        poisson_background=_build_poisson_background(),
         reference=dict(zip(data.populations, data.full_mean_rates.tolist())),
         compact=False,
     )

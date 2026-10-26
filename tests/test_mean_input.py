@@ -61,7 +61,7 @@ def test_identity_scaling_changes_nothing():
 
     for name, pop in derived.populations.items():
         assert pop.size == network.populations[name].size
-        assert pop.background_indegree == network.populations[name].background_indegree
+        assert derived.poisson_background[name].indegree == network.poisson_background[name].indegree
         assert pop.neuron.parameters.I_e == network.populations[name].neuron.parameters.I_e
 
 

@@ -47,11 +47,11 @@ def _background_rate_per_neuron(
         effective_rate = bg_rate * K_ext
     """
 
-    background_inputs = {}
+    poisson_background = {}
 
-    for pop_name, input_cfg in network.background_inputs.items():
-        K_ext = network.populations[pop_name].background_indegree
+    for pop_name, input_cfg in network.poisson_background.items():
+        poisson_background[pop_name] = input_cfg.model_copy(
+            update={"rate": input_cfg.rate * input_cfg.indegree}
+        )
 
-        background_inputs[pop_name] = input_cfg.model_copy(update={"rate": input_cfg.rate * K_ext})
-
-    return network.model_copy(update={"background_inputs": background_inputs})
+    return network.model_copy(update={"poisson_background": poisson_background})

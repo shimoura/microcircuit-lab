@@ -1,4 +1,4 @@
 populations: populations.yaml
 neurons: neurons.yaml
 connectivity: connectivity.yaml
-background_inputs: background_inputs.yaml
+poisson_background: poisson_background.yaml

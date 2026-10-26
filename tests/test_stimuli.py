@@ -43,7 +43,6 @@ def _population(name: str, neuron: NeuronConfig, size: int = 10) -> PopulationCo
         size=size,
         neuron=neuron,
         initial_state={"V_m": {"distribution": "normal", "mean": -65.0, "std": 1.0}},
-        background_indegree=0.0,
     )
 
 
@@ -98,7 +97,7 @@ def test_stimulus_targeting_unknown_population_raises():
         NetworkConfig(
             populations={"E": population},
             connections=[],
-            background_inputs={},
+            poisson_background={},
             stimuli=[DcStimulusConfig(targets=["nonexistent"], amplitude=100.0)],
         )
 
@@ -108,7 +107,7 @@ def test_network_without_stimuli_defaults_to_empty_list():
     network = NetworkConfig(
         populations={"E": population},
         connections=[],
-        background_inputs={},
+        poisson_background={},
     )
     assert network.stimuli == []
 
@@ -184,7 +183,7 @@ def _isolated_network(stimuli: list[StimulusConfig]) -> NetworkConfig:
     config = NetworkConfig(
         populations={"E": population},
         connections=[],
-        background_inputs={},
+        poisson_background={},
         stimuli=stimuli,
     )
     return config

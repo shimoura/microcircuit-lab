@@ -146,7 +146,7 @@ def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
     The current (pA) is the mean of the background input as the network gives
     it (rate per synapse, indegree, weight), added to ``I_e`` (see Potjans &
     Diesmann 2014, Fig. 5). The returned network has no background input left:
-    ``background_inputs`` is empty and every ``background_indegree`` is 0.
+    ``poisson_background`` is empty.
 
     Parameters
     ----------
@@ -177,11 +177,7 @@ def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
     )
 
     network = _add_to_I_e(network, dc_current)
-    populations = {
-        name: population.model_copy(update={"background_indegree": 0.0})
-        for name, population in network.populations.items()
-    }
-    return network.model_copy(update={"populations": populations, "background_inputs": {}})
+    return network.model_copy(update={"poisson_background": {}})
 
 
 def _add_to_I_e(network: NetworkConfig, current: np.ndarray) -> NetworkConfig:
@@ -232,7 +228,7 @@ def _background_without_known_current(network: NetworkConfig) -> list[str]:
 
     return [
         name
-        for name, input_cfg in network.background_inputs.items()
+        for name, input_cfg in network.poisson_background.items()
         if not _mean_current_is_known(network, input_cfg)
     ]
 

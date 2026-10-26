@@ -59,14 +59,14 @@ def main(argv: list[str] | None = None) -> None:
     folder = Path(args.config_dir) / "network" / args.network_name
 
     # populations.yaml: one entry per population. initial_state: each neuron's
-    # starting membrane potential (mV), drawn from a normal distribution;
-    # background_indegree is optional (default 0.0). All fields: docs/config_files.md.
+    # starting membrane potential (mV), drawn from a normal distribution.
+    # All fields: docs/config_files.md.
     initial_state = {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}
     populations = [
         {"name": "E", "size": 800, "neuron": "lif",
-         "initial_state": initial_state, "background_indegree": 1000},
+         "initial_state": initial_state},
         {"name": "I", "size": 200, "neuron": "lif",
-         "initial_state": initial_state, "background_indegree": 1000},
+         "initial_state": initial_state},
     ]
 
     # neurons.yaml: neuron name -> NEST model + its parameters. The parameters
@@ -105,10 +105,12 @@ def main(argv: list[str] | None = None) -> None:
          "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
     ]
 
-    # background_inputs.yaml: population name -> its always-on Poisson input.
-    background_inputs = {
-        "E": {"rate": 8.0, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
-        "I": {"rate": 8.0, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
+    # poisson_background.yaml: population name -> its background Poisson input:
+    # each neuron gets `indegree` independent synapses, each firing at `rate`
+    # (spikes/s). Other always-on inputs are stimuli without start/stop.
+    poisson_background = {
+        "E": {"rate": 8.0, "indegree": 1000, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
+        "I": {"rate": 8.0, "indegree": 1000, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
     }
 
     network = write_network_directory(
@@ -116,7 +118,7 @@ def main(argv: list[str] | None = None) -> None:
         populations=populations,
         neurons=neurons,
         connections=connections,
-        background_inputs=background_inputs,
+        poisson_background=poisson_background,
     )
 
     # A smaller copy (--n-scaling, --k-scaling) is written scaled: its files

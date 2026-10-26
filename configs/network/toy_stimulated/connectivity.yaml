@@ -69,7 +69,7 @@ connections:
   # conductance is g_mean = R * weight * tau_syn_ex, and the resulting
   # steady-state membrane potential is
   #   V_ss = (g_L * E_L + g_mean * E_ex) / (g_L + g_mean).
-  # At the background rate used here (background_indegree * rate =
+  # At the background rate used here (indegree * rate =
   # 8000 Hz), 0.6 nS puts V_ss a few mV below V_th = -50.4, the same
   # near-threshold, fluctuation-driven regime E/I sits in (a much
   # smaller weight, e.g. 0.05 nS, leaves V_ss close to E_L and the

@@ -124,7 +124,7 @@ def test_manifest_rejects_an_unknown_file_key() -> None:
                 "populations": "populations.yaml",
                 "neurons": "neurons.yaml",
                 "connectivity": "connectivity.yaml",
-                "background_inputs": "background_inputs.yaml",
+                "poisson_background": "poisson_background.yaml",
                 "scaling": "scaling.yaml",
                 "reference": "reference.yaml",
                 "extras": "extras.yaml",
@@ -168,8 +168,8 @@ def test_validate_catches_a_background_input_for_an_undefined_population(
     network_dir: Path,
 ) -> None:
     _edit_yaml(
-        network_dir / "background_inputs.yaml",
-        lambda d: d["background_inputs"].__setitem__("Z", d["background_inputs"]["E"]),
+        network_dir / "poisson_background.yaml",
+        lambda d: d["poisson_background"].__setitem__("Z", d["poisson_background"]["E"]),
     )
     with pytest.raises(ValueError, match="'Z'"):
         load_network(network_dir)

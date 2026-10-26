@@ -31,8 +31,8 @@ populations: populations.yaml
 neurons: neurons.yaml
 # required · text · file holding the connection list
 connectivity: connectivity.yaml
-# required · text · file holding the background-input entries
-background_inputs: background_inputs.yaml
+# required · text · file holding the background Poisson input of each population
+poisson_background: poisson_background.yaml
 # optional · text · file recording how this network was scaled (written by
 #   scale_network, never applied); omit the key for a network that was not scaled
 scaling: scaling.yaml
@@ -53,7 +53,7 @@ The populations: size, neuron and initial state.
 # required · list of entries · one entry per population
 populations:
   # required · text · unique population name; referenced by connectivity,
-  #   background_inputs, stimuli and reference
+  #   poisson_background, stimuli and reference
   - name: L23_E
     # required · integer > 0 · number of neurons
     size: 20683
@@ -66,9 +66,6 @@ populations:
     #   the simulator looks up; a variable left out starts at the model's default
     initial_state:
       V_m: {distribution: normal, mean: -58.0, std: 10.0}
-    # optional, default 0.0 · number ≥ 0 · background-input connections per neuron;
-    #   multiplies the rate in background_inputs.yaml
-    background_indegree: 2510.0
 ```
 
 ### neurons.yaml
@@ -202,20 +199,22 @@ connections_file:
 bound_mode: redraw
 ```
 
-### background_inputs.yaml
+### poisson_background.yaml
 
-The always-on Poisson input of each population.
+The background Poisson input of each population: synapses per neuron and their rate. Other always-on inputs are stimuli without start/stop.
 
 ```yaml
 # required · mapping · one entry per population, keyed by its name; a population left
 #   out gets none
-background_inputs:
+poisson_background:
   L23_E:
-    # required · number ≥ 0 · background Poisson rate per connection (spikes/s)
+    # required · number ≥ 0 · firing rate of each Poisson synapse (spikes/s)
     rate: 8.0
-    # required · weight of each background connection
+    # required · number ≥ 0 · Poisson synapses per neuron
+    indegree: 1600
+    # required · weight of each Poisson synapse
     weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
-    # required · delay of each background connection
+    # required · delay of each Poisson synapse
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
@@ -223,8 +222,8 @@ background_inputs:
     #   give the same name share one generator, and each neuron still gets its own
     #   independent spike train. Saves memory when many populations have the same input,
     #   but gives other random draws than one generator each. They need the same rate,
-    #   background_indegree and synapse (a generator connects through one synapse
-    #   model). Omit for a generator of its own
+    #   indegree and synapse (a generator connects through one synapse model). Omit for
+    #   a generator of its own
     generator: L23_E
 ```
 

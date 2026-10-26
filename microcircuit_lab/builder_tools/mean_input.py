@@ -118,8 +118,13 @@ def full_mean_rates(network: NetworkConfig) -> np.ndarray:
 
 
 def background_indegrees(network: NetworkConfig) -> np.ndarray:
+    """The number of background Poisson synapses per neuron of each population, 0 for
+    one without background input."""
     return np.asarray(
-        [pop.background_indegree for pop in network.populations.values()],
+        [
+            network.poisson_background[name].indegree if name in network.poisson_background else 0.0
+            for name in network.populations
+        ],
         dtype=float,
     )
 
@@ -128,7 +133,7 @@ def background_weights(network: NetworkConfig) -> np.ndarray:
     """The background weight of each population, 0 for one without background input."""
     return np.asarray(
         [
-            network.background_inputs[name].weight.mean if name in network.background_inputs else 0.0
+            network.poisson_background[name].weight.mean if name in network.poisson_background else 0.0
             for name in network.populations
         ],
         dtype=float,
@@ -140,7 +145,7 @@ def background_rates(network: NetworkConfig) -> np.ndarray:
     without background input."""
     return np.asarray(
         [
-            network.background_inputs[name].rate if name in network.background_inputs else 0.0
+            network.poisson_background[name].rate if name in network.poisson_background else 0.0
             for name in network.populations
         ],
         dtype=float,

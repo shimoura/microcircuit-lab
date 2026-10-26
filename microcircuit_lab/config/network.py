@@ -19,10 +19,6 @@ from pydantic import (
     model_validator,
 )
 
-from microcircuit_lab.config.background_inputs import (
-    BackgroundInputConfig,
-    BackgroundInputsFile,
-)
 from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
@@ -30,6 +26,10 @@ from microcircuit_lab.config.connection_table import (
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, ConnectivityFile
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
+from microcircuit_lab.config.poisson_background import (
+    PoissonBackgroundConfig,
+    PoissonBackgroundFile,
+)
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.scaling import ScalingRecord
@@ -47,9 +47,9 @@ class NetworkManifest(FrozenConfig):
     populations: str = Field(examples=["populations.yaml"], description="file holding the populations list")
     neurons: str = Field(examples=["neurons.yaml"], description="file holding the neuron definitions")
     connectivity: str = Field(examples=["connectivity.yaml"], description="file holding the connection list")
-    background_inputs: str = Field(
-        examples=["background_inputs.yaml"],
-        description="file holding the background-input entries"
+    poisson_background: str = Field(
+        examples=["poisson_background.yaml"],
+        description="file holding the background Poisson input of each population",
     )
     scaling: str | None = Field(
         default=None,
@@ -74,6 +74,16 @@ class NetworkManifest(FrozenConfig):
         "default synapse everywhere",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_background_inputs(cls, data):
+        if isinstance(data, dict) and "background_inputs" in data:
+            raise ValueError(
+                "background_inputs was renamed: write `poisson_background: poisson_background.yaml` "
+                "in network.yaml (and rename the file and its top-level key the same way)"
+            )
+        return data
+
 
 class NetworkDirectory(FrozenConfig):
     """The whole ``configs/network/<name>/`` directory, validated at once.
@@ -90,7 +100,7 @@ class NetworkDirectory(FrozenConfig):
     populations: PopulationsFile
     neurons: NeuronsFile
     connectivity: ConnectivityFile
-    background_inputs: BackgroundInputsFile
+    poisson_background: PoissonBackgroundFile
     scaling: ScalingRecord | None = None
     reference: ReferenceConfig | None = None
     stimuli: StimuliFile = Field(default_factory=StimuliFile)
@@ -123,7 +133,7 @@ class NetworkConfig(FrozenConfig):
         PlainSerializer(lambda table: table.to_yaml_rows(), return_type=list),
     ]
 
-    background_inputs: dict[str, BackgroundInputConfig]
+    poisson_background: dict[str, PoissonBackgroundConfig]
     bound_mode: Literal["redraw", "clip"] = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     # How the network was scaled, if it was; never applied (see config/scaling.py).
@@ -156,7 +166,7 @@ class NetworkConfig(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_project_distributions_on_connections_only(self) -> NetworkConfig:
-        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users = [(f"background input of {name}", b) for name, b in self.poisson_background.items()]
         users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
         for user, item in users:
             for what in ("weight", "delay"):
@@ -185,7 +195,7 @@ class NetworkConfig(FrozenConfig):
     @model_validator(mode="after")
     def _check_shared_generators(self) -> NetworkConfig:
         groups: dict[str, list[str]] = {}
-        for name, entry in self.background_inputs.items():
+        for name, entry in self.poisson_background.items():
             if entry.generator is not None:
                 groups.setdefault(entry.generator, []).append(name)
         # One generator fires at one rate (rate x indegree) through one synapse
@@ -193,13 +203,12 @@ class NetworkConfig(FrozenConfig):
         # indegree are compared one by one, not their product: that holds
         # whether the network is prepared or not (a prepared rate is already
         # rate x indegree), and after any scaling.
-        indegree = {name: pop.background_indegree for name, pop in self.populations.items()}
         for generator, names in groups.items():
             inputs = {
                 name: (
-                    self.background_inputs[name].rate,
-                    indegree.get(name),
-                    self.background_inputs[name].synapse,
+                    self.poisson_background[name].rate,
+                    self.poisson_background[name].indegree,
+                    self.poisson_background[name].synapse,
                 )
                 for name in names
             }
@@ -207,8 +216,8 @@ class NetworkConfig(FrozenConfig):
             different = [name for name in names if inputs[name] != inputs[first]]
             if different:
                 raise ValueError(
-                    f"background_inputs.yaml: the populations of generator {generator!r} need "
-                    "the same rate, background_indegree and synapse (rate, indegree, synapse): "
+                    f"poisson_background.yaml: the populations of generator {generator!r} need "
+                    "the same rate, indegree and synapse: "
                     f"{first} has {inputs[first]}, {different[0]} has {inputs[different[0]]}."
                 )
         return self
@@ -226,7 +235,7 @@ class NetworkConfig(FrozenConfig):
                     f"The {user} uses synapse {name!r}, which is not defined in synapses.yaml."
                 )
 
-        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users = [(f"background input of {name}", b) for name, b in self.poisson_background.items()]
         users += [
             (f"stimulus of {s.targets}", s)
             for s in self.stimuli

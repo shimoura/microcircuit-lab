@@ -1,8 +1,13 @@
-background_inputs:
+# Background: each neuron of a population gets `indegree` independent Poisson
+# synapses, each firing at `rate` (spikes/s). Other always-on inputs (a constant
+# current, a Poisson train, an inhomogeneous Poisson input) are stimuli.yaml
+# entries without start/stop.
+poisson_background:
   L23_E:
     rate: 8.0
+    indegree: 1600
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -12,8 +17,9 @@ background_inputs:
       distribution: fixed
   L23_I:
     rate: 8.0
+    indegree: 1500
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -23,8 +29,9 @@ background_inputs:
       distribution: fixed
   L4_E:
     rate: 8.0
+    indegree: 2100
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -34,8 +41,9 @@ background_inputs:
       distribution: fixed
   L4_I:
     rate: 8.0
+    indegree: 1900
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -45,8 +53,9 @@ background_inputs:
       distribution: fixed
   L5_E:
     rate: 8.0
+    indegree: 2000
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -56,8 +65,9 @@ background_inputs:
       distribution: fixed
   L5_I:
     rate: 8.0
+    indegree: 1900
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -67,8 +77,9 @@ background_inputs:
       distribution: fixed
   L6_E:
     rate: 8.0
+    indegree: 2900
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA
@@ -78,8 +89,9 @@ background_inputs:
       distribution: fixed
   L6_I:
     rate: 8.0
+    indegree: 2100
     weight:
-      mean: 277.67483746045554
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
       unit: pA

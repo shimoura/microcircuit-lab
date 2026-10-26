@@ -101,7 +101,7 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
         "populations": read_yaml(folder / manifest.populations),
         "neurons": read_yaml(folder / manifest.neurons),
         "connectivity": connectivity,
-        "background_inputs": read_yaml(folder / manifest.background_inputs),
+        "poisson_background": read_yaml(folder / manifest.poisson_background),
     }
     if manifest.scaling is not None:
         parts["scaling"] = read_yaml(folder / manifest.scaling)
@@ -198,7 +198,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             size=entry.size,
             neuron=neurons[entry.neuron],
             initial_state=entry.initial_state,
-            background_indegree=entry.background_indegree,
         )
 
     connections = directory.connection_table
@@ -211,17 +210,17 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
                 f"Connection {role} population '{unknown[0]}' is not defined in populations.yaml."
             )
 
-    for name in directory.background_inputs.background_inputs:
+    for name in directory.poisson_background.poisson_background:
         if name not in populations:
             raise ValueError(
-                f"background_inputs.yaml references population '{name}', "
+                f"poisson_background.yaml references population '{name}', "
                 "which is not defined in populations.yaml."
             )
 
     return NetworkConfig(
         populations=populations,
         connections=connections,
-        background_inputs=dict(directory.background_inputs.background_inputs),
+        poisson_background=dict(directory.poisson_background.poisson_background),
         bound_mode=directory.connectivity.bound_mode,
         stimuli=directory.stimuli.stimuli,
         scaling=directory.scaling,

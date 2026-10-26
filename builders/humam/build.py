@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from microcircuit_lab.builder_tools import mean_current, scale_network, write_network
+from microcircuit_lab.builder_tools.write import POISSON_BACKGROUND_HEADER
 from microcircuit_lab.network.load import load_network, read_network
 from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
@@ -154,8 +155,6 @@ def _build_population_entries(
                 )
                 labels.append((idx, label))
 
-                k_ext = float(synapses_external.loc[idx]) / float(n)
-
                 population_entries.append(
                     {
                         "name": label,
@@ -164,7 +163,6 @@ def _build_population_entries(
                         "initial_state": {
                             "V_m": {"distribution": "normal", "mean": V0_MEAN, "std": V0_SD}
                         },
-                        "background_indegree": k_ext,
                     }
                 )
 
@@ -325,9 +323,11 @@ def _build_reference_rates(
     }
 
 
-def _build_background_inputs(
+def _build_poisson_background(
     *,
     labels: list[tuple[tuple[str, str, str], str]],
+    sizes: dict[str, int],
+    synapses_external: Any,
     rate_ext: Any,
     weights_ext: Any,
     weights_ext_sd: Any,
@@ -335,14 +335,15 @@ def _build_background_inputs(
     """Poisson background as in HuMAM main: PSC weights (pA) drawn from a normal
     and clipped at 0, delay fixed at the resolution."""
 
-    background_inputs: dict[str, dict[str, Any]] = {}
+    poisson_background: dict[str, dict[str, Any]] = {}
 
     for idx, label in labels:
         ext_mean_psc = float(weights_ext.loc[idx])
         ext_sd_psc = float(weights_ext_sd.loc[idx])
 
-        background_inputs[label] = {
+        poisson_background[label] = {
             "rate": float(rate_ext.loc[idx]),
+            "indegree": float(synapses_external.loc[idx]) / float(sizes[label]),
             "weight": {
                 "mean": ext_mean_psc,
                 "rel_std": abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0,
@@ -356,7 +357,7 @@ def _build_background_inputs(
             },
         }
 
-    return background_inputs
+    return poisson_background
 
 
 def generate_humam_configs(
@@ -448,8 +449,10 @@ def generate_humam_configs(
         delay_distribution=data.net_yaml["delay_distribution"],
     )
 
-    background_inputs = _build_background_inputs(
+    poisson_background = _build_poisson_background(
         labels=labels,
+        sizes={entry["name"]: entry["size"] for entry in population_entries},
+        synapses_external=data.synapses_external,
         rate_ext=data.rate_ext,
         weights_ext=data.weights_ext,
         weights_ext_sd=data.weights_ext_sd,
@@ -481,7 +484,7 @@ def generate_humam_configs(
         "populations": "populations.yaml",
         "neurons": "neurons.yaml",
         "connectivity": "connectivity.yaml",
-        "background_inputs": "background_inputs.yaml",
+        "poisson_background": "poisson_background.yaml",
         "reference": "reference.yaml",
     }
 
@@ -542,7 +545,7 @@ def generate_humam_configs(
         "populations.yaml": {"populations": population_entries},
         "neurons.yaml": neurons,
         "connectivity.yaml": {"bound_mode": "clip", "connections": connections},
-        "background_inputs.yaml": {"background_inputs": background_inputs},
+        "poisson_background.yaml": {"poisson_background": poisson_background},
         "reference.yaml": reference,
     }
 
@@ -577,13 +580,13 @@ def generate_humam_configs(
     flow_style_fields = {
         "populations.yaml": "populations",
         "connectivity.yaml": "connections",
-        "background_inputs.yaml": "background_inputs",
+        "poisson_background.yaml": "poisson_background",
     }
     for name, payload in yaml_payloads.items():
         field = flow_style_fields.get(name)
         if field is not None:
             payload = {**payload, field: flow_records(payload[field])}
-        header = neurons_header if name == "neurons.yaml" else None
+        header = {"neurons.yaml": neurons_header, "poisson_background.yaml": POISSON_BACKGROUND_HEADER}.get(name)
         write_yaml(network_dir / name, payload, header_comment=header)
 
     # HuMAM is written scaled: the files hold the numbers that are simulated,

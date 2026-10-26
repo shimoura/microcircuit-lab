@@ -1,73 +1,73 @@
 populations:
-- {name: A__L23_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L23_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L23_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L23_PV__c0, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L23_PV__c1, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L23_PV__c2, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L23_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L23_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L23_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L4_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L4_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L4_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L4_PV__c0, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L4_PV__c1, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L4_PV__c2, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L4_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L4_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L4_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L5_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L5_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L5_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L5_PV__c0, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L5_PV__c1, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L5_PV__c2, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L5_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L5_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L5_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L6_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L6_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L6_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: A__L6_PV__c0, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L6_PV__c1, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L6_PV__c2, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: A__L6_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L6_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: A__L6_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L23_E__c0, size: 67, neuron: B_E_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L23_E__c1, size: 67, neuron: B_E_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L23_E__c2, size: 67, neuron: B_E_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L23_PV__c0, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L23_PV__c1, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L23_PV__c2, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L23_SOM__c0, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L23_SOM__c1, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L23_SOM__c2, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L23_VIP__c0, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L23_VIP__c1, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L23_VIP__c2, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L5_E__c0, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L5_E__c1, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L5_E__c2, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L5_PV__c0, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L5_PV__c1, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L5_PV__c2, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L5_SOM__c0, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L5_SOM__c1, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L5_SOM__c2, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L5_VIP__c0, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L5_VIP__c1, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L5_VIP__c2, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L6_E__c0, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L6_E__c1, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L6_E__c2, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 850}
-- {name: B__L6_PV__c0, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L6_PV__c1, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L6_PV__c2, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 1390}
-- {name: B__L6_SOM__c0, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L6_SOM__c1, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L6_SOM__c2, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 520}
-- {name: B__L6_VIP__c0, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L6_VIP__c1, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
-- {name: B__L6_VIP__c2, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}, background_indegree: 710}
+- {name: A__L23_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_PV__c0, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_PV__c1, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_PV__c2, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L23_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_PV__c0, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_PV__c1, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_PV__c2, size: 9, neuron: A_PV_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L4_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_PV__c0, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_PV__c1, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_PV__c2, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L5_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_E__c0, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_E__c1, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_E__c2, size: 67, neuron: A_E, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_PV__c0, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_PV__c1, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_PV__c2, size: 9, neuron: A_PV_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_SOM__c0, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_SOM__c1, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: A__L6_SOM__c2, size: 5, neuron: A_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_E__c0, size: 67, neuron: B_E_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_E__c1, size: 67, neuron: B_E_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_E__c2, size: 67, neuron: B_E_upper, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_PV__c0, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_PV__c1, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_PV__c2, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_SOM__c0, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_SOM__c1, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_SOM__c2, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_VIP__c0, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_VIP__c1, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L23_VIP__c2, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_E__c0, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_E__c1, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_E__c2, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_PV__c0, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_PV__c1, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_PV__c2, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_SOM__c0, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_SOM__c1, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_SOM__c2, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_VIP__c0, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_VIP__c1, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L5_VIP__c2, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_E__c0, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_E__c1, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_E__c2, size: 67, neuron: B_E_deep, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_PV__c0, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_PV__c1, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_PV__c2, size: 9, neuron: B_PV, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_SOM__c0, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_SOM__c1, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_SOM__c2, size: 5, neuron: B_SOM, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_VIP__c0, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_VIP__c1, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}
+- {name: B__L6_VIP__c2, size: 4, neuron: B_VIP, initial_state: {V_m: {distribution: normal, mean: -58.0, std: 10.0}}}

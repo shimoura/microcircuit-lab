@@ -24,10 +24,10 @@ from microcircuit_lab.builder_tools.mean_input import (
     background_weights,
     tau_syn_ex,
 )
-from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
+from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import read_network, read_network_files
@@ -50,19 +50,19 @@ def _neuron(**overrides) -> NeuronConfig:
     return NeuronConfig(name="exc", model="iaf_psc_exp", parameters=NeuronParams(**params))
 
 
-def _population(name: str, neuron: NeuronConfig, background_indegree: float = 100.0) -> PopulationConfig:
+def _population(name: str, neuron: NeuronConfig) -> PopulationConfig:
     return PopulationConfig(
         name=name,
         size=10,
         neuron=neuron,
         initial_state={"V_m": {"distribution": "normal", "mean": -65.0, "std": 1.0}},
-        background_indegree=background_indegree,
     )
 
 
-def _background(rate: float = 8.0, mean: float = 50.0) -> BackgroundInputConfig:
-    return BackgroundInputConfig(
+def _background(rate: float = 8.0, mean: float = 50.0, indegree: float = 100.0) -> PoissonBackgroundConfig:
+    return PoissonBackgroundConfig(
         rate=rate,
+        indegree=indegree,
         weight=WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
@@ -72,7 +72,7 @@ def _network() -> NetworkConfig:
     return NetworkConfig(
         populations={"E": _population("E", _neuron())},
         connections=[],
-        background_inputs={"E": _background()},
+        poisson_background={"E": _background()},
     )
 
 
@@ -90,10 +90,9 @@ def test_the_background_becomes_the_mean_current_and_is_gone():
         tau_syn=tau_syn_ex(poisson),
     )
     assert replaced.populations["E"].neuron.parameters.I_e == pytest.approx(expected[0])
-    assert replaced.background_inputs == {}
-    assert replaced.populations["E"].background_indegree == 0.0
+    assert replaced.poisson_background == {}
     # the network it was given is not changed
-    assert poisson.background_inputs and poisson.populations["E"].background_indegree == 100.0
+    assert poisson.poisson_background["E"].indegree == 100.0
 
 
 def test_the_current_is_the_full_scale_one_after_scaling():
@@ -120,13 +119,38 @@ def test_an_old_file_with_background_mode_fails_with_the_new_way(tmp_path: Path)
     import shutil
 
     shutil.copytree("configs/network/toy", tmp_path / "network")
-    path = tmp_path / "network" / "background_inputs.yaml"
+    path = tmp_path / "network" / "poisson_background.yaml"
     data = yaml.safe_load(path.read_text())
     data["background_mode"] = "mean_current"
     path.write_text(yaml.safe_dump(data))
 
     with pytest.raises(ValueError, match="replace_background_by_mean_current"):
         read_network_files(tmp_path / "network")
+
+
+def test_old_names_fail_with_the_new_form(tmp_path: Path) -> None:
+    import shutil
+
+    shutil.copytree("configs/network/toy", tmp_path / "network")
+    folder = tmp_path / "network"
+    entry = yaml.safe_load((folder / "poisson_background.yaml").read_text())["poisson_background"]["E"]
+
+    (folder / "poisson_background.yaml").write_text(yaml.safe_dump({"background_inputs": {"E": entry}}))
+    with pytest.raises(ValueError, match="now poisson_background"):
+        read_network_files(folder)
+
+    shutil.copy("configs/network/toy/poisson_background.yaml", folder / "poisson_background.yaml")
+    manifest = (folder / "network.yaml").read_text()
+    (folder / "network.yaml").write_text(manifest.replace("poisson_background:", "background_inputs:"))
+    with pytest.raises(ValueError, match="write `poisson_background: poisson_background.yaml`"):
+        read_network_files(folder)
+
+    (folder / "network.yaml").write_text(manifest)
+    populations = yaml.safe_load((folder / "populations.yaml").read_text())
+    populations["populations"][0]["background_indegree"] = 1000
+    (folder / "populations.yaml").write_text(yaml.safe_dump(populations))
+    with pytest.raises(ValueError, match="as `indegree`"):
+        read_network_files(folder)
 
 
 # -----------------------------------------------------------------------------
@@ -153,8 +177,7 @@ def test_the_mean_current_alone_drives_spiking():
     # used elsewhere in this file are for formula checks only.
     strong_network = _network().model_copy(
         update={
-            "populations": {"E": _population("E", _neuron(), background_indegree=1000.0)},
-            "background_inputs": {"E": _background(rate=8.0, mean=100.0)},
+            "poisson_background": {"E": _background(rate=8.0, mean=100.0, indegree=1000.0)},
         }
     )
     network = prepare_network(replace_background_by_mean_current(strong_network))
@@ -175,7 +198,7 @@ def _two_populations(generators=("A", "A"), rates=(8.0, 8.0)) -> NetworkConfig:
     return NetworkConfig(
         populations={name: _population(name, neuron) for name in ("E1", "E2")},
         connections=[],
-        background_inputs={
+        poisson_background={
             name: _background(rate=rate).model_copy(update={"generator": generator})
             for name, generator, rate in zip(("E1", "E2"), generators, rates)
         },

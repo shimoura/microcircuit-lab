@@ -37,7 +37,7 @@ def _mean_input(network) -> dict[str, float]:
     current = {}
     for name, population in network.populations.items():
         parameters = population.neuron.parameters
-        background = network.background_inputs[name]
+        background = network.poisson_background[name]
         total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.mean * background.rate
         current[name] = total
 
