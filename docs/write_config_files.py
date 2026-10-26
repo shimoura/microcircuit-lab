@@ -61,7 +61,7 @@ SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration,
 ANALYSIS = ("analysis/<name>.yaml", AnalysisConfig, "Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.")
 
 # An example key for the fields that are a mapping keyed by name.
-KEY_EXAMPLES = {"neurons": "excitatory", "synapses": "depressing", "poisson_background": "L23_E"}
+KEY_EXAMPLES = {"neurons": "excitatory", "synapses": "depressing", "poisson_background": "L23_E", "variables": "V_m"}
 
 # The picture: excerpts of the toy network, population names in blue and
 # neuron names in orange. In the lines, [E] marks a population name, {excitatory}

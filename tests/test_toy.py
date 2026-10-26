@@ -10,16 +10,36 @@ import shutil
 import pytest
 
 from microcircuit_lab import Simulation
-from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.builder_tools.scaling import scale_network
+from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.network.load import read_network
 
 
-def test_prepare_network_gives_the_total_background_rate():
-    network = prepare_network(assemble_network(read_network_files("configs/network/toy")))
+def test_the_generator_rate_is_the_rate_per_synapse_times_the_indegree():
+    network = read_network("configs/network/toy")
 
-    # background rate (Hz) * indegree, per prepare_network
-    assert network.poisson_background["E"].rate == 8.0 * 1000
-    assert network.poisson_background["I"].rate == 8.0 * 1000
+    assert network.poisson_background["E"].generator_rate == 8.0 * 1000
+    assert network.poisson_background["I"].generator_rate == 8.0 * 1000
+
+
+@pytest.mark.parametrize("scale", [False, True])
+def test_a_network_as_read_or_scaled_runs_its_generator_at_rate_times_indegree(scale):
+    # Guards the background rate: the network is simulated as given, with no step in between.
+    network = read_network("configs/network/toy")
+    if scale:
+        network = scale_network(network, N_scaling=0.5, K_scaling=0.5, scaled_from="toy",
+            compensate_recurrent_input=False,
+        )
+    simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
+
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    backend.build()
+
+    for name, background in network.poisson_background.items():
+        rate = backend.background_generators[name].get("rate")
+        assert rate == background.rate * background.indegree
+        assert rate > background.rate
 
 
 def test_simulation_from_yaml_defaults_to_toy():

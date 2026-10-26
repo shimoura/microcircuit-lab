@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import ConfigDict, Field
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
-from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.config.yaml_files import read_yaml
 
 ColorMode = Literal["layer", "cell_type", "population", "custom"]
 

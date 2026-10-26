@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 
-from microcircuit_lab import Simulation, prepare_network, read_network
+from microcircuit_lab import Simulation, read_network, read_run
 from microcircuit_lab.analysis import compute_population_firing_rates
 from microcircuit_lab.config.simulation import SimulationConfig
 
@@ -30,7 +30,7 @@ def run_one(indegree: float) -> dict[str, float]:
         name: entry.model_copy(update={"indegree": indegree})
         for name, entry in network.poisson_background.items()
     }
-    network = prepare_network(network.model_copy(update={"poisson_background": poisson_background}))
+    network = network.model_copy(update={"poisson_background": poisson_background})
 
     simulation_config = SimulationConfig.model_validate(
         {
@@ -52,7 +52,7 @@ def run_one(indegree: float) -> dict[str, float]:
     )
     simulation.run()
 
-    return compute_population_firing_rates(simulation)
+    return compute_population_firing_rates(read_run(simulation.output_dir))
 
 
 def main() -> None:

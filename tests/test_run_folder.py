@@ -5,15 +5,16 @@ from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
+import pytest
 import yaml
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.backends.nest.spike_files import read_saved_variable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.run_folder import (
+from microcircuit_lab.run_folder import read_run
+from microcircuit_lab.run_folder.write import (
     register_artifact,
     resolve_run_directory,
     save_run_outputs,
@@ -23,7 +24,6 @@ from microcircuit_lab.run_folder import (
 def _toy_network() -> NetworkConfig:
     network_files = read_network_files("configs/network/toy")
     config = assemble_network(network_files)
-    config = prepare_network(config)
     return config
 
 
@@ -111,14 +111,17 @@ def test_memory_mode_fallback_writes_csv_when_no_prepare_output(tmp_path: Path) 
         assert len(rows) > 1
 
 
-def test_voltage_recording_writes_native_ascii_files(tmp_path: Path) -> None:
+def test_variables_are_written_as_native_ascii_files(tmp_path: Path) -> None:
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
         {
             "t_sim": 100.0,
             "local_num_threads": 2,
             "print_time": False,
-            "recording": {"spike_recording": True, "voltage_recording": True, "voltage_interval": 1.0},
+            "recording": {
+                "spike_recording": True,
+                "variables": {"V_m": {"interval": 1.0}, "I_syn_ex": {"interval": 2.0}},
+            },
         }
     )
 
@@ -127,18 +130,19 @@ def test_voltage_recording_writes_native_ascii_files(tmp_path: Path) -> None:
     backend.build()
     backend.simulate()
 
-    voltage_files = sorted((tmp_path / "recordings").glob("voltage-*.dat"))
-    assert voltage_files
-    content = voltage_files[0].read_text()
-    assert "V_m" in content
+    for name in ("V_m", "I_syn_ex"):
+        files = sorted((tmp_path / "recordings").glob(f"{name}-*.dat"))
+        assert files
+        assert name in files[0].read_text()
 
     saved = backend.save_recordings(tmp_path)
-    assert any("voltage" in str(path) for path in saved)
+    assert any("V_m-" in str(path) for path in saved)
+    assert any("I_syn_ex-" in str(path) for path in saved)
 
 
-def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> None:
+def test_variables_gate_covers_configs_without_spikes(tmp_path: Path) -> None:
     """save_run_outputs must persist recordings even when spike_recording
-    is off and only voltage_recording is on."""
+    is off and only variables are recorded."""
 
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
@@ -146,7 +150,7 @@ def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> N
             "t_sim": 100.0,
             "local_num_threads": 2,
             "print_time": False,
-            "recording": {"spike_recording": False, "voltage_recording": True},
+            "recording": {"spike_recording": False, "variables": {"V_m": {}}},
             "output": {"output_dir": str(tmp_path), "overwrite": True},
         }
     )
@@ -166,9 +170,13 @@ def test_voltage_recording_gate_covers_voltage_only_configs(tmp_path: Path) -> N
         backend_name="nest",
     )
 
-    assert sorted((tmp_path / "recordings").glob("voltage-*.dat"))
+    assert sorted((tmp_path / "recordings").glob("V_m-*.dat"))
     metadata = json.loads((tmp_path / "metadata.json").read_text())
-    assert any("voltage" in entry for entry in metadata["artifacts"]["recordings"])
+    assert any("V_m" in entry for entry in metadata["artifacts"]["recordings"])
+
+    senders, times, values = read_run(tmp_path).recording("V_m")
+    assert len(senders) == len(times) == len(values) > 0
+    assert (np.diff(senders) >= 0).all()
 
 
 def test_metadata_includes_provenance(tmp_path: Path) -> None:
@@ -207,13 +215,13 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
 
 
 def test_core_git_provenance_only_for_a_clone_of_the_core(tmp_path: Path, monkeypatch) -> None:
-    from microcircuit_lab import run_folder
+    from microcircuit_lab.run_folder import write as run_folder
 
     # The test suite runs from a clone of the repository.
     assert len(run_folder._core_git_provenance()["commit"]) == 40
 
     # An installed copy (no .git next to the package) has no commit of its own.
-    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "run_folder.py"
+    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "run_folder" / "write.py"
     monkeypatch.setattr(run_folder, "__file__", str(package_file))
     assert run_folder._core_git_provenance() is None
 
@@ -284,8 +292,8 @@ def test_register_artifact_appends_and_is_noop_without_metadata(tmp_path: Path) 
     assert metadata["artifacts"]["plots"] == ["plots/raster.png"]
 
 
-def test_voltage_recording_subsampling(tmp_path: Path) -> None:
-    """voltage_sample_size records the first N neurons of every population."""
+def test_variable_sample_size_and_populations(tmp_path: Path) -> None:
+    """sample_size records the first N neurons of each listed population."""
 
     network = _toy_network()
     simulation_config = SimulationConfig.model_validate(
@@ -295,9 +303,7 @@ def test_voltage_recording_subsampling(tmp_path: Path) -> None:
             "print_time": False,
             "recording": {
                 "spike_recording": False,
-                "voltage_recording": True,
-                "voltage_interval": 1.0,
-                "voltage_sample_size": 3,
+                "variables": {"V_m": {"sample_size": 3}},
             },
         }
     )
@@ -307,12 +313,23 @@ def test_voltage_recording_subsampling(tmp_path: Path) -> None:
     backend.build()
     backend.simulate()
 
-    voltage_files = sorted((tmp_path / "recordings").glob("voltage-*.dat"))
-    assert voltage_files
-    data = pd.read_csv(voltage_files[0], sep="\t", comment="#")
-    senders = set(data["sender"].unique())
-    assert len(senders) == 6
-    assert senders == {1, 2, 3, 801, 802, 803}
+    senders, _, _ = read_saved_variable(tmp_path / "recordings", "V_m")
+    assert set(senders) == {1, 2, 3, 801, 802, 803}
+
+
+def test_unknown_recorded_population_fails(tmp_path: Path) -> None:
+    network = _toy_network()
+    simulation_config = SimulationConfig.model_validate(
+        {"recording": {"variables": {"V_m": {"populations": ["no_such_population"]}}}}
+    )
+    backend = NestBackend(network=network, simulation_config=simulation_config)
+    with pytest.raises(ValueError, match="unknown population.*no_such_population"):
+        backend.build()
+
+
+def test_voltage_fields_were_removed() -> None:
+    with pytest.raises(ValueError, match=r"voltage_recording.*variables: \{V_m"):
+        SimulationConfig.model_validate({"recording": {"voltage_recording": True}})
 
 
 def test_a_run_folder_is_read_back(tmp_path: Path) -> None:
@@ -337,17 +354,19 @@ def test_a_run_folder_is_read_back(tmp_path: Path) -> None:
     )
     sim.run()
 
-    live_e_spikes = sim.backend.get_spike_events("E")
-    live_i_spikes = sim.backend.get_spike_events("I")
+    run = read_run(tmp_path)
 
-    reopened = Simulation.from_run_dir(tmp_path)
-    post_e_spikes = reopened.backend.get_spike_events("E")
-    post_i_spikes = reopened.backend.get_spike_events("I")
-
-    assert len(post_e_spikes["times"]) == len(live_e_spikes["times"])
-    assert len(post_i_spikes["times"]) == len(live_i_spikes["times"])
-    np.testing.assert_array_equal(post_e_spikes["senders"], live_e_spikes["senders"])
-    np.testing.assert_array_equal(post_e_spikes["times"], live_e_spikes["times"])
+    assert run.populations == list(network.populations)
+    assert run.simulation.t_sim == 100.0
+    assert run.metadata["backend"] == "nest"
+    for population in run.populations:
+        live = sim.backend.get_spike_events(population)
+        saved = run.spikes(population)
+        np.testing.assert_array_equal(saved.senders, live["senders"])
+        np.testing.assert_array_equal(saved.times, live["times"])
+        np.testing.assert_array_equal(
+            run.node_ids(population), sim.backend.get_population(population).tolist()
+        )
 
 
 

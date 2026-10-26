@@ -57,9 +57,9 @@ def test_a_population_without_background_input_gets_no_background_current() -> N
     scaled = _scaled(network, compensate_recurrent_input=False)
     mean_current = replace_background_by_mean_current(network)
 
-    for prepared in (scaled, mean_current):
-        assert prepared.populations["E"].neuron.parameters.I_e > 0
-        assert prepared.populations["I"].neuron.parameters.I_e == 0
+    for network in (scaled, mean_current):
+        assert network.populations["E"].neuron.parameters.I_e > 0
+        assert network.populations["I"].neuron.parameters.I_e == 0
 
 
 def test_a_scaled_folder_records_how_and_is_not_scaled_again(tmp_path) -> None:

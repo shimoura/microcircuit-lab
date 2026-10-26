@@ -129,7 +129,7 @@ POWER_SPECTRUM_METHODS: dict[str, PowerSpectrumEstimator] = {
 
 
 def compute_population_rate_signal(
-    simulation,
+    run,
     begin: float,
     end: float,
     pop_name: str,
@@ -140,8 +140,8 @@ def compute_population_rate_signal(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
         The time window in ms.
     pop_name
@@ -155,9 +155,8 @@ def compute_population_rate_signal(
         The population rate in each bin, in spikes/s.
     """
 
-    n_neurons = simulation.network.populations[pop_name].size
-    events = simulation.backend.get_spike_events(pop_name)
-    times = np.asarray(events["times"])
+    n_neurons = run.network.populations[pop_name].size
+    _, times = run.spikes(pop_name)
     times = times[(times >= begin) & (times < end)]
 
     edges = np.arange(begin, end + bin_size, bin_size)
@@ -166,7 +165,7 @@ def compute_population_rate_signal(
 
 
 def compute_power_spectrum(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -181,10 +180,10 @@ def compute_power_spectrum(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -204,35 +203,31 @@ def compute_power_spectrum(
         ``{population: (frequencies in Hz, power)}``.
     """
 
-    if simulation.backend is None:
-        raise RuntimeError("Simulation has not been run yet.")
-    if not simulation.simulation_config.recording.spike_recording:
-        raise RuntimeError("Spike recording is disabled for this simulation.")
     if method not in POWER_SPECTRUM_METHODS:
         raise ValueError(
             f"Unknown power spectrum method {method!r}. "
             f"Available: {sorted(POWER_SPECTRUM_METHODS)}"
         )
 
-    end = simulation.simulation_config.t_sim if end is None else end
+    end = run.simulation.t_sim if end is None else end
     if end <= begin:
         raise ValueError("'end' must be greater than 'begin'.")
 
-    selected = select_populations(simulation, populations, area)
+    selected = select_populations(run, populations, area)
     fs = 1000.0 / bin_size
     estimator = POWER_SPECTRUM_METHODS[method]
     method_kwargs = method_kwargs or {}
 
     spectra = {}
     for pop_name in selected:
-        signal = compute_population_rate_signal(simulation, begin, end, pop_name, bin_size)
+        signal = compute_population_rate_signal(run, begin, end, pop_name, bin_size)
         spectra[pop_name] = estimator(signal, fs, **method_kwargs)
 
     return spectra
 
 
 def cached_power_spectrum(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -253,10 +248,10 @@ def cached_power_spectrum(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -274,17 +269,11 @@ def cached_power_spectrum(
         ``{population: (frequencies in Hz, power)}``.
     """
 
-    if simulation.output_dir is None:
-        raise RuntimeError(
-            "Simulation has no output_dir -- run() or from_run_dir() it "
-            "before requesting its cached power spectrum."
-        )
-
     return load_or_compute(
-        simulation.output_dir,
+        run.folder,
         "power_spectrum",
         lambda: compute_power_spectrum(
-            simulation,
+            run,
             begin,
             end,
             populations=populations,
@@ -329,7 +318,7 @@ def _grid_layout(names: list[str]) -> dict[tuple[int, int], list[str]]:
 
 
 def plot_power_spectrum(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -353,10 +342,10 @@ def plot_power_spectrum(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -393,7 +382,7 @@ def plot_power_spectrum(
     if method_kwargs is UNSET:
         method_kwargs = config.method_kwargs
     spectra = compute_power_spectrum(
-        simulation,
+        run,
         begin,
         end,
         populations=populations,

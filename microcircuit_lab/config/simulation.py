@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
 #: Registered backend names. Adding a backend means adding it here and to
-#: get_backend() and read_saved_spikes() in backends/__init__.py. See "Adding a
+#: get_backend(), read_saved_spikes() and read_saved_variable() in backends/__init__.py. See "Adding a
 #: backend" in the README.
 BackendName = Literal["nest", "brian2"]
 
@@ -27,19 +27,65 @@ class BackendConfig(FrozenConfig):
     )
 
 
+class VariableRecording(FrozenConfig):
+    """One neuron variable to record: how often, and from which neurons."""
+
+    interval: float = Field(
+        default=1.0, gt=0.0, description="time between two samples (ms)"
+    )
+    sample_size: int | None = Field(
+        default=None,
+        ge=1,
+        examples=[5],
+        description="neurons per population to record, the first ones; null records all",
+    )
+    populations: list[str] | None = Field(
+        default=None,
+        examples=[["E", "I"]],
+        description="names of the populations to record; null records all",
+    )
+
+
 class RecordingConfig(FrozenConfig):
     """What to record. The backend decides how."""
 
     spike_recording: bool = Field(default=True, description="record the spikes of every neuron")
-    voltage_recording: bool = Field(default=False, description="record membrane potentials")
-    voltage_interval: float = Field(
-        default=1.0, gt=0.0, description="time between two voltage samples (ms)"
+    variables: dict[str, VariableRecording] = Field(
+        default={},
+        examples=[{"V_m": {"interval": 1.0, "sample_size": 5}}],
+        description="neuron variables to record, keyed by the name the simulator gives them "
+        "(V_m, or the synaptic input I_syn_ex / I_syn_in or g_ex / g_in, depending on the "
+        "model); none by default. The simulator reports a name the model does not have",
     )
-    voltage_sample_size: int | None = Field(
-        default=5,
-        ge=1,
-        description="neurons per population whose voltage is recorded; null records all",
-    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_voltage_fields(cls, data):
+        removed = [key for key in ("voltage_recording", "voltage_interval", "voltage_sample_size")
+                   if isinstance(data, dict) and key in data]
+        if removed:
+            raise ValueError(
+                f"{', '.join(removed)} {'was' if len(removed) == 1 else 'were'} removed: record V_m with "
+                "`variables: {V_m: {interval: 1.0, sample_size: 5}}` "
+                "(any recordable variable of the model works the same way)"
+            )
+        return data
+
+    def recorded_populations(self, variable: str, network_populations) -> list[str]:
+        """
+        The names of the populations whose ``variable`` is recorded, in the
+        network's order. Raises if ``populations`` names one the network lacks.
+        """
+
+        names = self.variables[variable].populations
+        if names is None:
+            return list(network_populations)
+        unknown = [name for name in names if name not in network_populations]
+        if unknown:
+            raise ValueError(
+                f"recording.variables[{variable!r}].populations names unknown population(s): {unknown}."
+            )
+        return [name for name in network_populations if name in names]
 
 
 class OutputConfig(FrozenConfig):
@@ -66,7 +112,7 @@ class OutputConfig(FrozenConfig):
     )
     save_config: bool = Field(
         default=True,
-        description="write config.yaml (the prepared network); needed to re-plot the run",
+        description="write config.yaml (the network); needed to re-plot the run",
     )
 
 

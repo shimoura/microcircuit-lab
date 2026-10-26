@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def list_areas(simulation):
+def list_areas(run):
     """
     The areas of a multi-area network, in population order.
 
@@ -12,8 +12,8 @@ def list_areas(simulation):
 
     Parameters
     ----------
-    simulation
-        A run or opened run folder (anything with ``simulation.network``).
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
 
     Returns
     -------
@@ -21,21 +21,21 @@ def list_areas(simulation):
         The area names; empty for a single-area network.
     """
     areas = []
-    for name in simulation.network.populations:
+    for name in run.network.populations:
         area, sep, _ = name.partition("__")
         if sep and area not in areas:
             areas.append(area)
     return areas
 
 
-def select_populations(simulation, populations, area):
+def select_populations(run, populations, area):
     """
     The populations to analyse: those given, or those of one area, or all.
 
     Parameters
     ----------
-    simulation
-        A run or opened run folder.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     populations
         Population names to use; each must exist. Takes precedence over ``area``.
     area
@@ -51,7 +51,7 @@ def select_populations(simulation, populations, area):
     ValueError
         If a population or the area does not exist.
     """
-    available = list(simulation.network.populations)
+    available = list(run.network.populations)
     if populations is not None:
         missing = set(populations) - set(available)
         if missing:

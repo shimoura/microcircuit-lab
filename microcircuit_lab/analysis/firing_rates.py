@@ -23,7 +23,7 @@ from .run_command_plots import register_plot
 
 
 def compute_neuron_firing_rates(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -35,10 +35,10 @@ def compute_neuron_firing_rates(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -49,39 +49,28 @@ def compute_neuron_firing_rates(
     dict of str to numpy.ndarray
         ``{population: rate of each neuron}``, in spikes/s.
     """
-    if simulation.backend is None:
-        raise RuntimeError("Simulation has not been run yet.")
-    if not simulation.simulation_config.recording.spike_recording:
-        raise RuntimeError("Spike recording is disabled for this simulation.")
-
-    end = simulation.simulation_config.t_sim if end is None else end
+    end = run.simulation.t_sim if end is None else end
     if end <= begin:
         raise ValueError("'end' must be greater than 'begin'.")
 
-    selected = select_populations(simulation, populations, area)
+    selected = select_populations(run, populations, area)
     duration_s = (end - begin) / 1000.0
     rates: dict[str, np.ndarray] = {}
 
     for pop_name in selected:
-        nodes = np.asarray(simulation.backend.get_population(pop_name).tolist(), dtype=int)
-        events = simulation.backend.get_spike_events(pop_name)
-        times = np.asarray(events["times"])
-        senders = np.asarray(events["senders"], dtype=int)
+        nodes = run.node_ids(pop_name)
+        senders, times = run.spikes(pop_name)
 
         mask = (times >= begin) & (times < end)
-        sender_counts = dict(zip(*np.unique(senders[mask], return_counts=True)))
-        counts = np.fromiter(
-            (sender_counts.get(gid, 0) for gid in nodes),
-            dtype=float,
-            count=len(nodes),
-        )
+        # A population's node IDs are one block, so a neuron's index is its offset.
+        counts = np.bincount(senders[mask] - nodes[0], minlength=len(nodes)).astype(float)
         rates[pop_name] = counts / duration_s
 
     return rates
 
 
 def compute_population_firing_rates(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -93,10 +82,10 @@ def compute_population_firing_rates(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -108,7 +97,7 @@ def compute_population_firing_rates(
         ``{population: mean rate}``, in spikes/s.
     """
     neuron_rates = compute_neuron_firing_rates(
-        simulation,
+        run,
         begin,
         end,
         populations=populations,
@@ -118,7 +107,7 @@ def compute_population_firing_rates(
 
 
 def cached_population_firing_rates(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -137,10 +126,10 @@ def cached_population_firing_rates(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -156,17 +145,11 @@ def cached_population_firing_rates(
         ``{population: mean rate}``, in spikes/s.
     """
 
-    if simulation.output_dir is None:
-        raise RuntimeError(
-            "Simulation has no output_dir -- run() or from_run_dir() it "
-            "before requesting its cached firing rates."
-        )
-
     return load_or_compute(
-        simulation.output_dir,
+        run.folder,
         "firing_rates",
         lambda: compute_population_firing_rates(
-            simulation, begin, end, populations=populations, area=area
+            run, begin, end, populations=populations, area=area
         ),
         recompute=recompute,
         save=save,
@@ -174,7 +157,7 @@ def cached_population_firing_rates(
 
 
 def compute_reference_deviation(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -190,10 +173,10 @@ def compute_reference_deviation(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -210,12 +193,12 @@ def compute_reference_deviation(
         If the network has no reference rates, or none for a selected population.
     """
 
-    reference = simulation.network.reference
+    reference = run.network.reference
     if reference is None or not reference.full_mean_rates:
         raise ValueError("This network has no reference.full_mean_rates to validate against.")
 
     simulated = compute_population_firing_rates(
-        simulation, begin, end, populations=populations, area=area
+        run, begin, end, populations=populations, area=area
     )
 
     deviations = {}
@@ -229,7 +212,7 @@ def compute_reference_deviation(
 
 
 def check_reference_rates(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -246,10 +229,10 @@ def check_reference_rates(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -269,7 +252,7 @@ def check_reference_rates(
     """
 
     deviations = compute_reference_deviation(
-        simulation, begin, end, populations=populations, area=area
+        run, begin, end, populations=populations, area=area
     )
 
     failures = {name: dev for name, dev in deviations.items() if abs(dev) > rtol}
@@ -283,7 +266,7 @@ def check_reference_rates(
 
 
 def plot_firing_rates(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -301,10 +284,10 @@ def plot_firing_rates(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -331,7 +314,7 @@ def plot_firing_rates(
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_FIRING_RATE_CONFIG
     rates = compute_neuron_firing_rates(
-        simulation, begin, end, populations=populations, area=area
+        run, begin, end, populations=populations, area=area
     )
     names = list(rates)
     values = [rates[name] for name in names]
@@ -386,7 +369,7 @@ def plot_firing_rates(
 
     reference_plotted = False
     if show_reference:
-        reference = simulation.network.reference
+        reference = run.network.reference
         if reference is not None:
             for position, name in zip(positions, names):
                 if name in reference.full_mean_rates:

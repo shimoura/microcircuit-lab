@@ -6,7 +6,7 @@ NEST writes spikes to ascii files (``spikes-*.dat``, columns ``sender`` and
 ``spikes.csv`` with the same two columns. This module reads both. It does not
 import ``nest``, so a saved run can be analysed without a simulator.
 
-Spikes are returned as in ``backends/population_spikes.py``: ``senders`` and ``times``,
+Spikes are returned as in ``backends/spikes.py``: ``senders`` and ``times``,
 sorted by sender.
 """
 
@@ -17,23 +17,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# read_csv_spikes and write_csv_spikes now live in population_spikes.py, shared
-# by the backends; they are imported here as before, so code that imports them
-# from here keeps working.
-from microcircuit_lab.backends.population_spikes import (
+from microcircuit_lab.backends.spikes import (
     empty_spikes,
     read_csv_spikes,
     sort_by_sender,
-    write_csv_spikes,
+    sort_recording,
 )
-
-__all__ = [
-    "ascii_spike_files",
-    "read_ascii_spikes",
-    "read_csv_spikes",
-    "read_saved_spikes",
-    "write_csv_spikes",
-]
 
 
 def ascii_spike_files(recordings_dir: Path) -> list[Path]:
@@ -78,4 +67,32 @@ def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
     raise ValueError(
         f"No spike recordings under {recordings_dir} (expected 'spikes-*.dat' or "
         "'spikes.csv'). Simulate the run again with spike_recording enabled."
+    )
+
+
+def read_saved_variable(
+    recordings_dir: Path, variable: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    A variable a finished run recorded, from NEST's files
+    ``<variable>-*.dat`` (columns ``sender``, ``time_ms`` and the variable),
+    as ``(senders, times, values)`` sorted by sender, then time.
+
+    Raises
+    ------
+    ValueError
+        If the folder has no file of that variable.
+    """
+
+    paths = sorted(Path(recordings_dir).glob(f"{variable}-*.dat"))
+    if not paths:
+        raise ValueError(
+            f"No recording of {variable!r} under {recordings_dir} (expected "
+            f"'{variable}-*.dat'). Simulate the run again with it in recording.variables."
+        )
+    tables = [pd.read_csv(path, sep="\t", comment="#") for path in paths]
+    return sort_recording(
+        np.concatenate([table["sender"].to_numpy() for table in tables]).astype(int),
+        np.concatenate([table["time_ms"].to_numpy() for table in tables]).astype(float),
+        np.concatenate([table[variable].to_numpy() for table in tables]).astype(float),
     )

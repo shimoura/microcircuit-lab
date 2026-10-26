@@ -351,13 +351,19 @@ backend:
 recording:
   # optional, default true · true or false · record the spikes of every neuron
   spike_recording: true
-  # optional, default false · true or false · record membrane potentials
-  voltage_recording: false
-  # optional, default 1.0 · number > 0 · time between two voltage samples (ms)
-  voltage_interval: 1.0
-  # optional, default 5 · integer ≥ 1 · neurons per population whose voltage is
-  #   recorded; null records all
-  voltage_sample_size: 5
+  # optional, default empty · mapping · neuron variables to record, keyed by the name
+  #   the simulator gives them (V_m, or the synaptic input I_syn_ex / I_syn_in or g_ex /
+  #   g_in, depending on the model); none by default. The simulator reports a name the
+  #   model does not have
+  variables:
+    V_m:
+      # optional, default 1.0 · number > 0 · time between two samples (ms)
+      interval: 1.0
+      # optional · integer ≥ 1 · neurons per population to record, the first ones; null
+      #   records all
+      sample_size: 5
+      # optional · list of names · names of the populations to record; null records all
+      populations: [E, I]
 # optional · where and what to save
 output:
   # optional · path · folder for the runs; omit for output/<network name>
@@ -368,8 +374,8 @@ output:
   # optional, default true · true or false · write metadata.json (versions, spike
   #   counts, files written); needed with config.yaml to re-plot the run
   save_metadata: true
-  # optional, default true · true or false · write config.yaml (the prepared network);
-  #   needed to re-plot the run
+  # optional, default true · true or false · write config.yaml (the network); needed to
+  #   re-plot the run
   save_config: true
 ```
 

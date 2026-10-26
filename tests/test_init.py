@@ -37,6 +37,8 @@ def test_with_core_installs_the_copy_and_ignores_only_build_files(tmp_path, monk
     monkeypatch.setattr(subprocess, "run", _recorder(commands))
     (tmp_path / ".gitignore").write_text("output/\n")
     init.main([str(tmp_path), "--with-core"])
+    for name in init.BACKENDS:
+        (tmp_path / init.CORE_FOLDER / "microcircuit_lab" / "backends" / name).mkdir(parents=True)
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][:3] == ["git", "ls-remote", "--tags"]
@@ -76,6 +78,8 @@ def _fake_clone(monkeypatch):
         (core / ".git").mkdir(parents=True)
         (core / "microcircuit_lab").mkdir()
         (core / "microcircuit_lab" / "__init__.py").write_text("core code")
+        for name in init.BACKENDS:
+            (core / "microcircuit_lab" / "backends" / name).mkdir(parents=True)
         (core / "pyproject.toml").write_text("[project]")
         (core / "docs").mkdir()
         (core / "docs" / "config_files.md").write_text("fields")
@@ -150,3 +154,41 @@ def test_with_core_twice_changes_nothing(tmp_path, monkeypatch, capsys):
 
     assert (tmp_path / "configs" / "simulation" / "demo.yaml").read_text() == "edited"
     assert "Copied" not in capsys.readouterr().out
+
+
+def _fake_source(tmp_path):
+    """A core with both backends and, as the real one, example models for brian2 only."""
+    source = tmp_path / "source"
+    for name in ("nest", "brian2"):
+        (source / "microcircuit_lab" / "backends" / name).mkdir(parents=True)
+        (source / "microcircuit_lab" / "backends" / name / "simulator.py").write_text(name)
+    (source / "extensions" / "brian2").mkdir(parents=True)
+    (source / "extensions" / "brian2" / "model.py").write_text("brian2")
+    return source
+
+
+def test_core_and_examples_copy_only_the_chosen_backends(tmp_path, monkeypatch):
+    source = _fake_source(tmp_path)
+    monkeypatch.setattr(init, "_git", lambda *arguments: "x")
+    init._copy_core(source, tmp_path / "core", ["nest"])
+    init._copy_examples(source, tmp_path / "project", ["nest"])
+
+    backends = tmp_path / "core" / "microcircuit_lab" / "backends"
+    assert sorted(p.name for p in backends.iterdir()) == ["nest"]
+    assert not (tmp_path / "project" / "extensions").exists()
+
+    init._copy_examples(source, tmp_path / "project", ["brian2"])
+    assert (tmp_path / "project" / "extensions" / "brian2" / "model.py").is_file()
+
+
+def test_adding_a_backend_to_an_existing_copy_changes_nothing_else(tmp_path, monkeypatch):
+    source = _fake_source(tmp_path)
+    monkeypatch.setattr(init, "_git", lambda *arguments: "x")
+    init._copy_core(source, tmp_path / "core", ["nest"])
+    nest_file = tmp_path / "core" / "microcircuit_lab" / "backends" / "nest" / "simulator.py"
+    nest_file.write_text("my edit")
+    init._add_backends(source, tmp_path / "core", ["nest", "brian2"])
+
+    backends = tmp_path / "core" / "microcircuit_lab" / "backends"
+    assert (backends / "brian2" / "simulator.py").read_text() == "brian2"
+    assert nest_file.read_text() == "my edit"

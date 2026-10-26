@@ -53,7 +53,7 @@ Next:
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
-- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator. Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
+- **Simulate**: the network is simulated as the files give it. Each population's background is one Poisson generator firing at its rate per synapse times its indegree; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
 The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
@@ -90,7 +90,7 @@ my_project/
 | Command | What you get |
 |---|---|
 | `microcircuit-lab init my_project` | the empty folders; the core stays installed in your Python environment |
-| `microcircuit-lab init my_project --with-core` | the folders, the examples, and a copy of the core in `microcircuit-lab/` (installed editable) |
+| `microcircuit-lab init my_project --with-core` | the folders, the examples, and a copy of the core in `microcircuit-lab/` (installed editable) with the backends of your installed simulators; `--backends nest brian2` chooses, and running it again adds a missing one |
 
 Then, for a model of your own:
 
@@ -156,7 +156,7 @@ configs/
   ```text
   populations.yaml: populations.0.size: Input should be greater than 0
   ```
-  `load_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
+  `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
 - **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run before anything is built, saying so:
 
@@ -284,7 +284,7 @@ bound_mode: redraw
 connections_file: connections.csv
 ```
 
-The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its prepared connections the same way, next to `config.yaml`.
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 
@@ -409,20 +409,56 @@ microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 
 Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
 
+### Reading a run
+
+`read_run` opens a run folder (see [Run outputs](#run-outputs)) without the simulator. The plots read runs this way, and so do your own analyses.
+
+```python
+from microcircuit_lab import read_run
+
+run = read_run("output/toy/<timestamp>")
+run.populations                  # ["E", "I"], in network order
+spikes = run.spikes("E")         # spikes.senders, spikes.times (ms), sorted by sender
+run.node_ids("E")                # the node IDs of the population
+trace = run.recording("V_m")     # trace.senders, trace.times (ms), trace.values; needs recording.variables
+run.network                      # the network as simulated (config.yaml)
+run.simulation                   # the simulation settings (config.yaml), e.g. run.simulation.t_sim
+run.metadata                     # metadata.json as a dict: simulator, seed, spike counts, files
+run.folder                       # the run folder, a pathlib.Path
+```
+
+The spike files are read once, at the first `run.spikes(...)`.
+
+**Without the package** (another language, another tool), the run folder is plain files:
+
+| File | What it holds |
+|---|---|
+| `metadata.json` → `populations` | per population: `size`, `first_node_id`, `last_node_id` (one block of node IDs), spike counts |
+| `recordings/spikes-*.dat` (NEST) | tab-separated `sender`, `time_ms`, after `#` comment lines; one file per process |
+| `recordings/spikes.csv` (Brian2) | `sender,time_ms` |
+| `recordings/<variable>-*.dat` / `<variable>.csv` | `sender`, `time_ms`, the variable |
+| `config.yaml` | the network and the simulation settings as run |
+
+```python
+import json
+populations = json.load(open("output/toy/<timestamp>/metadata.json"))["populations"]
+populations["E"]["first_node_id"], populations["E"]["last_node_id"]   # 1, 800
+```
+
 ### Use the bundled functions
 
 ```python
-from microcircuit_lab import Simulation
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import compute_population_firing_rates, plot_firing_rates
 
-simulation = Simulation.from_run_dir("output/toy/<timestamp>")   # opens the run, no simulation
-rates = compute_population_firing_rates(simulation, begin=200.0)
-plot_firing_rates(simulation, begin=200.0)
+run = read_run("output/toy/<timestamp>")
+rates = compute_population_firing_rates(run, begin=200.0)
+plot_firing_rates(run, begin=200.0)
 ```
 
 - Plots: `plot_raster`, `plot_firing_rates`, `plot_power_spectrum`, `plot_isi_cv`.
 - Numbers: `compute_*` for rates, ISI CV, power spectrum and deviation from the reference rates.
-- Multi-area networks: pass `area="V1"`; `list_areas(simulation)` gives the names.
+- Multi-area networks: pass `area="V1"`; `list_areas(run)` gives the names.
 
 ### Your own analysis: any script
 
@@ -432,22 +468,22 @@ There are no rules: open a run folder and do what you want.
 # my_analysis.py
 import sys
 
-from microcircuit_lab import Simulation
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import compute_population_firing_rates
 
-simulation = Simulation.from_run_dir(sys.argv[1])
-print(compute_population_firing_rates(simulation, begin=200.0))
+run = read_run(sys.argv[1])
+print(compute_population_firing_rates(run, begin=200.0))
 
-events = simulation.backend.get_spike_events("E")   # {"senders": ..., "times": ...}
+senders, times = run.spikes("E")   # node IDs and times (ms)
 ```
 
 ```bash
 python my_analysis.py output/toy/<timestamp>
 ```
 
-- Read data through `simulation` (`backend.get_spike_events`, `network`, `simulation_config`).
+- Read data through `run` (`spikes`, `recording`, `network`, `simulation`, `metadata`).
 - Keep the script anywhere, e.g. in `experiments/`. In `analyses/`, put its work under `if __name__ == "__main__":`, because `microcircuit-lab run` imports every file there.
-- To list a file you saved in the run's `metadata.json`: `register_artifact(simulation.output_dir, "plots", path)` from `microcircuit_lab.run_folder`.
+- To list a file you saved in the run's `metadata.json`: `register_artifact(run.folder, "plots", path)` from `microcircuit_lab.run_folder.write`.
 
 ### Optional: let `microcircuit-lab run` make your plot
 
@@ -460,8 +496,8 @@ import matplotlib.pyplot as plt
 from microcircuit_lab.analysis import compute_population_firing_rates, register_plot
 
 
-def rate_bars(simulation, save_path, area=None):
-    rates = compute_population_firing_rates(simulation, area=area)
+def rate_bars(run, save_path, area=None):
+    rates = compute_population_firing_rates(run, area=area)
     fig, ax = plt.subplots()
     ax.bar(list(rates), list(rates.values()))
     fig.savefig(save_path)
@@ -474,7 +510,7 @@ register_plot("rate_bars", rate_bars)
 microcircuit-lab run --run-dir output/toy/<timestamp> --rate-bars
 ```
 
-The figure is saved in `plots/`, one per area with `--area all`, and listed in `metadata.json`. The first parameter is the simulation; name only what else you need, and the command fills it in:
+The figure is saved in `plots/`, one per area with `--area all`, and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
 
 | Parameter | What you get |
 |---|---|
@@ -493,13 +529,13 @@ The figure is saved in `plots/`, one per area with `--area all`, and listed in `
 
 ## Running from a script
 
-The command and a script run the same steps (check, prepare, simulate, save); the command also makes the plots.
+The command and a script run the same steps (check, simulate, save); the command also makes the plots.
 
 | | Command | Script |
 | :--- | :--- | :--- |
 | run a network as configured | `microcircuit-lab run --network toy` | `Simulation.from_yaml(network_name="toy").run()` |
 | change a setting (seed, duration, ...) | edit `configs/simulation/toy.yaml` | change it in code, below |
-| change the network | edit its YAML files | `read_network`, change, `prepare_network`, below |
+| change the network | edit its YAML files | `read_network`, change, below |
 | many runs (seeds, a sweep) | a shell loop | a Python loop, below |
 | plots | made from `configs/analysis/toy.yaml` | call the plot functions, or `run --run-dir <folder>` afterwards |
 
@@ -522,7 +558,7 @@ The simulator is part of these settings (`backend`), so a new `SimulationConfig`
 **A batch.** Each run is independent (the simulator starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
 
 ```python
-from microcircuit_lab import Simulation
+from microcircuit_lab import Simulation, read_run
 from microcircuit_lab.analysis import compute_population_firing_rates
 
 rates = {}
@@ -532,31 +568,33 @@ for seed in (1, 2, 3):
     output = settings.output.model_copy(update={"output_dir": f"output/toy_seeds/seed_{seed}"})
     simulation.simulation_config = settings.model_copy(update={"rng_seed": seed, "output": output})
     simulation.run()
-    rates[seed] = compute_population_firing_rates(simulation)   # {population: spikes/s}
+    rates[seed] = compute_population_firing_rates(read_run(simulation.output_dir))   # {population: spikes/s}
 ```
 
-**A changed network.** `read_network` gives the network as written; change it, then `prepare_network` gets it ready to simulate:
+**A changed network.** `read_network` gives the network as written; change it and simulate it as it is:
 
 ```python
-from microcircuit_lab import Simulation, prepare_network, read_network
+from microcircuit_lab import Simulation, read_network
 from microcircuit_lab.config.simulation import SimulationConfig
 
 network = read_network("configs/network/toy")
 poisson_background = {name: entry.model_copy(update={"indegree": 2000})
                       for name, entry in network.poisson_background.items()}
-network = prepare_network(network.model_copy(update={"poisson_background": poisson_background}))
+network = network.model_copy(update={"poisson_background": poisson_background})
 
 simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy_k2000")
 simulation.run()
 ```
 
-**Results and plots.** The functions in `microcircuit_lab.analysis` take a simulation, just run or reopened later:
+**Results and plots.** The functions in `microcircuit_lab.analysis` take a run read from its folder, just simulated or from long ago:
 
 ```python
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import plot_raster
 
-plot_raster(simulation, save_path=simulation.output_dir / "plots" / "raster.png", show=False)
-later = Simulation.from_run_dir("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
+run = read_run(simulation.output_dir)
+plot_raster(run, save_path=run.folder / "plots" / "raster.png", show=False)
+later = read_run("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
 ```
 
 Runs in one script go one after another. For runs in parallel, start several scripts; each run still gets its own folder. With several MPI processes, save or plot only where `simulation.is_main_process` is true (see [Several MPI processes](#several-mpi-processes)).
@@ -565,15 +603,31 @@ Runs in one script go one after another. For runs in parallel, start several scr
 
 ```text
 output/<network>/<timestamp>/
-├── recordings/     spikes (and voltages), written by the simulator
+├── recordings/     spikes (and recorded variables), written by the simulator
 ├── plots/          made by microcircuit-lab run
-├── config.yaml     the prepared network and the simulation settings used
+├── config.yaml     the network and the simulation settings used
 └── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one.
-- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `voltage.csv`) at the end. `simulation.backend.get_spike_events(population)` reads them back.
-- Voltages (`recording.voltage_recording: true`) are recorded for 5 neurons per population by default (`recording.voltage_sample_size`; `null` for all).
+- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `<variable>.csv`) at the end. `read_run(folder).spikes(population)` reads them back.
+- Any neuron variable can be recorded, not only the membrane potential. Name it as the simulator does, in the simulation file. NEST writes `<variable>-<id>-<thread>.dat`, Brian2 `<variable>.csv`:
+
+  ```yaml
+  recording:
+    variables:
+      V_m: {interval: 1.0, sample_size: 5}          # 5 neurons per population, every 1 ms
+      I_syn_ex: {interval: 1.0, populations: [E]}   # synaptic input (g_ex for conductance-based models), all neurons of E
+  ```
+
+  | Field | Meaning | Default |
+  | :--- | :--- | :--- |
+  | `interval` | ms between two samples | 1.0 |
+  | `sample_size` | the first N neurons of each population | all |
+  | `populations` | which populations | all |
+
+- A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
+- To read a finished run without the simulator: `read_run(run_dir).recording("V_m")` returns `senders`, `times` (ms) and `values`, sorted by sender, then time.
 
 ### Several MPI processes
 
@@ -732,16 +786,15 @@ Change the core when an idea doesn't fit what the config files can say (a new st
 
 ```text
 microcircuit_lab/
-├── config/            what each YAML file may contain (one module per file)
+├── config/            what each YAML file may contain (one module per file), and reading and writing YAML
 ├── network/           reading, checking and preparing a network
-├── simulation.py      Simulation: load, run, reopen a run
-├── backends/          the simulators (NEST, Brian2), and reading back a saved run
+├── simulation.py      Simulation: load and run
+├── backends/          the simulators (NEST, Brian2), and the readers of their files
 ├── analysis/          measures and plots
 ├── cli/               the microcircuit-lab command
 ├── builder_tools/     what a builder needs, in one import (also scaling and the constant-current steps)
-├── run_folder.py      run folders and their metadata
-├── project_code.py    finds the builders/, analyses/ and extensions/ of a project
-└── yaml_files.py      reading and writing YAML
+├── run_folder/        write.py makes a run folder and its metadata, read.py reads it back (read_run)
+└── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 ```
 
 Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `extensions/` hold the examples, laid out like a project's.
@@ -757,8 +810,8 @@ register_plot("spectrogram", plot_spectrogram,
 
 ## Adding a backend
 
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
-2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; its file reader (below) reads them back, so nothing else needs to know. `get_population` and `get_spike_events` give `metadata.json` the node IDs and spike counts. `version()` gives the simulator's version for `metadata.json`.
+2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes` and `read_saved_variable`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
 3. Add its name to `BackendName` (`microcircuit_lab/config/simulation.py`). Select it with `backend: {name: <name>, options: {...}}` in the simulation file, or `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; the options go to its constructor unchanged.
 
 ## Testing

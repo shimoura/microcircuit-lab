@@ -61,7 +61,8 @@ class PlotSpec:
     """One registered diagnostic: its plot function, its optional config
     type, and the filename it's saved as under a run's plots/ directory.
 
-    The first parameter of plot_fn is the simulation. Every other parameter
+    The first parameter of plot_fn is the run (see ``read_run``): the finished
+    run folder, read from disk. Every other parameter
     it names from PLOT_ARGUMENTS is filled in by call_plot; a plot function
     asks only for what it needs. ``area`` is one area name or None
     (``--area all`` calls the function once per area), and the plot is
@@ -80,7 +81,7 @@ PLOT_REGISTRY: dict[str, PlotSpec] = {}
 
 
 def _extra_parameters(plot_fn: Callable[..., object]) -> list[inspect.Parameter]:
-    """The parameters of plot_fn after the first one (the simulation)."""
+    """The parameters of plot_fn after the first one (the run)."""
     return list(inspect.signature(plot_fn).parameters.values())[1:]
 
 
@@ -88,7 +89,7 @@ def _check_plot_function(name: str, plot_fn: Callable[..., object]) -> None:
     """Raise if plot_fn asks for something microcircuit-lab run cannot provide."""
 
     if not inspect.signature(plot_fn).parameters:
-        raise ValueError(f"Plot {name!r}: {plot_fn.__name__}() needs a first parameter for the simulation.")
+        raise ValueError(f"Plot {name!r}: {plot_fn.__name__}() needs a first parameter for the run.")
 
     unknown = [
         parameter.name
@@ -100,7 +101,7 @@ def _check_plot_function(name: str, plot_fn: Callable[..., object]) -> None:
     if unknown:
         raise ValueError(
             f"Plot {name!r}: {plot_fn.__name__}() asks for {unknown}, which "
-            f"microcircuit-lab run cannot provide. After the simulation, a parameter can be "
+            f"microcircuit-lab run cannot provide. A parameter can be "
             f"one of {list(PLOT_ARGUMENTS)}; give any other parameter a default value."
         )
 
@@ -121,9 +122,9 @@ def register_plot(
         The plot's name: its ``--<name>`` flag and its section in the analysis
         file.
     plot_fn
-        The plot function. It takes the simulation first, then any of
-        ``PLOT_ARGUMENTS`` by name (``save_path``, ``area``, ``begin``, ...); a
-        parameter with any other name needs a default value.
+        The plot function. It takes the run first (from ``read_run``), then any
+        of ``PLOT_ARGUMENTS`` by name (``save_path``, ``area``, ``begin``, ...);
+        a parameter with any other name needs a default value.
     config_cls
         Optional pydantic model for the plot's settings, with an ``enabled``
         field. Without it, ``config`` is the plain dict from the plot's section,
@@ -151,8 +152,8 @@ def register_plot(
     )
 
 
-def call_plot(spec: PlotSpec, simulation, **available: object) -> object:
-    """Call spec.plot_fn with the simulation and the values in `available`
+def call_plot(spec: PlotSpec, run, **available: object) -> object:
+    """Call spec.plot_fn with the run and the values in `available`
     that it names as parameters."""
 
     wanted = {
@@ -160,7 +161,7 @@ def call_plot(spec: PlotSpec, simulation, **available: object) -> object:
         for parameter in _extra_parameters(spec.plot_fn)
         if parameter.name in available
     }
-    return spec.plot_fn(simulation, **wanted)
+    return spec.plot_fn(run, **wanted)
 
 
 def plot_enabled_in_config(plot_config: FrozenConfig | dict) -> bool:

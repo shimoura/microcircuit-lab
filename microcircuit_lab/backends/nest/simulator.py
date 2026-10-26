@@ -14,8 +14,9 @@ from pathlib import Path
 import nest
 import numpy as np
 
-from microcircuit_lab.backends import population_spikes
+from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
+from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS
 from microcircuit_lab.config.network import NetworkConfig
@@ -44,7 +45,7 @@ class NestBackend:
         Parameters
         ----------
         network, simulation_config
-            The prepared network and the simulation settings.
+            The network and the simulation settings.
         nest_modules
             Names of compiled NEST modules to install before the network is
             built, for example a NESTML neuron model that ``neurons.yaml`` uses.
@@ -60,7 +61,8 @@ class NestBackend:
         self.populations: dict[str, nest.NodeCollection] = {}
         self.background_generators: dict[str, nest.NodeCollection] = {}
         self.spike_recorder: nest.NodeCollection | None = None
-        self.multimeter: nest.NodeCollection | None = None
+        #: One multimeter per recorded variable.
+        self.multimeters: dict[str, nest.NodeCollection] = {}
         self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
         self._receptor_types: dict[str, dict] = {}
@@ -147,7 +149,7 @@ class NestBackend:
             self.create_spike_recorders()
             self.connect_spike_recorders()
 
-        if self._simulation_config.recording.voltage_recording:
+        if self._simulation_config.recording.variables:
             self.create_multimeters()
             self.connect_multimeters()
 
@@ -358,37 +360,34 @@ class NestBackend:
 
     def create_multimeters(self) -> None:
         """
-        Create one shared multimeter recording membrane potential.
+        Create one multimeter per variable of ``recording.variables``.
 
         Records straight to ascii files under the directory set in
-        prepare_output(), if any, same as spike recorders; otherwise
-        keeps events in NEST's default in-memory mode.
+        prepare_output(), if any, same as spike recorders, named after the
+        variable (``<variable>-<id>-<thread>.dat``); otherwise keeps events in
+        NEST's default in-memory mode.
         """
 
-        params = {
-            "record_from": ["V_m"],
-            "interval": self._simulation_config.recording.voltage_interval,
-        }
-        if self._recordings_dir is not None:
-            params.update({"record_to": "ascii", "label": "voltage"})
-
-        self.multimeter = nest.Create("multimeter", params=params)
+        for name, variable in self._simulation_config.recording.variables.items():
+            params = {"record_from": [name], "interval": variable.interval}
+            if self._recordings_dir is not None:
+                params.update({"record_to": "ascii", "label": name})
+            self.multimeters[name] = nest.Create("multimeter", params=params)
 
     def connect_multimeters(self) -> None:
         """
-        Connect the shared multimeter to populations (with optional subsampling).
+        Connect each multimeter to the first ``sample_size`` neurons (all, if
+        not set) of the populations its variable is recorded from.
         """
 
-        sample_size = self._simulation_config.recording.voltage_sample_size
-
-        for pop_name in self.populations:
-            nodes = self.get_population(pop_name)
-            if sample_size is not None and sample_size < len(nodes):
-                nodes = nodes[:sample_size]
-            nest.Connect(
-                self.multimeter,
-                nodes,
-            )
+        recording = self._simulation_config.recording
+        for name, multimeter in self.multimeters.items():
+            sample_size = recording.variables[name].sample_size
+            for pop_name in recording.recorded_populations(name, self.populations):
+                nodes = self.get_population(pop_name)
+                if sample_size is not None and sample_size < len(nodes):
+                    nodes = nodes[:sample_size]
+                nest.Connect(multimeter, nodes)
 
     def create_poisson_background(self) -> None:
         """
@@ -405,14 +404,14 @@ class NestBackend:
             logger.info(
                 "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
-                input_cfg.rate,
+                input_cfg.generator_rate,
                 input_cfg.generator or "its own",
             )
             if input_cfg.generator is None:
-                pg = nest.Create("poisson_generator", params={"rate": input_cfg.rate})
+                pg = nest.Create("poisson_generator", params={"rate": input_cfg.generator_rate})
             elif input_cfg.generator not in shared:
                 pg = shared[input_cfg.generator] = nest.Create(
-                    "poisson_generator", params={"rate": input_cfg.rate}
+                    "poisson_generator", params={"rate": input_cfg.generator_rate}
                 )
             else:
                 pg = shared[input_cfg.generator]
@@ -508,7 +507,7 @@ class NestBackend:
         if self.spike_recorder is None:
             return
 
-        population_spikes.log_firing_rates(
+        log_firing_rates(
             logger,
             self.get_spike_events,
             {name: pop.size for name, pop in self._network.populations.items()},
@@ -526,7 +525,7 @@ class NestBackend:
             return self._cached_spikes
 
         if self.spike_recorder is None:
-            self._cached_spikes = population_spikes.empty_spikes()
+            self._cached_spikes = spikes.empty_spikes()
         elif self.spike_recorder.get("record_to") == "ascii":
             paths = spike_files.ascii_spike_files(self._recordings_dir)
             self._cached_spikes = spike_files.read_ascii_spikes(paths)
@@ -541,7 +540,7 @@ class NestBackend:
         events = self.spike_recorder.get("events")
         senders = np.asarray(events["senders"], dtype=int)
         times = np.asarray(events["times"], dtype=float)
-        return population_spikes.sort_by_sender(senders, times)
+        return spikes.sort_by_sender(senders, times)
 
     def get_spike_events(
         self,
@@ -556,17 +555,17 @@ class NestBackend:
 
         senders, times = self._load_spikes()
         node_ids = self.get_population(population).tolist()
-        return population_spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
+        return spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
-        Return the spike (and, if enabled, voltage) recording files for
+        Return the spike (and, if enabled, variable) recording files for
         this run.
 
         In ascii mode NEST has already written the files during simulate().
         Without prepare_output(), the spikes are in memory and are written here
-        as a CSV file. Voltage is not: voltage traces are large, so voltage
-        recorded in memory is not saved.
+        as a CSV file. Variables are not: their traces are large, so
+        variables recorded in memory are not saved.
         """
 
         run_dir = Path(run_dir)
@@ -578,9 +577,9 @@ class NestBackend:
             else:
                 paths.append(self._write_memory_recording_csv(run_dir))
 
-        if self.multimeter is not None:
-            if self.multimeter.get("record_to") == "ascii":
-                paths.extend(sorted(self._recordings_dir.glob("voltage-*.dat")))
+        for name, multimeter in self.multimeters.items():
+            if multimeter.get("record_to") == "ascii":
+                paths.extend(sorted(self._recordings_dir.glob(f"{name}-*.dat")))
 
         return paths
 
@@ -590,5 +589,5 @@ class NestBackend:
         path = recordings_dir / "spikes.csv"
 
         senders, times = self._memory_spikes()
-        population_spikes.write_csv_spikes(path, senders, times)
+        spikes.write_csv_spikes(path, senders, times)
         return path

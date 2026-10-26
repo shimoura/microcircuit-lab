@@ -3,15 +3,14 @@ Spikes as two arrays, whatever simulator recorded them.
 
 ``senders`` (node IDs) and ``times`` (ms), sorted by sender, so that the spikes
 of a population (a contiguous range of node IDs) are one slice. Each backend
-reads its own files into this form; the rest of the core only sees these arrays.
-Spikes kept in memory are saved as ``spikes.csv`` (columns ``sender`` and
-``time_ms``), written and read here for every backend.
+reads its own files into this form (``<simulator>/spike_files.py``); the rest of
+the core only sees these arrays. Spikes kept in memory are saved as
+``spikes.csv`` (columns ``sender`` and ``time_ms``), written and read here for
+every backend.
 """
 
 from __future__ import annotations
 
-import logging
-from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +28,15 @@ def sort_by_sender(senders: np.ndarray, times: np.ndarray) -> tuple[np.ndarray, 
 
     order = np.argsort(senders, kind="stable")
     return senders[order], times[order]
+
+
+def sort_recording(
+    senders: np.ndarray, times: np.ndarray, values: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """The samples of a recorded variable sorted by sender, then by time."""
+
+    order = np.lexsort((times, senders))
+    return senders[order], times[order], values[order]
 
 
 def spikes_in_id_range(
@@ -67,26 +75,3 @@ def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None
         comments="",
         fmt=["%d", "%.3f"],
     )
-
-
-def log_firing_rates(
-    logger: logging.Logger, spike_events: Callable[[str], dict], sizes: dict[str, int], t_sim: float
-) -> None:
-    """
-    Log the number of spikes and the mean firing rate of each population.
-
-    ``spike_events`` is the backend's ``get_spike_events``, ``sizes`` the
-    number of neurons of each population and ``t_sim`` the simulated time (ms).
-    """
-
-    t_sim_s = t_sim / 1000.0
-    for pop_name, n_neurons in sizes.items():
-        n_spikes = len(spike_events(pop_name)["times"])
-        mean_rate = (n_spikes / (n_neurons * t_sim_s)) if (n_neurons and t_sim_s > 0) else 0.0
-        logger.info(
-            "%-6s  N=%5d  spikes=%7d  rate=%8.3f Hz",
-            pop_name,
-            n_neurons,
-            n_spikes,
-            mean_rate,
-        )

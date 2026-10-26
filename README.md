@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23547742.svg)](https://doi.org/10.5281/zenodo.23547742)
 
-Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST or Brian2 and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
+Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core checks it, runs it in NEST or Brian2 and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
 
 The full documentation is in [`microcircuit_lab/README.md`](microcircuit_lab/README.md).
 
@@ -15,7 +15,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 
-microcircuit-lab init my_project --with-core
+microcircuit-lab init my_project --with-core   # copies the backends of the installed simulators
 cd my_project
 microcircuit-lab run --network toy
 ```
@@ -25,6 +25,7 @@ The plots and spikes are saved in `output/toy/<timestamp>/`. `pd14`, `toy_two_ar
 Next:
 
 - **Other settings** (duration, seed, threads): edit `configs/simulation/toy.yaml` and run again.
+- **Your own analysis:** read a finished run with `read_run`; see [Reading a run](microcircuit_lab/README.md#reading-a-run).
 - **Parameter sweeps, several seeds, any batch:** a Python script; recipes in [Running from a script](microcircuit_lab/README.md#running-from-a-script).
 - **Your own network:** [Adding a new network](microcircuit_lab/README.md#adding-a-new-network).
 

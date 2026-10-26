@@ -31,7 +31,6 @@ from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import read_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
 
 
 def _neuron(**overrides) -> NeuronConfig:
@@ -159,10 +158,10 @@ def test_old_names_fail_with_the_new_form(tmp_path: Path) -> None:
 def test_poisson_background_creates_a_generator_and_the_replaced_one_does_not():
     simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
 
-    poisson = NestBackend(network=prepare_network(_network()), simulation_config=simulation_config)
+    poisson = NestBackend(network=_network(), simulation_config=simulation_config)
     poisson.build()
     replaced = NestBackend(
-        network=prepare_network(replace_background_by_mean_current(_network())),
+        network=replace_background_by_mean_current(_network()),
         simulation_config=simulation_config,
     )
     replaced.build()
@@ -180,7 +179,7 @@ def test_the_mean_current_alone_drives_spiking():
             "poisson_background": {"E": _background(rate=8.0, mean=100.0, indegree=1000.0)},
         }
     )
-    network = prepare_network(replace_background_by_mean_current(strong_network))
+    network = replace_background_by_mean_current(strong_network)
     simulation_config = SimulationConfig.model_validate({"t_sim": 500.0, "print_time": False})
 
     backend = NestBackend(network=network, simulation_config=simulation_config)
@@ -208,10 +207,10 @@ def _two_populations(generators=("A", "A"), rates=(8.0, 8.0)) -> NetworkConfig:
 def test_populations_with_the_same_generator_name_share_one_generator():
     simulation_config = SimulationConfig.model_validate({"t_sim": 5.0, "print_time": False})
 
-    shared = NestBackend(network=prepare_network(_two_populations()), simulation_config=simulation_config)
+    shared = NestBackend(network=_two_populations(), simulation_config=simulation_config)
     shared.build()
     own = NestBackend(
-        network=prepare_network(_two_populations(generators=(None, None))),
+        network=_two_populations(generators=(None, None)),
         simulation_config=simulation_config,
     )
     own.build()

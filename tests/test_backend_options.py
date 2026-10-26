@@ -16,7 +16,7 @@ import microcircuit_lab.simulation as runner_module
 from microcircuit_lab import Simulation
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.yaml_files import read_yaml
+from microcircuit_lab.config.yaml_files import read_yaml
 
 
 class _FakeBackend:
@@ -55,7 +55,7 @@ class _FakeBackend:
         pass
 
     def get_population(self, name):
-        # write_run_metadata() reads first_gid off this unconditionally;
+        # write_run_metadata() reads the first and last node IDs off this unconditionally;
         # the actual node IDs are irrelevant to what these tests check.
         return np.array([1])
 

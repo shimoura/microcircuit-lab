@@ -8,6 +8,8 @@ First ask whether the change belongs in the core. Behaviour that only your proje
 4. Run `ruff check .` and `pytest`. CI runs both.
 5. Push the branch to your fork and open a pull request into `main`.
 
+A project made with `init --with-core` has a copy of the core with only the backends of the simulators installed when it was made; `init <project> --with-core --backends <name>` adds another.
+
 To pull later changes into your fork, add this repository as a remote: `git remote add upstream git@github.com:shimoura/microcircuit-lab.git`.
 
 ## Changing the core
@@ -24,7 +26,7 @@ flowchart TD
   B --> T["tests/test_stimuli.py"]
 ```
 
-The files hold the numbers that are simulated; the only change at run time is the background rate per synapse into the rate of its generator (`network/prepare.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
+The files hold the numbers that are simulated; the simulator only turns each background rate per synapse into the rate of its generator (rate × indegree, `generator_rate` in `config/poisson_background.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
 
 ### Does your idea fit what already exists?
 
@@ -99,14 +101,14 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 
 1. `config/simulation.py`: add it to `RecordingConfig`.
 2. `backends/nest/simulator.py`: a `create_*`/`connect_*` pair, and reading it back; `backends/brian2/simulator.py`: a Brian2 monitor in a `create_*` method, and writing it in `save_recordings`.
-3. `run_folder.py`, if it is saved in the run folder.
+3. `run_folder/write.py`, if it is saved in the run folder, and `run_folder/read.py` if `read_run` should give it.
 4. Test in `tests/test_run_folder.py`.
 </details>
 
 <details>
 <summary><b>A bundled plot</b></summary>
 
-1. `analysis/<plot>.py`: the plot function, a settings class, and `register_plot(...)` at the end.
+1. `analysis/<plot>.py`: the plot function `plot_<name>(run, ...)`, whose first parameter is the `Run` that `read_run` gives, a settings class, and `register_plot(...)` at the end.
 2. `analysis/__init__.py`: import the module, so the plot is registered when the package loads.
 3. Test in `tests/test_<plot>.py`.
 </details>
@@ -114,7 +116,7 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 <details>
 <summary><b>A simulator</b></summary>
 
-A new package `backends/<name>/` and a line in `get_backend` and `read_saved_spikes`; see "Adding a backend" in the README.
+A new package `backends/<name>/` and a line in `get_backend`, `read_saved_spikes` and `read_saved_variable`; see "Adding a backend" in the README.
 </details>
 
 **No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Running with Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).
@@ -156,6 +158,6 @@ When a stimulus `type` is not known, the error message points to this section.
 
 - Use plain names close to the papers and reference codes (`N_scaling`, `K_ext`, `tau_syn_ex`), no extra layers, no logic written twice.
 - Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks, together with a `description` (with its unit) and, for a required field, `examples=[...]`: [docs/config_files.md](docs/config_files.md) is written from them.
-- Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `run_folder.register_artifact`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
+- Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `run_folder.register_artifact`, `config.yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
 - Keep the field names of the config models stable (`populations`, `size`, `indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason. Rename a field only when its old name is wrong or misleading. The old name then fails with a message giving the new one (no conversion is kept), and the rename is listed in the release notes. Command-line flags, backend options and folder names follow the same rule but matter less, because they don't end up in a run folder.

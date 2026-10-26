@@ -18,7 +18,7 @@ from pathlib import Path
 from microcircuit_lab.backends.interface import SimulationBackend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
-from microcircuit_lab.yaml_files import flow_records, write_yaml
+from microcircuit_lab.config.yaml_files import flow_records, write_yaml
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +135,10 @@ def save_run_config(
     simulation_config: SimulationConfig,
     run_dir: Path,
 ) -> Path:
-    """Save the prepared network (after prepare_network) and the simulation config.
+    """Save the network as given and the simulation config.
 
     connections/populations/poisson_background are written one-record-per-line
-    (see yaml_files.flow_records) since a full-scale network can have
+    (see config.yaml_files.flow_records) since a full-scale network can have
     thousands of connection entries. Above 20,000 connections,
     they go to ``connections.csv`` instead, named by ``connections_file`` in
     ``config.yaml``.
@@ -198,7 +198,7 @@ def _core_git_provenance() -> dict[str, object] | None:
     git would otherwise find the project's.
     """
 
-    package_dir = Path(__file__).resolve().parent
+    package_dir = Path(__file__).resolve().parents[1]
     if not (package_dir.parent / ".git").exists():
         return None
     return _git_provenance(package_dir)
@@ -225,18 +225,20 @@ def write_run_metadata(
     population (if spikes were recorded) and a list of the files of the run, to
     which :func:`register_artifact` adds.
 
-    ``first_gid`` and ``size`` give the node IDs of each population, which are
-    one contiguous block. :class:`~microcircuit_lab.backends.run_folder_reader.RunFolderReader`
-    uses them to read a saved run without simulating it again.
+    ``first_node_id`` and ``last_node_id`` give the node IDs of each population,
+    which are one contiguous block. :func:`~microcircuit_lab.run_folder.read.read_run` uses
+    them to read a saved run without simulating it again.
     """
 
     t_sim_s = simulation_config.t_sim / 1000.0
     populations = {}
 
     for pop_name, pop_cfg in network.populations.items():
+        node_ids = backend.get_population(pop_name).tolist()
         stats = {
             "size": pop_cfg.size,
-            "first_gid": int(backend.get_population(pop_name).tolist()[0]),
+            "first_node_id": int(node_ids[0]),
+            "last_node_id": int(node_ids[-1]),
         }
 
         if simulation_config.recording.spike_recording:
@@ -332,7 +334,7 @@ def save_run_outputs(
         )
 
     recording = simulation_config.recording
-    if recording.spike_recording or recording.voltage_recording:
+    if recording.spike_recording or recording.variables:
         for path in backend.save_recordings(run_dir):
             register_artifact(run_dir, "recordings", path)
 

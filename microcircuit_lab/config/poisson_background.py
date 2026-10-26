@@ -43,6 +43,11 @@ class PoissonBackgroundConfig(FrozenConfig):
         "Omit for a generator of its own",
     )
 
+    @property
+    def generator_rate(self) -> float:
+        """Rate of the one Poisson generator that stands for the ``indegree`` synapses of each neuron (spikes/s)."""
+        return self.rate * self.indegree
+
 
 class PoissonBackgroundFile(FrozenConfig):
     """``poisson_background.yaml``: one entry per population name.
