@@ -14,6 +14,23 @@ To pull later changes into your fork, add this repository as a remote: `git remo
 
 ## Changing the core
 
+### Package layout
+
+```text
+microcircuit_lab/
+├── config/            what each YAML file may contain (one module per file), and reading and writing YAML
+├── network/           reading, checking and preparing a network
+├── simulation.py      Simulation: load and run
+├── backends/          the simulators (NEST, Brian2), and the readers of their files
+├── analysis/          measures and plots
+├── cli/               the microcircuit-lab command
+├── builder_tools/     what a builder needs, in one import (also scaling and the constant-current steps)
+├── run_folder/        write.py makes a run folder and its metadata, read.py reads it back (read_run)
+└── project_code.py    finds the builders/, analyses/ and extensions/ of a project
+```
+
+Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `extensions/` hold the examples, laid out like a project's.
+
 ### Follow the name
 
 A concept keeps its name from the YAML file to the test. To change something, start from its YAML file and follow the name:
@@ -111,15 +128,24 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 1. `analysis/<plot>.py`: the plot function `plot_<name>(run, ...)`, whose first parameter is the `Run` that `read_run` gives, a settings class, and `register_plot(...)` at the end.
 2. `analysis/__init__.py`: import the module, so the plot is registered when the package loads.
 3. Test in `tests/test_<plot>.py`.
+
+The call at the end of step 1, with a settings class:
+
+```python
+register_plot("spectrogram", plot_spectrogram,
+              config_cls=SpectrogramPlotConfig, filename="spectrogram.png")
+```
 </details>
 
 <details>
 <summary><b>A simulator</b></summary>
 
-A new package `backends/<name>/` and a line in `get_backend`, `read_saved_spikes` and `read_saved_variable`; see "Adding a backend" in the README.
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; its file reader (below) reads them back, so nothing else needs to know. `get_population` and `get_spike_events` give `metadata.json` the node IDs and spike counts. `version()` gives the simulator's version for `metadata.json`.
+2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes` and `read_saved_variable`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
+3. Add its name to `BackendName` (`microcircuit_lab/config/simulation.py`). Select it with `backend: {name: <name>, options: {...}}` in the simulation file, or `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; the options go to its constructor unchanged.
 </details>
 
-**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Running with Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).
+**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Models of your own" under "Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).
 
 When a stimulus `type` is not known, the error message points to this section.
 
@@ -158,6 +184,14 @@ When a stimulus `type` is not known, the error message points to this section.
    ```
    Connecting it needs nothing new: every stimulus except `dc` connects with its own weight, delay and synapse, like `poisson`.
 5. A test in `tests/test_stimuli.py`, and the new type in the README's list of stimuli.
+
+## Testing
+
+```bash
+pytest
+```
+
+The tests cover the core: reading and checking configs, preparing a network, the simulator backends and the analysis. A builder is tested through what it writes: every network in `configs/network/` is loaded and checked. Tests that simulate need NEST; the Brian2 tests are skipped without Brian2.
 
 ## Code style
 

@@ -29,7 +29,7 @@ Next:
 - **Parameter sweeps, several seeds, any batch:** a Python script; recipes in [Running from a script](microcircuit_lab/README.md#running-from-a-script).
 - **Your own network:** [Adding a new network](microcircuit_lab/README.md#adding-a-new-network).
 
-A project holds your own builders, analyses and configs, and with `--with-core` your own copy of the core to change as you like; see [Starting a project](microcircuit_lab/README.md#starting-a-project). To propose a change to the core here, see [CONTRIBUTING.md](CONTRIBUTING.md).
+A project holds your own builders, analyses and configs, and with `--with-core` your own copy of the core to change as you like; see [Starting a project](microcircuit_lab/README.md#starting-a-project). To propose a change to the core here, see [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md).
 
 ## How to cite
 

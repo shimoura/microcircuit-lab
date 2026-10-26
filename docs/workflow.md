@@ -118,4 +118,4 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 
 `init --with-core` copies only the backends of the installed simulators (`--backends nest brian2` to choose).
 
-To change the core: [CONTRIBUTING.md](../CONTRIBUTING.md#changing-the-core).
+To change the core: [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md#changing-the-core).

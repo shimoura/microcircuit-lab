@@ -33,7 +33,7 @@ from microcircuit_lab.config.yaml_files import read_yaml
 # Shown under an error about an unknown stimulus type, so whoever wants to add
 # one knows where to look. (An unknown distribution or rule is a project one,
 # which the backend looks up: see its check().)
-_HOW_TO_ADD = 'To add a new one, see "Changing the core" in CONTRIBUTING.md.'
+_HOW_TO_ADD = 'To add a new one, see "Changing the core" in https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md#changing-the-core'
 
 
 def read_network(folder: str | Path) -> NetworkConfig:

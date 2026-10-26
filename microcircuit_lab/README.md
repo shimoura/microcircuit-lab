@@ -6,20 +6,19 @@ Build, simulate and analyse spiking neural network models, from a single microci
 
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
+- [Installation](#installation)
 - [Included networks](#included-networks)
 - [Starting a project](#starting-a-project)
-- [Installation](#installation)
 - [Configuration](#configuration)
 - [Scaling a network](#scaling-a-network)
 - [Adding a new network](#adding-a-new-network)
-- [Analysing a run](#analysing-a-run)
 - [Running from a script](#running-from-a-script)
-- [Run outputs](#run-outputs)
-- [Using a NESTML model](#using-a-nestml-model)
-- [Running with Brian2](#running-with-brian2)
+- [The run folder](#the-run-folder)
+- [Analysing a run](#analysing-a-run)
+- [Simulators](#simulators)
+  - [NEST](#nest)
+  - [Brian2](#brian2)
 - [Changing the core](#changing-the-core)
-- [Adding a backend](#adding-a-backend)
-- [Testing](#testing)
 
 ## Quick start
 
@@ -57,6 +56,30 @@ Next:
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
 The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
+
+## Installation
+
+```bash
+pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
+```
+
+This installs the latest version. For a fixed one, add its tag from the [releases](https://github.com/shimoura/microcircuit-lab/releases) to the address: `...microcircuit-lab@<tag>`. Drop `[nest]` if you get NEST another way:
+
+- conda-forge: `mamba install -c conda-forge nest-simulator`
+
+For NEST from source or with MPI, see [NEST](#nest); for Brian2, see [Brian2](#brian2).
+
+Python 3.12 or newer is needed. All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
+
+The power spectrum with `method: multitaper` needs `mne`: `pip install "microcircuit_lab[multitaper]"`.
+
+To work on the core itself, clone the repository and install it editable:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev,nest]"
+```
 
 <a id="included-models"></a>
 
@@ -105,33 +128,8 @@ Good to know:
 
 - Run the commands from the project folder; that is where `builders/`, `analyses/`, `configs/` and `extensions/` are looked for.
 - With `--with-core`, the copy of the core is yours: change it and commit it with your project. Your edits take effect at once, and each run's `metadata.json` records your project's git commit, which then covers the core too.
-- A later core release is not applied to the copy by itself; compare and merge it by hand if you want it. To propose a change to the original core, see [CONTRIBUTING.md](../CONTRIBUTING.md).
+- A later core release is not applied to the copy by itself; compare and merge it by hand if you want it. To propose a change to the original core, see [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md).
 - The examples (every builder, config and `extensions/` model) are copied too, and are yours as well. A name that already exists is skipped, so `microcircuit-lab init . --with-core` is safe in an existing repository.
-
-## Installation
-
-```bash
-pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
-```
-
-This installs the latest version. For a fixed one, add its tag from the [releases](https://github.com/shimoura/microcircuit-lab/releases) to the address: `...microcircuit-lab@<tag>`. Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only. Drop `[nest]` if you get NEST another way:
-
-- conda-forge: `mamba install -c conda-forge nest-simulator`
-- from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and [`scripts/install_nest_from_source.sh`](https://github.com/shimoura/microcircuit-lab/blob/main/scripts/install_nest_from_source.sh) in the repository (`NEST_WITH_MPI=ON` for MPI)
-
-Python 3.12 or newer is needed. All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
-
-To run on Brian2 instead of NEST, install `[brian2]` (`pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"`); see [Running with Brian2](#running-with-brian2).
-
-The power spectrum with `method: multitaper` needs `mne`: `pip install "microcircuit_lab[multitaper]"`.
-
-To work on the core itself, clone the repository and install it editable:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,nest]"
-```
 
 ## Configuration
 
@@ -396,22 +394,113 @@ write_network_directory(
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
-## Analysing a run
+## Running from a script
 
-### Re-plot without simulating again
+The command and a script run the same steps (check, simulate, save); the command also makes the plots.
 
-```bash
-microcircuit-lab run --network toy                                          # prints "Run directory: ..."
-microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
+| | Command | Script |
+| :--- | :--- | :--- |
+| run a network as configured | `microcircuit-lab run --network toy` | `Simulation.from_yaml(network_name="toy").run()` |
+| change a setting (seed, duration, ...) | edit `configs/simulation/toy.yaml` | change it in code, below |
+| change the network | edit its YAML files | `read_network`, change, below |
+| many runs (seeds, a sweep) | a shell loop | a Python loop, below |
+| plots | made from `configs/analysis/toy.yaml` | call the plot functions, or `run --run-dir <folder>` afterwards |
+
+Scripts go in your project's `experiments/` and run from the project folder (`python experiments/my_sweep.py`), so that `configs/` and `output/` are found. A worked example, in the repository: [`experiments/toy/background_drive_sweep.py`](https://github.com/shimoura/microcircuit-lab/blob/main/experiments/toy/background_drive_sweep.py).
+
+**Other settings.** The settings are a `SimulationConfig` (fields: [docs/config_files.md](../docs/config_files.md)); replace it before `run()`:
+
+```python
+from microcircuit_lab import Simulation
+
+simulation = Simulation.from_yaml(network_name="toy")
+settings = simulation.simulation_config
+simulation.simulation_config = settings.model_copy(update={"t_sim": 2000.0, "rng_seed": 7})
+simulation.run()
+print(simulation.output_dir)   # where this run was saved
 ```
 
-`--run-dir` takes the analysis flags (`--begin`, `--end`, `--area`, `--<plot>`, ...) but not the simulation ones (`--simulation`, `--backend`, `--nest-modules`, `--extensions`, `--brian2-...`), which it refuses: the run is already simulated. The plots go back into the run's `plots/`.
+The simulator is part of these settings (`backend`), so a new `SimulationConfig` runs on its own `backend` (NEST if not set), not on the one given to `from_yaml`. `model_copy` keeps it.
 
-Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
+**A batch.** Each run is independent (the simulator starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
+
+```python
+from microcircuit_lab import Simulation, read_run
+from microcircuit_lab.analysis import compute_population_firing_rates
+
+rates = {}
+for seed in (1, 2, 3):
+    simulation = Simulation.from_yaml(network_name="toy")
+    settings = simulation.simulation_config
+    output = settings.output.model_copy(update={"output_dir": f"output/toy_seeds/seed_{seed}"})
+    simulation.simulation_config = settings.model_copy(update={"rng_seed": seed, "output": output})
+    simulation.run()
+    rates[seed] = compute_population_firing_rates(read_run(simulation.output_dir))   # {population: spikes/s}
+```
+
+**A changed network.** `read_network` gives the network as written; change it and simulate it as it is:
+
+```python
+from microcircuit_lab import Simulation, read_network
+from microcircuit_lab.config.simulation import SimulationConfig
+
+network = read_network("configs/network/toy")
+poisson_background = {name: entry.model_copy(update={"indegree": 2000})
+                      for name, entry in network.poisson_background.items()}
+network = network.model_copy(update={"poisson_background": poisson_background})
+
+simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy_k2000")
+simulation.run()
+```
+
+**Results and plots.** The functions in `microcircuit_lab.analysis` take a run read from its folder, just simulated or from long ago:
+
+```python
+from microcircuit_lab import read_run
+from microcircuit_lab.analysis import plot_raster
+
+run = read_run(simulation.output_dir)
+plot_raster(run, save_path=run.folder / "plots" / "raster.png", show=False)
+later = read_run("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
+```
+
+Runs in one script go one after another. For runs in parallel, start several scripts; each run still gets its own folder. With several MPI processes, save or plot only where `simulation.is_main_process` is true (see [Several MPI processes](#several-mpi-processes)).
+
+<a id="run-outputs"></a>
+
+## The run folder
+
+```text
+output/<network>/<timestamp>/
+├── recordings/     spikes (and recorded variables), written by the simulator
+├── plots/          made by microcircuit-lab run
+├── config.yaml     the network and the simulation settings used
+└── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
+```
+
+- Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying its `recordings/` folder.
+- NEST writes the spikes straight to disk; Brian2 keeps them in memory and writes them at the end. `read_run(folder).spikes(population)` reads them back.
+- Any neuron variable can be recorded, not only the membrane potential. Name it as the simulator does, in the simulation file:
+
+  ```yaml
+  recording:
+    variables:
+      V_m: {interval: 1.0, sample_size: 5}          # 5 neurons per population, every 1 ms
+      I_syn_ex: {interval: 1.0, populations: [E]}   # synaptic input (g_ex for conductance-based models), all neurons of E
+  ```
+
+  | Field | Meaning | Default |
+  | :--- | :--- | :--- |
+  | `interval` | ms between two samples | 1.0 |
+  | `sample_size` | the first N neurons of each population | all |
+  | `populations` | which populations | all |
+
+- A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
+- To read a finished run without the simulator: `read_run(run_dir).recording("V_m")` returns `senders`, `times` (ms) and `values`, sorted by sender, then time.
 
 ### Reading a run
 
-`read_run` opens a run folder (see [Run outputs](#run-outputs)) without the simulator. The plots read runs this way, and so do your own analyses.
+`read_run` opens a run folder without the simulator. The plots read runs this way, and so do your own analyses.
 
 ```python
 from microcircuit_lab import read_run
@@ -444,6 +533,19 @@ import json
 populations = json.load(open("output/toy/<timestamp>/metadata.json"))["populations"]
 populations["E"]["first_node_id"], populations["E"]["last_node_id"]   # 1, 800
 ```
+
+## Analysing a run
+
+### Re-plot without simulating again
+
+```bash
+microcircuit-lab run --network toy                                          # prints "Run directory: ..."
+microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
+```
+
+`--run-dir` takes the analysis flags (`--begin`, `--end`, `--area`, `--<plot>`, ...) but not the simulation ones (`--simulation`, `--backend`, `--nest-modules`, `--extensions`, `--brian2-...`), which it refuses: the run is already simulated. The plots go back into the run's `plots/`.
+
+Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
 
 ### Use the bundled functions
 
@@ -527,120 +629,17 @@ The figure is saved in `plots/`, one per area with `--area all`, and listed in `
 - A name already taken (`raster`, ...) raises an error.
 - A package can provide such plots through the `microcircuit_lab.analyses` entry-point group (see `microcircuit_lab/analysis/run_command_plots.py`).
 
-## Running from a script
+## Simulators
 
-The command and a script run the same steps (check, simulate, save); the command also makes the plots.
+The same config files run on NEST and Brian2; the simulation file's `backend` or `--backend` picks one.
 
-| | Command | Script |
-| :--- | :--- | :--- |
-| run a network as configured | `microcircuit-lab run --network toy` | `Simulation.from_yaml(network_name="toy").run()` |
-| change a setting (seed, duration, ...) | edit `configs/simulation/toy.yaml` | change it in code, below |
-| change the network | edit its YAML files | `read_network`, change, below |
-| many runs (seeds, a sweep) | a shell loop | a Python loop, below |
-| plots | made from `configs/analysis/toy.yaml` | call the plot functions, or `run --run-dir <folder>` afterwards |
+### NEST
 
-Scripts go in your project's `experiments/` and run from the project folder (`python experiments/my_sweep.py`), so that `configs/` and `output/` are found. A worked example, in the repository: [`experiments/toy/background_drive_sweep.py`](https://github.com/shimoura/microcircuit-lab/blob/main/experiments/toy/background_drive_sweep.py).
+NEST from source, e.g. on a cluster for MPI: see the [NEST installation docs](https://nest-simulator.readthedocs.io/en/stable/installation/index.html) and [`scripts/install_nest_from_source.sh`](https://github.com/shimoura/microcircuit-lab/blob/main/scripts/install_nest_from_source.sh) in the repository (`NEST_WITH_MPI=ON` for MPI). Only NEST built from source runs on several MPI processes; the pip and conda-forge builds use threads only.
 
-**Other settings.** The settings are a `SimulationConfig` (fields: [docs/config_files.md](../docs/config_files.md)); replace it before `run()`:
+<a id="using-a-nestml-model"></a>
 
-```python
-from microcircuit_lab import Simulation
-
-simulation = Simulation.from_yaml(network_name="toy")
-settings = simulation.simulation_config
-simulation.simulation_config = settings.model_copy(update={"t_sim": 2000.0, "rng_seed": 7})
-simulation.run()
-print(simulation.output_dir)   # where this run was saved
-```
-
-The simulator is part of these settings (`backend`), so a new `SimulationConfig` runs on its own `backend` (NEST if not set), not on the one given to `from_yaml`. `model_copy` keeps it.
-
-**A batch.** Each run is independent (the simulator starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
-
-```python
-from microcircuit_lab import Simulation, read_run
-from microcircuit_lab.analysis import compute_population_firing_rates
-
-rates = {}
-for seed in (1, 2, 3):
-    simulation = Simulation.from_yaml(network_name="toy")
-    settings = simulation.simulation_config
-    output = settings.output.model_copy(update={"output_dir": f"output/toy_seeds/seed_{seed}"})
-    simulation.simulation_config = settings.model_copy(update={"rng_seed": seed, "output": output})
-    simulation.run()
-    rates[seed] = compute_population_firing_rates(read_run(simulation.output_dir))   # {population: spikes/s}
-```
-
-**A changed network.** `read_network` gives the network as written; change it and simulate it as it is:
-
-```python
-from microcircuit_lab import Simulation, read_network
-from microcircuit_lab.config.simulation import SimulationConfig
-
-network = read_network("configs/network/toy")
-poisson_background = {name: entry.model_copy(update={"indegree": 2000})
-                      for name, entry in network.poisson_background.items()}
-network = network.model_copy(update={"poisson_background": poisson_background})
-
-simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy_k2000")
-simulation.run()
-```
-
-**Results and plots.** The functions in `microcircuit_lab.analysis` take a run read from its folder, just simulated or from long ago:
-
-```python
-from microcircuit_lab import read_run
-from microcircuit_lab.analysis import plot_raster
-
-run = read_run(simulation.output_dir)
-plot_raster(run, save_path=run.folder / "plots" / "raster.png", show=False)
-later = read_run("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
-```
-
-Runs in one script go one after another. For runs in parallel, start several scripts; each run still gets its own folder. With several MPI processes, save or plot only where `simulation.is_main_process` is true (see [Several MPI processes](#several-mpi-processes)).
-
-## Run outputs
-
-```text
-output/<network>/<timestamp>/
-├── recordings/     spikes (and recorded variables), written by the simulator
-├── plots/          made by microcircuit-lab run
-├── config.yaml     the network and the simulation settings used
-└── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
-```
-
-- Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying its `recordings/` folder.
-- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `<variable>.csv`) at the end. `read_run(folder).spikes(population)` reads them back.
-- Any neuron variable can be recorded, not only the membrane potential. Name it as the simulator does, in the simulation file. NEST writes `<variable>-<id>-<thread>.dat`, Brian2 `<variable>.csv`:
-
-  ```yaml
-  recording:
-    variables:
-      V_m: {interval: 1.0, sample_size: 5}          # 5 neurons per population, every 1 ms
-      I_syn_ex: {interval: 1.0, populations: [E]}   # synaptic input (g_ex for conductance-based models), all neurons of E
-  ```
-
-  | Field | Meaning | Default |
-  | :--- | :--- | :--- |
-  | `interval` | ms between two samples | 1.0 |
-  | `sample_size` | the first N neurons of each population | all |
-  | `populations` | which populations | all |
-
-- A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
-- To read a finished run without the simulator: `read_run(run_dir).recording("V_m")` returns `senders`, `times` (ms) and `values`, sorted by sender, then time.
-
-### Several MPI processes
-
-```bash
-mpirun -n 4 microcircuit-lab run --network pd14
-```
-
-- Needs NEST built from source with MPI (above), on a cluster against the cluster's MPI. Brian2 runs in one process.
-- NEST spreads the neurons over the processes. Each process writes its own spike files into the same `recordings/` folder, so the processes must share a file system.
-- The first process picks the run folder; when all have finished simulating, it alone prints the rates and writes `config.yaml`, `metadata.json` and the plots.
-- In your own script, save or plot only where `simulation.is_main_process` is true.
-
-## Using a NESTML model
+#### NESTML models
 
 1. Write the model in `extensions/nestml/` (e.g. `extensions/nestml/my_lif.nestml`), and compile it once:
    ```python
@@ -667,9 +666,22 @@ mpirun -n 4 microcircuit-lab run --network pd14
 
 Don't commit the compiled output; it depends on the platform and the NEST version.
 
-## Running with Brian2
+#### Several MPI processes
 
-The same config files run on [Brian2](https://brian2.readthedocs.io): install it with `pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"` (in a clone: `pip install -e ".[brian2]"`), then
+```bash
+mpirun -n 4 microcircuit-lab run --network pd14
+```
+
+- Needs NEST built from source with MPI (above), on a cluster against the cluster's MPI. Brian2 runs in one process.
+- NEST spreads the neurons over the processes. Each process writes its own spike files into the same `recordings/` folder, so the processes must share a file system.
+- The first process picks the run folder; when all have finished simulating, it alone prints the rates and writes `config.yaml`, `metadata.json` and the plots.
+- In your own script, save or plot only where `simulation.is_main_process` is true.
+
+<a id="running-with-brian2"></a>
+
+### Brian2
+
+Install [Brian2](https://brian2.readthedocs.io) with `pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"` (in a clone: `pip install -e ".[brian2]"`), then
 
 ```bash
 microcircuit-lab run --network toy --backend brian2
@@ -687,6 +699,8 @@ backend:
 ```
 
 `--backend`, the `--brian2-...` flags and the `backend`/`backend_options` arguments override it. The options belong to the simulator named with them: with `--backend nest`, a Brian2 profile's options are left out. The run's `config.yaml` records the simulator and options used.
+
+#### Models of your own
 
 Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `extensions/brian2/` of your project, or in a module given with `--extensions`. A name it cannot find is an error that says so, before anything is built. This repository's [`extensions/brian2/`](../extensions/brian2/) has the NEST models the example networks use, `static_synapse` is built in, and `init --with-core` copies them into a project.
 
@@ -737,7 +751,7 @@ stdp = SynapseModel(
 )
 ```
 
-### Connection rules of your own
+#### Connection rules of your own
 
 A `rule` that is not one of the shared rules is a `ConnectionRule` in `extensions/brian2/` (or in a module given with `--extensions`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's `parameters`, the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
 
@@ -755,7 +769,7 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 
 In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). Scaling a network with such a rule stops with an error, since the core can't know how the rule scales (scale it in its builder instead).
 
-### Distributions of your own
+#### Distributions of your own
 
 A weight or delay `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the connection's `mean` and `rel_std`, its `parameters`, the neurons' variables and `index_pre` / `index_post`:
 
@@ -776,7 +790,18 @@ decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index
 - A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
 - Scaling a network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
-Brian2 spends time on every object it has, so the network is built from few: the populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has. The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs. Each connection without multapses is compiled on its own, so a network with many of them takes longer the first time (`toy_two_areas_advanced`: about 18 minutes, then 26 s); changing a connection's number compiles it again. `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network. `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs; with `backend_options={"standalone_directory": "brian2_build"}` (or `standalone_directory` in the simulation file's `backend.options`) it keeps its code in that folder and compiles only what changed since the last run there. Two runs at the same time must not share the folder. Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
+#### Performance
+
+Brian2 spends time on every object it has, so the network is built from few:
+
+- The populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has.
+- The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs.
+- Each connection without multapses is compiled on its own, so a network with many of them takes longer the first time (`toy_two_areas_advanced`: about 18 minutes, then 26 s); changing a connection's number compiles it again.
+- `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network.
+- `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs; with `backend_options={"standalone_directory": "brian2_build"}` (or `standalone_directory` in the simulation file's `backend.options`) it keeps its code in that folder and compiles only what changed since the last run there. Two runs at the same time must not share the folder.
+- Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
+
+#### Limitations
 
 The bundled Brian2 `aeif_cond_exp` integrates with Euler, while NEST uses an adaptive RK45 solver, so its spike times can differ slightly at `resolution: 0.1`; a smaller resolution reduces it.
 
@@ -784,42 +809,4 @@ Brian2 runs in one process (no MPI). Background input goes through static synaps
 
 ## Changing the core
 
-Change the core when an idea doesn't fit what the config files can say (a new stimulus type, spatial structure, plasticity) and would help any model. If only one model needs it, it belongs in that model's builder. [CONTRIBUTING.md](../CONTRIBUTING.md#changing-the-core) shows which files each kind of change touches.
-
-```text
-microcircuit_lab/
-├── config/            what each YAML file may contain (one module per file), and reading and writing YAML
-├── network/           reading, checking and preparing a network
-├── simulation.py      Simulation: load and run
-├── backends/          the simulators (NEST, Brian2), and the readers of their files
-├── analysis/          measures and plots
-├── cli/               the microcircuit-lab command
-├── builder_tools/     what a builder needs, in one import (also scaling and the constant-current steps)
-├── run_folder/        write.py makes a run folder and its metadata, read.py reads it back (read_run)
-└── project_code.py    finds the builders/, analyses/ and extensions/ of a project
-```
-
-Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `extensions/` hold the examples, laid out like a project's.
-
-### Adding a bundled plot
-
-Like a project plot, with `register_plot` and a settings class, in `analysis/<plot>.py`. Also import the module in `analysis/__init__.py`, so it is registered when the package loads:
-
-```python
-register_plot("spectrogram", plot_spectrogram,
-              config_cls=SpectrogramPlotConfig, filename="spectrogram.png")
-```
-
-## Adding a backend
-
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; its file reader (below) reads them back, so nothing else needs to know. `get_population` and `get_spike_events` give `metadata.json` the node IDs and spike counts. `version()` gives the simulator's version for `metadata.json`.
-2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes` and `read_saved_variable`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
-3. Add its name to `BackendName` (`microcircuit_lab/config/simulation.py`). Select it with `backend: {name: <name>, options: {...}}` in the simulation file, or `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; the options go to its constructor unchanged.
-
-## Testing
-
-```bash
-pytest
-```
-
-The tests cover the core: reading and checking configs, preparing a network, the simulator backends and the analysis. A builder is tested through what it writes: every network in `configs/network/` is loaded and checked. Tests that simulate need NEST; the Brian2 tests are skipped without Brian2.
+Change the core when an idea doesn't fit what the config files can say (a new stimulus type, spatial structure, plasticity) and would help any model. If only one model needs it, it belongs in that model's builder. [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md#changing-the-core) shows which files each kind of change touches.

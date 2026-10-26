@@ -10,8 +10,8 @@ from pydantic import Field, model_validator
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
 #: Registered backend names. Adding a backend means adding it here and to
-#: get_backend(), read_saved_spikes() and read_saved_variable() in backends/__init__.py. See "Adding a
-#: backend" in the README.
+#: get_backend(), read_saved_spikes() and read_saved_variable() in backends/__init__.py. See "A simulator"
+#: in CONTRIBUTING.md.
 BackendName = Literal["nest", "brian2"]
 
 
