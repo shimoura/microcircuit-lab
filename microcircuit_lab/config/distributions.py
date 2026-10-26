@@ -17,8 +17,8 @@ class DrawnValue(BaseModel):
     ``distribution`` names it; the other keys are its arguments, passed as
     given, e.g. ``{distribution: normal, mean: -58, std: 10}`` or
     ``{distribution: exponential, beta: 2}``. The backend looks the name up
-    and requires every argument (for NEST, the functions in ``nest.random``);
-    the simulator checks the values.
+    and requires every argument (each backend has its own list, see its
+    ``distributions.py``); the simulator checks the values.
     """
 
     model_config = ConfigDict(frozen=True, extra="allow")

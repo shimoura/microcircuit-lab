@@ -16,7 +16,7 @@ from microcircuit_lab.backends import BackendName, SimulationBackend, get_backen
 from microcircuit_lab.backends.run_folder_reader import RunFolderReader
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.simulation import BackendConfig, SimulationConfig
 from microcircuit_lab.network.load import load_network
 from microcircuit_lab.run_folder import save_run_outputs, share_run_directory
 from microcircuit_lab.yaml_files import read_yaml
@@ -31,16 +31,14 @@ class Simulation:
         self,
         network: NetworkConfig,
         simulation_config: SimulationConfig,
-        backend: BackendName = "nest",
+        backend: BackendName | None = None,
         backend_options: dict[str, Any] | None = None,
         network_name: str = "network",
         simulation_name: str = "simulation",
     ) -> None:
 
         self.network = network
-        self.simulation_config = simulation_config
-        self.backend_name = backend
-        self.backend_options = backend_options
+        self.simulation_config = _with_backend(simulation_config, backend, backend_options)
         self.network_name = network_name
         self.simulation_name = simulation_name
         self.backend: SimulationBackend | None = None
@@ -48,13 +46,23 @@ class Simulation:
         # False on every MPI process but the first, which alone saves and plots.
         self.is_main_process = True
 
+    @property
+    def backend_name(self) -> BackendName:
+        """The simulator, from the ``backend`` section of the simulation config."""
+        return self.simulation_config.backend.name
+
+    @property
+    def backend_options(self) -> dict[str, Any]:
+        """The simulator's options, from the ``backend`` section of the simulation config."""
+        return self.simulation_config.backend.options
+
     @classmethod
     def from_yaml(
         cls,
         config_dir: str | Path = "configs",
         network_name: str = "toy",
         simulation_name: str | None = None,
-        backend: BackendName = "nest",
+        backend: BackendName | None = None,
         backend_options: dict[str, Any] | None = None,
     ) -> Simulation:
         """
@@ -73,10 +81,13 @@ class Simulation:
             a new network runs before it has a profile; a profile named explicitly
             must exist.
         backend
-            The simulator, ``"nest"``.
+            The simulator, ``"nest"`` or ``"brian2"``. By default the one in the
+            ``backend`` section of the simulation profile (``"nest"`` without it).
         backend_options
             Extra keyword arguments for the backend, passed through unchanged, e.g.
-            ``{"extension_modules": ["my_module"]}`` to load a NESTML model in NEST.
+            ``{"nest_modules": ["my_module"]}`` to load a NESTML model in NEST.
+            They replace the profile's options of the same name. The profile's
+            options are dropped when ``backend`` names another simulator.
 
         Returns
         -------
@@ -199,8 +210,9 @@ class Simulation:
         self.backend = backend_class(
             network=self.network,
             simulation_config=self.simulation_config,
-            **(self.backend_options or {}),
+            **self.backend_options,
         )
+        self.backend.check()
         self.is_main_process = self.backend.rank() == 0
         self.output_dir = share_run_directory(
             self.simulation_config.output,
@@ -231,3 +243,29 @@ class Simulation:
             simulation_name=self.simulation_name,
             backend_name=self.backend_name,
         )
+
+
+def _with_backend(
+    simulation_config: SimulationConfig,
+    backend: BackendName | None,
+    backend_options: dict[str, Any] | None,
+) -> SimulationConfig:
+    """``simulation_config`` with the simulator actually used, so the run's
+    ``config.yaml`` records it: ``backend`` and ``backend_options`` win over the
+    config's ``backend`` section, whose options belong to its own simulator only."""
+
+    configured = simulation_config.backend
+    for given in (configured.options, backend_options or {}):
+        if "extension_modules" in given:
+            raise ValueError(
+                "The backend option extension_modules was split in two: nest_modules for "
+                "compiled NEST modules (e.g. from NESTML), extensions for Python modules "
+                "with Brian2 models."
+            )
+    if backend is None:
+        backend = configured.name
+    options = configured.options if backend == configured.name else {}
+    options = {**options, **(backend_options or {})}
+    return simulation_config.model_copy(
+        update={"backend": BackendConfig(name=backend, options=options)}
+    )

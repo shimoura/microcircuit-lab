@@ -17,6 +17,7 @@ import numpy as np
 from microcircuit_lab.backends import population_spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.config.connection_table import COLUMNS
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -37,14 +38,14 @@ class NestBackend:
         network: NetworkConfig,
         simulation_config: SimulationConfig,
         *,
-        extension_modules: Sequence[str] = (),
+        nest_modules: Sequence[str] = (),
     ) -> None:
         """
         Parameters
         ----------
         network, simulation_config
             The prepared network and the simulation settings.
-        extension_modules
+        nest_modules
             Names of compiled NEST modules to install before the network is
             built, for example a NESTML neuron model that ``neurons.yaml`` uses.
             They are installed again at every build, because NEST is reset each
@@ -53,7 +54,7 @@ class NestBackend:
 
         self._network = network
         self._simulation_config = simulation_config
-        self._extension_modules = extension_modules
+        self._nest_modules = nest_modules
         self._recordings_dir: Path | None = None
 
         self.populations: dict[str, nest.NodeCollection] = {}
@@ -62,6 +63,7 @@ class NestBackend:
         self.multimeter: nest.NodeCollection | None = None
         self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
+        self._receptor_types: dict[str, dict] = {}
 
     def version(self) -> str:
         return nest.__version__
@@ -94,8 +96,8 @@ class NestBackend:
 
         nest.ResetKernel()
 
-        for module in self._extension_modules:
-            logger.info("Installing extension module %s", module)
+        for module in self._nest_modules:
+            logger.info("Installing NEST module %s", module)
             nest.Install(module)
 
         nest.set(
@@ -111,6 +113,25 @@ class NestBackend:
                 data_path=str(self._recordings_dir),
                 overwrite_files=True,
             )
+
+    def check(self) -> None:
+        """
+        Raise if the network uses something NEST cannot build, before anything
+        is built: a project distribution (NEST draws from the shared ones
+        only).
+        Neuron and synapse model names and connection rules other than the
+        shared ones are left to NEST, which knows them only once the modules
+        are installed.
+        """
+
+        for what in ("weight", "delay"):
+            names = self._network.connections[f"{what}.distribution"]
+            project = np.flatnonzero(~np.isin(names, SHARED_DISTRIBUTIONS))
+            if project.size:
+                raise ValueError(
+                    f"NEST has no {what} distribution {names[project[0]]!r}: it draws from the shared "
+                    f"ones only ({', '.join(SHARED_DISTRIBUTIONS)}), not project distributions."
+                )
 
     def build(self) -> None:
         """
@@ -169,7 +190,14 @@ class NestBackend:
         value given as a distribution is drawn for every neuron.
         """
 
-        for values in (dict(pop_cfg.neuron.parameters), pop_cfg.initial_state):
+        parameters = dict(pop_cfg.neuron.parameters)
+        if "I_e" in parameters and "I_e" not in nest.GetDefaults(pop_cfg.neuron.model):
+            raise ValueError(
+                f"Population {pop_cfg.name!r}: the NEST model {pop_cfg.neuron.model!r} has no I_e, "
+                "which neurons.yaml sets or a compensation current (scaling, background_mode: "
+                "mean_current) adds to."
+            )
+        for values in (parameters, pop_cfg.initial_state):
             nodes.set(
                 {name: distributions.per_neuron_value(value) for name, value in values.items()}
             )
@@ -183,17 +211,30 @@ class NestBackend:
         for name, entry in self._network.synapses.items():
             nest.CopyModel(entry.model, name, entry.parameters)
 
-    def synapse_spec(self, weight, delay, synapse: str | None) -> dict:
+    def synapse_spec(self, weight, delay, synapse: str | None, target: str) -> dict:
         """
-        The ``syn_spec`` of a connection: its weight and delay (made by
-        distributions.py), and its synapse model and receptor port if it names
-        a synapses.yaml entry.
+        The ``syn_spec`` of a connection onto the population ``target``: its
+        weight and delay (made by distributions.py), and its synapse model and
+        receptor port if it names a synapses.yaml entry. A port given by name
+        is looked up in the ``receptor_types`` of the target's neuron model.
         """
 
         spec = {"weight": weight, "delay": delay}
         if synapse is not None:
             spec["synapse_model"] = synapse
             receptor_port = self._network.receptor_port(synapse)
+            if isinstance(receptor_port, str):
+                model = self._network.populations[target].neuron.model
+                if model not in self._receptor_types:
+                    self._receptor_types[model] = nest.GetDefaults(model).get("receptor_types", {})
+                names = self._receptor_types[model]
+                if receptor_port not in names:
+                    raise ValueError(
+                        f"Synapse {synapse!r} sets receptor_port {receptor_port!r}, but the "
+                        f"NEST model {model!r} of {target!r} "
+                        + (f"has the receptor types {sorted(names)}." if names else "has no receptor types.")
+                    )
+                receptor_port = names[receptor_port]
             if receptor_port is not None:
                 spec["receptor_type"] = receptor_port
         return spec
@@ -240,9 +281,11 @@ class NestBackend:
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
-                number = column["number"][i]
-                if rule != "pairwise_bernoulli":
-                    number = int(number)
+                # A rule that is not a shared one is NEST's own, with its parameters.
+                conn_spec = {"rule": rule, **(column["parameters"][i] or {})}
+                if rule in nest_number:
+                    number = column["number"][i]
+                    conn_spec[nest_number[rule]] = number if rule == "pairwise_bernoulli" else int(number)
                 synapse = column["synapse"][i]
                 weight = distributions.create_weight_spec(
                     column["weight.mean"][i],
@@ -260,12 +303,11 @@ class NestBackend:
                 )
 
                 logger.debug(
-                    "Connecting %s -> %s (%s=%g, synapse=%s, weight=%g, delay=%g)",
-                    source, target, nest_number[rule], number, synapse or "default",
+                    "Connecting %s -> %s (%s, synapse=%s, weight=%g, delay=%g)",
+                    source, target, conn_spec, synapse or "default",
                     column["weight.mean"][i], column["delay.mean"][i],
                 )
 
-                conn_spec = {"rule": rule, nest_number[rule]: number}
                 for option in ("allow_autapses", "allow_multapses"):
                     if column[option][i] is not None:
                         conn_spec[option] = bool(column[option][i])
@@ -274,7 +316,7 @@ class NestBackend:
                     self.populations[source],
                     self.populations[target],
                     conn_spec=conn_spec,
-                    syn_spec=self.synapse_spec(weight, delay, synapse),
+                    syn_spec=self.synapse_spec(weight, delay, synapse, target),
                 )
 
     def get_population(
@@ -398,7 +440,7 @@ class NestBackend:
             nest.Connect(
                 self.background_generators[pop_name],
                 self.get_population(pop_name),
-                syn_spec=self.synapse_spec(weight, delay, input_cfg.synapse),
+                syn_spec=self.synapse_spec(weight, delay, input_cfg.synapse, pop_name),
             )
 
     def create_stimuli(self) -> None:
@@ -448,12 +490,13 @@ class NestBackend:
         """
 
         for stimulus, device in self.stimulus_generators:
-            syn_spec = None
             if not isinstance(stimulus, DcStimulusConfig):
                 weight, delay = self.weight_and_delay(stimulus.weight, stimulus.delay)
-                syn_spec = self.synapse_spec(weight, delay, stimulus.synapse)
 
             for target in stimulus.targets:
+                syn_spec = None
+                if not isinstance(stimulus, DcStimulusConfig):
+                    syn_spec = self.synapse_spec(weight, delay, stimulus.synapse, target)
                 nest.Connect(device, self.get_population(target), syn_spec=syn_spec)
 
     def simulate(self) -> None:
@@ -476,21 +519,12 @@ class NestBackend:
         if self.spike_recorder is None:
             return
 
-        t_sim_s = self._simulation_config.t_sim / 1000.0
-
-        for pop_name in self.populations:
-            events = self.get_spike_events(pop_name)
-            n_spikes = len(events["times"])
-            n_neurons = self._network.populations[pop_name].size
-            mean_rate = (n_spikes / (n_neurons * t_sim_s)) if (n_neurons and t_sim_s > 0) else 0.0
-
-            logger.info(
-                "%-6s  N=%5d  spikes=%7d  rate=%8.3f Hz",
-                pop_name,
-                n_neurons,
-                n_spikes,
-                mean_rate,
-            )
+        population_spikes.log_firing_rates(
+            logger,
+            self.get_spike_events,
+            {name: pop.size for name, pop in self._network.populations.items()},
+            self._simulation_config.t_sim,
+        )
 
     def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -567,5 +601,5 @@ class NestBackend:
         path = recordings_dir / "spikes.csv"
 
         senders, times = self._memory_spikes()
-        spike_files.write_csv_spikes(path, senders, times)
+        population_spikes.write_csv_spikes(path, senders, times)
         return path

@@ -1,6 +1,6 @@
 """Create the folders of a new project.
 
-    microcircuit-lab init <project>               # builders/, analyses/, configs/, experiments/
+    microcircuit-lab init <project>               # builders/, analyses/, configs/, experiments/, extensions/
     microcircuit-lab init <project> --with-core   # also a copy of the core, and the examples
 
 Nothing that already exists is touched. With ``--with-core`` the core (the release
@@ -10,8 +10,8 @@ the project: it can be read, changed and committed with the project's own code, 
 the project's git commit then records the core's code too.
 
 ``--with-core`` also copies the examples into the project: every builder
-under ``builders/`` and every network, simulation and analysis config under
-``configs/``. They can then be run as they are (``run --network <name>``) or
+under ``builders/``, every network, simulation and analysis config under
+``configs/``, and the example models under ``extensions/``. They can then be run as they are (``run --network <name>``) or
 regenerated first (``generate <builder>``). An example whose name already exists
 in the project is skipped, so ``init .`` is safe in an existing repository.
 """
@@ -24,10 +24,10 @@ import tempfile
 from importlib.metadata import version
 from pathlib import Path
 
-PROJECT_FOLDERS = ("builders", "analyses", "configs", "experiments")
+PROJECT_FOLDERS = ("builders", "analyses", "configs", "experiments", "extensions")
 CORE_URL = "https://github.com/shimoura/microcircuit-lab.git"
 CORE_FOLDER = "microcircuit-lab"
-EXAMPLE_FOLDERS = ("builders", "configs/network", "configs/simulation", "configs/analysis")
+EXAMPLE_FOLDERS = ("builders", "configs/network", "configs/simulation", "configs/analysis", "extensions")
 # What the copy of the core needs to be installed and edited: the package, its
 # docs (the README links to them), and the files pyproject.toml names (readme, license).
 CORE_FILES = ("microcircuit_lab", "docs", "pyproject.toml", "README.md", "LICENSE", "CITATION.cff")
@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help=(
             f"Copy the core into <project>/{CORE_FOLDER}/, install it in editable mode "
-            "and copy the example builders and configs into the project."
+            "and copy the example builders, configs and models into the project."
         ),
     )
     args = parser.parse_args(argv)

@@ -6,7 +6,14 @@ the simulator's model name and its parameters.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, StrictFloat, StrictInt
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictFloat,
+    StrictInt,
+    model_serializer,
+)
 
 from microcircuit_lab.config.distributions import PerNeuronValue
 from microcircuit_lab.config.frozen_config import FrozenConfig
@@ -25,7 +32,9 @@ class NeuronParams(BaseModel):
 
     ``I_e`` (constant input current, pA) is the one parameter read back here,
     because scaling adds a compensation current to it (see
-    ``network/compensation.py``). It defaults to 0.0 and is always a number.
+    ``network/compensation.py``). It is a number, or not set (``None``): then
+    it is not passed to the simulator at all, so a model without ``I_e`` works,
+    and the model's own value is used. A compensation sets it.
 
     Values must be numbers, lists of numbers (one entry per receptor port, for
     example ``tau_syn: [0.5, 5.0]``) or distributions. Anything else is rejected
@@ -40,11 +49,26 @@ class NeuronParams(BaseModel):
         init=False
     )
 
-    I_e: float = Field(
-        default=0.0,
-        description="constant input current (pA) of every neuron, for the whole run; a scaled "
-        "network adds its compensation current to it",
+    I_e: float | None = Field(
+        default=None,
+        description="constant input current (pA) of every neuron, for the whole run; omit for "
+        "the model's own (a model may have none); a scaled network adds its compensation "
+        "current to it",
     )
+
+    def __iter__(self):
+        # dict(parameters), what the backends pass to the simulator: an unset
+        # I_e is left out, as if the model had none.
+        for name, value in super().__iter__():
+            if not (name == "I_e" and value is None):
+                yield name, value
+
+    @model_serializer(mode="wrap")
+    def _leave_out_unset_I_e(self, handler):
+        values = handler(self)
+        if values.get("I_e", 0.0) is None:
+            del values["I_e"]
+        return values
 
     def require(self, *names: str) -> dict[str, float]:
         """
@@ -81,7 +105,7 @@ class NeuronEntry(FrozenConfig):
              "E_L": -65.0, "V_th": -50.0, "V_reset": -65.0, "t_ref": 2.0}
         ],
         description="parameters passed to that model as-is; keys are "
-        "model-specific and the backend validates them (I_e defaults to 0.0); a value is a "
+        "model-specific and the backend validates them (I_e is passed only when set); a value is a "
         "number, a list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a "
         "distribution drawn per neuron like in initial_state "
         "(I_e and the parameters a PSP weight is converted with must be numbers)"

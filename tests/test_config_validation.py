@@ -71,13 +71,17 @@ def test_unknown_stimulus_type_points_to_where_new_ones_are_added(network_dir: P
     assert "stimuli.yaml: stimuli.0" in str(error.value)
 
 
-def test_unknown_distribution_points_to_where_new_ones_are_added(network_dir: Path) -> None:
+def test_unknown_distribution_is_a_project_one_that_nest_rejects(network_dir: Path) -> None:
+    from microcircuit_lab.backends.nest.simulator import NestBackend
+    from microcircuit_lab.config.simulation import SimulationConfig
+
     _edit_yaml(
         network_dir / "connectivity.yaml",
         lambda d: d["connections"][0]["delay"].__setitem__("distribution", "gamma"),
     )
-    with pytest.raises(ValueError, match="Changing the core"):
-        read_network_files(network_dir)
+    network = load_network(network_dir)
+    with pytest.raises(ValueError, match="NEST has no delay distribution 'gamma'.*not project distributions"):
+        NestBackend(network, SimulationConfig()).check()
 
 
 def test_other_errors_do_not_point_to_contributing(network_dir: Path) -> None:

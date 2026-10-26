@@ -189,12 +189,17 @@ def replace_background_by_mean_current(
 
 
 def _add_to_I_e(network: NetworkConfig, current: np.ndarray) -> NetworkConfig:
-    """Add ``current`` (pA, one value per population, in order) to the ``I_e`` of its neuron."""
+    """Add ``current`` (pA, one value per population, in order) to the ``I_e`` of
+    its neuron. A population with nothing to add keeps its ``I_e`` as it is,
+    also unset, so a model without ``I_e`` works when it needs no current."""
 
     populations = {}
     for added, (name, population) in zip(current, network.populations.items()):
         parameters = population.neuron.parameters
-        parameters = parameters.model_copy(update={"I_e": parameters.I_e + float(added)})
+        if added == 0.0:
+            populations[name] = population
+            continue
+        parameters = parameters.model_copy(update={"I_e": (parameters.I_e or 0.0) + float(added)})
         neuron = population.neuron.model_copy(update={"parameters": parameters})
         populations[name] = population.model_copy(update={"neuron": neuron})
     return network.model_copy(update={"populations": populations})

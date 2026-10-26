@@ -36,8 +36,9 @@ from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.yaml_files import read_yaml
 
-# Shown under an error about an unknown stimulus type, weight or delay
-# distribution, so whoever wants to add one knows where to look.
+# Shown under an error about an unknown stimulus type, so whoever wants to add
+# one knows where to look. (An unknown distribution or rule is a project one,
+# which the backend looks up: see its check().)
 _HOW_TO_ADD = 'To add a new one, see "Changing the core" in CONTRIBUTING.md.'
 
 
@@ -155,9 +156,7 @@ def _describe_problems(folder: Path, manifest: NetworkManifest, error: Validatio
         file_name = "network.yaml" if part == "manifest" else getattr(manifest, str(part), part)
         field_path = ".".join(str(item) for item in field)
         lines.append(f"  {file_name}: {field_path or '(whole file)'}: {problem['msg']}")
-        if problem["type"] == "union_tag_invalid" or (
-            problem["type"] == "literal_error" and field and field[-1] == "distribution"
-        ):
+        if problem["type"] == "union_tag_invalid":
             point_to_contributing = True
     if point_to_contributing:
         lines.append(_HOW_TO_ADD)

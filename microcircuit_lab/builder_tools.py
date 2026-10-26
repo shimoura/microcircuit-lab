@@ -70,6 +70,7 @@ def weight(
     unit: str,
     rel_std: float = 0.0,
     distribution: str | None = None,
+    parameters: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     A ``weight`` entry for a connection, background input or stimulus.
@@ -85,8 +86,11 @@ def weight(
     rel_std
         Standard deviation divided by ``|mean|``; 0 for a fixed weight.
     distribution
-        ``"fixed"``, ``"normal"``, ``"uniform"`` or ``"lognormal"``. By default ``fixed`` when
-        ``rel_std`` is 0 and ``normal`` otherwise.
+        ``"fixed"``, ``"normal"``, ``"uniform"`` or ``"lognormal"``, or a project
+        distribution (connections only). By default ``fixed`` when ``rel_std`` is 0
+        and ``normal`` otherwise.
+    parameters
+        A project distribution's parameters.
 
     Returns
     -------
@@ -100,7 +104,8 @@ def weight(
         rel_std=rel_std,
         unit=unit,
         distribution=_distribution(rel_std, distribution),
-    ).model_dump()
+        parameters=parameters,
+    ).model_dump(exclude_none=True)
 
 
 def delay(
@@ -109,6 +114,7 @@ def delay(
     rel_std: float = 0.0,
     distribution: str | None = None,
     minimum: float | None = None,
+    parameters: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     A ``delay`` entry for a connection, background input or stimulus.
@@ -124,6 +130,8 @@ def delay(
     minimum
         Smallest allowed delay in ms; left out of the file when not given (the
         default is then half the simulation step).
+    parameters
+        A project distribution's parameters.
 
     Returns
     -------
@@ -136,6 +144,7 @@ def delay(
         rel_std=rel_std,
         distribution=_distribution(rel_std, distribution),
         minimum=minimum,
+        parameters=parameters,
     ).model_dump(exclude_none=True)
 
 

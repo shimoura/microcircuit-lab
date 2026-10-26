@@ -1,5 +1,5 @@
-"""Tests for Simulation's generic backend_options passthrough and
-NestBackend's extension_modules use of it (for loading compiled
+"""Tests for Simulation's choice of backend, its generic backend_options passthrough and
+NestBackend's nest_modules use of it (for loading compiled
 NEST/NESTML models before the network is built).
 
 nest's module object rejects attribute assignment (nest.Install = ...
@@ -9,11 +9,14 @@ monkeypatching the `nest` name inside microcircuit_lab.backends.nest.simulator
 """
 
 import numpy as np
+import pytest
 
 import microcircuit_lab.backends.nest.simulator as nest_backend_module
 import microcircuit_lab.simulation as runner_module
 from microcircuit_lab import Simulation
 from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.yaml_files import read_yaml
 
 
 class _FakeBackend:
@@ -37,6 +40,9 @@ class _FakeBackend:
         pass
 
     def prepare_output(self, run_dir):
+        pass
+
+    def check(self):
         pass
 
     def build(self):
@@ -77,12 +83,17 @@ def test_run_forwards_backend_options_to_the_backend_constructor(monkeypatch, tm
     simulation = Simulation.from_yaml(
         network_name="toy",
         simulation_name="toy",
-        backend_options={"extension_modules": ["some_module"]},
+        backend_options={"nest_modules": ["some_module"]},
     )
     _use_tmp_output(simulation, tmp_path)
     simulation.run()
 
-    assert _FakeBackend.last_kwargs == {"extension_modules": ["some_module"]}
+    assert _FakeBackend.last_kwargs == {"nest_modules": ["some_module"]}
+
+
+def test_the_removed_extension_modules_option_names_its_replacements():
+    with pytest.raises(ValueError, match="nest_modules.*extensions"):
+        Simulation.from_yaml(network_name="toy", backend_options={"extension_modules": ["m"]})
 
 
 def test_run_without_backend_options_forwards_nothing_extra(monkeypatch, tmp_path):
@@ -92,6 +103,27 @@ def test_run_without_backend_options_forwards_nothing_extra(monkeypatch, tmp_pat
     _use_tmp_output(simulation, tmp_path)
     simulation.run()
 
+    assert _FakeBackend.last_kwargs == {}
+
+
+def test_the_simulation_file_chooses_the_backend_and_an_argument_overrides_it(monkeypatch, tmp_path):
+    chosen = []
+    monkeypatch.setattr(runner_module, "get_backend", lambda name: chosen.append(name) or _FakeBackend)
+    profile = SimulationConfig(backend={"name": "brian2", "options": {"device": "cpp_standalone"}})
+    network = Simulation.from_yaml(network_name="toy").network
+
+    simulation = _use_tmp_output(Simulation(network, profile, backend_options={"codegen_target": "numpy"}), tmp_path)
+    simulation.run()
+    assert chosen == ["brian2"]
+    assert _FakeBackend.last_kwargs == {"device": "cpp_standalone", "codegen_target": "numpy"}
+    # The run's config.yaml records the simulator used.
+    saved = read_yaml(simulation.output_dir / "config.yaml")["simulation"]["backend"]
+    assert saved == {"name": "brian2", "options": {"device": "cpp_standalone", "codegen_target": "numpy"}}
+
+    # The profile's options belong to Brian2, so NEST does not get them.
+    simulation = _use_tmp_output(Simulation(network, profile, backend="nest"), tmp_path)
+    simulation.run()
+    assert chosen[-1] == "nest"
     assert _FakeBackend.last_kwargs == {}
 
 
@@ -112,7 +144,7 @@ class _FakeNest:
         pass
 
 
-def test_initialize_installs_configured_extension_modules(monkeypatch):
+def test_initialize_installs_configured_nest_modules(monkeypatch):
     fake_nest = _FakeNest()
     monkeypatch.setattr(nest_backend_module, "nest", fake_nest)
 
@@ -120,7 +152,7 @@ def test_initialize_installs_configured_extension_modules(monkeypatch):
     backend = NestBackend(
         network=simulation.network,
         simulation_config=simulation.simulation_config,
-        extension_modules=["module_a", "module_b"],
+        nest_modules=["module_a", "module_b"],
     )
 
     backend.initialize()

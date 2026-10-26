@@ -8,6 +8,7 @@ import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
+from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
     DelayDistribution,
@@ -26,10 +27,10 @@ from microcircuit_lab.network.prepare import prepare_network
 SIZES = {"S": 100, "T": 50}
 
 
-def _connection(rule="fixed_total_number", weight=10.0, unit="PSC", **fields):
+def _connection(rule="fixed_total_number", weight=10.0, unit="PSC", source="S", target="T", **fields):
     return ConnectionConfig(
-        source="S",
-        target="T",
+        source=source,
+        target=target,
         rule=rule,
         weight=WeightDistribution(mean=weight, rel_std=0.0, distribution="fixed", unit=unit),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
@@ -99,6 +100,101 @@ def test_a_rule_takes_its_own_number_only():
         _connection(rule="pairwise_bernoulli", n_synapses=10)
     with pytest.raises(ValueError, match=r"remove \['n_synapses'\]"):
         _connection(rule="fixed_indegree", indegree=5, n_synapses=10)
+    with pytest.raises(ValueError, match="'one_to_one' takes no number"):
+        _connection(rule="one_to_one", n_synapses=10)
+    with pytest.raises(ValueError, match="'my_rule' takes no number"):
+        _connection(rule="my_rule", p=0.1)
+    with pytest.raises(ValueError, match="takes no parameters"):
+        _connection(rule="all_to_all", parameters={"width": 1})
+
+
+def test_one_to_one_and_all_to_all_in_nest():
+    network = _network([_connection(rule="one_to_one", source="S", target="S"), _connection(rule="all_to_all")])
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    S, T = backend.get_population("S"), backend.get_population("T")
+
+    one = nest.GetConnections(S, S)
+    assert np.array_equal(one.get("source"), one.get("target")) and len(one) == SIZES["S"]
+    assert len(nest.GetConnections(S, T)) == SIZES["S"] * SIZES["T"]
+    nest.ResetKernel()
+
+
+def test_one_to_one_needs_populations_of_the_same_size():
+    with pytest.raises(ValueError, match="one_to_one needs populations of the same size"):
+        _network([_connection(rule="one_to_one")])
+
+
+def test_nest_runs_its_own_rule_with_its_parameters():
+    network = _network([_connection(rule="pairwise_poisson", parameters={"pairwise_avg_num_conns": 2.0})])
+    _, connections = _built_connections(network)
+    expected = 2.0 * SIZES["S"] * SIZES["T"]
+    assert abs(len(connections) - expected) < 5 * np.sqrt(expected)
+    nest.ResetKernel()
+
+
+@pytest.mark.parametrize(
+    ("connection", "scaling", "message"),
+    [
+        (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
+        (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
+        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "rule 'ring' is not a shared one and cannot be scaled"),
+    ],
+)
+def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):
+    network = _network([_connection(**connection)], scaling=ScalingConfig(preserve_mean_input=False, **scaling))
+    with pytest.raises(ValueError, match=message):
+        prepare_network(network)
+
+
+def test_the_new_rules_scale_where_they_can():
+    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
+    network = prepare_network(_network([_connection(rule="all_to_all")], scaling=scaling))
+    assert network.connections["rule"][0] == "all_to_all"
+    scaling = ScalingConfig(N_scaling=0.5, preserve_mean_input=False)
+    connection = _connection(rule="one_to_one", source="S", target="S")
+    assert len(prepare_network(_network([connection], scaling=scaling)).connections) == 1
+
+
+def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
+    with pytest.raises(ValueError, match="takes no parameters"):
+        WeightDistribution(mean=1.0, rel_std=0.0, unit="PSC", distribution="normal", parameters={"a": 1})
+
+    def connection(weight="fixed", delay="fixed"):
+        params = {"weight": {"a": 1} if weight != "fixed" else None, "delay": {"a": 1} if delay != "fixed" else None}
+        return _connection(n_synapses=100).model_copy(update={
+            "weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="PSC", distribution=weight, parameters=params["weight"]),
+            "delay": DelayDistribution(mean=1.0, rel_std=0.0, distribution=delay, parameters=params["delay"]),
+        })
+
+    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
+    with pytest.raises(ValueError, match="weights from a project distribution cannot be scaled"):
+        prepare_network(_network([connection(weight="mine")], scaling=scaling))
+    prepare_network(_network([connection(delay="mine")], scaling=scaling))
+
+    network = _network([connection()])
+    background = network.background_inputs["S"].model_copy(
+        update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="PSC", distribution="mine", parameters={"a": 1})}
+    )
+    with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
+        NetworkConfig.model_validate({**network.model_dump(), "background_inputs": {**network.background_inputs, "S": background}})
+
+
+def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
+    rows = [
+        _connection(n_synapses=300),
+        _connection(rule="one_to_one", source="S", target="S"),
+        _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
+        _connection(source="T", target="S", n_synapses=10).model_copy(update={
+            "weight": WeightDistribution(mean=1.0, rel_std=0.0, unit="PSC", distribution="mine", parameters={"a": 1.5}),
+        }),
+    ]
+    table = ConnectionTable.from_yaml_rows(rows)
+    table.write_csv(tmp_path / "connections.csv")
+
+    assert ConnectionTable.read_csv(tmp_path / "connections.csv") == table
+    assert table.to_yaml_rows()[2]["parameters"] == {"width": 2, "p0": 0.5}
+    assert "n_synapses" not in table.to_yaml_rows()[1]
 
 
 def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
@@ -178,7 +274,45 @@ def test_receptor_ports(caplog):
     assert "background input lost by scaling is not compensated for T" in caplog.text
     # S's background input is on the default port, so S alone is compensated
     assert prepared.populations["S"].neuron.parameters.I_e > 0
-    assert prepared.populations["T"].neuron.parameters.I_e == 0
+    assert prepared.populations["T"].neuron.parameters.I_e is None  # nothing added, left unset
+
+
+def test_receptor_port_by_name():
+    # ht_neuron has named receptors and no I_e, which is left unset here.
+    ht = NeuronConfig(name="ht", model="ht_neuron", parameters=NeuronParams())
+    for port in ("NMDA", "AMPA"):
+        synapses = {"named": SynapseEntry(model="static_synapse", receptor_port=port)}
+        network = _network(
+            [_connection(n_synapses=10, synapse="named")], synapses, background_synapse="named", target_neuron=ht
+        )
+        backend, connections = _built_connections(network)
+        # GetConnections shows NEST's internal port, not the receptor_type given.
+        assert len(connections) == 10
+        assert backend.synapse_spec(1.0, 1.0, "named", "T")["receptor_type"] == (
+            nest.GetDefaults("ht_neuron")["receptor_types"][port]
+        )
+        nest.ResetKernel()
+
+    synapses = {"named": SynapseEntry(model="static_synapse", receptor_port="NMDAR")}
+    network = _network([_connection(n_synapses=10, synapse="named")], synapses, target_neuron=ht)
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    with pytest.raises(ValueError, match="receptor_port 'NMDAR'.*'ht_neuron' of 'T' has the receptor types"):
+        backend.synapse_spec(1.0, 1.0, "named", "T")
+    # S is iaf_psc_exp, which has no receptor types
+    with pytest.raises(ValueError, match="'iaf_psc_exp' of 'S' has no receptor types"):
+        backend.synapse_spec(1.0, 1.0, "named", "S")
+    # A number in quotes is not taken as a name.
+    with pytest.raises(ValueError, match="without quotes: receptor_port: 1"):
+        SynapseEntry(model="static_synapse", receptor_port="1")
+
+
+def test_a_model_without_I_e_says_so_when_it_gets_one():
+    ht = NeuronConfig(name="ht", model="ht_neuron", parameters=NeuronParams(I_e=5.0))
+    synapses = {"named": SynapseEntry(model="static_synapse", receptor_port="AMPA")}
+    network = _network([_connection(n_synapses=10, synapse="named")], synapses, background_synapse="named", target_neuron=ht)
+    with pytest.raises(ValueError, match="'ht_neuron' has no I_e"):
+        _built_connections(network)
+    nest.ResetKernel()
 
 
 def test_background_on_another_port():
@@ -217,6 +351,6 @@ def test_native_weights_are_not_compensated(caplog):
     with caplog.at_level(logging.WARNING):
         prepared = prepare_network(scaled)
     assert "not compensated for S -> T" in caplog.text
-    assert all(p.neuron.parameters.I_e == 0 for p in prepared.populations.values())
+    assert all(p.neuron.parameters.I_e is None for p in prepared.populations.values())
     with pytest.raises(ValueError, match="native or uses another port"):
         prepare_network(scaled.model_copy(update={"background_mode": "mean_current"}))

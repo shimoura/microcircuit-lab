@@ -10,7 +10,7 @@ description = "Build, simulate and analyse spiking neural network models, from a
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 authors = [
     { name = "Renan Oliveira Shimoura" }
@@ -27,8 +27,8 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 
@@ -72,6 +72,9 @@ nest = [
 ]
 nestml = [
     "nestml",
+]
+brian2 = [
+    "brian2>=2.10",
 ]
 
 [tool.pytest.ini_options]

@@ -62,9 +62,8 @@ populations:
     neuron: excitatory
     # optional, default empty · mapping · starting value of each state variable of the
     #   neuron model, e.g. V_m (mV): a number, or a distribution drawn per neuron: its
-    #   name and its arguments, e.g. {distribution: normal, mean: -58, std: 10} (for
-    #   NEST, any function in nest.random); a variable left out starts at the model's
-    #   default
+    #   name and its arguments, e.g. {distribution: normal, mean: -58, std: 10}, which
+    #   the simulator looks up; a variable left out starts at the model's default
     initial_state:
       V_m: {distribution: normal, mean: -58.0, std: 10.0}
     # optional, default 0.0 · number ≥ 0 · background-input connections per neuron;
@@ -84,10 +83,10 @@ neurons:
     # required · text · the simulator's neuron model name, e.g. iaf_psc_exp
     model: iaf_psc_exp
     # required · parameters passed to that model as-is; keys are model-specific and the
-    #   backend validates them (I_e defaults to 0.0); a value is a number, a list of
-    #   numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a distribution
-    #   drawn per neuron like in initial_state (I_e and the parameters a PSP weight is
-    #   converted with must be numbers)
+    #   backend validates them (I_e is passed only when set); a value is a number, a
+    #   list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a
+    #   distribution drawn per neuron like in initial_state (I_e and the parameters a
+    #   PSP weight is converted with must be numbers)
     parameters:
       C_m: 250.0
       tau_m: 10.0
@@ -119,9 +118,10 @@ synapses:
     parameters:
       U: 0.5
       tau_rec: 800.0
-    # optional · integer ≥ 1 · receptor port of the target neuron (e.g. 1 for AMPA in a
-    #   multisynapse model); omit for the default port (0). PSP weights and the scaling
-    #   compensation are only computed for the default port
+    # optional · receptor port of the target neuron: a number (e.g. 1 for AMPA in a
+    #   multisynapse model) or a name the target's model defines; omit for the default
+    #   port (0). PSP weights and the scaling compensation are only computed for the
+    #   default port
     receptor_port: 1
 ```
 
@@ -137,9 +137,11 @@ connections:
   - source: L4_E
     # required · text · target population name
     target: L23_E
-    # optional, default fixed_total_number · one of fixed_total_number | fixed_indegree
-    #   | fixed_outdegree | pairwise_bernoulli · how the synapses are placed; each rule
-    #   takes its own number (n_synapses, indegree, outdegree or p)
+    # optional, default fixed_total_number · text · how the synapses are placed:
+    #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
+    #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
+    #   all_to_all, with no number; or another rule, which the simulator looks up, with
+    #   parameters
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
@@ -151,6 +153,9 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
+    # optional · mapping · only for a rule that is not shared: its parameters, e.g.
+    #   {width: 10, p0: 0.5}
+    parameters:
     # optional · true or false · whether a neuron may connect to itself; omit for the
     #   simulator's default
     allow_autapses:
@@ -166,9 +171,13 @@ connections:
       mean: 0.15
       # required · number ≥ 0 · standard deviation / |mean|
       rel_std: 0.1
-      # optional, default normal · one of normal | uniform | lognormal | fixed · how
-      #   each weight is drawn, with that mean and standard deviation
+      # optional, default normal · text · how each weight is drawn, with that mean and
+      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
+      #   project distribution, which the backend defines, with parameters
       distribution: normal
+      # optional · mapping · only for a project distribution: the values its expression
+      #   uses, e.g. {length: 20}
+      parameters:
       # required · one of PSC | PSP | native · PSP: mV, converted to pA; PSC: pA, used
       #   as given; native: used as given (e.g. nS)
       unit: PSP
@@ -178,9 +187,13 @@ connections:
       mean: 1.5
       # required · number ≥ 0 · standard deviation / mean
       rel_std: 0.5
-      # optional, default normal · one of normal | uniform | lognormal | fixed · how
-      #   each delay is drawn, with that mean and standard deviation
+      # optional, default normal · text · how each delay is drawn, with that mean and
+      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
+      #   project distribution, with parameters
       distribution: normal
+      # optional · mapping · only for a project distribution: the values its expression
+      #   uses
+      parameters:
       # optional · number > 0 · smallest allowed delay (ms) of a drawn delay, never
       #   below half the simulation step; omit for half the simulation step
       minimum: 0.1
@@ -339,6 +352,15 @@ rng_seed: 42
 local_num_threads: 1
 # optional, default true · true or false · print the simulation progress
 print_time: true
+# optional · the simulator to use
+backend:
+  # optional, default nest · one of nest | brian2 · the simulator to run the network
+  #   with
+  name: nest
+  # optional, default empty · mapping · options of that simulator, passed to its backend
+  #   as-is; the backend validates them (see the simulator's section in the README)
+  options:
+    device: cpp_standalone
 # optional · what to record
 recording:
   # optional, default true · true or false · record the spikes of every neuron

@@ -10,6 +10,7 @@ project are included, so run the command from the project folder.
 import argparse
 import logging
 import sys
+from typing import Any, get_args
 
 import matplotlib.pyplot as plt
 
@@ -23,6 +24,7 @@ from microcircuit_lab.analysis import (
     list_areas,
     plot_enabled_in_config,
 )
+from microcircuit_lab.backends import BackendName
 from microcircuit_lab.config.analysis import AnalysisConfig
 from microcircuit_lab.run_folder import register_artifact
 
@@ -54,13 +56,44 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "simulating again. Use it instead of --network.",
     )
     parser.add_argument(
-        "--extension-modules",
+        "--backend",
+        default=None,
+        choices=get_args(BackendName),
+        help="Simulator to run the network with. Overrides the simulation file's "
+        "backend.name (default: nest).",
+    )
+    parser.add_argument(
+        "--brian2-device",
+        default=None,
+        choices=["runtime", "cpp_standalone"],
+        help="With Brian2: 'runtime' runs the network from Python (default), "
+        "'cpp_standalone' compiles it to C++ and runs it with the simulation's threads. "
+        "Overrides the simulation file's backend.options.",
+    )
+    parser.add_argument(
+        "--brian2-codegen-target",
+        default=None,
+        choices=["auto", "cython", "numpy"],
+        help="With Brian2 and the runtime device: 'auto' (Brian2's default) compiles "
+        "the code with Cython, once per kind of network; 'numpy' compiles nothing and runs "
+        "slower. Overrides the simulation file's backend.options.",
+    )
+    parser.add_argument(
+        "--nest-modules",
         nargs="+",
         default=None,
-        help="Name(s) of compiled NEST module(s) to load before the network is "
-        "built, e.g. a module made by NESTML that defines a neuron model used in "
-        "neurons.yaml.",
+        help="With NEST: compiled NEST modules (e.g. made by NESTML) to install before "
+        "the network is built, for the models neurons.yaml and synapses.yaml name.",
     )
+    parser.add_argument(
+        "--extensions",
+        nargs="+",
+        default=None,
+        help="With Brian2: Python modules that define models, besides the files in "
+        "extensions/brian2/.",
+    )
+    # Removed: split into --nest-modules and --extensions.
+    parser.add_argument("--extension-modules", nargs="+", default=None, help=argparse.SUPPRESS)
     parser.add_argument(
         "--analysis",
         default=None,
@@ -114,6 +147,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
 
     args = parser.parse_args(argv)
+    if args.extension_modules is not None:
+        parser.error(
+            "--extension-modules was split in two: --nest-modules for compiled NEST modules "
+            "(e.g. from NESTML), --extensions for Python modules with Brian2 models."
+        )
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
     return args
@@ -134,20 +172,35 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(str(error))
         network_name = simulation.network_name
     else:
-        backend_options = (
-            {"extension_modules": args.extension_modules}
-            if args.extension_modules
-            else None
-        )
+        backend_options: dict[str, Any] = {}
+        if args.nest_modules:
+            backend_options["nest_modules"] = args.nest_modules
+        brian2_options = {
+            "device": args.brian2_device,
+            "codegen_target": args.brian2_codegen_target,
+            "extensions": args.extensions,
+        }
+        brian2_options = {name: value for name, value in brian2_options.items() if value is not None}
+        backend_options.update(brian2_options)
         try:
             simulation = Simulation.from_yaml(
                 config_dir=args.config_dir,
                 network_name=args.network,
                 simulation_name=args.simulation,
+                backend=args.backend,
                 backend_options=backend_options,
             )
         except FileNotFoundError as error:
             sys.exit(str(error))
+        if brian2_options and simulation.backend_name != "brian2":
+            sys.exit(
+                "--brian2-device, --brian2-codegen-target and --extensions need the brian2 "
+                f"backend (this run uses {simulation.backend_name})."
+            )
+        if args.nest_modules and simulation.backend_name != "nest":
+            sys.exit(
+                f"--nest-modules needs the nest backend (this run uses {simulation.backend_name})."
+            )
         simulation.run()
         # With MPI, the first process alone plots.
         if not simulation.is_main_process:

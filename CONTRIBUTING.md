@@ -3,7 +3,7 @@
 First ask whether the change belongs in the core. Behaviour that only your project needs goes in your project's `builders/` or `analyses/`, which the core finds without edits. Change the core when the fix or feature would help any project.
 
 1. Fork the repository on GitHub and clone your fork.
-2. Install it editable: `pip install -e ".[dev]"`. Tests that run a simulation need NEST; see the installation section of [microcircuit_lab/README.md](microcircuit_lab/README.md#installation) for the ways to get it.
+2. Install it editable: `pip install -e ".[dev]"`. Tests that run a simulation need NEST, and the Brian2 tests need `.[brian2]` (they are skipped without it); see the installation section of [microcircuit_lab/README.md](microcircuit_lab/README.md#installation) for the ways to get it.
 3. Create a branch, make the change and add a test for it.
 4. Run `ruff check .` and `pytest`. CI runs both.
 5. Push the branch to your fork and open a pull request into `main`.
@@ -47,6 +47,7 @@ Click the kind of change. Each recipe ends with a test and a line in the README.
 
 1. `config/stimuli.py`: add a class next to the others, and add it to `StimulusConfig` at the end of the file.
 2. `backends/nest/simulator.py`, `create_stimuli`: create its NEST device. Change `connect_stimuli` only if it connects differently.
+   `backends/brian2/simulator.py`: its rate or current over time in `_stimulus_curve` (or its own Brian2 objects in `create_stimuli`).
 3. Test in `tests/test_stimuli.py`.
 
 The [worked example](#an-example-a-single-spike-stimulus) below does exactly this.
@@ -55,8 +56,11 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A weight or delay distribution</b></summary>
 
-1. `config/connectivity.py`: add its name to the `distribution` list of `WeightDistribution` or `DelayDistribution`.
+A distribution only one project needs doesn't go in the core: with Brian2 it is a `Distribution` in the project's `extensions/brian2/` (see "Distributions of your own" in the core's README). A shared one, which every simulator draws:
+
+1. `config/connectivity.py`: add its name to `SHARED_DISTRIBUTIONS`.
 2. `backends/nest/distributions.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
+   `backends/brian2/distributions.py`: its Brian2 expression in `DRAWS`, and its chance of crossing a bound in `chance_below`.
 3. Test in `tests/test_bound_mode_and_tau_syn.py`.
 </details>
 
@@ -65,17 +69,19 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 
 1. `config/populations.py`: add it to `PopulationEntry` (the file) and `PopulationConfig` (the network).
 2. `network/load.py`, `assemble_network`: copy it from one to the other.
-3. `backends/nest/simulator.py`: use it in `create_populations` or `initialize_population`.
+3. `backends/nest/simulator.py`: use it in `create_populations` or `initialize_population`; `backends/brian2/simulator.py`: in `create_populations`.
 4. Test in `tests/test_config_validation.py`.
 </details>
 
 <details>
 <summary><b>A field on a connection, or a connection rule</b></summary>
 
-1. `config/connectivity.py`: add it to `ConnectionConfig`.
-2. `config/connection_table.py`: add its column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
-3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column.
-4. If scaling or the indegrees depend on it: `network/mean_input.py` and `network/prepare.py`, on whole columns.
+A rule only one project needs doesn't go in the core: with Brian2 it is a `ConnectionRule` in the project's `extensions/brian2/` (see "Connection rules of your own" in the core's README). A shared rule, one that every simulator runs:
+
+1. `config/connectivity.py`: add it to `ConnectionConfig` (a field), or to `SHARED_RULES` (a rule; to `RULE_NUMBER` too if it takes a number).
+2. `config/connection_table.py`: add a field's column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
+3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column; `backends/brian2/simulator.py` too, and a rule in `backends/brian2/connections.py`: its counts in `_counts` if it takes a number, its `connect` call in `_single`.
+4. If scaling or the indegrees depend on it: `network/mean_input.py` (`expected_synapses`) and `network/prepare.py` (`_check_connections_can_scale` for a rule that can't follow the scaling), on whole columns.
 5. Test in `tests/test_connection_rules.py`.
 </details>
 
@@ -92,7 +98,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <summary><b>Something to record</b></summary>
 
 1. `config/simulation.py`: add it to `RecordingConfig`.
-2. `backends/nest/simulator.py`: a `create_*`/`connect_*` pair, and reading it back.
+2. `backends/nest/simulator.py`: a `create_*`/`connect_*` pair, and reading it back; `backends/brian2/simulator.py`: a Brian2 monitor in a `create_*` method, and writing it in `save_recordings`.
 3. `run_folder.py`, if it is saved in the run folder.
 4. Test in `tests/test_run_folder.py`.
 </details>
@@ -111,9 +117,9 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 A new package `backends/<name>/` and a line in `get_backend` and `read_saved_spikes`; see "Adding a backend" in the README.
 </details>
 
-**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too) or for a new model (a network folder or a builder; see "Adding a new model" in the README).
+**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Running with Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).
 
-When a stimulus `type` or a `distribution` is not known, the error message points to this section.
+When a stimulus `type` is not known, the error message points to this section.
 
 ### An example: a single-spike stimulus
 
@@ -152,4 +158,4 @@ When a stimulus `type` or a `distribution` is not known, the error message point
 - Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks, together with a `description` (with its unit) and, for a required field, `examples=[...]`: [docs/config_files.md](docs/config_files.md) is written from them.
 - Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `run_folder.register_artifact`, `network/psp_psc_conversion.py`, `yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
-- From the first release (v0.1.0) on, keep the field names of the config models stable (`populations`, `size`, `background_indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason.
+- Keep the field names of the config models stable (`populations`, `size`, `background_indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason. Rename a field only when its old name is wrong or misleading. The old name then fails with a message giving the new one (no conversion is kept), and the rename is listed in the release notes. Command-line flags, backend options and folder names follow the same rule but matter less, because they don't end up in a run folder.

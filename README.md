@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23547742.svg)](https://doi.org/10.5281/zenodo.23547742)
 
-Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
+Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core prepares it, runs it in NEST or Brian2 and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
 
 The full documentation is in [`microcircuit_lab/README.md`](microcircuit_lab/README.md).
 
@@ -26,7 +26,7 @@ Next:
 
 - **Other settings** (duration, seed, threads): edit `configs/simulation/toy.yaml` and run again.
 - **Parameter sweeps, several seeds, any batch:** a Python script; recipes in [Running from a script](microcircuit_lab/README.md#running-from-a-script).
-- **Your own network:** [Adding a new model](microcircuit_lab/README.md#adding-a-new-model).
+- **Your own network:** [Adding a new network](microcircuit_lab/README.md#adding-a-new-network).
 
 A project holds your own builders, analyses and configs, and with `--with-core` your own copy of the core to change as you like; see [Starting a project](microcircuit_lab/README.md#starting-a-project). To propose a change to the core here, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

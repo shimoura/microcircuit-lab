@@ -27,7 +27,7 @@ from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
 )
-from microcircuit_lab.config.connectivity import ConnectivityFile
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, ConnectivityFile
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
@@ -164,6 +164,34 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
+    def _check_project_distributions_on_connections_only(self) -> NetworkConfig:
+        users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
+        users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
+        for user, item in users:
+            for what in ("weight", "delay"):
+                distribution = getattr(item, what).distribution
+                if distribution not in SHARED_DISTRIBUTIONS:
+                    raise ValueError(
+                        f"The {user} has a {what} from project distribution {distribution!r}; "
+                        f"background inputs and stimuli take {', '.join(SHARED_DISTRIBUTIONS)} only."
+                    )
+        return self
+
+    @model_validator(mode="after")
+    def _check_one_to_one_sizes(self) -> NetworkConfig:
+        table = self.connections
+        for i in np.flatnonzero(table["rule"] == "one_to_one"):
+            source, target = table["source"][i], table["target"][i]
+            sizes = [self.populations[name].size if name in self.populations else None
+                     for name in (source, target)]
+            if None not in sizes and sizes[0] != sizes[1]:
+                raise ValueError(
+                    f"Connection {source} -> {target}: one_to_one needs populations of the same "
+                    f"size; they have {sizes[0]} and {sizes[1]} neurons."
+                )
+        return self
+
+    @model_validator(mode="after")
     def _check_shared_generators(self) -> NetworkConfig:
         groups: dict[str, list[str]] = {}
         for name, entry in self.background_inputs.items():
@@ -218,7 +246,7 @@ class NetworkConfig(FrozenConfig):
                 user = f"connection {table['source'][first]} -> {table['target'][first]}"
                 raise ValueError(
                     f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[name].receptor_port} (synapse {name!r}). "
+                    f"{self.synapses[name].receptor_port!r} (synapse {name!r}). "
                     "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
                     "default port only; give this weight as unit: PSC or native."
                 )
@@ -242,12 +270,12 @@ class NetworkConfig(FrozenConfig):
             if self.synapses[item.synapse].receptor_port is not None and item.weight.unit == "PSP":
                 raise ValueError(
                     f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[item.synapse].receptor_port} (synapse {item.synapse!r}). "
+                    f"{self.synapses[item.synapse].receptor_port!r} (synapse {item.synapse!r}). "
                     "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
                     "default port only; give this weight as unit: PSC or native."
                 )
         return self
 
-    def receptor_port(self, synapse: str | None) -> int | None:
+    def receptor_port(self, synapse: str | None) -> int | str | None:
         """The receptor port of a synapse name (``None``: the default port)."""
         return None if synapse is None else self.synapses[synapse].receptor_port

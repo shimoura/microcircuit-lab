@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.compensation import (
     compensate_lost_mean_input,
@@ -126,6 +127,7 @@ def _scale_indegrees(
     # for all connections at once.
     table = network.connections
     rule = table["rule"]
+    _check_connections_can_scale(table, scaling.N_scaling, scaling.K_scaling)
     scaled = scale_rule_number(table["number"], rule, scaling.N_scaling, scaling.K_scaling)
 
     too_likely = np.flatnonzero((rule == "pairwise_bernoulli") & (scaled > 1.0))
@@ -142,6 +144,40 @@ def _scale_indegrees(
     connections = table.with_columns(copy=False, number=scaled).keep_rows(scaled != 0)
 
     return network.model_copy(update={"populations": populations, "connections": connections})
+
+
+def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> None:
+    """
+    Raise for a connection that scaling cannot keep at the full-scale input.
+    Its rule cannot keep each neuron's inputs at ``K_scaling`` times the
+    full-scale number: ``one_to_one`` always gives one input, ``all_to_all``
+    gives ``n_source``, which shrinks with ``N_scaling``, and a rule that is not
+    shared says nothing about its scaling. Or its weights come from a project
+    distribution, whose real mean, which the compensation needs, is not known
+    here. (A project delay distribution is fine: scaling leaves delays alone.)
+    """
+
+    rule = table["rule"]
+    reasons = (
+        ((rule == "one_to_one") & (K_scaling != 1.0),
+         "one_to_one gives each neuron one input at any scale, so K_scaling must be 1"),
+        ((rule == "all_to_all") & (K_scaling != N_scaling),
+         "all_to_all gives each neuron n_source inputs, which shrink with N_scaling, so "
+         "K_scaling must equal N_scaling"),
+        (~np.isin(rule, SHARED_RULES),
+         "rule {rule} is not a shared one and cannot be scaled yet; scale the network in its "
+         "builder, or run it at full scale"),
+        (~np.isin(table["weight.distribution"], SHARED_DISTRIBUTIONS),
+         "weights from a project distribution cannot be scaled yet; scale the network in its "
+         "builder, or run it at full scale"),
+    )
+    for rows, why in reasons:
+        if rows.any():
+            i = int(np.flatnonzero(rows)[0])
+            raise ValueError(
+                f"Connection {table['source'][i]} -> {table['target'][i]} (N_scaling={N_scaling}, "
+                f"K_scaling={K_scaling}): " + why.format(rule=repr(rule[i])) + "."
+            )
 
 
 def _background_rate_per_neuron(

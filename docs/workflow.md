@@ -8,7 +8,7 @@ flowchart TD
   B["your data and code<br/><i>if you write a builder</i>"]:::opt -.->|"0 · generate"| Y
   Y["YAML files<br/>configs/network/&lt;name&gt;/"] -->|"1 · check"| W["the network, as written"]
   W -->|"2 · prepare"| P["the network, ready to simulate"]
-  P -->|"3 · simulate in NEST"| K["spikes"]
+  P -->|"3 · simulate"| K["spikes"]
   K -->|"4 · save"| R["run folder<br/>output/&lt;name&gt;/&lt;date_time&gt;/"]
   R -->|"5 · plot"| G["plots/"]
   classDef opt stroke-dasharray: 5 4,fill:#ffffff
@@ -28,7 +28,7 @@ Optional: the YAML files can also be written by hand. A builder is a folder `bui
 
 **In:** the YAML files. **Out:** the network, as written.
 
-Each file is checked against its own module (`connectivity.yaml` → `config/connectivity.py`, ...), then names are matched across files. A mistake stops the run before NEST starts, and names the file and the field:
+Each file is checked against its own module (`connectivity.yaml` → `config/connectivity.py`, ...), then names are matched across files. A mistake stops the run before the simulator starts, and names the file and the field:
 
 ```text
 Invalid network config in configs/network/toy:
@@ -91,13 +91,15 @@ flowchart LR
 
 **Code:** `backends/nest/simulator.py` (`build`: the order), `backends/nest/distributions.py` (drawn weights, delays and values)
 
+Before building, the simulator checks the names the network uses (`check()`): models, project rules and distributions, named receptors. With `--backend brian2` the same parts become Brian2 objects, in `backends/brian2/simulator.py`; the neuron and synapse models, and any project rules and distributions, come from the project's `extensions/brian2/` (see "Running with Brian2" in the [README](../microcircuit_lab/README.md#running-with-brian2)).
+
 ## 4 · Save
 
 **In:** spikes. **Out:** the run folder.
 
 ```text
 output/<name>/<date_time>/
-├── recordings/     spikes, written by NEST while it runs
+├── recordings/     spikes, written by the simulator
 ├── config.yaml     the prepared network and the settings used
 ├── metadata.json   versions, git commits, spike counts, files
 └── plots/          step 5
@@ -123,9 +125,11 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | :--- | :--- |
 | a file is refused | the module named after the file, in `config/` |
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
+| the simulator "has no" model, rule, distribution or receptor | its `check()`, in `backends/<name>/simulator.py`; for Brian2, `extensions/brian2/` |
 | weights or sizes differ from the files | step 2: compare `read_network` and `load_network` |
 | rates drop in a scaled run | `network/compensation.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 3: the `create_...` method for that part, in `backends/nest/simulator.py` |
+| something looks wrong in Brian2 | step 3: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/simulator.py` |
 | the run went to the wrong folder | the `output` section of the simulation file |
 | your plot is not found | `register_plot` in your file in `analyses/` |
 | `generate` does not list your builder | step 0: a `main(argv)` in `builders/<model>/__init__.py` |

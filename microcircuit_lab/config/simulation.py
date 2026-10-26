@@ -1,12 +1,30 @@
-"""What the simulation file may contain: run time, seeds, recording and output."""
+"""What the simulation file may contain: run time, seeds, backend, recording and output."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Literal
 
 from pydantic import Field
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
+
+#: Registered backend names. Adding a backend means adding it here and to
+#: get_backend() and read_saved_spikes() in backends/__init__.py. See "Adding a
+#: backend" in the README.
+BackendName = Literal["nest", "brian2"]
+
+
+class BackendConfig(FrozenConfig):
+    """The simulator and its own options."""
+
+    name: BackendName = Field(default="nest", description="the simulator to run the network with")
+    options: dict[str, Any] = Field(
+        default={},
+        examples=[{"device": "cpp_standalone"}],
+        description="options of that simulator, passed to its backend as-is; the backend "
+        "validates them (see the simulator's section in the README)",
+    )
 
 
 class RecordingConfig(FrozenConfig):
@@ -60,5 +78,6 @@ class SimulationConfig(FrozenConfig):
     rng_seed: int = Field(default=42, description="seed of the random numbers")
     local_num_threads: int = Field(default=1, ge=1, description="threads per process")
     print_time: bool = Field(default=True, description="print the simulation progress")
+    backend: BackendConfig = Field(default=BackendConfig(), description="the simulator to use")
     recording: RecordingConfig = Field(default=RecordingConfig(), description="what to record")
     output: OutputConfig = Field(default=OutputConfig(), description="where and what to save")
