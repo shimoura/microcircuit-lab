@@ -33,8 +33,8 @@ neurons: neurons.yaml
 connectivity: connectivity.yaml
 # required · text · file holding the background-input entries
 background_inputs: background_inputs.yaml
-# optional · text · file holding the scaling parameters; omit the key to run the network
-#   at full scale
+# optional · text · file recording how this network was scaled (written by
+#   scale_network, never applied); omit the key for a network that was not scaled
 scaling: scaling.yaml
 # optional · text · file holding the reference rates; omit the key for none
 reference: reference.yaml
@@ -297,23 +297,19 @@ stimuli:
 
 ### scaling.yaml
 
-Optional: how to downscale the network; see "Scaling a network" in the README. Without it, the network runs at full scale.
+Only in a scaled network: how it was scaled, written by `scale_network` and never applied (the other files hold the scaled numbers); see "Scaling a network" in the README.
 
 ```yaml
-# optional, default 1.0 · number > 0 · multiplies the number of neurons
-N_scaling: 1.0
-# optional, default 1.0 · number > 0 · multiplies the indegrees (synapses per neuron)
-K_scaling: 1.0
-# optional, default true · true or false · add a DC current that restores the mean input
-#   lost by scaling
-preserve_mean_input: true
-# optional, default true · true or false · true: weights / sqrt(K_scaling), keeps the
-#   fluctuations; false: weights / K_scaling, keeps the mean and needs no DC current
-preserve_variance: true
-# optional, default true · true or false · the DC current also replaces the lost
-#   recurrent input (needs reference.full_mean_rates); false: only the lost background
-#   input
-compensate_recurrent_input: true
+# required · text · the full-scale network this one was scaled from (or the builder
+#   command that makes it)
+scaled_from: pd14
+# required · text · the function that scaled it
+scaled_with: microcircuit_lab.network.scaling.scale_network
+# required · mapping · the arguments the function was given (its own, e.g. N_scaling and
+#   K_scaling)
+parameters:
+  N_scaling: 0.1
+  K_scaling: 0.1
 ```
 
 ### reference.yaml

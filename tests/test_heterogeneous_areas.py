@@ -14,7 +14,7 @@ import pytest
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
-from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.builder_tools import scale_network
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.prepare import prepare_network
 
@@ -24,7 +24,7 @@ NETWORK = "configs/network/toy_two_areas"
 def _config(**scaling):
     config = assemble_network(read_network_files(NETWORK))
     if scaling:
-        config = config.model_copy(update={"scaling": ScalingConfig(**scaling)})
+        config = scale_network(config, scaled_from="toy_two_areas", **scaling)
     return config
 
 

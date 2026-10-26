@@ -64,7 +64,7 @@ def test_writes_every_file_and_returns_the_validated_config(tmp_path: Path) -> N
     }
     assert set(config.populations) == {"E", "I"}
     assert config.populations["E"].size == 8
-    assert not config.scaling.is_scaled and config.reference is None
+    assert config.scaling is None and config.reference is None
 
 
 def test_manifest_uses_the_conventional_names(tmp_path: Path) -> None:

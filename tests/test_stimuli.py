@@ -11,7 +11,6 @@ from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistri
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
@@ -101,7 +100,6 @@ def test_stimulus_targeting_unknown_population_raises():
             connections=[],
             background_inputs={},
             stimuli=[DcStimulusConfig(targets=["nonexistent"], amplitude=100.0)],
-            scaling=ScalingConfig(),
         )
 
 
@@ -111,7 +109,6 @@ def test_network_without_stimuli_defaults_to_empty_list():
         populations={"E": population},
         connections=[],
         background_inputs={},
-        scaling=ScalingConfig(),
     )
     assert network.stimuli == []
 
@@ -189,7 +186,6 @@ def _isolated_network(stimuli: list[StimulusConfig]) -> NetworkConfig:
         connections=[],
         background_inputs={},
         stimuli=stimuli,
-        scaling=ScalingConfig(),
     )
     return config
 

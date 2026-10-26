@@ -18,8 +18,11 @@ network folder ``configs/network/<name>/``::
     )
 
 * :func:`write_network_directory` writes every file of the folder and checks
-  the result (with :func:`microcircuit_lab.network.load.load_network`), so a
+  the result (with :func:`microcircuit_lab.network.load.read_network`), so a
   mistake raises with the file and the field named.
+* :func:`scale_network` returns a network scaled down (fewer neurons and
+  synapses, stronger weights, the lost mean input as a current), and
+  :func:`write_network` writes such a network as a folder.
 * :func:`weight` and :func:`delay` build the ``weight`` / ``delay`` entries
   every connection, background input and stimulus needs.
 * :func:`num_synapses_from_conn_prob` turns a connection probability into a
@@ -44,7 +47,8 @@ import numpy as np
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.load import load_network
+from microcircuit_lab.network.load import read_network
+from microcircuit_lab.network.scaling import scale_network
 from microcircuit_lab.yaml_files import flow_records, write_yaml
 
 __all__ = [
@@ -52,7 +56,9 @@ __all__ = [
     "num_synapses_from_conn_prob",
     "psc_to_psp",
     "psp_to_psc_iaf_psc_exp",
+    "scale_network",
     "weight",
+    "write_network",
     "write_network_directory",
 ]
 
@@ -192,8 +198,8 @@ def write_network_directory(
     bound_mode
         ``"redraw"`` or ``"clip"``; written only when ``"clip"``.
     scaling
-        The fields of ``scaling.yaml``; ``None`` writes no ``scaling.yaml`` (the
-        network runs at full scale).
+        The record of a scaled network (``scaling.yaml``), which
+        :func:`write_network` passes on; ``None`` writes none.
     reference
         ``{population name: full-scale mean rate}``; ``None`` writes no
         ``reference.yaml``.
@@ -210,9 +216,9 @@ def write_network_directory(
     Returns
     -------
     NetworkConfig
-        The network ready to simulate, from
-        :func:`~microcircuit_lab.network.load.load_network`. A mistake raises
-        there, with the file and the field named.
+        The network as written, from
+        :func:`~microcircuit_lab.network.load.read_network` (e.g. to scale it).
+        A mistake raises there, with the file and the field named.
     """
 
     directory = Path(path)
@@ -270,7 +276,73 @@ def write_network_directory(
     for name, payload in payloads.items():
         write_yaml(directory / name, payload)
 
-    return load_network(directory)
+    return read_network(directory)
+
+
+def write_network(
+    network: NetworkConfig, path: str | Path, *, csv: bool = False, compact: bool = True
+) -> NetworkConfig:
+    """
+    Write ``network`` as a network folder, e.g. one returned by
+    :func:`scale_network`.
+
+    Populations that share a neuron entry keep sharing it while their neurons
+    are the same; a population whose neuron differs (e.g. its own compensation
+    current in ``I_e``) gets an entry of its own, named after the population.
+
+    Parameters
+    ----------
+    network
+        The network as written (not prepared: background rates per synapse).
+    path
+        The folder to write, e.g. ``configs/network/pd14_downscaled``.
+    csv
+        Write the connections as ``connections.csv`` (for a large network)
+        instead of in ``connectivity.yaml``.
+    compact
+        As for :func:`write_network_directory`.
+
+    Returns
+    -------
+    NetworkConfig
+        The network read back from the folder.
+    """
+
+    entries = {
+        name: {"model": population.neuron.model, "parameters": population.neuron.parameters.model_dump(mode="json")}
+        for name, population in network.populations.items()
+    }
+    # A neuron name is kept if all its populations have the same neuron.
+    shared: dict[str, list] = {}
+    for name, population in network.populations.items():
+        shared.setdefault(population.neuron.name, []).append(entries[name])
+    neurons: dict[str, dict[str, Any]] = {}
+    populations = []
+    for name, population in network.populations.items():
+        same = all(entry == entries[name] for entry in shared[population.neuron.name])
+        key = population.neuron.name if same else name
+        neurons[key] = entries[name]
+        row = population.model_dump(mode="json")
+        row["neuron"] = key
+        populations.append(row)
+
+    def dump(item) -> dict[str, Any]:
+        return item.model_dump(mode="json", exclude_none=True)
+
+    return write_network_directory(
+        path,
+        populations=populations,
+        neurons=neurons,
+        connections=network.connections if csv else network.connections.to_yaml_rows(),
+        background_inputs={name: dump(item) for name, item in network.background_inputs.items()},
+        background_mode=network.background_mode,
+        bound_mode=network.bound_mode,
+        scaling=None if network.scaling is None else dump(network.scaling),
+        reference=None if network.reference is None else network.reference.full_mean_rates,
+        stimuli=[dump(item) for item in network.stimuli] or None,
+        synapses={name: dump(item) for name, item in network.synapses.items()} or None,
+        compact=compact,
+    )
 
 
 def num_synapses_from_conn_prob(

@@ -17,9 +17,9 @@ neuron entries and connection probabilities of ``toy_two_areas`` (see
   time constant. Its PSPs are converted to currents with the time constant
   of their port.
 
-The rates differ from ``toy_two_areas``. No ``scaling.yaml`` is written (it
-runs at full scale) and no reference rates, so a scaled copy of this network
-needs ``compensate_recurrent_input: false``.
+The rates differ from ``toy_two_areas``. It is written at full scale, with no
+reference rates and with receptor ports, whose input has no known mean
+current: a scaled copy needs ``preserve_mean_input=False``.
 """
 
 from __future__ import annotations

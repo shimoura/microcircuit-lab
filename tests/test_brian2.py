@@ -28,7 +28,6 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import DcStimulusConfig
 from microcircuit_lab.config.synapses import SynapseEntry
@@ -151,7 +150,6 @@ def _network(neuron_model: str, connections=(), stimuli=(), size: int = 50, syna
         background_inputs={},
         stimuli=list(stimuli),
         synapses=synapses or {},
-        scaling=ScalingConfig(),
         reference=ReferenceConfig(full_mean_rates={"S": 5.0, "T": 5.0}),
     )
 

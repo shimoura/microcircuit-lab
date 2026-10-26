@@ -32,7 +32,7 @@ from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.populations import PopulationConfig, PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.config.scaling import ScalingRecord
 from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
     StimuliFile,
@@ -54,8 +54,8 @@ class NetworkManifest(FrozenConfig):
     scaling: str | None = Field(
         default=None,
         examples=["scaling.yaml"],
-        description="file holding the scaling parameters; omit the key to run the network "
-        "at full scale",
+        description="file recording how this network was scaled (written by scale_network, "
+        "never applied); omit the key for a network that was not scaled",
     )
     reference: str | None = Field(
         default=None,
@@ -91,7 +91,7 @@ class NetworkDirectory(FrozenConfig):
     neurons: NeuronsFile
     connectivity: ConnectivityFile
     background_inputs: BackgroundInputsFile
-    scaling: ScalingConfig = Field(default_factory=ScalingConfig)
+    scaling: ScalingRecord | None = None
     reference: ReferenceConfig | None = None
     stimuli: StimuliFile = Field(default_factory=StimuliFile)
     synapses: SynapsesFile = Field(default_factory=SynapsesFile)
@@ -136,7 +136,8 @@ class NetworkConfig(FrozenConfig):
     background_mode: Literal["poisson", "mean_current"] = "poisson"
     bound_mode: Literal["redraw", "clip"] = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
-    scaling: ScalingConfig
+    # How the network was scaled, if it was; never applied (see config/scaling.py).
+    scaling: ScalingRecord | None = None
 
     reference: ReferenceConfig | None = None
     synapses: dict[str, SynapseEntry] = Field(default_factory=dict)
@@ -206,7 +207,7 @@ class NetworkConfig(FrozenConfig):
         # model (the simulator connects a device through one model). Rate and
         # indegree are compared one by one, not their product: that holds
         # whether the network is prepared or not (a prepared rate is already
-        # rate x indegree), and after any K_scaling.
+        # rate x indegree), and after any scaling.
         indegree = {name: pop.background_indegree for name, pop in self.populations.items()}
         for generator, names in groups.items():
             inputs = {

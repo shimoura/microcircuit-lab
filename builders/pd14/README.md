@@ -23,7 +23,14 @@ microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mod
 microcircuit-lab run --network pd14_mean_current
 ```
 
-The full network has 77,169 neurons and about 300 million synapses; building it needs about 15 GB of memory. For a quick check, set `N_scaling` and `K_scaling` below 1 in `configs/network/pd14/scaling.yaml` (see "Scaling a network" in `microcircuit_lab/README.md`).
+The full network has 77,169 neurons and about 300 million synapses; building it needs about 15 GB of memory. For a quick check, run `configs/network/pd14_downscaled/` (N and K scaled by 0.1), made by
+
+```bash
+microcircuit-lab generate pd14 --n-scaling 0.1 --k-scaling 0.1 --network-name pd14_downscaled
+microcircuit-lab run --network pd14_downscaled --analysis pd14
+```
+
+(see "Scaling a network" in `microcircuit_lab/README.md`).
 
 ## Files
 

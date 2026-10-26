@@ -36,7 +36,7 @@ from microcircuit_lab.config.network import NetworkManifest
 from microcircuit_lab.config.neurons import NeuronParams, NeuronsFile
 from microcircuit_lab.config.populations import PopulationsFile
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
+from microcircuit_lab.config.scaling import ScalingRecord
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import StimuliFile
 from microcircuit_lab.config.synapses import SynapsesFile
@@ -54,7 +54,7 @@ FILES = [
     ("connectivity.yaml", ConnectivityFile, "The connections between populations."),
     ("background_inputs.yaml", BackgroundInputsFile, "The always-on Poisson input of each population."),
     ("stimuli.yaml", StimuliFile, "Optional: inputs for an experiment, applied as written (never scaled)."),
-    ("scaling.yaml", ScalingConfig, "Optional: how to downscale the network; see \"Scaling a network\" in the README. Without it, the network runs at full scale."),
+    ("scaling.yaml", ScalingRecord, "Only in a scaled network: how it was scaled, written by `scale_network` and never applied (the other files hold the scaled numbers); see \"Scaling a network\" in the README."),
     ("reference.yaml", ReferenceConfig, "Optional: published values to compare with, and to compensate a scaled network."),
 ]
 SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration, seed, threads, what to record and save.")

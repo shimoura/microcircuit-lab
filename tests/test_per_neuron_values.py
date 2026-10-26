@@ -13,7 +13,6 @@ from microcircuit_lab.config.connectivity import (
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 
 
@@ -47,7 +46,6 @@ def _network(C_m) -> NetworkConfig:
         populations={"E": population},
         connections=[connection],
         background_inputs={},
-        scaling=ScalingConfig(),
     )
 
 

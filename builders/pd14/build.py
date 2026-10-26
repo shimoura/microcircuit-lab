@@ -21,7 +21,9 @@ from microcircuit_lab.builder_tools import (
     delay,
     num_synapses_from_conn_prob,
     psp_to_psc_iaf_psc_exp,
+    scale_network,
     weight,
+    write_network,
     write_network_directory,
 )
 from microcircuit_lab.config.network import NetworkConfig
@@ -129,12 +131,6 @@ def generate_pd14(
         connections=_build_connections(),
         background_inputs=_build_background_inputs(),
         background_mode=background_mode,
-        scaling={
-            "N_scaling": 1.0,
-            "K_scaling": 1.0,
-            "preserve_mean_input": True,
-            "preserve_variance": True,
-        },
         reference=dict(zip(data.populations, data.full_mean_rates.tolist())),
         compact=False,
     )
@@ -151,14 +147,23 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--config-dir", default="configs")
     parser.add_argument("--network-name", default="pd14")
     parser.add_argument("--background-mode", choices=("poisson", "mean_current"), default="poisson")
+    parser.add_argument("--n-scaling", type=float, default=1.0, help="multiplies the number of neurons")
+    parser.add_argument("--k-scaling", type=float, default=1.0, help="multiplies the synapses per neuron")
     args = parser.parse_args(argv)
 
-    generate_pd14(
+    folder = Path(args.config_dir) / "network" / args.network_name
+    network = generate_pd14(
         config_dir=args.config_dir,
         network_name=args.network_name,
         background_mode=args.background_mode,
     )
-    print(f"Generated and validated {Path(args.config_dir) / 'network' / args.network_name}")
+    # A scaled network is written scaled: its files hold the numbers that are
+    # simulated, and scaling.yaml records how they were made.
+    if args.n_scaling != 1.0 or args.k_scaling != 1.0:
+        scaled_from = "pd14" + (" --background-mode mean_current" if args.background_mode == "mean_current" else "")
+        scaled = scale_network(network, N_scaling=args.n_scaling, K_scaling=args.k_scaling, scaled_from=scaled_from)
+        write_network(scaled, folder, compact=False)
+    print(f"Generated and validated {folder}")
 
 
 if __name__ == "__main__":

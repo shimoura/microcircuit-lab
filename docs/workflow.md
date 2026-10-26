@@ -46,16 +46,14 @@ What each field accepts: [config_files.md](config_files.md).
 ```mermaid
 %%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 15, "padding": 5}}}%%
 flowchart LR
-  K["scale<br/><i>if scaling.yaml</i>"]:::opt --> D["DC for input lost<br/><i>if scaling.yaml</i>"]:::opt --> R["rate × indegree<br/><b>always</b>"] --> M["constant current<br/><i>if mean_current</i>"]:::opt
+  M["constant current<br/><i>if mean_current</i>"]:::opt --> R["rate × indegree<br/><b>always</b>"]
   classDef opt stroke-dasharray: 5 4,fill:#ffffff
 ```
 
-- **scale:** fewer neurons and synapses, stronger weights.
-- **DC for input lost:** the mean input of the missing synapses, as a constant current.
+- **constant current:** the background becomes its mean, a constant current added to `I_e`, and its rate 0.
 - **rate × indegree:** each population's background is one Poisson generator, firing at the rate per synapse times the number of synapses.
-- **constant current:** the background becomes its mean, a constant current.
 
-So without `scaling.yaml`, everything is simulated as written, except that the background rate is multiplied by the indegree. To see the two ends:
+Everything else is simulated as written: a scaled network is a folder of its own, written by `scale_network` with the scaled numbers and the compensation current in `I_e` (README, "Scaling a network"). To see the two ends:
 
 ```python
 from microcircuit_lab.network.load import read_network, load_network
@@ -64,7 +62,7 @@ written = read_network("configs/network/pd14")    # as written
 prepared = load_network("configs/network/pd14")   # ready to simulate
 ```
 
-**Code:** `network/prepare.py` (the order), `network/scaling.py`, `network/compensation.py`
+**Code:** `network/prepare.py`, `network/compensation.py` (`replace_background_by_mean_current`)
 
 ## 3 · Simulate
 
@@ -126,7 +124,7 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
 | the simulator "has no" model, rule, distribution or receptor | its `check()`, in `backends/<name>/simulator.py`; for Brian2, `extensions/brian2/` |
 | weights or sizes differ from the files | step 2: compare `read_network` and `load_network` |
-| rates drop in a scaled run | `network/compensation.py`; full-scale rates in `reference.yaml` |
+| rates drop in a scaled run | `network/scaling.py`, `network/compensation.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 3: the `create_...` method for that part, in `backends/nest/simulator.py` |
 | something looks wrong in Brian2 | step 3: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/simulator.py` |
 | the run went to the wrong folder | the `output` section of the simulation file |

@@ -35,11 +35,11 @@
 <rect x="366" y="181.5" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
 <text x="378" y="200.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">2  prepare</text>
 <text x="587" y="200.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">network/</text>
-<text x="378" y="218.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">PSP → pA, scaling, compensation</text>
+<text x="378" y="218.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">background rate × indegree</text>
 <rect x="366" y="255" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
 <text x="378" y="274" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">3  simulate</text>
-<text x="587" y="274" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">backends/nest/</text>
-<text x="378" y="292" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">in NEST, per configs/simulation</text>
+<text x="587" y="274" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">backends/</text>
+<text x="378" y="292" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">in NEST or Brian2</text>
 <rect x="366" y="328.5" width="233" height="46" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
 <text x="378" y="347.5" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">4  save</text>
 <text x="587" y="347.5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" font-weight="400" fill="#6e40c9" text-anchor="end" xml:space="preserve">run_folder.py</text>

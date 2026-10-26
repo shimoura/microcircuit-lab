@@ -12,12 +12,12 @@ import pytest
 import yaml
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.builder_tools import scale_network
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.compensation import background_dc_current
 from microcircuit_lab.network.load import assemble_network, read_network_files
@@ -69,7 +69,6 @@ def _network(background_mode: str) -> NetworkConfig:
         connections=[],
         background_inputs={"E": _background()},
         background_mode=background_mode,
-        scaling=ScalingConfig(),
     )
 
 
@@ -82,7 +81,6 @@ def test_background_mode_defaults_to_poisson():
         populations={"E": population},
         connections=[],
         background_inputs={"E": _background()},
-        scaling=ScalingConfig(),
     )
     assert network.background_mode == "poisson"
 
@@ -110,15 +108,13 @@ def test_poisson_mode_leaves_i_e_untouched():
 
 
 def test_dc_current_independent_of_k_scaling():
-    """The DC replacement targets the full biological background input,
-    so it must not depend on N/K scaling of the recurrent network."""
+    """The DC replacement targets the full biological background input: in a
+    scaled network, the current from its scaled background plus the
+    compensation of the background lost by scaling."""
 
-    scaled = _network("mean_current").model_copy(
-        update={
-            "scaling": ScalingConfig(
-                N_scaling=0.5, K_scaling=0.5, compensate_recurrent_input=False
-            ),
-        }
+    scaled = scale_network(
+        _network("mean_current"), N_scaling=0.5, K_scaling=0.5, scaled_from="test",
+        compensate_recurrent_input=False,
     )
     unscaled = prepare_network(_network("mean_current"))
     rescaled = prepare_network(scaled)
@@ -231,7 +227,6 @@ def _two_populations(generators=("A", "A"), rates=(8.0, 8.0), background_mode="p
             for name, generator, rate in zip(("E1", "E2"), generators, rates)
         },
         background_mode=background_mode,
-        scaling=ScalingConfig(),
     )
 
 

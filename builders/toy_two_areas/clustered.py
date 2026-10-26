@@ -20,8 +20,8 @@ is a common one for clustered networks:
   a population share one Poisson generator (``generator:`` in
   ``background_inputs.yaml``), and each neuron still gets its own spike train.
 
-No ``scaling.yaml`` is written (it runs at full scale) and no reference
-rates, as in the advanced variant.
+It is written at full scale, with no reference rates, as the advanced
+variant.
 """
 
 from __future__ import annotations

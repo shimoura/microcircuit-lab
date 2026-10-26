@@ -10,7 +10,12 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import (
+    delay,
+    scale_network,
+    weight,
+    write_network_directory,
+)
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import (
     ConnectionConfig,
@@ -21,7 +26,6 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import load_network
 from microcircuit_lab.network.prepare import prepare_network
@@ -34,7 +38,6 @@ def _network(
     tau_syn_in: float,
     background_indegree: float = 0.0,
     connections: list[ConnectionConfig] | None = None,
-    scaling: ScalingConfig | None = None,
     reference: ReferenceConfig | None = None,
     bound_mode: str = "redraw",
 ) -> NetworkConfig:
@@ -57,7 +60,6 @@ def _network(
         populations=populations,
         connections=connections or [],
         background_inputs={},
-        scaling=scaling or ScalingConfig(),
         reference=reference,
         bound_mode=bound_mode,
     )
@@ -83,7 +85,6 @@ def _compensation_into_E(tau_syn_in: float) -> float:
             ConnectionConfig(source="E", target="E", n_synapses=1000, weight=_psc(50.0), delay=_fixed_delay()),
             ConnectionConfig(source="I", target="E", n_synapses=1000, weight=_psc(-200.0), delay=_fixed_delay()),
         ],
-        scaling=ScalingConfig(K_scaling=0.25),
         reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
     )
     config = config.model_copy(
@@ -94,7 +95,7 @@ def _compensation_into_E(tau_syn_in: float) -> float:
             }
         }
     )
-    derived = prepare_network(config)
+    derived = scale_network(config, N_scaling=1.0, K_scaling=0.25, scaled_from="test")
     return derived.populations["E"].neuron.parameters.I_e
 
 
@@ -120,7 +121,6 @@ def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitor
     config = _network(
         tau_syn_in=tau_syn_in,
         background_indegree=100.0,
-        scaling=ScalingConfig(K_scaling=0.25),
         reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
     )
     config = config.model_copy(
@@ -134,7 +134,7 @@ def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitor
     expected_E = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * -30.0 * 100.0 * 8.0
     expected_I = 0.001 * (1.0 - np.sqrt(0.25)) * TAU_SYN_EX * 30.0 * 100.0 * 8.0
 
-    derived = prepare_network(config)
+    derived = scale_network(config, N_scaling=1.0, K_scaling=0.25, scaled_from="test")
 
     assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected_E)
     assert derived.populations["I"].neuron.parameters.I_e == pytest.approx(expected_I)

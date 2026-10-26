@@ -53,7 +53,7 @@ Next:
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
-- **Prepare**: weights in mV become pA, scaling is applied, compensation currents are added.
+- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator (or a constant current, with `background_mode: mean_current`). Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
 The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
@@ -70,7 +70,7 @@ The files and functions behind each step, and where to look when something goes 
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
 | `humam_single`, `humam_all` | the human multi-area model (Pronold et al. 2024): one area, or all 34 |
 
-`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, scale it down first (see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
+`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, run `pd14_downscaled` (N and K scaled by 0.1; see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
 
 ## Starting a project
 
@@ -145,7 +145,7 @@ configs/
 │   ├── synapses.yaml            optional: synapse models, receptor ports
 │   ├── background_inputs.yaml   background Poisson input
 │   ├── stimuli.yaml             optional: inputs for experiments
-│   ├── scaling.yaml             optional: N_scaling, K_scaling
+│   ├── scaling.yaml             only in a scaled network: how it was scaled
 │   └── reference.yaml           optional: reference rates
 ├── simulation/<name>.yaml       duration, seed, threads, simulator, what to record
 └── analysis/<name>.yaml         optional: which plots, time window, style
@@ -168,7 +168,7 @@ configs/
   | `distribution` of a connection's weight or delay | `normal`, `uniform`, `lognormal`, `fixed` | with `parameters`; Brian2: a `Distribution` in `extensions/brian2/` ([Distributions of your own](#distributions-of-your-own)) |
   | `receptor_port` of a synapse | a number | NEST: a name in the target model's `receptor_types`; Brian2: the variable the connection adds to |
 
-  A network that uses names of one simulator runs on that simulator only. What the core can't know about a name of your own, it doesn't guess: a scaled network with such a rule, or with weights from such a distribution, stops with an error.
+  A network that uses names of one simulator runs on that simulator only. What the core can't know about a name of your own, it doesn't guess: scaling a network with such a rule, or with weights from such a distribution, stops with an error.
 - **Matched by name.** `microcircuit-lab run --network toy` uses `configs/simulation/toy.yaml` and `configs/analysis/toy.yaml`; `--simulation` and `--analysis` pick others. Both files are optional.
 
 ### Stimuli
@@ -281,12 +281,41 @@ The CSV has one row per connection and the same fields, with nested names joined
 
 ## Scaling a network
 
-A full-scale network can be slow or need a lot of memory. `scaling.yaml` runs a smaller copy:
+A full-scale network can be slow or need a lot of memory. A smaller copy is a network folder of its own, with the scaled numbers in its files, so what you read is what is simulated:
+
+```bash
+microcircuit-lab generate pd14 --n-scaling 0.1 --k-scaling 0.1 --network-name pd14_downscaled
+microcircuit-lab run --network pd14_downscaled
+```
+
+`--n-scaling 0.1` keeps 10 % of the neurons, `--k-scaling 0.1` 10 % of the inputs of each neuron. The builder calls `scale_network` and writes the result; the folder's `scaling.yaml` records how it was made, and is never applied:
 
 ```yaml
-N_scaling: 0.1   # keep 10 % of the neurons
-K_scaling: 0.1   # keep 10 % of the inputs of each neuron
+# configs/network/pd14_downscaled/scaling.yaml
+scaled_from: pd14
+scaled_with: microcircuit_lab.network.scaling.scale_network
+parameters:          # the function's own arguments
+  N_scaling: 0.1
+  K_scaling: 0.1
+  preserve_mean_input: true
+  preserve_variance: true
+  compensate_recurrent_input: true
 ```
+
+From a script (a network without a builder, a sweep over the factors, other options), call it yourself:
+
+```python
+from microcircuit_lab import Simulation, read_network
+from microcircuit_lab.builder_tools import scale_network, write_network
+from microcircuit_lab.config.simulation import SimulationConfig
+
+full = read_network("configs/network/toy")
+small = scale_network(full, N_scaling=0.5, K_scaling=0.5, scaled_from="toy", compensate_recurrent_input=False)
+write_network(small, "configs/network/toy_half")                       # a folder, or:
+Simulation(small, SimulationConfig(t_sim=1000.0), network_name="toy_half").run()   # each run folder keeps the scaled numbers
+```
+
+Other scaling rules: copy `scale_network` (`network/scaling.py`) into your project, e.g. `builders/common/scaling.py`, change it, and call your copy; its record names it in `scaled_with` (`f"{__name__}.scale_network"`), with its own `parameters`. A function of your own builds the record the same way: `ScalingRecord(scaled_from=..., scaled_with=f"{__name__}.my_scaling", parameters={...})` (`config/scaling.py`), set as the network's `scaling`. A scaled network can't be scaled again (its currents aren't the full input): scale the full one with the product of the factors.
 
 `N_scaling` only makes the populations smaller: each neuron keeps all its inputs. `K_scaling` cuts the inputs, and that changes the input current each neuron gets. With $K$ inputs of weight $J$ (pA) firing at rate $\nu$ (spikes/ms), and synaptic time constant $\tau_s$, the mean and the variance of that current are
 
@@ -294,16 +323,17 @@ $$\mu = \tau_s\, K J \nu, \qquad \sigma^2 = \tfrac{1}{2}\,\tau_s\, K J^2 \nu .$$
 
 With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigma^2$, not both. Scaling the weights by $1/\sqrt{k}$ and adding the lost mean as a DC current keeps both (van Albada, Helias & Diesmann 2015, *PLoS Comput Biol* 11:e1004490). The options choose what to keep:
 
-| `scaling.yaml` | Weights | DC added | Mean $\mu$ | Fluctuations $\sigma^2$ |
+| `scale_network` | Weights | DC added | Mean $\mu$ | Fluctuations $\sigma^2$ |
 |---|---|---|---|---|
 | defaults | $J/\sqrt{k}$ | $(1-\sqrt{k})\,\mu$ | kept | kept |
-| `compensate_recurrent_input: false` | $J/\sqrt{k}$ | for the background input only | recurrent part lower | kept |
-| `preserve_mean_input: false` | $J/\sqrt{k}$ | none | lower: $\sqrt{k}\,\mu$ | kept |
-| `preserve_variance: false` | $J/k$ | none | kept | larger: $\sigma^2/k$ |
+| `compensate_recurrent_input=False` | $J/\sqrt{k}$ | for the background input only | recurrent part lower | kept |
+| `preserve_mean_input=False` | $J/\sqrt{k}$ | none | lower: $\sqrt{k}\,\mu$ | kept |
+| `preserve_variance=False` | $J/k$ | none | kept | larger: $\sigma^2/k$ |
 
-- The DC is added to each population's `I_e`, so the `I_e` in a run's saved `config.yaml` is the one you wrote plus the DC. `I_e` is sent to the simulator only when a neuron entry sets it or a DC is added, so a model without `I_e` works when it needs no DC; when it does, the run stops with an error naming it.
-- The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input: false` compensates the background input only, and needs no rates.
-- With `background_mode: mean_current`, the background current is already that of the full-scale network, so only the recurrent input is compensated.
+- The DC is added to each population's `I_e` in the scaled files (a population gets a neuron entry of its own when its current differs from the others'). `I_e` is sent to the simulator only when a neuron entry sets it or a DC is added, so a model without `I_e` works when it needs no DC; when it does, the run stops with an error naming it.
+- The DC for the recurrent input needs the full-scale rate $\nu$ of every population, `full_mean_rates` in `reference.yaml`; without them, scaling stops with an error. `compensate_recurrent_input=False` compensates the background input only, and needs no rates.
+- The DC is known only for weights in pA on the default receptor port; another unit (e.g. nS) or port stops the scaling with an error, unless `preserve_mean_input=False`.
+- With `background_mode: mean_current`, the run computes the background current from the scaled background, and the DC adds the lost part, so together they are the full-scale mean.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
 - These are the mean and variance only. A scaled network is close to the full one, not equal: PD14 at $k = 0.1$ has most rates within 10–20 %, and L2/3 E lower (0.5 instead of 0.9 spikes/s).
 - A connection left with less than one synapse is dropped.
@@ -662,7 +692,7 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 - {source: E, target: E, rule: ring, parameters: {width: 10, p0: 0.5}, allow_autapses: false, weight: {...}, delay: {...}}
 ```
 
-In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). A scaled network with such a rule stops before building, since the core can't know how the rule scales (scale it in its builder instead).
+In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). Scaling a network with such a rule stops with an error, since the core can't know how the rule scales (scale it in its builder instead).
 
 ### Distributions of your own
 
@@ -683,7 +713,7 @@ decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index
 
 - `mean` is still required: its sign says whether the weight is excitatory or inhibitory, and the expression gets it.
 - A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
-- A scaled network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
+- Scaling a network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
 Brian2 spends time on every object it has, so the network is built from few: the populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has. The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs, also of the same network with other numbers. `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network. `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs; with `backend_options={"standalone_directory": "brian2_build"}` (or `standalone_directory` in the simulation file's `backend.options`) it keeps its code in that folder and compiles only what changed since the last run there. Two runs at the same time must not share the folder. Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
 

@@ -1,16 +1,15 @@
 """
-The steps of :func:`prepare_network` that add constant currents to ``I_e``.
+The steps that add constant currents to ``I_e``.
 
-``compensate_lost_mean_input`` replaces the mean input that scaling removes;
-``replace_background_by_mean_current`` replaces the background Poisson input by
-a constant current. Both take the full-scale network (``original``), because the
-currents are those of the biological input, whatever the scaling. The formulas
-of these currents are at the end of the file.
+``compensate_lost_mean_input`` replaces the mean input that scaling removes
+(a step of :func:`~microcircuit_lab.network.scaling.scale_network`, from the
+full-scale network ``original``); ``replace_background_by_mean_current``
+replaces the background Poisson input by a constant current of the same mean
+(a step of :func:`~microcircuit_lab.network.prepare.prepare_network`). The
+formulas of these currents are at the end of the file.
 """
 
 from __future__ import annotations
-
-import logging
 
 import numpy as np
 
@@ -28,63 +27,58 @@ from microcircuit_lab.network.mean_input import (
     tau_syn_in,
 )
 
-logger = logging.getLogger(__name__)
-
 
 def compensate_lost_mean_input(
     network: NetworkConfig,
     original: NetworkConfig,
+    K_scaling: float,
+    preserve_mean_input: bool,
+    preserve_variance: bool,
+    compensate_recurrent_input: bool,
 ) -> NetworkConfig:
     """
     Add the constant currents that replace the mean input lost by scaling.
 
     Needed only for variance-preserving (square-root) weight scaling; linear
-    scaling keeps the mean. Whether it runs is set by ``scaling.preserve_variance``
-    and ``scaling.preserve_mean_input`` (the latter turns compensation on or off);
-    ``scaling.compensate_recurrent_input`` decides whether the recurrent input
-    is compensated too.
-
-    With ``background_mode: mean_current`` the background input is not
-    compensated here, because ``replace_background_by_mean_current`` already
-    replaces it by a current for the full-scale input. Doing both would count it
-    twice.
+    scaling keeps the mean. Whether it runs is set by ``preserve_variance``
+    and ``preserve_mean_input`` (the latter turns compensation on or off);
+    ``compensate_recurrent_input`` decides whether the recurrent input
+    is compensated too. The background input is always compensated, also with
+    ``background_mode: mean_current``: its current is then computed from the
+    scaled background, which this one completes to the full-scale mean.
     """
-    scaling = original.scaling
 
-    if not scaling.preserve_variance or not scaling.preserve_mean_input:
+    if not preserve_variance or not preserve_mean_input:
         return network
 
-    if scaling.K_scaling == 1.0:
+    if K_scaling == 1.0:
         return network
 
     network_current = np.zeros(len(original.populations))
-    if scaling.compensate_recurrent_input:
-        network_current = _recurrent_compensation(original)
+    if compensate_recurrent_input:
+        network_current = _recurrent_compensation(original, K_scaling)
 
-    background_current = np.zeros(len(original.populations))
-    if original.background_mode != "mean_current":
-        background_current = _background_compensation(original)
-
-    return _add_to_I_e(network, network_current + background_current)
+    return _add_to_I_e(network, network_current + _background_compensation(original, K_scaling))
 
 
-def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
+def _recurrent_compensation(original: NetworkConfig, K_scaling: float) -> np.ndarray:
     """
     The DC current (pA) per population that replaces the mean recurrent input
     lost by scaling, from the full-scale network ``original``.
 
-    Only connections whose mean current is known are compensated (see
+    Raises if a connection's mean current is not known (see
     _mean_current_is_known).
     """
 
     table = original.connections
     known = _connections_with_known_current(original)
-    unknown = [f"{s} -> {t}" for s, t in zip(table["source"][~known], table["target"][~known])]
-    if unknown:
-        logger.warning(
-            "The input lost by scaling is not compensated for %s: their weights are not "
-            "currents in pA (e.g. conductances) or reach another receptor port than the default.",
-            ", ".join(unknown),
+    if not known.all():
+        i = int(np.flatnonzero(~known)[0])
+        raise ValueError(
+            f"The mean input lost by scaling is known only for weights in pA on the default "
+            f"receptor port; connection {table['source'][i]} -> {table['target'][i]} has "
+            f"unit {table['weight.unit'][i]} or another port. Set preserve_mean_input or "
+            "compensate_recurrent_input to false, or preserve_variance to false (no current needed)."
         )
 
     mean_rates = full_mean_rates(original)
@@ -107,61 +101,55 @@ def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
         current += network_compensation_current(
             network_input=network_input,
             tau_syn=tau_syn(original, needed=network_input != 0),
-            K_scaling=original.scaling.K_scaling,
+            K_scaling=K_scaling,
         )
 
     return current
 
 
-def _background_compensation(original: NetworkConfig) -> np.ndarray:
+def _background_compensation(original: NetworkConfig, K_scaling: float) -> np.ndarray:
     """
     The DC current (pA) per population that replaces the mean background
-    input lost by scaling, from the full-scale network ``original``; 0 for a
-    population whose background input has no known mean current (see
+    input lost by scaling, from the full-scale network ``original``.
+
+    Raises if a background input's mean current is not known (see
     _mean_current_is_known).
     """
 
-    pop_names = list(original.populations.keys())
-    PSC_ext = background_psc_weights(original)
-
     unknown = _background_without_known_current(original)
     if unknown:
-        logger.warning(
-            "The background input lost by scaling is not compensated for %s: its weight "
-            "is not a current in pA (e.g. a conductance) or reaches another receptor port than the default.",
-            ", ".join(unknown),
+        raise ValueError(
+            f"The mean input lost by scaling is known only for weights in pA on the default "
+            f"receptor port; the background input of {unknown} has another unit or port. Set "
+            "preserve_mean_input to false, or preserve_variance to false (no current needed)."
         )
-        PSC_ext = np.where(np.isin(pop_names, unknown), 0.0, PSC_ext)
 
+    PSC_ext = background_psc_weights(original)
     return background_compensation_current(
         PSC_ext=PSC_ext,
         K_ext=background_indegrees(original),
         bg_rate=background_rates(original),
         tau_syn=synaptic_tau(original, PSC_ext),
-        K_scaling=original.scaling.K_scaling,
+        K_scaling=K_scaling,
     )
 
 
-def replace_background_by_mean_current(
-    network: NetworkConfig,
-    original: NetworkConfig,
-) -> NetworkConfig:
+def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
     """
     Replace the background Poisson input by a constant current of the same mean.
 
     Does nothing unless ``background_mode`` is "mean_current" (see Potjans &
     Diesmann 2014, Fig. 5).
 
-    The current is the mean that the full-strength background input delivers.
-    It is computed from the original network, as in ``compensate_lost_mean_input``,
-    so scaling does not change it. The background rates are then set to 0, so
-    the backend creates no Poisson generator for them.
+    The current is the mean of the background input as the files give it
+    (rate per synapse, indegree, weight). The background rates are then set to
+    0, so the backend creates no Poisson generator for them.
     """
 
     if network.background_mode != "mean_current":
         return network
 
-    unknown = _background_without_known_current(original)
+    unknown = _background_without_known_current(network)
     if unknown:
         raise ValueError(
             f"background_mode: mean_current needs the mean background current, which is only known "
@@ -169,14 +157,14 @@ def replace_background_by_mean_current(
             "has another unit or uses another port. Use background_mode: poisson."
         )
 
-    K_ext = background_indegrees(original)
-    PSC_ext = background_psc_weights(original)
-    tau_syn = synaptic_tau(original, PSC_ext)
+    K_ext = background_indegrees(network)
+    PSC_ext = background_psc_weights(network)
+    tau_syn = synaptic_tau(network, PSC_ext)
 
     dc_current = background_dc_current(
         PSC_ext=PSC_ext,
         K_ext=K_ext,
-        bg_rate=background_rates(original),
+        bg_rate=background_rates(network),
         tau_syn=tau_syn,
     )
 
@@ -294,8 +282,7 @@ def background_dc_current(
     ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude ``PSC_ext`` (pA),
     with synaptic time constant ``tau_syn`` (ms).
 
-    The step ``replace_background_by_mean_current`` uses it. It is computed for
-    the original, unscaled network, so ``K_scaling`` does not change it.
+    The step ``replace_background_by_mean_current`` uses it.
     """
 
     return 0.001 * tau_syn * PSC_ext * K_ext * bg_rate

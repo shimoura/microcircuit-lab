@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from microcircuit_lab.builder_tools import scale_network
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.mean_input import (
@@ -11,7 +12,6 @@ from microcircuit_lab.network.mean_input import (
     full_num_synapses,
     indegree_matrix,
 )
-from microcircuit_lab.network.prepare import prepare_network
 
 
 def test_reference_matrices():
@@ -41,48 +41,21 @@ def test_reference_matrices():
     assert indegrees[0, 0] == pytest.approx(synapses[0, 0] / neurons[0])
 
 
-def test_prepare_network_keeps_the_original_network():
-
-    network_files = read_network_files("configs/network/toy")
-
-    original = assemble_network(network_files)
-
+def test_scale_network_keeps_the_original_network():
+    original = assemble_network(read_network_files("configs/network/toy"))
     original_size = original.populations["E"].size
     original_indegree = original.populations["E"].background_indegree
 
-    original = original.model_copy(
-        update={
-            # This test is only about N/K scaling arithmetic: no compensation.
-            "reference": None,
-            "scaling": original.scaling.model_copy(
-                update={
-                    "N_scaling": 0.2,
-                    "K_scaling": 0.2,
-                    "preserve_mean_input": False,
-                }
-            ),
-        }
+    # Only the N/K arithmetic: no compensation.
+    derived = scale_network(
+        original, N_scaling=0.2, K_scaling=0.2, scaled_from="toy", preserve_mean_input=False
     )
 
-    derived = prepare_network(original)
-
-    #
-    # original untouched
-    #
     assert original.populations["E"].size == original_size
-
-    #
-    # derived scaled
-    #
-    assert derived.populations["E"].size == round(original_size * 0.2)
-
-    #
-    # they are different objects
-    #
-    assert original is not derived
     assert original.populations["E"].background_indegree == original_indegree
+    assert derived.populations["E"].size == round(original_size * 0.2)
     assert derived.populations["E"].background_indegree == pytest.approx(original_indegree * 0.2)
-    assert original.populations["E"] is not derived.populations["E"]
+    assert original is not derived and original.populations["E"] is not derived.populations["E"]
 
 
 def test_full_mean_rates():

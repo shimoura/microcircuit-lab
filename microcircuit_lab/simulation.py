@@ -126,7 +126,7 @@ class Simulation:
         Open a finished run to analyse or re-plot it, without simulating again.
 
         The run's ``config.yaml`` already holds the prepared network, so it is not
-        prepared a second time (that would apply the scaling twice). The returned
+        prepared a second time (that would multiply the background rates again). The returned
         simulation reads its spikes from ``<run_dir>/recordings`` (a
         ``RunFolderReader``), and its ``output_dir`` is ``run_dir``, so new plots
         land in that run's ``plots/`` folder.

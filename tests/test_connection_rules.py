@@ -1,12 +1,12 @@
 """Connection rules, synapse models and receptor ports."""
 
-import logging
 
 import nest
 import numpy as np
 import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
+from microcircuit_lab.builder_tools import scale_network
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import (
@@ -18,7 +18,6 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.synapses import SynapseEntry
 from microcircuit_lab.network.mean_input import expected_synapses, full_num_synapses
@@ -38,7 +37,7 @@ def _connection(rule="fixed_total_number", weight=10.0, unit="pA", source="S", t
     )
 
 
-def _network(connections, synapses=None, scaling=None, background_synapse=None, target_neuron=None):
+def _network(connections, synapses=None, background_synapse=None, target_neuron=None):
     neuron = NeuronConfig(
         name="plain",
         model="iaf_psc_exp",
@@ -66,10 +65,13 @@ def _network(connections, synapses=None, scaling=None, background_synapse=None, 
         populations=populations,
         connections=connections,
         background_inputs=background,
-        scaling=scaling or ScalingConfig(),
         reference=ReferenceConfig(full_mean_rates={"S": 5.0, "T": 5.0}),
         synapses=synapses or {},
     )
+
+
+def _scaled(network, N_scaling=1.0, K_scaling=1.0, **switches):
+    return scale_network(network, N_scaling=N_scaling, K_scaling=K_scaling, scaled_from="test", **switches)
 
 
 def _built_connections(network):
@@ -138,22 +140,19 @@ def test_nest_runs_its_own_rule_with_its_parameters():
     [
         (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
         (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
-        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "rule 'ring' is not a shared one and cannot be scaled"),
+        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "rule 'ring' is not a shared one, and how it scales is not known"),
     ],
 )
 def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):
-    network = _network([_connection(**connection)], scaling=ScalingConfig(preserve_mean_input=False, **scaling))
     with pytest.raises(ValueError, match=message):
-        prepare_network(network)
+        _scaled(_network([_connection(**connection)]), preserve_mean_input=False, **scaling)
 
 
 def test_the_new_rules_scale_where_they_can():
-    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
-    network = prepare_network(_network([_connection(rule="all_to_all")], scaling=scaling))
+    network = _scaled(_network([_connection(rule="all_to_all")]), 0.5, 0.5, preserve_mean_input=False)
     assert network.connections["rule"][0] == "all_to_all"
-    scaling = ScalingConfig(N_scaling=0.5, preserve_mean_input=False)
     connection = _connection(rule="one_to_one", source="S", target="S")
-    assert len(prepare_network(_network([connection], scaling=scaling)).connections) == 1
+    assert len(_scaled(_network([connection]), 0.5, preserve_mean_input=False).connections) == 1
 
 
 def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
@@ -167,10 +166,9 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
             "delay": DelayDistribution(mean=1.0, rel_std=0.0, distribution=delay, parameters=params["delay"]),
         })
 
-    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
-    with pytest.raises(ValueError, match="weights from a project distribution cannot be scaled"):
-        prepare_network(_network([connection(weight="mine")], scaling=scaling))
-    prepare_network(_network([connection(delay="mine")], scaling=scaling))
+    with pytest.raises(ValueError, match="real mean of weights from a project distribution"):
+        _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=False)
+    _scaled(_network([connection(delay="mine")]), 0.5, 0.5, preserve_mean_input=False)
 
     network = _network([connection()])
     background = network.background_inputs["S"].model_copy(
@@ -198,7 +196,6 @@ def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
 
 
 def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
-    scaling = ScalingConfig(N_scaling=0.5, K_scaling=0.5, preserve_mean_input=False)
     rules = [
         {"n_synapses": 1000},
         {"rule": "fixed_indegree", "indegree": 20},
@@ -208,7 +205,7 @@ def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
     for fields in rules:
         connection = _connection(**fields)
         full = expected_synapses(connection.rule, connection.number, *SIZES.values())
-        scaled = prepare_network(_network([connection], scaling=scaling))
+        scaled = _scaled(_network([connection]), 0.5, 0.5, preserve_mean_input=False)
         sizes = [population.size for population in scaled.populations.values()]
         # both factors: half the neurons, each with half its synapses
         table = scaled.connections
@@ -216,9 +213,8 @@ def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
 
 
 def test_scaled_probability_above_one_is_an_error():
-    scaling = ScalingConfig(N_scaling=0.1, K_scaling=1.0)
     with pytest.raises(ValueError, match="above 1"):
-        prepare_network(_network([_connection(rule="pairwise_bernoulli", p=0.5)], scaling=scaling))
+        _scaled(_network([_connection(rule="pairwise_bernoulli", p=0.5)]), 0.1, 1.0)
 
 
 def test_a_pair_takes_one_entry_per_synapse_and_quantities_sum_them():
@@ -263,15 +259,11 @@ def test_receptor_ports(caplog):
     assert receptors.count(1) == 10 and receptors.count(2) == 20
     nest.ResetKernel()
 
-    # Scaled: the core can't compute the input on other ports, so it says so
-    scaled = network.model_copy(update={"scaling": ScalingConfig(K_scaling=0.5)})
-    with caplog.at_level(logging.WARNING):
-        prepared = prepare_network(scaled)
-    assert "not compensated for S -> T, S -> T" in caplog.text
-    assert "background input lost by scaling is not compensated for T" in caplog.text
-    # S's background input is on the default port, so S alone is compensated
-    assert prepared.populations["S"].neuron.parameters.I_e > 0
-    assert prepared.populations["T"].neuron.parameters.I_e is None  # nothing added, left unset
+    # Scaled: the core can't compute the input lost on other ports, so it stops
+    with pytest.raises(ValueError, match="connection S -> T has unit pA or another port"):
+        _scaled(network, K_scaling=0.5)
+    scaled = _scaled(network, K_scaling=0.5, preserve_mean_input=False)
+    assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
 
 
 def test_receptor_port_by_name():
@@ -332,22 +324,22 @@ def test_advanced_example_uses_every_feature():
     prepare_network(network)
 
 
-def test_conductance_weights_are_not_compensated(caplog):
+def test_conductance_weights_stop_the_compensation():
     """A weight in nS is not a current: compensating it would add a current
-    computed from conductances."""
+    computed from conductances, so scaling with compensation stops."""
     conductance = _connection(n_synapses=1000, weight=1.0, unit="nS")
-    scaled = _network([conductance], scaling=ScalingConfig(K_scaling=0.5))
+    network = _network([conductance])
     background = {
         name: input_cfg.model_copy(
             update={"weight": input_cfg.weight.model_copy(update={"unit": "nS"})}
         )
-        for name, input_cfg in scaled.background_inputs.items()
+        for name, input_cfg in network.background_inputs.items()
     }
-    scaled = scaled.model_copy(update={"background_inputs": background})
+    network = network.model_copy(update={"background_inputs": background})
 
-    with caplog.at_level(logging.WARNING):
-        prepared = prepare_network(scaled)
-    assert "not compensated for S -> T" in caplog.text
-    assert all(p.neuron.parameters.I_e is None for p in prepared.populations.values())
+    with pytest.raises(ValueError, match="connection S -> T has unit nS"):
+        _scaled(network, K_scaling=0.5)
+    scaled = _scaled(network, K_scaling=0.5, preserve_mean_input=False)
+    assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
     with pytest.raises(ValueError, match="has another unit or uses another port"):
-        prepare_network(scaled.model_copy(update={"background_mode": "mean_current"}))
+        prepare_network(network.model_copy(update={"background_mode": "mean_current"}))

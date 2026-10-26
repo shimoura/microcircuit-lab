@@ -1,7 +1,7 @@
 background_inputs:
-  L23_E: {rate: 2.768776233668332, weight: {mean: 16.448836593433423, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
-  L23_I: {rate: 2.9533613384156756, weight: {mean: 7.476743906106103, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
-  L5_E: {rate: 2.2150209958692546, weight: {mean: 17.271278423105095, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
-  L5_I: {rate: 2.3316010018206432, weight: {mean: 7.476743906106103, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
-  L6_E: {rate: 1.5276006810266323, weight: {mean: 18.916162082448434, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
-  L6_I: {rate: 2.109543793604367, weight: {mean: 7.476743906106103, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
+  L23_E: {rate: 2.768776233668332, weight: {mean: 520.1578849517466, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
+  L23_I: {rate: 2.9533613384156756, weight: {mean: 236.43540225079397, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
+  L5_E: {rate: 2.2150209958692546, weight: {mean: 546.165779199334, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
+  L5_I: {rate: 2.3316010018206432, weight: {mean: 236.43540225079397, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
+  L6_E: {rate: 1.5276006810266323, weight: {mean: 598.1815676945085, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}
+  L6_I: {rate: 2.109543793604367, weight: {mean: 236.43540225079397, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.1, rel_std: 0.0, distribution: fixed}}

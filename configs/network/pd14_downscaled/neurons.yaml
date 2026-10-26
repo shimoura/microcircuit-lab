@@ -1,0 +1,97 @@
+neurons:
+  L23_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 29.03501289748573
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L23_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 112.37118928303073
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L4_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 112.96971148144377
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L4_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 114.99029315390192
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L5_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 125.41838602925492
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L5_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 151.6848193529031
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L6_E:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 43.84689867275017
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5
+  L6_I:
+    model: iaf_psc_exp
+    parameters:
+      I_e: 153.70962757137494
+      C_m: 250.0
+      tau_m: 10.0
+      E_L: -65.0
+      V_reset: -65.0
+      V_th: -50.0
+      t_ref: 2.0
+      tau_syn_ex: 0.5
+      tau_syn_in: 0.5

@@ -7,7 +7,7 @@ Two functions, for the two things you may want:
   (every field against the models in :mod:`microcircuit_lab.config`, and the
   references between files: a population names an existing neuron, a
   connection names existing populations). Use it to inspect or change a
-  network before it is prepared, e.g. to set another scaling.
+  network before it is prepared, e.g. to scale it.
 * :func:`load_network`: the same network prepared for the simulation (see
   :func:`microcircuit_lab.network.prepare.prepare_network`). This is what
   ``Simulation.from_yaml`` and ``microcircuit-lab run`` use, and what a builder
@@ -54,8 +54,10 @@ def load_network(folder: str | Path) -> NetworkConfig:
     Returns
     -------
     NetworkConfig
-        The network ready to simulate: weights in pA, scaling applied and
-        compensation currents added.
+        The network ready to simulate: each background rate per synapse
+        turned into the rate of its generator, or into a constant current
+        with ``background_mode: mean_current`` (see
+        :func:`~microcircuit_lab.network.prepare.prepare_network`).
     """
 
     return prepare_network(read_network(folder))
@@ -73,8 +75,8 @@ def read_network(folder: str | Path) -> NetworkConfig:
     Returns
     -------
     NetworkConfig
-        The network as described by its files (weights still in the units
-        they were written in, no scaling applied).
+        The network as described by its files, e.g. to change it, or to
+        scale it with :func:`~microcircuit_lab.network.scaling.scale_network`.
     """
 
     return assemble_network(read_network_files(folder))

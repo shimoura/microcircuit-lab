@@ -3,7 +3,7 @@
 Writes ``configs/network/toy_two_areas/``: populations named
 ``<area>__<layer>_<cell type>``, one neuron entry per row of ``data.NEURONS``,
 connections within and between the areas from the probability rules, Poisson
-background input, scaling and the full-scale reference rates.
+background input and the full-scale reference rates.
 """
 
 from __future__ import annotations
@@ -17,7 +17,9 @@ from microcircuit_lab.builder_tools import (
     delay,
     num_synapses_from_conn_prob,
     psp_to_psc_iaf_psc_exp,
+    scale_network,
     weight,
+    write_network,
     write_network_directory,
 )
 from microcircuit_lab.config.network import NetworkConfig
@@ -127,7 +129,6 @@ def generate_toy_two_areas(
         neurons=build_neurons(),
         connections=build_connections(),
         background_inputs=build_background_inputs(),
-        scaling={"N_scaling": 1.0, "K_scaling": 1.0},
         reference=data.FULL_MEAN_RATES,
         compact=False,
     )
@@ -158,14 +159,20 @@ def main(argv: list[str] | None = None) -> None:
         help="write toy_two_areas_clustered instead: every population split into Q "
         "clusters (see clustered.py; the other settings are in data.py)",
     )
+    parser.add_argument("--n-scaling", type=float, default=1.0, help="multiplies the number of neurons")
+    parser.add_argument("--k-scaling", type=float, default=1.0, help="multiplies the synapses per neuron")
     args = parser.parse_args(argv)
 
+    # The builder command of the full-scale network, recorded in scaling.yaml.
+    variant = "toy_two_areas" + (f" --clusters {args.clusters}" if args.clusters is not None else "") + (
+        " --advanced" if args.advanced else ""
+    )
     if args.clusters is not None:
         # imported here: clustered.py builds on the functions of this file
         from builders.toy_two_areas.clustered import generate_toy_two_areas_clustered
 
         name = args.network_name or "toy_two_areas_clustered"
-        generate_toy_two_areas_clustered(
+        network = generate_toy_two_areas_clustered(
             config_dir=args.config_dir, network_name=name, clusters=args.clusters
         )
     elif args.advanced:
@@ -173,11 +180,18 @@ def main(argv: list[str] | None = None) -> None:
         from builders.toy_two_areas.advanced import generate_toy_two_areas_advanced
 
         name = args.network_name or "toy_two_areas_advanced"
-        generate_toy_two_areas_advanced(config_dir=args.config_dir, network_name=name)
+        network = generate_toy_two_areas_advanced(config_dir=args.config_dir, network_name=name)
     else:
         name = args.network_name or "toy_two_areas"
-        generate_toy_two_areas(config_dir=args.config_dir, network_name=name)
-    print(f"Generated and validated {Path(args.config_dir) / 'network' / name}")
+        network = generate_toy_two_areas(config_dir=args.config_dir, network_name=name)
+
+    folder = Path(args.config_dir) / "network" / name
+    # A scaled network is written scaled: its files hold the numbers that are
+    # simulated, and scaling.yaml records how they were made.
+    if args.n_scaling != 1.0 or args.k_scaling != 1.0:
+        scaled = scale_network(network, N_scaling=args.n_scaling, K_scaling=args.k_scaling, scaled_from=variant)
+        write_network(scaled, folder, compact=False)
+    print(f"Generated and validated {folder}")
 
 
 if __name__ == "__main__":

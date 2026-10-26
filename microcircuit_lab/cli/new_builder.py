@@ -30,7 +30,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from microcircuit_lab.builder_tools import delay, psp_to_psc_iaf_psc_exp, weight, write_network_directory
+from microcircuit_lab.builder_tools import (
+    delay,
+    psp_to_psc_iaf_psc_exp,
+    scale_network,
+    weight,
+    write_network,
+    write_network_directory,
+)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -45,7 +52,11 @@ def main(argv: list[str] | None = None) -> None:
         prog="microcircuit-lab generate {name}", description="Generate the {name} network config."
     )
     parser.add_argument("--config-dir", default="configs")
+    parser.add_argument("--network-name", default="{name}")
+    parser.add_argument("--n-scaling", type=float, default=1.0, help="multiplies the number of neurons")
+    parser.add_argument("--k-scaling", type=float, default=1.0, help="multiplies the synapses per neuron")
     args = parser.parse_args(argv)
+    folder = Path(args.config_dir) / "network" / args.network_name
 
     # populations.yaml: one entry per population. initial_state: each neuron's
     # starting membrane potential (mV), drawn from a normal distribution;
@@ -100,13 +111,25 @@ def main(argv: list[str] | None = None) -> None:
         "I": {"rate": 8.0, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
     }
 
-    write_network_directory(
-        Path(args.config_dir) / "network" / "{name}",
+    network = write_network_directory(
+        folder,
         populations=populations,
         neurons=neurons,
         connections=connections,
         background_inputs=background_inputs,
     )
+
+    # A smaller copy (--n-scaling, --k-scaling) is written scaled: its files
+    # hold the numbers that are simulated, and scaling.yaml records how. The
+    # lost recurrent input is not replaced, since this network gives no
+    # reference rates (reference=...); for other scaling rules, call your own
+    # function instead of scale_network.
+    if args.n_scaling != 1.0 or args.k_scaling != 1.0:
+        scaled = scale_network(
+            network, N_scaling=args.n_scaling, K_scaling=args.k_scaling,
+            scaled_from="{name}", compensate_recurrent_input=False,
+        )
+        write_network(scaled, folder)
 '''
 
 
