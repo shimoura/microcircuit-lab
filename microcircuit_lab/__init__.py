@@ -2,7 +2,7 @@
 
 The usual entry points::
 
-    from microcircuit_lab import Simulation, read_network
+    from microcircuit_lab import Simulation, read_network, read_run
 
     simulation = Simulation.from_yaml(network_name="pd14")
     simulation.run()

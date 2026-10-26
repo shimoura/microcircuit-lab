@@ -33,7 +33,7 @@ from microcircuit_lab.config.yaml_files import read_yaml
 # Shown under an error about an unknown stimulus type, so whoever wants to add
 # one knows where to look. (An unknown distribution or rule is a project one,
 # which the backend looks up: see its check().)
-_HOW_TO_ADD = 'To add a new one, see "Changing the core" in CONTRIBUTING.md.'
+_HOW_TO_ADD = 'To add a new one, see "Changing the core" in https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md#changing-the-core'
 
 
 def read_network(folder: str | Path) -> NetworkConfig:
@@ -66,7 +66,10 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
     folder = Path(folder)
     if not (folder / "network.yaml").is_file():
         raise FileNotFoundError(_missing_network_message(folder))
-    manifest = NetworkManifest.model_validate(read_yaml(folder / "network.yaml"))
+    try:
+        manifest = NetworkManifest.model_validate(read_yaml(folder / "network.yaml"))
+    except ValidationError as error:
+        raise ValueError(_describe_problems(folder, None, error)) from error
 
     connectivity = read_yaml(folder / manifest.connectivity)
 
@@ -115,20 +118,24 @@ def _missing_network_message(folder: Path) -> str:
     return message
 
 
-def _describe_problems(folder: Path, manifest: NetworkManifest, error: ValidationError) -> str:
+def _describe_problems(folder: Path, manifest: NetworkManifest | None, error: ValidationError) -> str:
     """One line per problem, as ``<file>: <field path>: <message>``.
 
     The first element of a pydantic error location is the part name
     (``populations``, ``neurons``, ...); the manifest says which file holds it.
     An unknown stimulus ``type`` or ``distribution`` also gets a pointer to
-    where new ones are added.
+    where new ones are added. Without a ``manifest`` the error is in
+    ``network.yaml`` itself.
     """
 
     lines = [f"Invalid network config in {folder}:"]
     point_to_contributing = False
     for problem in error.errors():
-        part, *field = problem["loc"] or ("network.yaml",)
-        file_name = "network.yaml" if part == "manifest" else getattr(manifest, str(part), part)
+        if manifest is None:
+            file_name, field = "network.yaml", list(problem["loc"])
+        else:
+            part, *field = problem["loc"] or ("network.yaml",)
+            file_name = "network.yaml" if part == "manifest" else getattr(manifest, str(part), part)
         field_path = ".".join(str(item) for item in field)
         lines.append(f"  {file_name}: {field_path or '(whole file)'}: {problem['msg']}")
         if problem["type"] == "union_tag_invalid":

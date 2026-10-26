@@ -50,7 +50,7 @@ class SynapseEntry(FrozenConfig):
         examples=[1],
         description="receptor port of the target neuron: a number (e.g. 1 for AMPA in a "
         "multisynapse model) or a name the target's model defines; omit for the default port "
-        "(0). PSP weights and the scaling compensation are only computed for the default port",
+        "(0). The scaling compensation is only computed for the default port",
     )
 
     @field_validator("receptor_port")

@@ -284,6 +284,39 @@ class Brian2Backend:
                     "per pair, which allow_multapses: false does not allow."
                 )
 
+        # A fixed delay rounds to a whole number of steps. NEST refuses one that
+        # rounds to 0 (below half a step); Brian2 would deliver the spike in the
+        # same step. (A drawn delay is kept at the minimum, half a step or more.)
+        shortest = 0.5 * self._simulation_config.resolution
+        # A synapse model without on_pre (a gap junction) has no spikes to delay.
+        delayed = {name: bool(self.synapse_model(name).on_pre) for name in set(table["synapse"].tolist())}
+        has_delay = np.asarray([delayed[name] for name in table["synapse"].tolist()], dtype=bool)
+        fixed = (table["delay.distribution"] == "fixed") | (table["delay.rel_std"] == 0.0)
+        too_short = has_delay & fixed & (table["delay.mean"] < shortest) & np.isin(
+            table["delay.distribution"], SHARED_DISTRIBUTIONS
+        )
+        if too_short.any():
+            row = int(np.flatnonzero(too_short)[0])
+            raise ValueError(
+                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the fixed delay "
+                f"{table['delay.mean'][row]} ms is below half the resolution ({shortest} ms), so it "
+                f"rounds to 0; use at least {shortest} ms."
+            )
+        delays = [(f"background input of {name!r}", b.delay) for name, b in self._network.poisson_background.items()]
+        delays += [
+            (f"stimulus onto {target!r}", stimulus.delay)
+            for stimulus in self._network.stimuli
+            if not isinstance(stimulus, DcStimulusConfig)
+            for target in stimulus.targets
+        ]
+        for user, delay in delays:
+            fixed = delay.distribution == "fixed" or delay.rel_std == 0.0
+            if fixed and delay.mean < shortest and delay.distribution in SHARED_DISTRIBUTIONS:
+                raise ValueError(
+                    f"{user}: the fixed delay {delay.mean} ms is below half the resolution "
+                    f"({shortest} ms), so it rounds to 0; use at least {shortest} ms."
+                )
+
         # A weight's unit must be that of the variable it adds to (which also
         # checks that a port name is a variable of the target's model): once
         # per target, synapse, sign and unit.

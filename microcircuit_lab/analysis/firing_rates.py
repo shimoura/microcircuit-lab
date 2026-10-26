@@ -20,6 +20,7 @@ from .plot_styles import (
     population_label,
 )
 from .run_command_plots import register_plot
+from .time_window import resolve_end
 
 
 def compute_neuron_firing_rates(
@@ -49,9 +50,7 @@ def compute_neuron_firing_rates(
     dict of str to numpy.ndarray
         ``{population: rate of each neuron}``, in spikes/s.
     """
-    end = run.simulation.t_sim if end is None else end
-    if end <= begin:
-        raise ValueError("'end' must be greater than 'begin'.")
+    end = resolve_end(run, begin, end)
 
     selected = select_populations(run, populations, area)
     duration_s = (end - begin) / 1000.0

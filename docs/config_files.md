@@ -113,8 +113,7 @@ synapses:
       tau_rec: 800.0
     # optional · receptor port of the target neuron: a number (e.g. 1 for AMPA in a
     #   multisynapse model) or a name the target's model defines; omit for the default
-    #   port (0). PSP weights and the scaling compensation are only computed for the
-    #   default port
+    #   port (0). The scaling compensation is only computed for the default port
     receptor_port: 1
 ```
 
@@ -362,7 +361,8 @@ recording:
       # optional · integer ≥ 1 · neurons per population to record, the first ones; null
       #   records all
       sample_size: 5
-      # optional · list of names · names of the populations to record; null records all
+      # optional · list of names, at least 1 · names of the populations to record (at
+      #   least one); omit it to record all
       populations: [E, I]
 # optional · where and what to save
 output:
@@ -374,8 +374,8 @@ output:
   # optional, default true · true or false · write metadata.json (versions, spike
   #   counts, files written); needed with config.yaml to re-plot the run
   save_metadata: true
-  # optional, default true · true or false · write config.yaml (the network); needed to
-  #   re-plot the run
+  # optional, default true · true or false · write config.yaml (the network and the
+  #   simulation settings); needed to re-plot the run
   save_config: true
 ```
 
@@ -531,15 +531,15 @@ power_spectrum:
 raster:
   # optional, default true · true or false · make this plot
   enabled: true
-  # optional, default 1.0 · number · size of a spike dot
-  marker_size: 1.0
+  # optional, default 1.5 · number · size of a spike dot
+  marker_size: 1.5
   # optional, default 0.8 · number · opacity of the dots (0-1)
   alpha: 0.8
   # optional · pair of numbers · width and height (inches); omit to size from the number
   #   of populations
   figsize: [6.0, 4.0]
-  # optional, default 10.0 · number · width (inches) when figsize is omitted
-  width: 10.0
+  # optional, default 6.0 · number · width (inches) when figsize is omitted
+  width: 6.0
   # optional, default 0.55 · number · height per population (inches) when figsize is
   #   omitted
   height_per_population: 0.55
@@ -549,8 +549,9 @@ raster:
   separator_lines: true
   # optional, default 0.25 · number · opacity of those lines (0-1)
   separator_alpha: 0.25
-  # optional, default true · true or false · show a legend
-  show_legend: true
+  # optional, default false · true or false · show a legend (the populations are also
+  #   named on the y axis)
+  show_legend: false
   # optional, default true · true or false · first population at the top
   invert_yaxis: true
   # optional · integer > 0 · show at most this many neurons per population; omit for all

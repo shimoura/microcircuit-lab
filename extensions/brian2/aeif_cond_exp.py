@@ -1,5 +1,9 @@
 """NEST's aeif_cond_exp: adaptive exponential integrate-and-fire neuron with
-exponential conductances (Brette & Gerstner, 2005)."""
+exponential conductances (Brette & Gerstner, 2005).
+
+Brian2 integrates it with the Euler method and NEST with an adaptive
+Runge-Kutta 4(5) method, so spike times can differ slightly at dt = 0.1 ms.
+"""
 
 from microcircuit_lab.backends.brian2.models import NeuronModel
 

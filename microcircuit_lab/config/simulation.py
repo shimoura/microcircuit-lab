@@ -10,8 +10,8 @@ from pydantic import Field, model_validator
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
 #: Registered backend names. Adding a backend means adding it here and to
-#: get_backend(), read_saved_spikes() and read_saved_variable() in backends/__init__.py. See "Adding a
-#: backend" in the README.
+#: get_backend(), read_saved_spikes() and read_saved_variable() in backends/__init__.py. See "A simulator"
+#: in CONTRIBUTING.md.
 BackendName = Literal["nest", "brian2"]
 
 
@@ -41,8 +41,9 @@ class VariableRecording(FrozenConfig):
     )
     populations: list[str] | None = Field(
         default=None,
+        min_length=1,
         examples=[["E", "I"]],
-        description="names of the populations to record; null records all",
+        description="names of the populations to record (at least one); omit it to record all",
     )
 
 
@@ -112,7 +113,7 @@ class OutputConfig(FrozenConfig):
     )
     save_config: bool = Field(
         default=True,
-        description="write config.yaml (the network); needed to re-plot the run",
+        description="write config.yaml (the network and the simulation settings); needed to re-plot the run",
     )
 
 

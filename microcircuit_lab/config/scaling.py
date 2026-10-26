@@ -12,6 +12,9 @@ from pydantic import Field, model_validator
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
+# The keys of the old scaling.yaml, which scaled the network when it ran.
+_OLD_KEYS = ("N_scaling", "K_scaling", "preserve_mean_input", "preserve_variance", "compensate_recurrent_input")
+
 
 class ScalingRecord(FrozenConfig):
     """How a network was scaled, written by the function that scaled it: the
@@ -35,7 +38,7 @@ class ScalingRecord(FrozenConfig):
     @model_validator(mode="before")
     @classmethod
     def _refuse_scaling_at_run_time(cls, data):
-        if isinstance(data, dict) and "scaled_from" not in data:
+        if isinstance(data, dict) and any(key in data for key in _OLD_KEYS):
             raise ValueError(
                 "scaling.yaml no longer scales the network when it runs: the network folder holds the "
                 "numbers that are simulated. Write a scaled folder with the builder "

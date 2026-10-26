@@ -69,7 +69,7 @@ flowchart LR
 
 **Code:** `backends/nest/simulator.py` (`build`: the order), `backends/nest/distributions.py` (drawn weights, delays and values)
 
-Before building, the simulator checks the names the network uses (`check()`): models, project rules and distributions, named receptors. With `--backend brian2` the same parts become Brian2 objects, in `backends/brian2/simulator.py`; the neuron and synapse models, and any project rules and distributions, come from the project's `extensions/brian2/` (see "Running with Brian2" in the [README](../microcircuit_lab/README.md#running-with-brian2)).
+Before building, the simulator runs `check()`. Brian2 stops on a model, rule or distribution it doesn't have, and on a weight whose `unit` doesn't fit; NEST stops on a project distribution, and reports the other names itself when building. With `--backend brian2` the same parts become Brian2 objects (`backends/brian2/`: `simulator.py`, `connections.py`, `inputs.py`, `recording.py`); the neuron and synapse models, and any project rules and distributions, come from the project's `extensions/brian2/` (see "Running with Brian2" in the [README](../microcircuit_lab/README.md#running-with-brian2)).
 
 ## 3 · Save
 
@@ -105,11 +105,12 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | :--- | :--- |
 | a file is refused | the module named after the file, in `config/` |
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
-| the simulator "has no" model, rule, distribution or receptor | its `check()`, in `backends/<name>/simulator.py`; for Brian2, `extensions/brian2/` |
+| Brian2 "has no" model, rule or distribution | its `check()`, in `backends/brian2/simulator.py`, and `extensions/brian2/` |
+| NEST "has no" model, rule or receptor | NEST's own message when building; `check()` in `backends/nest/simulator.py` covers project distributions only |
 | a background generator fires at a different rate than the files | step 2: the rate is `rate × indegree` (`generator_rate`, `config/poisson_background.py`) |
 | rates drop in a scaled run | `builder_tools/scaling.py`, `builder_tools/constant_current.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 2: the `create_...` method for that part, in `backends/nest/simulator.py` |
-| something looks wrong in Brian2 | step 2: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/simulator.py` |
+| something looks wrong in Brian2 | step 2: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/` (stimuli and background in `inputs.py`, recordings in `recording.py`, the rest in `simulator.py`) |
 | the run went to the wrong folder | the `output` section of the simulation file |
 | your plot is not found | `register_plot` in your file in `analyses/` |
 | `generate` does not list your builder | step 0: a `main(argv)` in `builders/<model>/__init__.py` |
@@ -117,4 +118,4 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 
 `init --with-core` copies only the backends of the installed simulators (`--backends nest brian2` to choose).
 
-To change the core: [CONTRIBUTING.md](../CONTRIBUTING.md#changing-the-core).
+To change the core: [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md#changing-the-core).

@@ -18,6 +18,7 @@ from microcircuit_lab.run_folder.write import (
     register_artifact,
     resolve_run_directory,
     save_run_outputs,
+    share_run_directory,
 )
 
 
@@ -35,6 +36,30 @@ def test_resolve_run_directory_overwrite_reuses_same_dir(tmp_path: Path) -> None
 
     assert first == second == tmp_path / "run"
     assert first.is_dir()
+
+
+def test_overwrite_empties_recordings_but_keeps_other_files(tmp_path: Path) -> None:
+    class OneProcess:
+        def num_processes(self) -> int:
+            return 1
+
+        def rank(self) -> int:
+            return 0
+
+        def sync_processes(self) -> None:
+            pass
+
+    (tmp_path / "recordings").mkdir()
+    (tmp_path / "recordings" / "spikes-1001-1.dat").write_text("old")
+    (tmp_path / "config.yaml").write_text("old")
+    output = OutputConfig(output_dir=tmp_path, overwrite=True)
+
+    run_dir = share_run_directory(
+        output, network_name="toy", simulation_name="toy", backend=OneProcess()
+    )
+
+    assert list((run_dir / "recordings").iterdir()) == []
+    assert (run_dir / "config.yaml").exists()
 
 
 def test_resolve_run_directory_without_overwrite_never_collides(tmp_path: Path) -> None:

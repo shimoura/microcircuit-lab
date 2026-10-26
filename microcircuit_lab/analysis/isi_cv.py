@@ -24,6 +24,7 @@ from .plot_styles import (
     population_label,
 )
 from .run_command_plots import UNSET, register_plot
+from .time_window import resolve_end
 
 
 def compute_neuron_isi_cv(
@@ -61,9 +62,7 @@ def compute_neuron_isi_cv(
         ``{population: CV of each neuron}``.
     """
 
-    end = run.simulation.t_sim if end is None else end
-    if end <= begin:
-        raise ValueError("'end' must be greater than 'begin'.")
+    end = resolve_end(run, begin, end)
     if min_spikes < 2:
         raise ValueError("'min_spikes' must be at least 2 (at least 1 ISI).")
 

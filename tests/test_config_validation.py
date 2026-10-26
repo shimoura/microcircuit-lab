@@ -173,3 +173,17 @@ def test_validate_catches_a_background_input_for_an_undefined_population(
     )
     with pytest.raises(ValueError, match="'Z'"):
         read_network(network_dir)
+
+
+def test_a_bad_key_in_network_yaml_names_the_folder_and_the_file(network_dir: Path) -> None:
+    with (network_dir / "network.yaml").open("a") as file:
+        file.write("populatoins: populations.yaml\n")
+    with pytest.raises(ValueError, match=r"Invalid network config in .*\n  network.yaml: populatoins"):
+        read_network(network_dir)
+
+
+def test_a_typo_in_scaling_yaml_is_not_reported_as_the_old_format() -> None:
+    from microcircuit_lab.config.scaling import ScalingRecord
+
+    with pytest.raises(ValidationError, match="scaled_from"):
+        ScalingRecord.model_validate({"scaled_form": "pd14", "scaled_with": "f", "parameters": {}})

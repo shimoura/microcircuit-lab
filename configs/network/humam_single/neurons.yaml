@@ -5,7 +5,7 @@ neurons:
   L23_E:
     model: iaf_psc_exp
     parameters:
-      I_e: 605.1503690793172
+      I_e: 328.94537967204013
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -17,7 +17,7 @@ neurons:
   L23_I:
     model: iaf_psc_exp
     parameters:
-      I_e: 272.5112545136912
+      I_e: 173.98715801349417
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
@@ -29,7 +29,7 @@ neurons:
   L5_E:
     model: iaf_psc_exp
     parameters:
-      I_e: 618.826448076429
+      I_e: 314.00174243955075
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -41,7 +41,7 @@ neurons:
   L5_I:
     model: iaf_psc_exp
     parameters:
-      I_e: 268.564243908712
+      I_e: 171.6201146073341
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
@@ -53,7 +53,7 @@ neurons:
   L6_E:
     model: iaf_psc_exp
     parameters:
-      I_e: 679.3186901901909
+      I_e: 326.0802501187115
       C_m: 220.0
       E_L: -70.0
       V_reset: -70.0
@@ -65,7 +65,7 @@ neurons:
   L6_I:
     model: iaf_psc_exp
     parameters:
-      I_e: 270.63199068898984
+      I_e: 180.75299770578462
       C_m: 100.0
       E_L: -70.0
       V_reset: -70.0
