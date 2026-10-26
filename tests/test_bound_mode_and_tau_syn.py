@@ -27,8 +27,7 @@ from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.network.load import load_network
-from microcircuit_lab.network.prepare import prepare_network
+from microcircuit_lab.network.load import read_network
 
 TAU_SYN_EX = 2.0
 
@@ -166,7 +165,7 @@ def _write(tmp_path: Path, **overrides) -> Path:
 
 
 def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Path) -> None:
-    config = load_network(_write(tmp_path, bound_mode="clip"))
+    config = read_network(_write(tmp_path, bound_mode="clip"))
 
     assert config.bound_mode == "clip"
     assert config.connections["delay.minimum"][0] == 0.1
@@ -175,7 +174,7 @@ def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Pat
 def test_bound_mode_defaults_to_redraw_and_is_not_written(tmp_path: Path) -> None:
     network_dir = _write(tmp_path)
 
-    assert load_network(network_dir).bound_mode == "redraw"
+    assert read_network(network_dir).bound_mode == "redraw"
     assert "bound_mode" not in (network_dir / "connectivity.yaml").read_text()
 
 
@@ -208,7 +207,7 @@ def _draw_synapses(
         ],
         bound_mode=bound_mode,
     )
-    network = prepare_network(config)
+    network = config
     backend = NestBackend(
         network=network,
         simulation_config=SimulationConfig.model_validate(

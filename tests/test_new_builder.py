@@ -7,7 +7,7 @@ import importlib.util
 from pathlib import Path
 
 from microcircuit_lab.cli.new_builder import render_stub
-from microcircuit_lab.network.load import load_network
+from microcircuit_lab.network.load import read_network
 
 
 def _load_module(path: Path, name: str):
@@ -36,5 +36,5 @@ def test_scaffolded_builder_writes_a_directory_that_validates(
 
     network_dir = tmp_path / "configs" / "network" / "demo_model"
     assert network_dir.is_dir()
-    config = load_network(network_dir)
+    config = read_network(network_dir)
     assert set(config.populations) == {"E", "I"}

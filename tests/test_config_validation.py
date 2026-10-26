@@ -1,4 +1,4 @@
-"""The on-disk network-config schema and the load_network check."""
+"""The on-disk network-config schema and the read_network check."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import yaml
 from pydantic import ValidationError
 
 from microcircuit_lab.config.network import NetworkDirectory, NetworkManifest
-from microcircuit_lab.network.load import load_network, read_network_files
+from microcircuit_lab.network.load import read_network, read_network_files
 
 TOY = Path("configs/network/toy")
 NETWORK_CONFIGS = sorted(
@@ -22,7 +22,7 @@ NETWORK_CONFIGS = sorted(
 def test_every_network_config_in_the_repository_is_valid(network_config: Path) -> None:
     """The core reads every network config under configs/network, however
     it was written: by hand or by a builder."""
-    assert load_network(network_config).populations
+    assert read_network(network_config).populations
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ def test_unknown_distribution_is_a_project_one_that_nest_rejects(network_dir: Pa
         network_dir / "connectivity.yaml",
         lambda d: d["connections"][0]["delay"].__setitem__("distribution", "gamma"),
     )
-    network = load_network(network_dir)
+    network = read_network(network_dir)
     with pytest.raises(ValueError, match="NEST has no delay distribution 'gamma'.*not project distributions"):
         NestBackend(network, SimulationConfig()).check()
 
@@ -133,7 +133,7 @@ def test_manifest_rejects_an_unknown_file_key() -> None:
 
 
 # -----------------------------------------------------------------------------
-# load_network: schema + cross-file refs + prepare_network dry run
+# read_network: schema + cross-file refs
 # -----------------------------------------------------------------------------
 
 
@@ -143,7 +143,7 @@ def test_validate_catches_a_dangling_neuron_reference(network_dir: Path) -> None
         lambda d: d["populations"][0].__setitem__("neuron", "nope"),
     )
     with pytest.raises(ValueError, match="nope"):
-        load_network(network_dir)
+        read_network(network_dir)
 
 
 def test_validate_catches_a_connection_to_an_undefined_population(network_dir: Path) -> None:
@@ -152,7 +152,7 @@ def test_validate_catches_a_connection_to_an_undefined_population(network_dir: P
         lambda d: d["connections"][0].__setitem__("target", "Z"),
     )
     with pytest.raises(ValueError, match="'Z'"):
-        load_network(network_dir)
+        read_network(network_dir)
 
 
 def test_validate_catches_two_entries_for_the_same_pair(network_dir: Path) -> None:
@@ -161,7 +161,7 @@ def test_validate_catches_two_entries_for_the_same_pair(network_dir: Path) -> No
         lambda d: d["connections"].append(d["connections"][0]),
     )
     with pytest.raises(ValueError, match="more than one entry"):
-        load_network(network_dir)
+        read_network(network_dir)
 
 
 def test_validate_catches_a_background_input_for_an_undefined_population(
@@ -172,4 +172,4 @@ def test_validate_catches_a_background_input_for_an_undefined_population(
         lambda d: d["poisson_background"].__setitem__("Z", d["poisson_background"]["E"]),
     )
     with pytest.raises(ValueError, match="'Z'"):
-        load_network(network_dir)
+        read_network(network_dir)

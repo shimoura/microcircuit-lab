@@ -112,7 +112,7 @@ class OutputConfig(FrozenConfig):
     )
     save_config: bool = Field(
         default=True,
-        description="write config.yaml (the prepared network); needed to re-plot the run",
+        description="write config.yaml (the network); needed to re-plot the run",
     )
 
 

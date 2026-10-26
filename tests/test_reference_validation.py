@@ -6,7 +6,6 @@ from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import check_reference_rates, compute_reference_deviation
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
 
 
 def _toy_simulation_with_reference(tmp_path, full_mean_rates: dict[str, float]) -> Simulation:
@@ -15,7 +14,6 @@ def _toy_simulation_with_reference(tmp_path, full_mean_rates: dict[str, float]) 
     config = config.model_copy(
         update={"reference": ReferenceConfig(full_mean_rates=full_mean_rates)}
     )
-    config = prepare_network(config)
 
     from microcircuit_lab.config.simulation import SimulationConfig
 

@@ -12,13 +12,11 @@ from microcircuit_lab.analysis import PLOT_REGISTRY, PlotSpec
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
 
 
 def _toy_network() -> NetworkConfig:
     network_files = read_network_files("configs/network/toy")
     config = assemble_network(network_files)
-    config = prepare_network(config)
     return config
 
 

@@ -135,7 +135,7 @@ def save_run_config(
     simulation_config: SimulationConfig,
     run_dir: Path,
 ) -> Path:
-    """Save the prepared network (after prepare_network) and the simulation config.
+    """Save the network as given and the simulation config.
 
     connections/populations/poisson_background are written one-record-per-line
     (see yaml_files.flow_records) since a full-scale network can have

@@ -62,7 +62,7 @@ simulation.run()
 
 ## Package contents
 
-- `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `microcircuit-lab generate humam` discovers and forwards to. Ends by checking its output with `load_network`.
+- `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `microcircuit-lab generate humam` discovers and forwards to. Ends by checking its output with `read_network`.
 - `data/`: bundled source data used by the builder.
 
 New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.

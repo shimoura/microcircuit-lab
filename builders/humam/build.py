@@ -25,7 +25,7 @@ from typing import Any
 
 from microcircuit_lab.builder_tools import mean_current, scale_network, write_network
 from microcircuit_lab.builder_tools.write import POISSON_BACKGROUND_HEADER
-from microcircuit_lab.network.load import load_network, read_network
+from microcircuit_lab.network.load import read_network
 from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
 LAYER_ALIAS = {
@@ -684,7 +684,7 @@ def _run(args: argparse.Namespace) -> None:
     print(f"Generated network config in: {paths['network_dir']}")
     print(f"Generated simulation config: {paths['simulation_path']}")
 
-    load_network(paths["network_dir"])
+    read_network(paths["network_dir"])
     print("Validated: config is a usable input to the simulation pipeline.")
 
     if paths.get("other_area_count", 0) > 0:

@@ -44,7 +44,7 @@ class NestBackend:
         Parameters
         ----------
         network, simulation_config
-            The prepared network and the simulation settings.
+            The network and the simulation settings.
         nest_modules
             Names of compiled NEST modules to install before the network is
             built, for example a NESTML neuron model that ``neurons.yaml`` uses.
@@ -403,14 +403,14 @@ class NestBackend:
             logger.info(
                 "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
-                input_cfg.rate,
+                input_cfg.generator_rate,
                 input_cfg.generator or "its own",
             )
             if input_cfg.generator is None:
-                pg = nest.Create("poisson_generator", params={"rate": input_cfg.rate})
+                pg = nest.Create("poisson_generator", params={"rate": input_cfg.generator_rate})
             elif input_cfg.generator not in shared:
                 pg = shared[input_cfg.generator] = nest.Create(
-                    "poisson_generator", params={"rate": input_cfg.rate}
+                    "poisson_generator", params={"rate": input_cfg.generator_rate}
                 )
             else:
                 pg = shared[input_cfg.generator]

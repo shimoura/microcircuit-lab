@@ -1,17 +1,12 @@
 """
 Load a network from its folder, ``configs/network/<name>/``.
 
-Two functions, for the two things you may want:
-
-* :func:`read_network`: the network exactly as written in its files, checked
-  (every field against the models in :mod:`microcircuit_lab.config`, and the
-  references between files: a population names an existing neuron, a
-  connection names existing populations). Use it to inspect or change a
-  network before it is prepared, e.g. to scale it.
-* :func:`load_network`: the same network prepared for the simulation (see
-  :func:`microcircuit_lab.network.prepare.prepare_network`). This is what
-  ``Simulation.from_yaml`` and ``microcircuit-lab run`` use, and what a builder
-  can call to check what it wrote.
+:func:`read_network` gives the network exactly as written in its files,
+checked (every field against the models in :mod:`microcircuit_lab.config`, and
+the references between files: a population names an existing neuron, a
+connection names existing populations). Use it to inspect or change a network,
+e.g. to scale it. ``Simulation.from_yaml`` and ``microcircuit-lab run`` use it,
+and a builder can call it to check what it wrote.
 
 A problem raises a ``ValueError`` that names the folder, the file and the
 field, e.g. ``populations.yaml: populations.0.size: Input should be greater
@@ -33,7 +28,6 @@ from microcircuit_lab.config.network import (
 )
 from microcircuit_lab.config.neurons import NeuronConfig
 from microcircuit_lab.config.populations import PopulationConfig
-from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.yaml_files import read_yaml
 
 # Shown under an error about an unknown stimulus type, so whoever wants to add
@@ -42,29 +36,9 @@ from microcircuit_lab.yaml_files import read_yaml
 _HOW_TO_ADD = 'To add a new one, see "Changing the core" in CONTRIBUTING.md.'
 
 
-def load_network(folder: str | Path) -> NetworkConfig:
-    """
-    Read a network folder and prepare it for the simulation.
-
-    Parameters
-    ----------
-    folder
-        The network folder, e.g. ``configs/network/pd14``.
-
-    Returns
-    -------
-    NetworkConfig
-        The network ready to simulate: each background rate per synapse
-        turned into the rate of its generator (see
-        :func:`~microcircuit_lab.network.prepare.prepare_network`).
-    """
-
-    return prepare_network(read_network(folder))
-
-
 def read_network(folder: str | Path) -> NetworkConfig:
     """
-    Read a network folder as written, without preparing it.
+    Read a network folder as written and check it.
 
     Parameters
     ----------

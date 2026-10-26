@@ -16,7 +16,6 @@ from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
 from microcircuit_lab.builder_tools import scale_network
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
 
 NETWORK = "configs/network/toy_two_areas"
 
@@ -29,7 +28,7 @@ def _config(**scaling):
 
 
 def _mean_input(network) -> dict[str, float]:
-    """Mean synaptic input current (pA) of each population of a processed network:
+    """Mean synaptic input current (pA) of each population of a network:
     sum over inputs of indegree * PSC * source rate * tau_syn, plus I_e.
     Recurrent sources fire at the reference rates; tau_syn is the target's
     tau_syn_ex for a positive PSC and tau_syn_in for a negative one."""
@@ -38,7 +37,7 @@ def _mean_input(network) -> dict[str, float]:
     for name, population in network.populations.items():
         parameters = population.neuron.parameters
         background = network.poisson_background[name]
-        total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.mean * background.rate
+        total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.mean * background.generator_rate
         current[name] = total
 
     for connection in network.connections.to_yaml_rows():
@@ -84,7 +83,7 @@ def test_weights_follow_each_target_neuron():
     """A__L23_PV and A__L5_PV use different neuron entries that differ only
     in C_m, so the builder writes the same PSP as currents in the ratio of
     their capacitances."""
-    network = prepare_network(_config())
+    network = _config()
     psc = {
         connection["target"]: connection["weight"]["mean"]
         for connection in network.connections.to_yaml_rows()
@@ -101,9 +100,9 @@ def test_weights_follow_each_target_neuron():
     [(1.0, 0.5), (0.5, 0.5), (0.5, 0.2)],
 )
 def test_scaling_preserves_the_mean_input_of_every_population(N_scaling, K_scaling):
-    full = _mean_input(prepare_network(_config()))
+    full = _mean_input(_config())
     scaled = _mean_input(
-        prepare_network(_config(N_scaling=N_scaling, K_scaling=K_scaling))
+        _config(N_scaling=N_scaling, K_scaling=K_scaling)
     )
 
     names = list(full)

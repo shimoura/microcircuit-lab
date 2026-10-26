@@ -14,7 +14,6 @@ from microcircuit_lab.backends.nest.spike_files import read_saved_variable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
 from microcircuit_lab.run_folder import (
     register_artifact,
     resolve_run_directory,
@@ -25,7 +24,6 @@ from microcircuit_lab.run_folder import (
 def _toy_network() -> NetworkConfig:
     network_files = read_network_files("configs/network/toy")
     config = assemble_network(network_files)
-    config = prepare_network(config)
     return config
 
 

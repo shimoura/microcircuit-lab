@@ -200,9 +200,8 @@ class NetworkConfig(FrozenConfig):
                 groups.setdefault(entry.generator, []).append(name)
         # One generator fires at one rate (rate x indegree) through one synapse
         # model (the simulator connects a device through one model). Rate and
-        # indegree are compared one by one, not their product: that holds
-        # whether the network is prepared or not (a prepared rate is already
-        # rate x indegree), and after any scaling.
+        # indegree are compared one by one, not their product, so two inputs
+        # are the same only when both match.
         for generator, names in groups.items():
             inputs = {
                 name: (

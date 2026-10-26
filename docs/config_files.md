@@ -374,8 +374,8 @@ output:
   # optional, default true · true or false · write metadata.json (versions, spike
   #   counts, files written); needed with config.yaml to re-plot the run
   save_metadata: true
-  # optional, default true · true or false · write config.yaml (the prepared network);
-  #   needed to re-plot the run
+  # optional, default true · true or false · write config.yaml (the network); needed to
+  #   re-plot the run
   save_config: true
 ```
 

@@ -17,7 +17,7 @@ from microcircuit_lab.backends.run_folder_reader import RunFolderReader
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import BackendConfig, SimulationConfig
-from microcircuit_lab.network.load import load_network
+from microcircuit_lab.network.load import read_network
 from microcircuit_lab.run_folder import save_run_outputs, share_run_directory
 from microcircuit_lab.yaml_files import read_yaml
 
@@ -92,13 +92,13 @@ class Simulation:
         Returns
         -------
         Simulation
-            Ready to ``run()``; the network is already loaded and prepared.
+            Ready to ``run()``; the network is already read.
         """
 
         profile_is_explicit = simulation_name is not None
         simulation_name = network_name if simulation_name is None else simulation_name
 
-        network = load_network(Path(config_dir) / "network" / network_name)
+        network = read_network(Path(config_dir) / "network" / network_name)
 
         simulation_path = Path(config_dir) / "simulation" / f"{simulation_name}.yaml"
         if simulation_path.exists():
@@ -125,8 +125,7 @@ class Simulation:
         """
         Open a finished run to analyse or re-plot it, without simulating again.
 
-        The run's ``config.yaml`` already holds the prepared network, so it is not
-        prepared a second time (that would multiply the background rates again). The returned
+        The run's ``config.yaml`` holds the network as it was simulated. The returned
         simulation reads its spikes from ``<run_dir>/recordings`` (a
         ``RunFolderReader``), and its ``output_dir`` is ``run_dir``, so new plots
         land in that run's ``plots/`` folder.
@@ -199,7 +198,7 @@ class Simulation:
         """
         Build the network in the simulator, simulate it and save the outputs.
 
-        What is saved (recordings, the prepared config, metadata) is set by the
+        What is saved (recordings, the config, metadata) is set by the
         ``recording`` and ``output`` sections of the simulation config; see
         :func:`microcircuit_lab.run_folder.save_run_outputs`. ``output_dir`` points to the
         run folder afterwards. With several MPI processes, only the first prints and

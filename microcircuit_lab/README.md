@@ -53,7 +53,7 @@ Next:
 
 - **Builder** (optional): your code that turns published tables or other data into the YAML files. The only model-specific code.
 - **Check**: every file and field is checked; a mistake names the file and the field.
-- **Prepare**: each background rate per synapse becomes the rate of its Poisson generator. Everything else is simulated as the files give it; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
+- **Simulate**: the network is simulated as the files give it. Each population's background is one Poisson generator firing at its rate per synapse times its indegree; a smaller network is a folder of its own ([Scaling a network](#scaling-a-network)).
 - **Run folder**: everything a run produced. Plots can be redone from it without simulating again.
 
 The files and functions behind each step, and where to look when something goes wrong: [docs/workflow.md](../docs/workflow.md).
@@ -156,7 +156,7 @@ configs/
   ```text
   populations.yaml: populations.0.size: Input should be greater than 0
   ```
-  `load_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
+  `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
 - **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run before anything is built, saying so:
 
@@ -284,7 +284,7 @@ bound_mode: redraw
 connections_file: connections.csv
 ```
 
-The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its prepared connections the same way, next to `config.yaml`.
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 
@@ -493,13 +493,13 @@ The figure is saved in `plots/`, one per area with `--area all`, and listed in `
 
 ## Running from a script
 
-The command and a script run the same steps (check, prepare, simulate, save); the command also makes the plots.
+The command and a script run the same steps (check, simulate, save); the command also makes the plots.
 
 | | Command | Script |
 | :--- | :--- | :--- |
 | run a network as configured | `microcircuit-lab run --network toy` | `Simulation.from_yaml(network_name="toy").run()` |
 | change a setting (seed, duration, ...) | edit `configs/simulation/toy.yaml` | change it in code, below |
-| change the network | edit its YAML files | `read_network`, change, `prepare_network`, below |
+| change the network | edit its YAML files | `read_network`, change, below |
 | many runs (seeds, a sweep) | a shell loop | a Python loop, below |
 | plots | made from `configs/analysis/toy.yaml` | call the plot functions, or `run --run-dir <folder>` afterwards |
 
@@ -535,16 +535,16 @@ for seed in (1, 2, 3):
     rates[seed] = compute_population_firing_rates(simulation)   # {population: spikes/s}
 ```
 
-**A changed network.** `read_network` gives the network as written; change it, then `prepare_network` gets it ready to simulate:
+**A changed network.** `read_network` gives the network as written; change it and simulate it as it is:
 
 ```python
-from microcircuit_lab import Simulation, prepare_network, read_network
+from microcircuit_lab import Simulation, read_network
 from microcircuit_lab.config.simulation import SimulationConfig
 
 network = read_network("configs/network/toy")
 poisson_background = {name: entry.model_copy(update={"indegree": 2000})
                       for name, entry in network.poisson_background.items()}
-network = prepare_network(network.model_copy(update={"poisson_background": poisson_background}))
+network = network.model_copy(update={"poisson_background": poisson_background})
 
 simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="toy_k2000")
 simulation.run()
@@ -567,7 +567,7 @@ Runs in one script go one after another. For runs in parallel, start several scr
 output/<network>/<timestamp>/
 ├── recordings/     spikes (and recorded variables), written by the simulator
 ├── plots/          made by microcircuit-lab run
-├── config.yaml     the prepared network and the simulation settings used
+├── config.yaml     the network and the simulation settings used
 └── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 

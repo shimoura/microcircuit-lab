@@ -154,7 +154,7 @@ def write_network(
     Parameters
     ----------
     network
-        The network as written (not prepared: background rates per synapse).
+        The network as written (background rates per synapse).
     path
         The folder to write, e.g. ``configs/network/pd14_downscaled``.
     csv

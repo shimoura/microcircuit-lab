@@ -24,7 +24,7 @@ flowchart TD
   B --> T["tests/test_stimuli.py"]
 ```
 
-The files hold the numbers that are simulated; the only change at run time is the background rate per synapse into the rate of its generator (`network/prepare.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
+The files hold the numbers that are simulated; the simulator only turns each background rate per synapse into the rate of its generator (rate × indegree, `generator_rate` in `config/poisson_background.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
 
 ### Does your idea fit what already exists?
 

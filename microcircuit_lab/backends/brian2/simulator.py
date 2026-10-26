@@ -135,7 +135,7 @@ class Brian2Backend:
         Parameters
         ----------
         network, simulation_config
-            The prepared network and the simulation settings.
+            The network and the simulation settings.
         device
             ``"runtime"`` runs the network from Python; ``"cpp_standalone"``
             compiles it to C++ and runs it with ``local_num_threads`` OpenMP
@@ -773,7 +773,7 @@ class Brian2Backend:
         Give each configured population its background Poisson input.
 
         As from NEST's poisson_generator, each neuron gets its own Poisson
-        number of spikes at each step, at the prepared rate (rate x indegree),
+        number of spikes at each step, at rate x indegree,
         also for populations that share a ``generator``, each with the weight
         drawn for that neuron. One update per group and variable does this
         for all of them. The input's delay is left out: it only shifts a
@@ -795,7 +795,7 @@ class Brian2Backend:
                             "the Brian2 backend connects background input only through static synapses."
                         )
                     start, size = group.start(pop_name), self._network.populations[pop_name].size
-                    rates[start:start + size] = background.rate * self._simulation_config.resolution / 1000.0
+                    rates[start:start + size] = background.generator_rate * self._simulation_config.resolution / 1000.0
                     weight = background.weight
                     mean = abs(weight.mean) if self._weight_units(pop_name, variable)[0] == "siemens" else weight.mean
                     weights[group.populations.index(pop_name)] = (mean, weight.rel_std, weight.distribution, size)

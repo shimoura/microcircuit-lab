@@ -24,7 +24,6 @@ from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.synapses import SynapseEntry
-from microcircuit_lab.network.prepare import prepare_network
 
 SIZES = {"S": 100, "T": 50}
 
@@ -324,7 +323,6 @@ def test_advanced_example_uses_every_feature():
     assert rules == {"pairwise_bernoulli", "fixed_indegree"}
     assert {entry.model for entry in network.synapses.values()} == {"static_synapse", "tsodyks2_synapse"}
     assert any(entry.receptor_port for entry in network.synapses.values())
-    prepare_network(network)
 
 
 def test_conductance_weights_stop_the_compensation():
