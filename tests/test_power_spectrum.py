@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from microcircuit_lab import Simulation
+from microcircuit_lab import Simulation, read_run
 from microcircuit_lab.analysis import (
     POWER_SPECTRUM_METHODS,
     PowerSpectrumPlotConfig,
@@ -13,7 +13,7 @@ from microcircuit_lab.analysis import (
 from microcircuit_lab.analysis.power_spectrum import _multitaper, _periodogram, _welch
 
 
-def _run_toy_simulation(tmp_path, t_sim=500.0):
+def _run_toy(tmp_path, t_sim=500.0):
     """A short toy run, writing to pytest's tmp_path instead of the
     project's real output/ directory."""
 
@@ -28,7 +28,7 @@ def _run_toy_simulation(tmp_path, t_sim=500.0):
         }
     )
     simulation.run()
-    return simulation
+    return read_run(tmp_path)
 
 
 @pytest.mark.parametrize("estimator", [_periodogram, _welch, _multitaper])
@@ -43,10 +43,10 @@ def test_estimators_recover_a_known_frequency(estimator):
     assert freqs[np.argmax(power)] == pytest.approx(40.0, abs=1.0)
 
 
-def test_compute_power_spectrum_on_toy_simulation(tmp_path):
-    simulation = _run_toy_simulation(tmp_path)
+def test_compute_power_spectrum_on_toy_run(tmp_path):
+    run = _run_toy(tmp_path)
 
-    spectra = compute_power_spectrum(simulation, bin_size=1.0, method="welch")
+    spectra = compute_power_spectrum(run, bin_size=1.0, method="welch")
 
     assert set(spectra) == {"E", "I"}
     for freqs, power in spectra.values():
@@ -57,17 +57,17 @@ def test_compute_power_spectrum_on_toy_simulation(tmp_path):
 
 
 def test_compute_power_spectrum_rejects_unknown_method(tmp_path):
-    simulation = _run_toy_simulation(tmp_path, t_sim=200.0)
+    run = _run_toy(tmp_path, t_sim=200.0)
 
     with pytest.raises(ValueError, match="Unknown power spectrum method"):
-        compute_power_spectrum(simulation, method="not-a-real-method")
+        compute_power_spectrum(run, method="not-a-real-method")
 
 
 def test_all_registered_methods_are_usable(tmp_path):
-    simulation = _run_toy_simulation(tmp_path, t_sim=200.0)
+    run = _run_toy(tmp_path, t_sim=200.0)
 
     for method in POWER_SPECTRUM_METHODS:
-        spectra = compute_power_spectrum(simulation, method=method)
+        spectra = compute_power_spectrum(run, method=method)
         assert set(spectra) == {"E", "I"}
 
 
@@ -75,9 +75,9 @@ def test_plot_power_spectrum_grid_layout(tmp_path):
     """Toy's E/I populations share no layer, so they land in one row,
     one column each (see analysis.power_spectrum._grid_layout)."""
 
-    simulation = _run_toy_simulation(tmp_path, t_sim=200.0)
+    run = _run_toy(tmp_path, t_sim=200.0)
 
-    fig, axes = plot_power_spectrum(simulation, show=False)
+    fig, axes = plot_power_spectrum(run, show=False)
 
     assert axes.shape == (1, 2)
     titles = {ax.get_title() for ax in axes.flat}
@@ -90,10 +90,10 @@ def test_power_spectrum_method_kwargs_from_config(tmp_path):
     reaches the estimator when plot_power_spectrum's own method_kwargs
     argument is left unset."""
 
-    simulation = _run_toy_simulation(tmp_path)
+    run = _run_toy(tmp_path)
 
     config = PowerSpectrumPlotConfig(method="multitaper", method_kwargs={"bandwidth": 8.0})
-    fig, axes = plot_power_spectrum(simulation, config=config, show=False)
+    fig, axes = plot_power_spectrum(run, config=config, show=False)
     fig.clf()
 
 

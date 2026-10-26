@@ -409,20 +409,40 @@ microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 
 Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
 
+### Reading a run
+
+`read_run` opens a run folder (see [Run outputs](#run-outputs)) without the simulator. The plots read runs this way, and so do your own analyses.
+
+```python
+from microcircuit_lab import read_run
+
+run = read_run("output/toy/<timestamp>")
+run.populations                  # ["E", "I"], in network order
+spikes = run.spikes("E")         # spikes.senders, spikes.times (ms), sorted by sender
+run.node_ids("E")                # the node IDs of the population
+trace = run.recording("V_m")     # trace.senders, trace.times (ms), trace.values; needs recording.variables
+run.network                      # the network as simulated (config.yaml)
+run.simulation                   # the simulation settings (config.yaml), e.g. run.simulation.t_sim
+run.metadata                     # metadata.json as a dict: simulator, seed, spike counts, files
+run.folder                       # the run folder, a pathlib.Path
+```
+
+The spike files are read once, at the first `run.spikes(...)`.
+
 ### Use the bundled functions
 
 ```python
-from microcircuit_lab import Simulation
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import compute_population_firing_rates, plot_firing_rates
 
-simulation = Simulation.from_run_dir("output/toy/<timestamp>")   # opens the run, no simulation
-rates = compute_population_firing_rates(simulation, begin=200.0)
-plot_firing_rates(simulation, begin=200.0)
+run = read_run("output/toy/<timestamp>")
+rates = compute_population_firing_rates(run, begin=200.0)
+plot_firing_rates(run, begin=200.0)
 ```
 
 - Plots: `plot_raster`, `plot_firing_rates`, `plot_power_spectrum`, `plot_isi_cv`.
 - Numbers: `compute_*` for rates, ISI CV, power spectrum and deviation from the reference rates.
-- Multi-area networks: pass `area="V1"`; `list_areas(simulation)` gives the names.
+- Multi-area networks: pass `area="V1"`; `list_areas(run)` gives the names.
 
 ### Your own analysis: any script
 
@@ -432,22 +452,22 @@ There are no rules: open a run folder and do what you want.
 # my_analysis.py
 import sys
 
-from microcircuit_lab import Simulation
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import compute_population_firing_rates
 
-simulation = Simulation.from_run_dir(sys.argv[1])
-print(compute_population_firing_rates(simulation, begin=200.0))
+run = read_run(sys.argv[1])
+print(compute_population_firing_rates(run, begin=200.0))
 
-events = simulation.backend.get_spike_events("E")   # {"senders": ..., "times": ...}
+senders, times = run.spikes("E")   # node IDs and times (ms)
 ```
 
 ```bash
 python my_analysis.py output/toy/<timestamp>
 ```
 
-- Read data through `simulation` (`backend.get_spike_events`, `network`, `simulation_config`).
+- Read data through `run` (`spikes`, `recording`, `network`, `simulation`, `metadata`).
 - Keep the script anywhere, e.g. in `experiments/`. In `analyses/`, put its work under `if __name__ == "__main__":`, because `microcircuit-lab run` imports every file there.
-- To list a file you saved in the run's `metadata.json`: `register_artifact(simulation.output_dir, "plots", path)` from `microcircuit_lab.run_folder`.
+- To list a file you saved in the run's `metadata.json`: `register_artifact(run.folder, "plots", path)` from `microcircuit_lab.run_folder.write`.
 
 ### Optional: let `microcircuit-lab run` make your plot
 
@@ -460,8 +480,8 @@ import matplotlib.pyplot as plt
 from microcircuit_lab.analysis import compute_population_firing_rates, register_plot
 
 
-def rate_bars(simulation, save_path, area=None):
-    rates = compute_population_firing_rates(simulation, area=area)
+def rate_bars(run, save_path, area=None):
+    rates = compute_population_firing_rates(run, area=area)
     fig, ax = plt.subplots()
     ax.bar(list(rates), list(rates.values()))
     fig.savefig(save_path)
@@ -474,7 +494,7 @@ register_plot("rate_bars", rate_bars)
 microcircuit-lab run --run-dir output/toy/<timestamp> --rate-bars
 ```
 
-The figure is saved in `plots/`, one per area with `--area all`, and listed in `metadata.json`. The first parameter is the simulation; name only what else you need, and the command fills it in:
+The figure is saved in `plots/`, one per area with `--area all`, and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
 
 | Parameter | What you get |
 |---|---|
@@ -522,7 +542,7 @@ The simulator is part of these settings (`backend`), so a new `SimulationConfig`
 **A batch.** Each run is independent (the simulator starts afresh) and gets its own `<timestamp>` folder. The folder is the simulation file's `output_dir`, or `output/<network>` if it has none; give each group of runs its own:
 
 ```python
-from microcircuit_lab import Simulation
+from microcircuit_lab import Simulation, read_run
 from microcircuit_lab.analysis import compute_population_firing_rates
 
 rates = {}
@@ -532,7 +552,7 @@ for seed in (1, 2, 3):
     output = settings.output.model_copy(update={"output_dir": f"output/toy_seeds/seed_{seed}"})
     simulation.simulation_config = settings.model_copy(update={"rng_seed": seed, "output": output})
     simulation.run()
-    rates[seed] = compute_population_firing_rates(simulation)   # {population: spikes/s}
+    rates[seed] = compute_population_firing_rates(read_run(simulation.output_dir))   # {population: spikes/s}
 ```
 
 **A changed network.** `read_network` gives the network as written; change it and simulate it as it is:
@@ -550,13 +570,15 @@ simulation = Simulation(network, SimulationConfig(t_sim=1000.0), network_name="t
 simulation.run()
 ```
 
-**Results and plots.** The functions in `microcircuit_lab.analysis` take a simulation, just run or reopened later:
+**Results and plots.** The functions in `microcircuit_lab.analysis` take a run read from its folder, just simulated or from long ago:
 
 ```python
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import plot_raster
 
-plot_raster(simulation, save_path=simulation.output_dir / "plots" / "raster.png", show=False)
-later = Simulation.from_run_dir("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
+run = read_run(simulation.output_dir)
+plot_raster(run, save_path=run.folder / "plots" / "raster.png", show=False)
+later = read_run("output/toy_seeds/seed_1/<timestamp>")   # no simulator needed
 ```
 
 Runs in one script go one after another. For runs in parallel, start several scripts; each run still gets its own folder. With several MPI processes, save or plot only where `simulation.is_main_process` is true (see [Several MPI processes](#several-mpi-processes)).
@@ -572,7 +594,7 @@ output/<network>/<timestamp>/
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one.
-- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `<variable>.csv`) at the end. `simulation.backend.get_spike_events(population)` reads them back.
+- NEST writes `spikes-<id>-<thread>.dat` straight to disk, one file per thread; Brian2 keeps the spikes in memory and writes `spikes.csv` (and `<variable>.csv`) at the end. `read_run(folder).spikes(population)` reads them back.
 - Any neuron variable can be recorded, not only the membrane potential. Name it as the simulator does, in the simulation file. NEST writes `<variable>-<id>-<thread>.dat`, Brian2 `<variable>.csv`:
 
   ```yaml
@@ -589,7 +611,7 @@ output/<network>/<timestamp>/
   | `populations` | which populations | all |
 
 - A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
-- To read a finished run without the simulator: `microcircuit_lab.backends.read_recording(run_dir, "V_m")` returns `(senders, times_ms, values)`, sorted by sender, then time (also `Simulation.from_run_dir(run_dir).backend.get_recording("V_m")`).
+- To read a finished run without the simulator: `read_run(run_dir).recording("V_m")` returns `senders`, `times` (ms) and `values`, sorted by sender, then time.
 
 ### Several MPI processes
 
@@ -750,12 +772,12 @@ Change the core when an idea doesn't fit what the config files can say (a new st
 microcircuit_lab/
 ├── config/            what each YAML file may contain (one module per file)
 ├── network/           reading, checking and preparing a network
-├── simulation.py      Simulation: load, run, reopen a run
-├── backends/          the simulators (NEST, Brian2), and reading back a saved run
+├── simulation.py      Simulation: load and run
+├── backends/          the simulators (NEST, Brian2), and the readers of their files
 ├── analysis/          measures and plots
 ├── cli/               the microcircuit-lab command
 ├── builder_tools/     what a builder needs, in one import (also scaling and the constant-current steps)
-├── run_folder.py      run folders and their metadata
+├── run_folder/        write.py makes a run folder and its metadata, read.py reads it back (read_run)
 ├── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 └── yaml_files.py      reading and writing YAML
 ```
@@ -773,8 +795,8 @@ register_plot("spectrogram", plot_spectrogram,
 
 ## Adding a backend
 
-1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; `get_spike_events` reads them back, so nothing else needs to know. `version()` gives the simulator's version for `metadata.json`.
-2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes` and `read_recording`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
+1. Implement `SimulationBackend` (`microcircuit_lab/backends/interface.py`) in a package `microcircuit_lab/backends/<name>/`, like `nest/` or `brian2/`. `prepare_output` and `save_recordings` write the recordings in the simulator's own way; its file reader (below) reads them back, so nothing else needs to know. `get_population` and `get_spike_events` give `metadata.json` the node IDs and spike counts. `version()` gives the simulator's version for `metadata.json`.
+2. Register it in `get_backend`, and its file reader (like `nest/spike_files.py`, which does not import the simulator) in `read_saved_spikes` and `read_saved_variable`, both in `microcircuit_lab/backends/__init__.py`. Saved runs can then be re-plotted without the simulator.
 3. Add its name to `BackendName` (`microcircuit_lab/config/simulation.py`). Select it with `backend: {name: <name>, options: {...}}` in the simulation file, or `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; the options go to its constructor unchanged.
 
 ## Testing

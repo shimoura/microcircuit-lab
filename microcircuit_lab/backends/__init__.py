@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib
-import json
 from pathlib import Path
 
 import numpy as np
@@ -42,7 +41,7 @@ def get_backend(name: BackendName):
 
 def read_saved_spikes(name: BackendName, recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
     """The spikes a finished run of backend ``name`` saved in ``recordings_dir``,
-    as ``(senders, times)`` sorted by sender (see ``backends/population_spikes.py``).
+    as ``(senders, times)`` sorted by sender (see ``backends/spikes.py``).
 
     Only file reading happens here, so a saved run can be analysed without the
     simulator installed."""
@@ -53,32 +52,16 @@ def read_saved_spikes(name: BackendName, recordings_dir: Path) -> tuple[np.ndarr
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 
-def read_recording(run_dir: Path, variable: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    A variable that a finished run recorded (``recording.variables``), read
-    from the files of ``run_dir`` without the simulator installed.
+def read_saved_variable(
+    name: BackendName, recordings_dir: Path, variable: str
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """A variable a finished run of backend ``name`` recorded (``recording.variables``),
+    as ``(senders, times, values)`` sorted by sender, then time. Times are in ms; values
+    are in mV, pA, nS, ms or Hz where the variable has that dimension, as in the config
+    files (NEST gives the units of its model).
 
-    Parameters
-    ----------
-    run_dir
-        The run folder, with its ``metadata.json`` and ``recordings/``.
-    variable
-        The variable's name, as in ``recording.variables`` (e.g. ``"V_m"``).
-
-    Returns
-    -------
-    senders, times, values
-        Node IDs, times (ms) and values of every sample, sorted by sender, then
-        time. Values are in mV, pA, nS, ms or Hz where the variable has that
-        dimension, as in the config files; NEST gives the units of its model.
-    """
-
-    run_dir = Path(run_dir)
-    metadata_path = run_dir / "metadata.json"
-    if not metadata_path.exists():
-        raise ValueError(f"No metadata.json in {run_dir}, which tells the simulator of the run.")
-    name = json.loads(metadata_path.read_text())["backend"]
-    recordings_dir = run_dir / "recordings"
+    Only file reading happens here, so a saved run can be analysed without the
+    simulator installed."""
     if name == "nest":
         return _import_backend("nest", "spike_files").read_saved_variable(recordings_dir, variable)
     if name == "brian2":
@@ -86,4 +69,4 @@ def read_recording(run_dir: Path, variable: str) -> tuple[np.ndarray, np.ndarray
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 
-__all__ = ["BackendName", "SimulationBackend", "get_backend", "read_recording", "read_saved_spikes"]
+__all__ = ["BackendName", "SimulationBackend", "get_backend", "read_saved_spikes", "read_saved_variable"]

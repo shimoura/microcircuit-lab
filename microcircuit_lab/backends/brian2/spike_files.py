@@ -2,7 +2,7 @@
 Brian2's spike recordings on disk: reading them back.
 
 Brian2 keeps the spikes in memory, and a run saves them as ``spikes.csv``
-(see ``backends/population_spikes.py``), and each recorded variable as
+(see ``backends/spikes.py``), and each recorded variable as
 ``<variable>.csv``. This module does not import
 ``brian2``, so a saved run can be analysed without it.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from microcircuit_lab.backends.population_spikes import read_csv_spikes, sort_recording
+from microcircuit_lab.backends.spikes import read_csv_spikes, sort_recording
 
 
 def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:

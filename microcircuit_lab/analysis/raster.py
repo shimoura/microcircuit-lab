@@ -22,7 +22,7 @@ from .run_command_plots import UNSET, register_plot
 
 
 def plot_raster(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -39,10 +39,10 @@ def plot_raster(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -70,19 +70,14 @@ def plot_raster(
     ``config.begin`` and ``config.end``, if set, replace ``begin`` and ``end``
     for this plot only.
     """
-    if simulation.backend is None:
-        raise RuntimeError("Simulation has not been run yet.")
-    if not simulation.simulation_config.recording.spike_recording:
-        raise RuntimeError("Spike recording is disabled for this simulation.")
-
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_RASTER_CONFIG
-    end = simulation.simulation_config.t_sim if end is None else end
+    end = run.simulation.t_sim if end is None else end
     if config.begin is not None:
         begin = config.begin
     if config.end is not None:
         end = config.end
-    selected = select_populations(simulation, populations, area)
+    selected = select_populations(run, populations, area)
     figsize = config.figsize or (
         config.width,
         max(config.min_height, config.height_per_population * len(selected)),
@@ -102,16 +97,14 @@ def plot_raster(
         fixed_cap = max_neurons_per_population
 
     for index, pop_name in enumerate(selected):
-        nodes = np.asarray(simulation.backend.get_population(pop_name).tolist())
+        nodes = run.node_ids(pop_name)
         cap = max(1, round(neuron_fraction * len(nodes))) if neuron_fraction is not None else fixed_cap
         if cap is not None and len(nodes) > cap:
             keep = np.linspace(0, len(nodes) - 1, cap, dtype=int)
             nodes = nodes[keep]
 
         row_by_gid = {int(gid): offset + row for row, gid in enumerate(nodes)}
-        events = simulation.backend.get_spike_events(pop_name)
-        times = np.asarray(events["times"])
-        senders = np.asarray(events["senders"])
+        senders, times = run.spikes(pop_name)
         mask = (times >= begin) & (times <= end) & np.isin(senders, nodes)
         times, senders = times[mask], senders[mask]
         rows = np.fromiter((row_by_gid[int(gid)] for gid in senders), dtype=int)

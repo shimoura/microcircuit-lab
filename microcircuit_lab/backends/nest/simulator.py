@@ -14,8 +14,9 @@ from pathlib import Path
 import nest
 import numpy as np
 
-from microcircuit_lab.backends import population_spikes
+from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
+from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS
 from microcircuit_lab.config.network import NetworkConfig
@@ -506,7 +507,7 @@ class NestBackend:
         if self.spike_recorder is None:
             return
 
-        population_spikes.log_firing_rates(
+        log_firing_rates(
             logger,
             self.get_spike_events,
             {name: pop.size for name, pop in self._network.populations.items()},
@@ -524,7 +525,7 @@ class NestBackend:
             return self._cached_spikes
 
         if self.spike_recorder is None:
-            self._cached_spikes = population_spikes.empty_spikes()
+            self._cached_spikes = spikes.empty_spikes()
         elif self.spike_recorder.get("record_to") == "ascii":
             paths = spike_files.ascii_spike_files(self._recordings_dir)
             self._cached_spikes = spike_files.read_ascii_spikes(paths)
@@ -539,7 +540,7 @@ class NestBackend:
         events = self.spike_recorder.get("events")
         senders = np.asarray(events["senders"], dtype=int)
         times = np.asarray(events["times"], dtype=float)
-        return population_spikes.sort_by_sender(senders, times)
+        return spikes.sort_by_sender(senders, times)
 
     def get_spike_events(
         self,
@@ -554,7 +555,7 @@ class NestBackend:
 
         senders, times = self._load_spikes()
         node_ids = self.get_population(population).tolist()
-        return population_spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
+        return spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
@@ -588,5 +589,5 @@ class NestBackend:
         path = recordings_dir / "spikes.csv"
 
         senders, times = self._memory_spikes()
-        population_spikes.write_csv_spikes(path, senders, times)
+        spikes.write_csv_spikes(path, senders, times)
         return path

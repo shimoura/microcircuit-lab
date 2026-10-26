@@ -14,7 +14,7 @@ from typing import Any, get_args
 
 import matplotlib.pyplot as plt
 
-from microcircuit_lab import Simulation
+from microcircuit_lab import Simulation, read_run
 from microcircuit_lab.analysis import (
     PLOT_REGISTRY,
     call_plot,
@@ -26,7 +26,7 @@ from microcircuit_lab.analysis import (
 )
 from microcircuit_lab.backends import BackendName
 from microcircuit_lab.config.analysis import AnalysisConfig
-from microcircuit_lab.run_folder import register_artifact
+from microcircuit_lab.run_folder.write import register_artifact
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -166,11 +166,7 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
 
     if args.run_dir is not None:
-        try:
-            simulation = Simulation.from_run_dir(args.run_dir)
-        except (FileNotFoundError, ValueError) as error:
-            sys.exit(str(error))
-        network_name = simulation.network_name
+        run_dir = args.run_dir
     else:
         backend_options: dict[str, Any] = {}
         if args.nest_modules:
@@ -205,11 +201,17 @@ def main(argv: list[str] | None = None) -> None:
         # With MPI, the first process alone plots.
         if not simulation.is_main_process:
             return
-        network_name = args.network
+        run_dir = simulation.output_dir
+
+    # The plots read the run folder, as your own analyses do.
+    try:
+        run = read_run(run_dir)
+    except (FileNotFoundError, ValueError) as error:
+        sys.exit(str(error))
 
     analysis_config = AnalysisConfig.from_yaml(
         config_dir=args.config_dir,
-        network_name=network_name,
+        network_name=run.metadata["network_name"],
         analysis_name=args.analysis,
     )
     check_unknown_plot_sections(analysis_config)
@@ -221,16 +223,16 @@ def main(argv: list[str] | None = None) -> None:
         args.reference if args.reference is not None else analysis_config.show_reference
     )
 
-    print(f"Run directory: {simulation.output_dir}")
+    print(f"Run directory: {run.folder}")
 
     if area == "all":
-        areas = list_areas(simulation)
+        areas = list_areas(run)
         if not areas:
             raise SystemExit("--area all needs a multi-area network (<area>__<population> names).")
-        plot_targets = [(a, simulation.output_dir / "plots" / a) for a in areas]
+        plot_targets = [(a, run.folder / "plots" / a) for a in areas]
         area = None
     else:
-        plot_targets = [(area, simulation.output_dir / "plots")]
+        plot_targets = [(area, run.folder / "plots")]
 
     for name, spec in PLOT_REGISTRY.items():
         plot_config = analysis_config.plot_config(name, spec.config_cls)
@@ -245,25 +247,25 @@ def main(argv: list[str] | None = None) -> None:
             save_path = plots_dir / spec.filename
             save_path.parent.mkdir(parents=True, exist_ok=True)
             call_plot(
-                spec, simulation,
+                spec, run,
                 begin=begin, end=end, area=plot_area, style=analysis_config.style,
                 config=plot_config, save_path=save_path, show=args.show,
                 show_reference=show_reference,
             )
-            register_artifact(simulation.output_dir, "plots", save_path)
+            register_artifact(run.folder, "plots", save_path)
             if not args.show:
                 plt.close("all")
 
-    print(f"Plots saved under: {simulation.output_dir / 'plots'}")
+    print(f"Plots saved under: {run.folder / 'plots'}")
     print(
         "Re-plot without re-simulating: "
-        f"microcircuit-lab run --run-dir {simulation.output_dir}"
+        f"microcircuit-lab run --run-dir {run.folder}"
     )
 
     if args.validate_reference:
         try:
             deviations = check_reference_rates(
-                simulation, begin=begin, end=end, area=area,
+                run, begin=begin, end=end, area=area,
                 rtol=args.reference_rtol,
             )
             print(f"\nReference check passed (rtol={args.reference_rtol:.0%}):")

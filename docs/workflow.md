@@ -83,11 +83,13 @@ output/<name>/<date_time>/
 └── plots/          step 4
 ```
 
-**Code:** `run_folder.py`
+**Code:** `run_folder/write.py`
 
 ## 4 · Plot
 
 **In:** the run folder, `configs/analysis/<name>.yaml` and your `analyses/`. **Out:** `plots/`.
+
+The plots read the run folder with `read_run`, never the simulation, so a run can be plotted again at any time. Your own analyses read it the same way (README, "Reading a run").
 
 To plot again, without simulating:
 
@@ -95,7 +97,7 @@ To plot again, without simulating:
 microcircuit-lab run --run-dir output/<name>/<date_time>
 ```
 
-**Code:** `analysis/`
+**Code:** `run_folder/read.py` (`read_run`), `analysis/`
 
 ## Where to look when...
 

@@ -33,8 +33,9 @@ import brian2 as b2
 import numpy as np
 from brian2.units.fundamentalunits import DIMENSIONLESS
 
-from microcircuit_lab.backends import population_spikes
+from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.brian2 import connections, distributions, models
+from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
 from microcircuit_lab.config.distributions import DrawnValue
@@ -929,7 +930,7 @@ class Brian2Backend:
         if not self.spike_recorders:
             return
 
-        population_spikes.log_firing_rates(
+        log_firing_rates(
             logger,
             self.get_spike_events,
             {name: pop.size for name, pop in self._network.populations.items()},
@@ -946,7 +947,7 @@ class Brian2Backend:
             return self._cached_spikes
 
         if not self.spike_recorders:
-            self._cached_spikes = population_spikes.empty_spikes()
+            self._cached_spikes = spikes.empty_spikes()
             return self._cached_spikes
 
         senders = [self._node_ids(group, np.asarray(monitor.i[:], dtype=int)) for group, monitor in self.spike_recorders]
@@ -954,7 +955,7 @@ class Brian2Backend:
         # threshold is crossed, NEST the time at its end: one step later.
         step = self._simulation_config.resolution
         times = [np.asarray(monitor.t / b2.ms, dtype=float) + step for _, monitor in self.spike_recorders]
-        self._cached_spikes = population_spikes.sort_by_sender(np.concatenate(senders), np.concatenate(times))
+        self._cached_spikes = spikes.sort_by_sender(np.concatenate(senders), np.concatenate(times))
         return self._cached_spikes
 
     def get_spike_events(self, population: str) -> dict:
@@ -964,7 +965,7 @@ class Brian2Backend:
 
         senders, times = self._load_spikes()
         node_ids = self.get_population(population)
-        return population_spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
+        return spikes.spikes_in_id_range(senders, times, int(node_ids[0]), int(node_ids[-1]))
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """
@@ -983,7 +984,7 @@ class Brian2Backend:
 
         if self.spike_recorders:
             path = recordings_dir / "spikes.csv"
-            population_spikes.write_csv_spikes(path, *self._load_spikes())
+            spikes.write_csv_spikes(path, *self._load_spikes())
             paths.append(path)
 
         for name, monitors in self.multimeters.items():

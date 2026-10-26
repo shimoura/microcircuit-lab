@@ -101,14 +101,14 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 
 1. `config/simulation.py`: add it to `RecordingConfig`.
 2. `backends/nest/simulator.py`: a `create_*`/`connect_*` pair, and reading it back; `backends/brian2/simulator.py`: a Brian2 monitor in a `create_*` method, and writing it in `save_recordings`.
-3. `run_folder.py`, if it is saved in the run folder.
+3. `run_folder/write.py`, if it is saved in the run folder, and `run_folder/read.py` if `read_run` should give it.
 4. Test in `tests/test_run_folder.py`.
 </details>
 
 <details>
 <summary><b>A bundled plot</b></summary>
 
-1. `analysis/<plot>.py`: the plot function, a settings class, and `register_plot(...)` at the end.
+1. `analysis/<plot>.py`: the plot function `plot_<name>(run, ...)`, whose first parameter is the `Run` that `read_run` gives, a settings class, and `register_plot(...)` at the end.
 2. `analysis/__init__.py`: import the module, so the plot is registered when the package loads.
 3. Test in `tests/test_<plot>.py`.
 </details>
@@ -116,7 +116,7 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 <details>
 <summary><b>A simulator</b></summary>
 
-A new package `backends/<name>/` and a line in `get_backend`, `read_saved_spikes` and `read_recording`; see "Adding a backend" in the README.
+A new package `backends/<name>/` and a line in `get_backend`, `read_saved_spikes` and `read_saved_variable`; see "Adding a backend" in the README.
 </details>
 
 **No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Running with Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).

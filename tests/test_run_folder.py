@@ -8,13 +8,13 @@ import numpy as np
 import pytest
 import yaml
 
-from microcircuit_lab.backends import read_recording
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.backends.nest.spike_files import read_saved_variable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.run_folder import (
+from microcircuit_lab.run_folder import read_run
+from microcircuit_lab.run_folder.write import (
     register_artifact,
     resolve_run_directory,
     save_run_outputs,
@@ -174,7 +174,7 @@ def test_variables_gate_covers_configs_without_spikes(tmp_path: Path) -> None:
     metadata = json.loads((tmp_path / "metadata.json").read_text())
     assert any("V_m" in entry for entry in metadata["artifacts"]["recordings"])
 
-    senders, times, values = read_recording(tmp_path, "V_m")
+    senders, times, values = read_run(tmp_path).recording("V_m")
     assert len(senders) == len(times) == len(values) > 0
     assert (np.diff(senders) >= 0).all()
 
@@ -215,13 +215,13 @@ def test_metadata_includes_provenance(tmp_path: Path) -> None:
 
 
 def test_core_git_provenance_only_for_a_clone_of_the_core(tmp_path: Path, monkeypatch) -> None:
-    from microcircuit_lab import run_folder
+    from microcircuit_lab.run_folder import write as run_folder
 
     # The test suite runs from a clone of the repository.
     assert len(run_folder._core_git_provenance()["commit"]) == 40
 
     # An installed copy (no .git next to the package) has no commit of its own.
-    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "run_folder.py"
+    package_file = tmp_path / "site-packages" / "microcircuit_lab" / "run_folder" / "write.py"
     monkeypatch.setattr(run_folder, "__file__", str(package_file))
     assert run_folder._core_git_provenance() is None
 
@@ -354,17 +354,19 @@ def test_a_run_folder_is_read_back(tmp_path: Path) -> None:
     )
     sim.run()
 
-    live_e_spikes = sim.backend.get_spike_events("E")
-    live_i_spikes = sim.backend.get_spike_events("I")
+    run = read_run(tmp_path)
 
-    reopened = Simulation.from_run_dir(tmp_path)
-    post_e_spikes = reopened.backend.get_spike_events("E")
-    post_i_spikes = reopened.backend.get_spike_events("I")
-
-    assert len(post_e_spikes["times"]) == len(live_e_spikes["times"])
-    assert len(post_i_spikes["times"]) == len(live_i_spikes["times"])
-    np.testing.assert_array_equal(post_e_spikes["senders"], live_e_spikes["senders"])
-    np.testing.assert_array_equal(post_e_spikes["times"], live_e_spikes["times"])
+    assert run.populations == list(network.populations)
+    assert run.simulation.t_sim == 100.0
+    assert run.metadata["backend"] == "nest"
+    for population in run.populations:
+        live = sim.backend.get_spike_events(population)
+        saved = run.spikes(population)
+        np.testing.assert_array_equal(saved.senders, live["senders"])
+        np.testing.assert_array_equal(saved.times, live["times"])
+        np.testing.assert_array_equal(
+            run.node_ids(population), sim.backend.get_population(population).tolist()
+        )
 
 
 

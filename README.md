@@ -25,6 +25,7 @@ The plots and spikes are saved in `output/toy/<timestamp>/`. `pd14`, `toy_two_ar
 Next:
 
 - **Other settings** (duration, seed, threads): edit `configs/simulation/toy.yaml` and run again.
+- **Your own analysis:** read a finished run with `read_run`; see [Reading a run](microcircuit_lab/README.md#reading-a-run).
 - **Parameter sweeps, several seeds, any batch:** a Python script; recipes in [Running from a script](microcircuit_lab/README.md#running-from-a-script).
 - **Your own network:** [Adding a new network](microcircuit_lab/README.md#adding-a-new-network).
 

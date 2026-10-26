@@ -169,9 +169,9 @@ def test_toy_runs_and_replots_without_brian2(tmp_path: Path) -> None:
     # A saved run is re-plotted without Brian2: block its import.
     script = (
         "import sys; sys.modules['brian2'] = None\n"
-        "from microcircuit_lab import Simulation\n"
-        f"simulation = Simulation.from_run_dir({str(tmp_path)!r})\n"
-        "print(sum(len(simulation.backend.get_spike_events(p)['times']) for p in simulation.network.populations))\n"
+        "from microcircuit_lab import read_run\n"
+        f"run = read_run({str(tmp_path)!r})\n"
+        "print(sum(len(run.spikes(p).times) for p in run.populations))\n"
     )
     replotted = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)
     n_spikes = sum(len(simulation.backend.get_spike_events(p)["times"]) for p in simulation.network.populations)
@@ -179,7 +179,7 @@ def test_toy_runs_and_replots_without_brian2(tmp_path: Path) -> None:
 
 
 def test_recorded_variables_are_saved_in_config_units(tmp_path: Path) -> None:
-    from microcircuit_lab.backends import read_recording
+    from microcircuit_lab import read_run
 
     simulation = Simulation.from_yaml(network_name="toy", backend="brian2", backend_options=NUMPY)
     recording = {"V_m": {"sample_size": 3}, "I_syn_ex": {"sample_size": 3, "populations": ["I"]}}
@@ -195,12 +195,12 @@ def test_recorded_variables_are_saved_in_config_units(tmp_path: Path) -> None:
     )
     simulation.run()
 
-    senders, times, values = read_recording(tmp_path, "V_m")
+    senders, times, values = read_run(tmp_path).recording("V_m")
     assert len(set(senders)) == 3 * len(simulation.network.populations)
     assert (np.diff(senders) >= 0).all()
     # Brian2 keeps volts: the file has mV.
     assert -100 < values.min() and values.max() < 0
-    only = read_recording(tmp_path, "I_syn_ex")[0]
+    only = read_run(tmp_path).recording("I_syn_ex")[0]
     assert set(only) == set(simulation.backend.get_population("I")[:3])
 
 

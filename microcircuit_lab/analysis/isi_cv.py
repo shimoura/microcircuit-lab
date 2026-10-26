@@ -27,7 +27,7 @@ from .run_command_plots import UNSET, register_plot
 
 
 def compute_neuron_isi_cv(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -44,10 +44,10 @@ def compute_neuron_isi_cv(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -61,25 +61,18 @@ def compute_neuron_isi_cv(
         ``{population: CV of each neuron}``.
     """
 
-    if simulation.backend is None:
-        raise RuntimeError("Simulation has not been run yet.")
-    if not simulation.simulation_config.recording.spike_recording:
-        raise RuntimeError("Spike recording is disabled for this simulation.")
-
-    end = simulation.simulation_config.t_sim if end is None else end
+    end = run.simulation.t_sim if end is None else end
     if end <= begin:
         raise ValueError("'end' must be greater than 'begin'.")
     if min_spikes < 2:
         raise ValueError("'min_spikes' must be at least 2 (at least 1 ISI).")
 
-    selected = select_populations(simulation, populations, area)
+    selected = select_populations(run, populations, area)
     cv_by_population: dict[str, np.ndarray] = {}
 
     for pop_name in selected:
-        nodes = np.asarray(simulation.backend.get_population(pop_name).tolist(), dtype=int)
-        events = simulation.backend.get_spike_events(pop_name)
-        times = np.asarray(events["times"])
-        senders = np.asarray(events["senders"], dtype=int)
+        nodes = run.node_ids(pop_name)
+        senders, times = run.spikes(pop_name)
 
         mask = (times >= begin) & (times < end)
         times, senders = times[mask], senders[mask]
@@ -110,7 +103,7 @@ def compute_neuron_isi_cv(
 
 
 def compute_population_isi_cv(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -123,10 +116,10 @@ def compute_population_isi_cv(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -141,7 +134,7 @@ def compute_population_isi_cv(
     """
 
     neuron_cv = compute_neuron_isi_cv(
-        simulation, begin, end, populations=populations, area=area, min_spikes=min_spikes,
+        run, begin, end, populations=populations, area=area, min_spikes=min_spikes,
     )
     return {
         name: (float(np.nanmean(values)) if np.any(~np.isnan(values)) else float("nan"))
@@ -150,7 +143,7 @@ def compute_population_isi_cv(
 
 
 def plot_isi_cv(
-    simulation,
+    run,
     begin: float = 0.0,
     end: float | None = None,
     *,
@@ -170,10 +163,10 @@ def plot_isi_cv(
 
     Parameters
     ----------
-    simulation
-        A run, or a run folder opened with ``Simulation.from_run_dir``.
+    run
+        A finished run, from :func:`~microcircuit_lab.read_run`.
     begin, end
-        The time window in ms; ``end`` defaults to the end of the simulation.
+        The time window in ms; ``end`` defaults to the end of the run.
     populations
         Population names to use; by default all of them (or those of ``area``).
     area
@@ -200,7 +193,7 @@ def plot_isi_cv(
     if min_spikes is UNSET:
         min_spikes = config.min_spikes
     cv = compute_neuron_isi_cv(
-        simulation, begin, end, populations=populations, area=area, min_spikes=min_spikes,
+        run, begin, end, populations=populations, area=area, min_spikes=min_spikes,
     )
     names = list(cv)
     values = [cv[name] for name in names]

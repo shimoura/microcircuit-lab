@@ -198,7 +198,7 @@ def _core_git_provenance() -> dict[str, object] | None:
     git would otherwise find the project's.
     """
 
-    package_dir = Path(__file__).resolve().parent
+    package_dir = Path(__file__).resolve().parents[1]
     if not (package_dir.parent / ".git").exists():
         return None
     return _git_provenance(package_dir)
@@ -226,8 +226,8 @@ def write_run_metadata(
     which :func:`register_artifact` adds.
 
     ``first_gid`` and ``size`` give the node IDs of each population, which are
-    one contiguous block. :class:`~microcircuit_lab.backends.run_folder_reader.RunFolderReader`
-    uses them to read a saved run without simulating it again.
+    one contiguous block. :func:`~microcircuit_lab.run_folder.read.read_run` uses
+    them to read a saved run without simulating it again.
     """
 
     t_sim_s = simulation_config.t_sim / 1000.0
