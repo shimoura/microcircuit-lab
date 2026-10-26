@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.builder_tools import scale_network, write_network
+from microcircuit_lab.builder_tools import mean_current, scale_network, write_network
 from microcircuit_lab.network.load import load_network, read_network
 from microcircuit_lab.yaml_files import flow_records, read_yaml, write_yaml
 
@@ -261,9 +261,8 @@ def _compute_missing_area_dc(
     if the full multi-area network were simulated.
 
     The current is the whole mean input from those areas, which are not
-    simulated at all: 0.001 * tau_syn * (sum of weight x indegree x rate),
-    the mean of exponential currents of time constant tau_syn (ms), with
-    weights in pA and rates in spikes/s.
+    simulated at all: the sum of ``mean_current(weight, indegree, rate,
+    tau_syn)`` over its inputs, with weights in pA and rates in spikes/s.
 
     Each input is compensated with the target's ``tau_syn_ex`` or
     ``tau_syn_in``, by the sign of its weight (in HuMAM all inter-area
@@ -281,8 +280,7 @@ def _compute_missing_area_dc(
         target_params = neuron_params[tgt_idx[2]]
         n_target = float(neuron_numbers.loc[tgt_idx])
 
-        excitatory_input = 0.0
-        inhibitory_input = 0.0
+        current = 0.0
         for src_area in other_areas:
             for layer in layers:
                 for pop in pops:
@@ -300,15 +298,10 @@ def _compute_missing_area_dc(
                     rate = float(base_theory_rates.loc[src_idx])
 
                     indegree = n_synapses / n_target
-                    if mean_psc > 0.0:
-                        excitatory_input += mean_psc * indegree * rate
-                    else:
-                        inhibitory_input += mean_psc * indegree * rate
+                    tau_syn = target_params["tau_syn_ex" if mean_psc > 0.0 else "tau_syn_in"]
+                    current += mean_current(mean_psc, indegree, rate, tau_syn)
 
-        compensation[tgt_label] = float(
-            0.001 * target_params["tau_syn_ex"] * excitatory_input
-            + 0.001 * target_params["tau_syn_in"] * inhibitory_input
-        )
+        compensation[tgt_label] = float(current)
 
     return compensation
 

@@ -72,8 +72,11 @@ def scale_network(
     ------
     ValueError
         If ``network`` was already scaled; if a population would have no
-        neuron left; if a connection's rule or weight distribution cannot be
-        scaled; or, to add the current, if a weight is not in pA on the
+        neuron left; if a connection's rule cannot be scaled; if the current
+        for recurrent connections is added (``preserve_variance``,
+        ``preserve_mean_input`` and ``compensate_recurrent_input``, with
+        ``K_scaling`` not 1) and a connection's weight distribution is not a
+        shared one; or, to add the current, if a weight is not in pA on the
         default receptor port.
     """
 
@@ -97,23 +100,21 @@ def scale_network(
     )
 
     scaled = _scale_neuron_numbers(network, N_scaling)
-    scaled = _scale_indegrees(scaled, N_scaling, K_scaling)
+    # The current for recurrent connections needs the real mean of every weight.
+    needs_weight_means = (
+        preserve_variance and preserve_mean_input and compensate_recurrent_input and K_scaling != 1.0
+    )
+    scaled = _scale_indegrees(scaled, N_scaling, K_scaling, needs_weight_means)
     scaled = scale_weights(scaled, K_scaling, preserve_variance)
     scaled = compensate_lost_mean_input(
-        scaled, network, K_scaling, preserve_mean_input, preserve_variance, compensate_recurrent_input
+        scaled,
+        network,
+        K_scaling,
+        preserve_mean_input=preserve_mean_input,
+        preserve_variance=preserve_variance,
+        compensate_recurrent_input=compensate_recurrent_input,
     )
     return scaled.model_copy(update={"scaling": record})
-
-
-def scale_neuron_number(
-    value: int,
-    factor: float,
-) -> int:
-    """
-    Scale the number of neurons.
-    """
-
-    return int(round(value * factor))
 
 
 def scale_rule_number(value, rule, N_scaling: float, K_scaling: float):
@@ -144,41 +145,6 @@ def scale_rule_number(value, rule, N_scaling: float, K_scaling: float):
     )
 
 
-def scale_weight(
-    value: float,
-    factor: float,
-) -> float:
-    """
-    Scale a weight linearly, ``J -> J / K``. This keeps the mean input but not
-    its variance.
-
-    ``scale_weights`` uses it when ``preserve_variance`` is false. No
-    compensation current is needed then, because the mean does not change.
-    """
-
-    return value / factor
-
-
-def scale_weight_sqrt(
-    weight: float,
-    K_scaling: float,
-) -> float:
-    """
-    Scale synaptic weights as in van Albada, Helias & Diesmann (2015), PLoS
-    Comput Biol 11:e1004490 (also used by Potjans & Diesmann 2014's code).
-
-    This keeps the fluctuations of the input (its variance) but not its mean::
-
-        w -> w / sqrt(K_scaling)
-
-    ``scale_weights`` uses it when ``preserve_variance`` is true (the default).
-    The step ``compensate_lost_mean_input`` then restores the mean with a
-    constant current, if ``preserve_mean_input`` is also true.
-    """
-
-    return weight / math.sqrt(K_scaling)
-
-
 def scale_weights(network: NetworkConfig, K_scaling: float, preserve_variance: bool) -> NetworkConfig:
     """
     Scale the weights of all recurrent connections and background inputs for
@@ -186,27 +152,28 @@ def scale_weights(network: NetworkConfig, K_scaling: float, preserve_variance: b
 
     ``preserve_variance`` selects the law:
 
-    - True (default): ``w / sqrt(K_scaling)`` (``scale_weight_sqrt``). This keeps
-      the fluctuations of the input but changes its mean. The step
+    - True (default): ``w / sqrt(K_scaling)``, as in van Albada, Helias &
+      Diesmann (2015), PLoS Comput Biol 11:e1004490. This keeps the
+      fluctuations of the input but changes its mean. The step
       ``compensate_lost_mean_input`` restores the mean with a constant current
       if ``preserve_mean_input`` is also true.
-    - False: ``w / K_scaling`` (``scale_weight``). This keeps the mean input
-      (indegree times weight does not change) but not the fluctuations, and
-      needs no compensation.
+    - False: ``w / K_scaling``. This keeps the mean input (indegree times
+      weight does not change) but not the fluctuations, and needs no
+      compensation.
     """
 
-    weight_scaler = scale_weight_sqrt if preserve_variance else scale_weight
+    divisor = math.sqrt(K_scaling) if preserve_variance else K_scaling
 
     # Recurrent connections: the whole weight column at once.
     connections = network.connections.with_columns(copy=False, **{
-        "weight.mean": weight_scaler(network.connections["weight.mean"], K_scaling)
+        "weight.mean": network.connections["weight.mean"] / divisor
     })
 
     # Background inputs.
     background_inputs = {}
 
     for pop_name, input_cfg in network.background_inputs.items():
-        mean = weight_scaler(input_cfg.weight.mean, K_scaling)
+        mean = input_cfg.weight.mean / divisor
         weight = input_cfg.weight.model_copy(update={"mean": mean})
         background_inputs[pop_name] = input_cfg.model_copy(update={"weight": weight})
 
@@ -217,16 +184,14 @@ def scale_weights(network: NetworkConfig, K_scaling: float, preserve_variance: b
 
 def _scale_neuron_numbers(network: NetworkConfig, N_scaling: float) -> NetworkConfig:
     """
-    Apply neuron-number scaling.
+    Multiply the size of each population by ``N_scaling``, rounded to a whole
+    number of neurons.
     """
 
     populations = {}
 
     for name, population in network.populations.items():
-        scaled_size = scale_neuron_number(
-            population.size,
-            N_scaling,
-        )
+        scaled_size = int(round(population.size * N_scaling))
         if scaled_size < 1:
             raise ValueError(
                 f"N_scaling={N_scaling} reduces population "
@@ -239,17 +204,13 @@ def _scale_neuron_numbers(network: NetworkConfig, N_scaling: float) -> NetworkCo
     return network.model_copy(update={"populations": populations})
 
 
-def _scale_indegrees(network: NetworkConfig, N_scaling: float, K_scaling: float) -> NetworkConfig:
+def _scale_indegrees(
+    network: NetworkConfig, N_scaling: float, K_scaling: float, needs_weight_means: bool
+) -> NetworkConfig:
     """
-    Apply indegree scaling.
-
-    Currently scales:
-        - the number each connection rule takes (see scale_rule_number), for
-          the whole column at once
-        - background indegrees
-
-    Synaptic weights and DC compensation are intentionally
-    handled in later transformations.
+    Multiply the background indegrees by ``K_scaling`` and scale the number
+    each connection rule takes (see :func:`scale_rule_number`). Weights and
+    the constant currents are scaled in later steps.
     """
 
     # Scale background indegrees
@@ -262,7 +223,7 @@ def _scale_indegrees(network: NetworkConfig, N_scaling: float, K_scaling: float)
     # for all connections at once.
     table = network.connections
     rule = table["rule"]
-    _check_connections_can_scale(table, N_scaling, K_scaling)
+    _check_connections_can_scale(table, N_scaling, K_scaling, needs_weight_means)
     scaled = scale_rule_number(table["number"], rule, N_scaling, K_scaling)
 
     too_likely = np.flatnonzero((rule == "pairwise_bernoulli") & (scaled > 1.0))
@@ -281,15 +242,17 @@ def _scale_indegrees(network: NetworkConfig, N_scaling: float, K_scaling: float)
     return network.model_copy(update={"populations": populations, "connections": connections})
 
 
-def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> None:
+def _check_connections_can_scale(
+    table, N_scaling: float, K_scaling: float, needs_weight_means: bool
+) -> None:
     """
     Raise for a connection that scaling cannot keep at the full-scale input.
     Its rule cannot keep each neuron's inputs at ``K_scaling`` times the
     full-scale number: ``one_to_one`` always gives one input, ``all_to_all``
     gives ``n_source``, which shrinks with ``N_scaling``, and a rule that is not
-    shared says nothing about its scaling. Or its weights come from a project
-    distribution, whose real mean, which the compensation needs, is not known
-    here. (A project delay distribution is fine: scaling leaves delays alone.)
+    shared says nothing about its scaling. Or, if ``needs_weight_means``, its
+    weights come from a project distribution, whose real mean, which the
+    compensation needs, is not known here. (A project delay distribution is fine: scaling leaves delays alone.)
     """
 
     rule = table["rule"]
@@ -301,7 +264,7 @@ def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> N
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
          "rule {rule} is not a shared one, and how it scales is not known"),
-        (~np.isin(table["weight.distribution"], SHARED_DISTRIBUTIONS),
+        (needs_weight_means & ~np.isin(table["weight.distribution"], SHARED_DISTRIBUTIONS),
          "the real mean of weights from a project distribution, which the compensation "
          "needs, is not known"),
     )

@@ -6,7 +6,11 @@ The steps that add constant currents to ``I_e``.
 full-scale network ``original``); ``replace_background_by_mean_current``
 replaces the background Poisson input by a constant current of the same mean
 (a step of :func:`~microcircuit_lab.network.prepare.prepare_network`). The
-formulas of these currents are at the end of the file.
+formula of these currents is :func:`mean_current`, at the end of the file.
+
+It assumes current-based synapses with exponential currents: a spike of
+amplitude ``weight`` (pA) and time constant ``tau_syn`` (ms) carries a charge
+of ``0.001 * tau_syn * weight`` (pA x s).
 """
 
 from __future__ import annotations
@@ -16,12 +20,11 @@ import numpy as np
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.network.mean_input import (
     background_indegrees,
-    background_psc_weights,
     background_rates,
+    background_weights,
     full_mean_rates,
     indegree_matrix,
     mean_psc_matrix,
-    network_mean_input,
     synaptic_tau,
     tau_syn_ex,
     tau_syn_in,
@@ -32,6 +35,7 @@ def compensate_lost_mean_input(
     network: NetworkConfig,
     original: NetworkConfig,
     K_scaling: float,
+    *,
     preserve_mean_input: bool,
     preserve_variance: bool,
     compensate_recurrent_input: bool,
@@ -64,7 +68,9 @@ def compensate_lost_mean_input(
 def _recurrent_compensation(original: NetworkConfig, K_scaling: float) -> np.ndarray:
     """
     The DC current (pA) per population that replaces the mean recurrent input
-    lost by scaling, from the full-scale network ``original``.
+    lost by scaling, from the full-scale network ``original``: weights times
+    1/sqrt(K_scaling) and indegrees times K_scaling keep sqrt(K_scaling) of the
+    mean, so (1 - sqrt(K_scaling)) of it is added back.
 
     Raises if a connection's mean current is not known (see
     _mean_current_is_known).
@@ -89,20 +95,19 @@ def _recurrent_compensation(original: NetworkConfig, K_scaling: float) -> np.nda
     weight = table["weight.mean"]
     excitatory = known & (weight > 0)
     inhibitory = known & (weight < 0)
+    names = list(original.populations)
     for rows, tau_syn in ((excitatory, tau_syn_ex), (inhibitory, tau_syn_in)):
         if not rows.any():
             continue
         part = original.model_copy(update={"connections": table.keep_rows(rows)})
-        network_input = network_mean_input(
-            mean_PSC_matrix=mean_psc_matrix(part),
-            indegree_matrix=indegree_matrix(part),
-            mean_rates=mean_rates,
+        has_input = np.isin(names, table["target"][rows])
+        input_per_source = mean_current(
+            weight=mean_psc_matrix(part),
+            indegree=indegree_matrix(part),
+            rate=mean_rates,
+            tau_syn=tau_syn(original, needed=has_input)[:, np.newaxis],
         )
-        current += network_compensation_current(
-            network_input=network_input,
-            tau_syn=tau_syn(original, needed=network_input != 0),
-            K_scaling=K_scaling,
-        )
+        current += (1.0 - np.sqrt(K_scaling)) * input_per_source.sum(axis=1)
 
     return current
 
@@ -124,14 +129,14 @@ def _background_compensation(original: NetworkConfig, K_scaling: float) -> np.nd
             "preserve_mean_input to false, or preserve_variance to false (no current needed)."
         )
 
-    PSC_ext = background_psc_weights(original)
-    return background_compensation_current(
-        PSC_ext=PSC_ext,
-        K_ext=background_indegrees(original),
-        bg_rate=background_rates(original),
-        tau_syn=synaptic_tau(original, PSC_ext),
-        K_scaling=K_scaling,
+    weight = background_weights(original)
+    current = mean_current(
+        weight=weight,
+        indegree=background_indegrees(original),
+        rate=background_rates(original),
+        tau_syn=synaptic_tau(original, weight),
     )
+    return (1.0 - np.sqrt(K_scaling)) * current
 
 
 def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
@@ -157,15 +162,12 @@ def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
             "has another unit or uses another port. Use background_mode: poisson."
         )
 
-    K_ext = background_indegrees(network)
-    PSC_ext = background_psc_weights(network)
-    tau_syn = synaptic_tau(network, PSC_ext)
-
-    dc_current = background_dc_current(
-        PSC_ext=PSC_ext,
-        K_ext=K_ext,
-        bg_rate=background_rates(network),
-        tau_syn=tau_syn,
+    weight = background_weights(network)
+    dc_current = mean_current(
+        weight=weight,
+        indegree=background_indegrees(network),
+        rate=background_rates(network),
+        tau_syn=synaptic_tau(network, weight),
     )
 
     network = _add_to_I_e(network, dc_current)
@@ -209,9 +211,14 @@ def _connections_with_known_current(network: NetworkConfig) -> np.ndarray:
     """``_mean_current_is_known`` for every connection at once (one bool per row)."""
 
     table = network.connections
-    ports = {name: network.receptor_port(name) for name in set(table["synapse"].tolist())}
-    default_port = np.asarray([ports[name] is None for name in table["synapse"]], dtype=bool)
-    return (table["weight.unit"] == "pA") & default_port
+    # The synapse column holds None for the default synapse, which np.unique
+    # cannot sort: look up each distinct name once, with None as "".
+    synapse = np.where(np.equal(table["synapse"], None), "", table["synapse"]).astype(str)
+    names, inverse = np.unique(synapse, return_inverse=True)
+    on_default_port = np.asarray(
+        [network.receptor_port(name or None) is None for name in names], dtype=bool
+    )
+    return (table["weight.unit"] == "pA") & on_default_port[inverse]
 
 
 def _background_without_known_current(network: NetworkConfig) -> list[str]:
@@ -224,65 +231,20 @@ def _background_without_known_current(network: NetworkConfig) -> list[str]:
     ]
 
 
-def network_compensation_current(
-    network_input: np.ndarray,
-    tau_syn: np.ndarray,
-    K_scaling: float,
-) -> np.ndarray:
-    """
-    The constant current (pA) that replaces the mean recurrent input lost by
-    scaling: weights times 1/sqrt(K_scaling) and indegrees times K_scaling keep
-    sqrt(K_scaling) of the mean, so (1 - sqrt(K_scaling)) of it is added back.
-
-    Parameters
-    ----------
-    network_input
-        Mean input to each population from the recurrent network (pA).
-
-    tau_syn
-        Synaptic time constant of each population (ms).
-
-    K_scaling
-        Indegree scaling factor.
-
-    Returns
-    -------
-    np.ndarray
-        The current for each population (pA).
-    """
-
-    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * network_input
-
-
-def background_compensation_current(
-    PSC_ext: np.ndarray,
-    K_ext: np.ndarray,
-    bg_rate: np.ndarray,
-    tau_syn: np.ndarray,
-    K_scaling: float,
-) -> np.ndarray:
-    """
-    The constant current (pA) that replaces the mean background input lost by
-    scaling, as :func:`network_compensation_current` does for the recurrent
-    input: ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude
-    ``PSC_ext`` (pA), with synaptic time constant ``tau_syn`` (ms).
-    """
-
-    return 0.001 * tau_syn * (1.0 - np.sqrt(K_scaling)) * PSC_ext * K_ext * bg_rate
-
-
-def background_dc_current(
-    PSC_ext: np.ndarray,
-    K_ext: np.ndarray,
-    bg_rate: np.ndarray,
+def mean_current(
+    weight: np.ndarray,
+    indegree: np.ndarray,
+    rate: np.ndarray,
     tau_syn: np.ndarray,
 ) -> np.ndarray:
     """
-    Constant current (pA) with the same mean as the background Poisson input:
-    ``bg_rate`` (spikes/s) onto ``K_ext`` synapses of amplitude ``PSC_ext`` (pA),
-    with synaptic time constant ``tau_syn`` (ms).
+    The constant current (pA) with the mean of the input of ``indegree``
+    synapses of amplitude ``weight`` (pA) firing at ``rate`` (spikes/s).
 
-    The step ``replace_background_by_mean_current`` uses it.
+    One spike gives an exponential current of amplitude ``weight`` and time
+    constant ``tau_syn`` (ms), a charge of ``tau_syn * weight`` (ms x pA); the
+    factor 0.001 turns it into pA x s. This assumes current-based synapses
+    with exponential currents (``tau_syn_ex``, ``tau_syn_in``).
     """
 
-    return 0.001 * tau_syn * PSC_ext * K_ext * bg_rate
+    return 0.001 * tau_syn * weight * indegree * rate

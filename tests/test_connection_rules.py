@@ -20,7 +20,7 @@ from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.synapses import SynapseEntry
-from microcircuit_lab.network.mean_input import expected_synapses, full_num_synapses
+from microcircuit_lab.network.mean_input import expected_synapses, num_synapses
 from microcircuit_lab.network.prepare import prepare_network
 
 SIZES = {"S": 100, "T": 50}
@@ -167,7 +167,8 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
         })
 
     with pytest.raises(ValueError, match="real mean of weights from a project distribution"):
-        _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=False)
+        _scaled(_network([connection(weight="mine")]), 0.5, 0.5)
+    _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=False)
     _scaled(_network([connection(delay="mine")]), 0.5, 0.5, preserve_mean_input=False)
 
     network = _network([connection()])
@@ -228,7 +229,7 @@ def test_a_pair_takes_one_entry_per_synapse_and_quantities_sum_them():
         [_connection(n_synapses=10), _connection(n_synapses=20, synapse="depressing")],
         synapses=synapses,
     )
-    assert full_num_synapses(network)[1, 0] == 30
+    assert num_synapses(network)[1, 0] == 30
     _, connections = _built_connections(network)
     models = connections.get("synapse_model")
     assert models.count("static_synapse") == 10 and models.count("depressing") == 20

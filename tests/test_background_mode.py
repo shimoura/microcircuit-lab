@@ -7,7 +7,6 @@ generator is replaced network-wide by a constant current of equal mean.
 
 from pathlib import Path
 
-import numpy as np
 import pytest
 import yaml
 
@@ -19,11 +18,12 @@ from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.network.compensation import background_dc_current
+from microcircuit_lab.network.compensation import mean_current
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.mean_input import (
     background_indegrees,
-    background_psc_weights,
+    background_rates,
+    background_weights,
     tau_syn_ex,
 )
 from microcircuit_lab.network.prepare import prepare_network
@@ -200,12 +200,10 @@ def test_dc_matches_poisson_mean_input():
     bio = _network("poisson")
     dc = prepare_network(_network("mean_current"))
 
-    expected = background_dc_current(
-        PSC_ext=background_psc_weights(bio),
-        K_ext=background_indegrees(bio),
-        bg_rate=np.asarray(
-            [bio.background_inputs[name].rate for name in bio.populations]
-        ),
+    expected = mean_current(
+        weight=background_weights(bio),
+        indegree=background_indegrees(bio),
+        rate=background_rates(bio),
         tau_syn=tau_syn_ex(bio),
     )
 

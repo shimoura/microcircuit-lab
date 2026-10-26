@@ -23,6 +23,8 @@ network folder ``configs/network/<name>/``::
 * :func:`scale_network` returns a network scaled down (fewer neurons and
   synapses, stronger weights, the lost mean input as a current), and
   :func:`write_network` writes such a network as a folder.
+* :func:`mean_current` is the constant current (pA) with the mean of a
+  Poisson input, for a builder that adds the input of areas it leaves out.
 * :func:`weight` and :func:`delay` build the ``weight`` / ``delay`` entries
   every connection, background input and stimulus needs.
 * :func:`num_synapses_from_conn_prob` turns a connection probability into a
@@ -47,12 +49,14 @@ import numpy as np
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.network.compensation import mean_current
 from microcircuit_lab.network.load import read_network
 from microcircuit_lab.network.scaling import scale_network
 from microcircuit_lab.yaml_files import flow_records, write_yaml
 
 __all__ = [
     "delay",
+    "mean_current",
     "num_synapses_from_conn_prob",
     "psc_to_psp",
     "psp_to_psc_iaf_psc_exp",

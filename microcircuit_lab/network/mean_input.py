@@ -12,12 +12,8 @@ import numpy as np
 from microcircuit_lab.config.network import NetworkConfig
 
 
-def full_num_neurons(network: NetworkConfig) -> np.ndarray:
-    """
-    Return the full neuron numbers as a vector.
-
-    These correspond to the biological (unscaled) network.
-    """
+def num_neurons(network: NetworkConfig) -> np.ndarray:
+    """Return the neuron number of each population, as a vector."""
 
     return np.asarray(
         [pop.size for pop in network.populations.values()],
@@ -70,13 +66,13 @@ def expected_synapses_per_connection(network: NetworkConfig) -> np.ndarray:
     )
 
 
-def full_num_synapses(network: NetworkConfig) -> np.ndarray:
+def num_synapses(network: NetworkConfig) -> np.ndarray:
     """
-    Return the full synapse numbers as a matrix (target x source).
+    Return the synapse numbers as a matrix (target x source).
 
-    These correspond to the biological (unscaled) network. Each entry is the
-    expected number of synapses of the pair, summed over its connections
-    (several when a pair is connected through several synapses).
+    Each entry is the expected number of synapses of the pair, summed over
+    its connections (several when a pair is connected through several
+    synapses).
     """
 
     pop_names = list(network.populations.keys())
@@ -94,11 +90,11 @@ def full_num_synapses(network: NetworkConfig) -> np.ndarray:
 
 def indegree_matrix(network: NetworkConfig) -> np.ndarray:
     """
-    Return the biological indegree matrix.
+    Return the indegree matrix (target x source): synapses per target neuron.
     """
 
-    neurons = full_num_neurons(network)
-    synapses = full_num_synapses(network)
+    neurons = num_neurons(network)
+    synapses = num_synapses(network)
 
     return synapses / neurons[:, np.newaxis]
 
@@ -145,23 +141,6 @@ def background_rates(network: NetworkConfig) -> np.ndarray:
     return np.asarray(
         [
             network.background_inputs[name].rate if name in network.background_inputs else 0.0
-            for name in network.populations
-        ],
-        dtype=float,
-    )
-
-
-def background_psc_weights(
-    network: NetworkConfig,
-) -> np.ndarray:
-    """
-    Return the background input weights as given, 0 for a population without
-    background input. The compensation uses only those in pA.
-    """
-
-    return np.asarray(
-        [
-            network.background_inputs[name].weight.mean if name in network.background_inputs else 0.0
             for name in network.populations
         ],
         dtype=float,
@@ -264,35 +243,3 @@ def synaptic_tau(
     excitatory = tau_syn_ex(network, needed=mean_PSC > 0)
     inhibitory = tau_syn_in(network, needed=mean_PSC < 0)
     return np.where(mean_PSC < 0, inhibitory, excitatory)
-
-
-def network_mean_input(
-    mean_PSC_matrix: np.ndarray,
-    indegree_matrix: np.ndarray,
-    mean_rates: np.ndarray,
-) -> np.ndarray:
-    """
-    Compute the mean recurrent synaptic input used for DC compensation
-    when scaling synaptic weights.
-
-    Parameters
-    ----------
-    mean_PSC_matrix
-        Matrix of mean PSC amplitudes (pA).
-
-    indegree_matrix
-        Matrix of indegrees.
-
-    mean_rates
-        Mean firing rate of each source population (Hz).
-
-    Returns
-    -------
-    np.ndarray
-        Mean recurrent input for each target population.
-    """
-
-    return np.sum(
-        mean_PSC_matrix * indegree_matrix * mean_rates,
-        axis=1,
-    )

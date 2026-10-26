@@ -8,9 +8,9 @@ from microcircuit_lab.network.mean_input import (
     background_indegrees,
     background_weights,
     full_mean_rates,
-    full_num_neurons,
-    full_num_synapses,
     indegree_matrix,
+    num_neurons,
+    num_synapses,
 )
 
 
@@ -20,8 +20,8 @@ def test_reference_matrices():
 
     network = assemble_network(network_files)
 
-    neurons = full_num_neurons(network)
-    synapses = full_num_synapses(network)
+    neurons = num_neurons(network)
+    synapses = num_synapses(network)
     indegrees = indegree_matrix(network)
 
     n_pop = len(network.populations)

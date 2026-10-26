@@ -3,12 +3,12 @@ import math
 import pytest
 
 from microcircuit_lab.builder_tools import scale_network
+from microcircuit_lab.network.compensation import mean_current
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.network.mean_input import (
     full_mean_rates,
     indegree_matrix,
     mean_psc_matrix,
-    network_mean_input,
 )
 
 
@@ -26,20 +26,16 @@ def _load_toy():
     )
 
 
-def test_network_mean_input_manual():
+def test_mean_current_manual():
     network = _load_toy()
 
     PSC = mean_psc_matrix(network)
     K = indegree_matrix(network)
     rates = full_mean_rates(network)
 
-    manual = (PSC[0] * K[0] * rates).sum()
+    manual = 0.001 * 0.5 * (PSC[0] * K[0] * rates).sum()
 
-    computed = network_mean_input(
-        mean_PSC_matrix=PSC,
-        indegree_matrix=K,
-        mean_rates=rates,
-    )[0]
+    computed = mean_current(PSC, K, rates, tau_syn=0.5).sum(axis=1)[0]
 
     assert manual == pytest.approx(computed)
 
