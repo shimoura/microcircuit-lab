@@ -20,8 +20,6 @@ from microcircuit_lab.config.stimuli import (
     StimulusConfig,
 )
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.psp_psc_conversion import psp_to_psc_iaf_psc_exp
 
 
 def _neuron(**overrides) -> NeuronConfig:
@@ -50,7 +48,7 @@ def _population(name: str, neuron: NeuronConfig, size: int = 10) -> PopulationCo
     )
 
 
-def _weight(mean: float = 100.0, unit: str = "PSC") -> WeightDistribution:
+def _weight(mean: float = 100.0, unit: str = "pA") -> WeightDistribution:
     return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
 
 
@@ -176,75 +174,6 @@ def test_network_yaml_without_stimuli_key_still_loads() -> None:
     network_files = read_network_files("configs/network/toy")
     config = assemble_network(network_files)
     assert config.stimuli == []
-
-
-# -----------------------------------------------------------------------------
-# PSP -> PSC conversion (must not silently skip stimulus weights)
-# -----------------------------------------------------------------------------
-def test_stimulus_psp_weight_is_converted_like_connections():
-    network_files = read_network_files("configs/network/toy")
-    config = assemble_network(network_files)
-
-    stimulus = PoissonStimulusConfig(
-        targets=["E", "I"],
-        rate=10.0,
-        weight=WeightDistribution(mean=0.15, rel_std=0.0, distribution="fixed", unit="PSP"),
-        delay=_delay(),
-    )
-    config = config.model_copy(update={"stimuli": [stimulus]})
-
-    processed = prepare_network(config)
-
-    converted = processed.stimuli[0].weight
-    assert converted.unit == "PSC"
-
-    e_params = config.populations["E"].neuron.parameters
-    expected = psp_to_psc_iaf_psc_exp(
-        psp=0.15, C_m=e_params.C_m, tau_m=e_params.tau_m, tau_syn=e_params.tau_syn_ex
-    )
-    # E and I share identical neuron parameters in the toy network, so both
-    # populations convert the same PSP amplitude to the same PSC amplitude.
-    assert converted.mean == pytest.approx(expected)
-
-
-def test_stimulus_psp_weight_raises_when_targets_have_different_neuron_params():
-    fast = _population("fast", _neuron(tau_syn_ex=0.5))
-    slow = _population("slow", _neuron(tau_syn_ex=2.0))
-
-    stimulus = PoissonStimulusConfig(
-        targets=["fast", "slow"],
-        rate=10.0,
-        weight=WeightDistribution(mean=0.15, rel_std=0.0, distribution="fixed", unit="PSP"),
-        delay=_delay(),
-    )
-
-    network = NetworkConfig(
-        populations={"fast": fast, "slow": slow},
-        connections=[],
-        background_inputs={},
-        stimuli=[stimulus],
-        scaling=ScalingConfig(),
-    )
-
-    with pytest.raises(ValueError, match="don't convert it to the same"):
-        prepare_network(network)
-
-
-def test_dc_stimulus_has_no_weight_to_convert():
-    population = _population("E", _neuron())
-    stimulus = DcStimulusConfig(targets=["E"], amplitude=200.0)
-
-    network = NetworkConfig(
-        populations={"E": population},
-        connections=[],
-        background_inputs={},
-        stimuli=[stimulus],
-        scaling=ScalingConfig(),
-    )
-
-    processed = prepare_network(network)
-    assert isinstance(processed.stimuli[0], DcStimulusConfig)
-    assert processed.stimuli[0].amplitude == 200.0
 
 
 # -----------------------------------------------------------------------------

@@ -27,7 +27,7 @@ from microcircuit_lab.network.prepare import prepare_network
 SIZES = {"S": 100, "T": 50}
 
 
-def _connection(rule="fixed_total_number", weight=10.0, unit="PSC", source="S", target="T", **fields):
+def _connection(rule="fixed_total_number", weight=10.0, unit="pA", source="S", target="T", **fields):
     return ConnectionConfig(
         source=source,
         target=target,
@@ -56,7 +56,7 @@ def _network(connections, synapses=None, scaling=None, background_synapse=None, 
     background = {
         name: BackgroundInputConfig(
             rate=8.0,
-            weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="PSC"),
+            weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
             delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
             synapse=background_synapse if name == "T" else None,
         )
@@ -158,12 +158,12 @@ def test_the_new_rules_scale_where_they_can():
 
 def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
     with pytest.raises(ValueError, match="takes no parameters"):
-        WeightDistribution(mean=1.0, rel_std=0.0, unit="PSC", distribution="normal", parameters={"a": 1})
+        WeightDistribution(mean=1.0, rel_std=0.0, unit="pA", distribution="normal", parameters={"a": 1})
 
     def connection(weight="fixed", delay="fixed"):
         params = {"weight": {"a": 1} if weight != "fixed" else None, "delay": {"a": 1} if delay != "fixed" else None}
         return _connection(n_synapses=100).model_copy(update={
-            "weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="PSC", distribution=weight, parameters=params["weight"]),
+            "weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution=weight, parameters=params["weight"]),
             "delay": DelayDistribution(mean=1.0, rel_std=0.0, distribution=delay, parameters=params["delay"]),
         })
 
@@ -174,7 +174,7 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
 
     network = _network([connection()])
     background = network.background_inputs["S"].model_copy(
-        update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="PSC", distribution="mine", parameters={"a": 1})}
+        update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1})}
     )
     with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
         NetworkConfig.model_validate({**network.model_dump(), "background_inputs": {**network.background_inputs, "S": background}})
@@ -186,7 +186,7 @@ def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
         _connection(rule="one_to_one", source="S", target="S"),
         _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
         _connection(source="T", target="S", n_synapses=10).model_copy(update={
-            "weight": WeightDistribution(mean=1.0, rel_std=0.0, unit="PSC", distribution="mine", parameters={"a": 1.5}),
+            "weight": WeightDistribution(mean=1.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1.5}),
         }),
     ]
     table = ConnectionTable.from_yaml_rows(rows)
@@ -245,9 +245,6 @@ def test_receptor_ports(caplog):
         "fast": SynapseEntry(model="static_synapse", receptor_port=1),
         "slow": SynapseEntry(model="static_synapse", receptor_port=2),
     }
-    with pytest.raises(ValueError, match="unit: PSP weight on receptor port 1"):
-        _network([_connection(n_synapses=10, synapse="fast", unit="PSP", weight=0.1)], synapses)
-
     # T has two receptor ports (1 and 2), each with its own time constant
     multisynapse = NeuronConfig(
         name="multi",
@@ -335,14 +332,14 @@ def test_advanced_example_uses_every_feature():
     prepare_network(network)
 
 
-def test_native_weights_are_not_compensated(caplog):
-    """A native weight (e.g. nS) is not a current: compensating it would add a
-    current computed from conductances."""
-    native = _connection(n_synapses=1000, weight=1.0, unit="native")
-    scaled = _network([native], scaling=ScalingConfig(K_scaling=0.5))
+def test_conductance_weights_are_not_compensated(caplog):
+    """A weight in nS is not a current: compensating it would add a current
+    computed from conductances."""
+    conductance = _connection(n_synapses=1000, weight=1.0, unit="nS")
+    scaled = _network([conductance], scaling=ScalingConfig(K_scaling=0.5))
     background = {
         name: input_cfg.model_copy(
-            update={"weight": input_cfg.weight.model_copy(update={"unit": "native"})}
+            update={"weight": input_cfg.weight.model_copy(update={"unit": "nS"})}
         )
         for name, input_cfg in scaled.background_inputs.items()
     }
@@ -352,5 +349,5 @@ def test_native_weights_are_not_compensated(caplog):
         prepared = prepare_network(scaled)
     assert "not compensated for S -> T" in caplog.text
     assert all(p.neuron.parameters.I_e is None for p in prepared.populations.values())
-    with pytest.raises(ValueError, match="native or uses another port"):
+    with pytest.raises(ValueError, match="has another unit or uses another port"):
         prepare_network(scaled.model_copy(update={"background_mode": "mean_current"}))

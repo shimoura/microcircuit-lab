@@ -58,7 +58,7 @@ def _population(name: str, neuron: NeuronConfig, background_indegree: float = 10
 def _background(rate: float = 8.0, mean: float = 50.0) -> BackgroundInputConfig:
     return BackgroundInputConfig(
         rate=rate,
-        weight=WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit="PSC"),
+        weight=WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
 

@@ -20,6 +20,7 @@ from builders.pd14 import data
 from microcircuit_lab.builder_tools import (
     delay,
     num_synapses_from_conn_prob,
+    psp_to_psc_iaf_psc_exp,
     weight,
     write_network_directory,
 )
@@ -28,6 +29,18 @@ from microcircuit_lab.config.network import NetworkConfig
 
 def _neuron_type(population: str) -> str:
     return "excitatory" if population.endswith("_E") else "inhibitory"
+
+
+def _current(psp: float) -> float:
+    """The current amplitude (pA) of a PSP amplitude (mV): PD14 gives its
+    weights as PSPs, and NEST's iaf_psc_exp takes currents. All populations
+    have the same neuron, and one tau_syn for both signs."""
+    return psp_to_psc_iaf_psc_exp(
+        psp,
+        C_m=data.neuron_params["C_m"],
+        tau_m=data.neuron_params["tau_m"],
+        tau_syn=data.neuron_params["tau_syn"],
+    )
 
 
 def _build_populations() -> list[dict[str, Any]]:
@@ -82,7 +95,7 @@ def _build_connections() -> list[dict[str, Any]]:
                     "source": source,
                     "target": target,
                     "n_synapses": n_synapses,
-                    "weight": weight(weight_mean, unit="PSP", rel_std=data.weight_rel_std),
+                    "weight": weight(_current(weight_mean), unit="pA", rel_std=data.weight_rel_std),
                     "delay": delay(delay_mean, rel_std=data.delay_rel_std),
                 }
             )
@@ -94,7 +107,7 @@ def _build_background_inputs() -> dict[str, dict[str, Any]]:
     return {
         population: {
             "rate": data.bg_rate,
-            "weight": weight(data.PSP_exc_mean, unit="PSP"),
+            "weight": weight(_current(data.PSP_exc_mean), unit="pA"),
             "delay": delay(data.delay_poisson),
         }
         for population in data.populations

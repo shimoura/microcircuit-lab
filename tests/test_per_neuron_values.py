@@ -15,10 +15,9 @@ from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.scaling import ScalingConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.network.prepare import prepare_network
 
 
-def _network(C_m, weight_unit: str = "PSC") -> NetworkConfig:
+def _network(C_m) -> NetworkConfig:
     neuron = NeuronConfig(
         name="n",
         model="iaf_psc_exp",
@@ -41,7 +40,7 @@ def _network(C_m, weight_unit: str = "PSC") -> NetworkConfig:
         source="E",
         target="E",
         n_synapses=10,
-        weight=WeightDistribution(mean=0.1, rel_std=0.0, distribution="fixed", unit=weight_unit),
+        weight=WeightDistribution(mean=0.1, rel_std=0.0, distribution="fixed", unit="pA"),
         delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
     )
     return NetworkConfig(
@@ -77,9 +76,3 @@ def test_distribution_without_all_its_arguments_is_rejected() -> None:
     network = _network(C_m={"distribution": "normal", "mean": 250.0})
     with pytest.raises(ValueError, match=r"'normal' needs \['std'\]"):
         NestBackend(network, SimulationConfig(print_time=False)).build()
-
-
-def test_psp_weights_need_one_value_of_the_conversion_parameters() -> None:
-    network = _network(C_m={"distribution": "normal", "mean": 250.0, "std": 10.0}, weight_unit="PSP")
-    with pytest.raises(ValueError, match=r"\['C_m'\] are drawn per neuron"):
-        prepare_network(network)

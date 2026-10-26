@@ -19,7 +19,6 @@ from microcircuit_lab.network.compensation import (
     compensate_lost_mean_input,
     replace_background_by_mean_current,
 )
-from microcircuit_lab.network.psp_psc_conversion import convert_network_psp_to_psc
 from microcircuit_lab.network.scaling import (
     scale_neuron_number,
     scale_rule_number,
@@ -33,16 +32,14 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
 
     The steps, in order:
 
-    1. convert ``unit: PSP`` weights (mV) to currents (pA), with each target
-       population's own neuron parameters;
-    2. if ``scaling`` asks for it: scale the neuron numbers (``N_scaling``),
+    1. if ``scaling`` asks for it: scale the neuron numbers (``N_scaling``),
        the indegrees (``K_scaling``) and the weights, then add the DC current
-       that compensates the mean input lost by scaling (for current weights,
-       PSP or PSC, on the default receptor port: the only input whose mean
-       current is known);
-    3. turn each population's background rate per synapse into the rate of
+       that compensates the mean input lost by scaling (for weights in pA on
+       the default receptor port: the only input whose mean current is
+       known);
+    2. turn each population's background rate per synapse into the rate of
        its Poisson generator (rate x indegree);
-    4. with ``background_mode: mean_current``, replace the background input by a
+    3. with ``background_mode: mean_current``, replace the background input by a
        constant current of the same mean.
 
     Parameters
@@ -54,11 +51,11 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
     Returns
     -------
     NetworkConfig
-        A new network description with currents in pA, scaled sizes and
-        indegrees, and the compensation currents added to ``I_e``.
+        A new network description with scaled sizes, indegrees and weights,
+        and the compensation currents added to ``I_e``.
     """
 
-    network = convert_network_psp_to_psc(config.model_copy(deep=True))
+    network = config.model_copy(deep=True)
 
     if network.scaling.is_scaled:
         network = _scale_neuron_numbers(network)

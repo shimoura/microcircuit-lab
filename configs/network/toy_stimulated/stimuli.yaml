@@ -13,7 +13,7 @@ stimuli:
     rate: 1000.0           # spikes/s
     start: 200.0
     stop: 400.0
-    weight: {mean: 0.15, rel_std: 0.0, distribution: fixed, unit: PSP}
+    weight: {mean: 87.80849352920843, rel_std: 0.0, distribution: fixed, unit: pA}  # a 0.15 mV PSP
     delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
 
   # Same DC pulse as on E, but targeting the aeif_cond_exp population:

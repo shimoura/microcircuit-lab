@@ -186,7 +186,7 @@ stimuli:
     rate: 50.0               # spikes/s
     start: 200.0
     stop: 400.0
-    weight: {mean: 0.15, rel_std: 0.0, distribution: fixed, unit: PSP}
+    weight: {mean: 87.8, rel_std: 0.0, distribution: fixed, unit: pA}
     delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
 ```
 
@@ -199,31 +199,32 @@ stimuli:
 
 `background_inputs.yaml` is the always-on Poisson input of each population (rate per synapse × `background_indegree`).
 
-- **`background_mode: mean_current`** (at the top of the file) replaces that Poisson input by its mean, a constant current: the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs current weights (`PSP` or `PSC`) on the default receptor port. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current`.
+- **`background_mode: mean_current`** (at the top of the file) replaces that Poisson input by its mean, a constant current: the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background-mode mean_current`.
 - **A constant current of your own** is not a background mode; it adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
 - **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `background_indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
 ### Weights and delays
 
-Every `weight` needs a `unit` (there is no default, so a wrong conversion can't happen silently):
+A weight's `mean` is what the simulator gets, and its `unit` (required) says what it is. Nothing is converted:
 
-| `unit` | Meaning |
-|---|---|
-| `PSP` | PSP amplitude in mV, converted to pA with the target's `C_m`, `tau_m`, `tau_syn_ex`, `tau_syn_in`. Correct for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants) only. |
-| `PSC` | current amplitude in pA, used as given |
-| `native` | used as given, e.g. nS for a conductance-based model |
+| `unit` | Meaning | Example model |
+|---|---|---|
+| `pA` | a current | `iaf_psc_exp` |
+| `nS` | a conductance | `aeif_cond_exp` |
+| `mV` | a jump of the membrane potential | `iaf_psc_delta` |
 
-A model with the same dynamics but other parameter names can still use `PSP`, by mapping the names in its `neurons.yaml` entry:
+NEST can't check the unit; Brian2 checks it against the variable the weight adds to. A model that gives its weights as PSP amplitudes converts them in its builder, with the target's neuron parameters:
 
-```yaml
-neurons:
-  my_model:
-    model: some_custom_model_name
-    parameters: {Cm: 250.0, tau_membrane: 10.0, tau_exc: 2.0, tau_inh: 2.0}
-    psp_conversion_aliases: {C_m: Cm, tau_m: tau_membrane, tau_syn_ex: tau_exc, tau_syn_in: tau_inh}
+```python
+from microcircuit_lab.builder_tools import psp_to_psc_iaf_psc_exp, weight
+
+current = psp_to_psc_iaf_psc_exp(0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5)   # 87.8 pA
+weight(current, unit="pA", rel_std=0.1)
 ```
 
-- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the PSP conversion and the scaling compensation use that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
+The formula holds for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants); use `tau_syn_in` for an inhibitory weight. Keep the PSP in a comment next to the value if you write the file by hand, as `configs/network/toy/` does.
+
+- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit, as HuMAM does. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
 - **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
 - **Distributions.** A weight or delay is drawn from `normal` (default), `uniform`, `lognormal` or `fixed`, with its `mean` and `rel_std`, on every simulator. Any other name is a distribution of your own, with `parameters`, for the weights and delays of connections; for now Brian2 only (see [Distributions of your own](#distributions-of-your-own)).
 
@@ -261,8 +262,8 @@ connections:
 
 - A pair can have one entry per synapse, as above.
 - A port can also be given by name (`receptor_port: AMPA`), which the simulator resolves: NEST looks it up in the `receptor_types` of the target's neuron model (e.g. `ht_neuron`), Brian2 takes it as the variable the connection adds to.
-- The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). On another port, weights must be `PSC` or `native`. The input lost by scaling is compensated only for current weights (`PSP`, `PSC`) on the default port, not for `native` weights (e.g. conductances) or other ports; a warning lists those connections. A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
-- With a plastic synapse, the PSP conversion and the scaling compensation use the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a `PSP` weight is the amplitude at u·x = 1: with U = 0.5 the first spike gives half of it.
+- The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). The input lost by scaling is compensated only for weights in pA on the default port, not for other units (e.g. conductances) or other ports; a warning lists those connections. A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
+- With a plastic synapse, the scaling compensation uses the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a weight converted from a PSP gives that PSP at u·x = 1: with U = 0.5 the first spike gives half of it.
 - A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
 
 ### Large files
@@ -346,7 +347,7 @@ write_network_directory(
     populations=[...],
     neurons={...},
     connections=[{"source": "E", "target": "I", "n_synapses": 5000,
-                  "weight": weight(0.15, unit="PSP", rel_std=0.1),
+                  "weight": weight(87.8, unit="pA", rel_std=0.1),
                   "delay": delay(1.5, rel_std=0.5)}, ...],
     background_inputs={...},
 )
@@ -557,7 +558,7 @@ mpirun -n 4 microcircuit-lab run --network pd14
    generate_nest_target(input_path="extensions/nestml/my_lif.nestml",
                         target_path="extensions/nestml/build/my_module", module_name="my_module")
    ```
-2. Use it in `neurons.yaml` like any model, by the name NESTML gives it (e.g. `my_lif_nestml`). With `unit: PSP` and other parameter names, add `psp_conversion_aliases` (see [Weights and delays](#weights-and-delays)).
+2. Use it in `neurons.yaml` like any model, by the name NESTML gives it (e.g. `my_lif_nestml`), with weights in the unit of the variable they add to (see [Weights and delays](#weights-and-delays)).
 3. Load the module when running:
    ```python
    simulation = Simulation.from_yaml(
@@ -677,10 +678,10 @@ decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index
 ```yaml
 # connectivity.yaml
 - {source: E, target: E, rule: fixed_indegree, indegree: 100,
-   weight: {mean: 87.8, rel_std: 0, unit: PSC, distribution: decay, parameters: {length: 20}}, delay: {...}}
+   weight: {mean: 87.8, rel_std: 0, unit: pA, distribution: decay, parameters: {length: 20}}, delay: {...}}
 ```
 
-- `mean` is still required: its sign says whether the weight is excitatory or inhibitory, and the PSP conversion scales it (the expression then gets the converted `mean`).
+- `mean` is still required: its sign says whether the weight is excitatory or inhibitory, and the expression gets it.
 - A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
 - A scaled network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 

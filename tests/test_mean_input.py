@@ -11,9 +11,6 @@ from microcircuit_lab.network.mean_input import (
     network_mean_input,
 )
 from microcircuit_lab.network.prepare import prepare_network
-from microcircuit_lab.network.psp_psc_conversion import (
-    psp_to_psc_iaf_psc_exp,
-)
 
 
 def _load_toy():
@@ -30,22 +27,13 @@ def _load_toy():
     )
 
 
-def _expected_first_weight_psc(network: NetworkConfig, *, linear: bool) -> float:
-    """The PSC a network's own neuron parameters and first connection's
-    PSP amplitude convert to, scaled the same way prepare_network
+def _expected_first_weight(network: NetworkConfig, *, linear: bool) -> float:
+    """The first connection's weight, scaled the same way prepare_network
     would (linear w -> w/K, or sqrt-preserving w -> w/sqrt(K))."""
 
-    first = network.connections.to_yaml_rows()[0]
-    target_params = network.populations[first["target"]].neuron.parameters
-
-    psc = psp_to_psc_iaf_psc_exp(
-        psp=first["weight"]["mean"],
-        C_m=target_params.C_m,
-        tau_m=target_params.tau_m,
-        tau_syn=target_params.tau_syn_ex,
-    )
+    weight = network.connections["weight.mean"][0]
     K_scaling = network.scaling.K_scaling
-    return psc / K_scaling if linear else psc / math.sqrt(K_scaling)
+    return weight / K_scaling if linear else weight / math.sqrt(K_scaling)
 
 
 def test_network_mean_input_manual():
@@ -72,7 +60,7 @@ def test_weight_scaling():
 
     derived = prepare_network(network_config)
 
-    expected = _expected_first_weight_psc(network_config, linear=False)
+    expected = _expected_first_weight(network_config, linear=False)
 
     assert derived.connections["weight.mean"][0] == pytest.approx(expected)
 
@@ -146,7 +134,7 @@ def test_preserve_variance_false_uses_linear_weight_scaling():
 
     derived = prepare_network(network)
 
-    expected = _expected_first_weight_psc(network, linear=True)  # linear, not sqrt
+    expected = _expected_first_weight(network, linear=True)  # linear, not sqrt
 
     assert derived.connections["weight.mean"][0] == pytest.approx(expected)
 
@@ -195,5 +183,5 @@ def test_preserve_mean_input_false_disables_dc_compensation():
         assert pop.neuron.parameters.I_e == pytest.approx(0.0)
 
     # weight scaling itself is untouched by preserve_mean_input -- still sqrt
-    expected = _expected_first_weight_psc(network, linear=False)
+    expected = _expected_first_weight(network, linear=False)
     assert derived.connections["weight.mean"][0] == pytest.approx(expected)

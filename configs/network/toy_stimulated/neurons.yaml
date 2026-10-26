@@ -38,8 +38,8 @@ neurons:
   # Second neuron model, to exercise NeuronParams' open-ended parameter
   # set: aeif_cond_exp (adaptive exponential integrate-and-fire,
   # conductance-based) takes a completely different parameter set from
-  # iaf_psc_exp above, with no PSP-to-PSC conversion available, so its
-  # connections/background_inputs must use weight.unit: native (see
+  # iaf_psc_exp above, and its connections/background_inputs give
+  # conductances, weight.unit: nS (see
   # connectivity.yaml, background_inputs.yaml). Parameter values are the
   # regular-spiking configuration from Brette & Gerstner (2005).
   adex_excitatory:

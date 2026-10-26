@@ -85,8 +85,7 @@ neurons:
     # required · parameters passed to that model as-is; keys are model-specific and the
     #   backend validates them (I_e is passed only when set); a value is a number, a
     #   list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a
-    #   distribution drawn per neuron like in initial_state (I_e and the parameters a
-    #   PSP weight is converted with must be numbers)
+    #   distribution drawn per neuron like in initial_state (I_e must be a number)
     parameters:
       C_m: 250.0
       tau_m: 10.0
@@ -96,9 +95,6 @@ neurons:
       V_th: -50.0
       V_reset: -65.0
       t_ref: 2.0
-    # optional, default empty · mapping · only for `unit: PSP` connections whose neuron
-    #   names C_m/tau_m/tau_syn_ex/tau_syn_in differently, e.g. {C_m: cm}
-    psp_conversion_aliases: {}
 ```
 
 ### synapses.yaml
@@ -178,9 +174,9 @@ connections:
       # optional · mapping · only for a project distribution: the values its expression
       #   uses, e.g. {length: 20}
       parameters:
-      # required · one of PSC | PSP | native · PSP: mV, converted to pA; PSC: pA, used
-      #   as given; native: used as given (e.g. nS)
-      unit: PSP
+      # required · one of pA | nS | mV · the unit of the weight: pA (a current), nS (a
+      #   conductance) or mV (a jump of the membrane potential); nothing is converted
+      unit: pA
     # required · delay of each synapse
     delay:
       # required · number > 0 · mean delay (ms)
@@ -218,7 +214,7 @@ background_inputs:
     # required · number ≥ 0 · background Poisson rate per connection (spikes/s)
     rate: 8.0
     # required · weight of each background connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
+    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each background connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
@@ -271,7 +267,7 @@ stimuli:
     # required · number ≥ 0 · spike rate (spikes/s)
     rate: 50.0
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
+    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
@@ -292,7 +288,7 @@ stimuli:
     #   (spikes/s), one per time
     rate_values: [20.0, 0.0]
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: PSP}   # all fields as in connectivity.yaml
+    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
     delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse

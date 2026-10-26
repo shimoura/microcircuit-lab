@@ -3,7 +3,6 @@
 ``load.py`` reads and checks the files and ``prepare.py`` gets the network
 ready for the simulation, in these steps:
 
-- ``psp_psc_conversion.py``: PSP weights (mV) to currents (pA);
 - ``scaling.py``: fewer neurons and synapses, rescaled weights;
 - ``compensation.py``: constant currents for the mean input that scaling or
   ``background_mode: mean_current`` remove;

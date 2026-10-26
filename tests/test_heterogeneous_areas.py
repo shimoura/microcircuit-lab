@@ -80,9 +80,10 @@ def test_a_single_area_network_has_no_areas():
     assert list_areas(simulation) == []
 
 
-def test_psp_weights_are_converted_with_each_target_neuron():
+def test_weights_follow_each_target_neuron():
     """A__L23_PV and A__L5_PV use different neuron entries that differ only
-    in C_m, so the same PSP gives PSCs in the ratio of their capacitances."""
+    in C_m, so the builder writes the same PSP as currents in the ratio of
+    their capacitances."""
     network = prepare_network(_config())
     psc = {
         connection["target"]: connection["weight"]["mean"]

@@ -14,8 +14,8 @@ neuron entries and connection probabilities of ``toy_two_areas`` (see
   (``tsodyks2_synapse``), with lognormal delays.
 * **Receptor ports:** ``B__L23_E`` gets a neuron with three ports, one per kind
   of input (excitatory, inhibitory, from the other area), each with its own
-  time constant. Its weights are written in pA (``unit: PSC``): the core
-  converts PSP weights only for the default port.
+  time constant. Its PSPs are converted to currents with the time constant
+  of their port.
 
 The rates differ from ``toy_two_areas``. No ``scaling.yaml`` is written (it
 runs at full scale) and no reference rates, so a scaled copy of this network
@@ -33,6 +33,7 @@ from builders.toy_two_areas.build import (
     build_neurons,
     build_populations,
     connection_probability,
+    current,
     delay_mean,
     population_name,
 )
@@ -111,13 +112,13 @@ def weight_onto_port(psp: float, port: str, rel_std: float = 0.0) -> dict[str, A
     """A weight onto data.RECEPTOR_PORT_POPULATION, converted here from a PSP
     (mV) to a current (pA) with the time constant of that port."""
     parameters = {**data.BASE_NEURON, **data.NEURONS[data.RECEPTOR_PORT_NEURON]}
-    current = psp_to_psc_iaf_psc_exp(
+    amplitude = psp_to_psc_iaf_psc_exp(
         psp,
         C_m=parameters["C_m"],
         tau_m=parameters["tau_m"],
         tau_syn=data.RECEPTOR_PORT_TAU_SYN[port],
     )
-    return weight(current, unit="PSC", rel_std=rel_std)
+    return weight(amplitude, unit="pA", rel_std=rel_std)
 
 
 def connections() -> list[dict[str, Any]]:
@@ -158,7 +159,7 @@ def connections() -> list[dict[str, Any]]:
                 row["synapse"] = SYNAPSE_OF_PORT[port]
                 row["weight"] = weight_onto_port(psp, port, rel_std=data.WEIGHT_REL_STD)
             else:
-                row["weight"] = weight(psp, unit="PSP", rel_std=data.WEIGHT_REL_STD)
+                row["weight"] = weight(current(psp, target[4]), unit="pA", rel_std=data.WEIGHT_REL_STD)
 
             row["delay"] = delay(
                 delay_mean(source, target),

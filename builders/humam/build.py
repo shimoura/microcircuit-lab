@@ -227,7 +227,7 @@ def _build_connections(
                         "mean": mean_psc,
                         "rel_std": abs(sd_psc / mean_psc),
                         "distribution": "normal",
-                        "unit": "PSC",
+                        "unit": "pA",
                     },
                     "delay": {
                         "mean": delay_mean,
@@ -365,7 +365,7 @@ def _build_background_inputs(
                 "mean": ext_mean_psc,
                 "rel_std": abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0,
                 "distribution": "normal",
-                "unit": "PSC",
+                "unit": "pA",
             },
             "delay": {
                 "mean": RESOLUTION,

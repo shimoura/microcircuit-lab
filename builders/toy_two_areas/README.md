@@ -100,7 +100,7 @@ All are `iaf_psc_exp`; the base neuron is that of PD14.
 
 - **Within an area:** a probability per source type and target type (PV inhibits E and PV, SOM all but SOM, VIP mostly SOM), times 1 within a layer and 0.2 between layers.
 - **Between areas:** only E cells project, onto E and PV cells of every layer of the other area, with probability 0.02 and a delay of distance / conduction speed (20 mm at 3.5 mm/ms).
-- **Weights:** PSPs of 0.5 mV (E) and −1 mV (PV, SOM, VIP), 10 % spread; delays 1.5 ms (E) and 0.75 ms (inhibitory), 50 % spread.
+- **Weights:** PSPs of 0.5 mV (E) and −1 mV (PV, SOM, VIP), 10 % spread, written as the currents (pA) that give them with each target's neuron (`current()` in `build.py`); delays 1.5 ms (E) and 0.75 ms (inhibitory), 50 % spread.
 - **Background:** Poisson input at 8 spikes/s per synapse, with an indegree per cell type tuned so every population fires at about 3–16 spikes/s.
 
 The reference rates in `reference.yaml` are the mean of four 2 s runs of this network; they are needed for the DC compensation when the network is scaled.
@@ -114,7 +114,7 @@ The reference rates in `reference.yaml` are the mean of four 2 s runs of this ne
 | Values drawn per neuron | `neurons.yaml`, `populations.yaml` | each neuron's `V_th` (normal, 1 mV spread); starting `V_m` uniform between `V_reset` and `V_th` |
 | Connection rules | `connectivity.yaml` | `pairwise_bernoulli` with the probability within an area (no neuron connected to itself); `fixed_indegree` between areas |
 | Synapse models | `synapses.yaml` | between areas, a depressing `tsodyks2_synapse`, with lognormal delays |
-| Receptor ports | `synapses.yaml`, `neurons.yaml` | `B__L23_E` is an `iaf_psc_exp_multisynapse` neuron with a port for excitatory (2 ms), inhibitory (4 ms) and input from the other area (20 ms, depressing); its weights are in pA, since PSP weights are converted for the default port only, and its background input names a port too |
+| Receptor ports | `synapses.yaml`, `neurons.yaml` | `B__L23_E` is an `iaf_psc_exp_multisynapse` neuron with a port for excitatory (2 ms), inhibitory (4 ms) and input from the other area (20 ms, depressing); its PSPs are converted with the time constant of their port, and its background input names a port too |
 
 Its rates differ from those above. It has no `scaling.yaml` (it runs at full scale) and no reference rates, so a scaled copy needs `compensate_recurrent_input: false` in its `scaling.yaml`.
 

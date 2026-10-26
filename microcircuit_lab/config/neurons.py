@@ -13,6 +13,7 @@ from pydantic import (
     StrictFloat,
     StrictInt,
     model_serializer,
+    model_validator,
 )
 
 from microcircuit_lab.config.distributions import PerNeuronValue
@@ -75,7 +76,7 @@ class NeuronParams(BaseModel):
         Return the named parameters, or raise an error if any is missing or
         drawn per neuron.
 
-        Code that needs specific parameters (the PSP-to-PSC conversion, for
+        Code that needs specific parameters (the scaling's compensation, for
         example) uses this to check that they are present.
         """
 
@@ -87,7 +88,7 @@ class NeuronParams(BaseModel):
         if drawn:
             raise ValueError(
                 f"Neuron parameters {drawn} are drawn per neuron; this needs one value "
-                "for the whole population (e.g. the PSP-to-PSC conversion)."
+                "for the whole population (e.g. the scaling's compensation)."
             )
         return {name: values[name] for name in names}
 
@@ -107,14 +108,18 @@ class NeuronEntry(FrozenConfig):
         description="parameters passed to that model as-is; keys are "
         "model-specific and the backend validates them (I_e is passed only when set); a value is a "
         "number, a list of numbers (e.g. tau_syn: [0.5, 5.0], one per receptor port), or a "
-        "distribution drawn per neuron like in initial_state "
-        "(I_e and the parameters a PSP weight is converted with must be numbers)"
+        "distribution drawn per neuron like in initial_state (I_e must be a number)"
     )
-    psp_conversion_aliases: dict[str, str] = Field(
-        default_factory=dict,
-        description="only for `unit: PSP` connections whose neuron names "
-        "C_m/tau_m/tau_syn_ex/tau_syn_in differently, e.g. {C_m: cm}",
-    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_psp_conversion_aliases(cls, data):
+        if isinstance(data, dict) and "psp_conversion_aliases" in data:
+            raise ValueError(
+                "psp_conversion_aliases was removed with unit: PSP: the builder converts PSPs "
+                "(e.g. builder_tools.psp_to_psc_iaf_psc_exp) and writes the weights in pA"
+            )
+        return data
 
 
 class NeuronsFile(FrozenConfig):
@@ -128,15 +133,8 @@ class NeuronsFile(FrozenConfig):
 class NeuronConfig(FrozenConfig):
     """
     A neuron model: its name, the simulator's model name and its parameters.
-
-    ``psp_conversion_aliases`` matters only for connections with ``unit: PSP``.
-    It maps a name the conversion needs (``C_m``, ``tau_m``, ``tau_syn_ex``,
-    ``tau_syn_in``) to what ``parameters`` calls it, for a model that names them
-    differently. If empty, ``parameters`` uses those names. See
-    ``network.psp_psc_conversion.convert_psp_to_psc``.
     """
 
     name: str
     model: str
     parameters: NeuronParams
-    psp_conversion_aliases: dict[str, str] = Field(default_factory=dict)

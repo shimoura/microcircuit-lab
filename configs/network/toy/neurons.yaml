@@ -4,11 +4,9 @@
 # takes different ones, and the backend (not this framework) is what
 # rejects an unknown parameter name. `I_e` (constant bias current, pA) is
 # the one parameter the framework reads back, since network scaling adds
-# DC compensation to it; it defaults to 0.0 if omitted.
+# DC compensation to it; if omitted, it is not passed to the model.
 #
-# `psp_conversion_aliases` (optional, default: {}) is omitted here -- it is
-# only needed for `unit: PSP` connections on a model that names C_m/tau_m/
-# tau_syn_ex/tau_syn_in differently. All fields: the core's docs/config_files.md.
+# All fields: the core's docs/config_files.md.
 neurons:
   excitatory:
     model: iaf_psc_exp

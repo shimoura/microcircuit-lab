@@ -73,10 +73,10 @@ def _units(dim, what: str) -> tuple[str, str]:
 
 
 @functools.cache
-def _variable_names(equations: str) -> set[str]:
-    """The variables of a model's equations (parsed once per text: a port name
-    is looked up for every connection onto the model)."""
-    return b2.Equations(equations).names
+def _equations(text: str) -> b2.Equations:
+    """A model's equations, parsed once per text: they are looked up for every
+    connection onto the model."""
+    return b2.Equations(text)
 
 
 def _by_port(parameters: dict) -> dict:
@@ -233,8 +233,9 @@ class Brian2Backend:
         Find the project's models, connection rules and distributions, and
         raise if a population, a ``synapses.yaml`` entry or a connection names
         one that is not defined, if a distribution's ``redraw_rounds`` is
-        needed but not set, or if a project rule with several synapses per
-        pair is used without multapses.
+        needed but not set, if a project rule with several synapses per
+        pair is used without multapses, or if a weight's ``unit`` is not that
+        of the variable it adds to.
         """
 
         found = models.load_models(self._extensions)
@@ -276,12 +277,31 @@ class Brian2Backend:
                     "per pair, which allow_multapses: false does not allow."
                 )
 
-        # A port name must be a variable of each target's model: once per pair.
-        named = {name for name in self._network.synapses if isinstance(self._network.receptor_port(name), str)}
-        if named:
-            for target, synapse in set(zip(table["target"].tolist(), table["synapse"].tolist())):
-                if synapse in named:
-                    self._target_variable(target, synapse, 0.0)
+        # A weight's unit must be that of the variable it adds to (which also
+        # checks that a port name is a variable of the target's model): once
+        # per target, synapse, sign and unit.
+        users = {}
+        columns = (table["target"].tolist(), table["synapse"].tolist(),
+                   (table["weight.mean"] >= 0).tolist(), table["weight.unit"].tolist())
+        for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
+            users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
+        for name, background in self._network.background_inputs.items():
+            if self._poisson_background(name) is not None:
+                key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
+                users.setdefault(key, f"background input of {name!r}")
+        for stimulus in self._network.stimuli:
+            if not isinstance(stimulus, DcStimulusConfig):
+                for target in stimulus.targets:
+                    key = (target, stimulus.synapse, stimulus.weight.mean >= 0, stimulus.weight.unit)
+                    users.setdefault(key, f"stimulus onto {target!r}")
+        for (target, synapse, positive, unit), user in users.items():
+            variable = self._target_variable(target, synapse, 1.0 if positive else -1.0)
+            expected = self._weight_units(target, variable)[1]
+            if unit != expected:
+                raise ValueError(
+                    f"{user}: the weight is in {unit}, but it adds to {variable!r} of the Brian2 model "
+                    f"{self.neuron_model(target).name!r}, which is in {expected}."
+                )
         self._checked = True
 
     def build(self) -> None:
@@ -469,7 +489,7 @@ class Brian2Backend:
         model = self.neuron_model(target)
         port = self._network.receptor_port(synapse)
         if isinstance(port, str):
-            names = _variable_names(self._equations_text(target))
+            names = _equations(self._equations_text(target)).names
             if port not in names:
                 raise ValueError(
                     f"Synapse {synapse!r} sets receptor_port {port!r}, but the Brian2 model "
@@ -495,9 +515,10 @@ class Brian2Backend:
 
     def _weight_units(self, target: str, variable: str) -> tuple[str, str]:
         """The units of the weights onto ``variable`` of ``target``: its name in
-        equations and NEST's unit (pA for a current, nS for a conductance)."""
+        equations and the package's unit (pA for a current, nS for a
+        conductance, mV for a voltage)."""
 
-        equations = self._group_of[target].equations
+        equations = _equations(self._equations_text(target))
         if variable not in equations.names:
             raise ValueError(
                 f"The Brian2 model {self.neuron_model(target).name!r} of {target!r} has no "

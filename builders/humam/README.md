@@ -28,7 +28,7 @@ Generation only writes portable configuration files. Run them separately with `m
 
 The builder reproduces how HuMAM `main` ([INM-6/human-multi-area-model](https://github.com/INM-6/human-multi-area-model), commit `cab39b3`, `src/simulation.py`, `src/default_sim_params.py`) builds the network:
 
-- weights are written in pA (`unit: PSC`), as in the bundled data; normal, and clipped at 0 keeping their sign (`bound_mode: clip`);
+- weights are written in pA (`unit: pA`), as in the bundled data; normal, and clipped at 0 keeping their sign (`bound_mode: clip`);
 - delays follow `delay_distribution` in `data/net.yaml` (lognormal), clipped at a minimum of the resolution (0.1 ms), locally and between areas;
 - the background input has a fixed delay of the resolution;
 - initial membrane potentials are drawn from a normal with mean −150 mV and SD 50 mV;

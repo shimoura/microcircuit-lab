@@ -2,10 +2,10 @@ background_inputs:
   A__L23_E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -13,10 +13,10 @@ background_inputs:
   A__L23_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 38.74648995044652
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -24,10 +24,10 @@ background_inputs:
   A__L23_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -35,10 +35,10 @@ background_inputs:
   A__L4_E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -46,10 +46,10 @@ background_inputs:
   A__L4_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 38.74648995044652
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -57,10 +57,10 @@ background_inputs:
   A__L4_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -68,10 +68,10 @@ background_inputs:
   A__L5_E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -79,10 +79,10 @@ background_inputs:
   A__L5_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 58.119734925669775
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -90,10 +90,10 @@ background_inputs:
   A__L5_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -101,10 +101,10 @@ background_inputs:
   A__L6_E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 87.80849352920843
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -112,10 +112,10 @@ background_inputs:
   A__L6_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 58.119734925669775
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -123,10 +123,10 @@ background_inputs:
   A__L6_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -137,7 +137,7 @@ background_inputs:
       mean: 28.03778964789788
       rel_std: 0.0
       distribution: fixed
-      unit: PSC
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -146,10 +146,10 @@ background_inputs:
   B__L23_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 38.74648995044652
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -157,10 +157,10 @@ background_inputs:
   B__L23_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -168,10 +168,10 @@ background_inputs:
   B__L23_VIP:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 51.66800562633238
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -179,10 +179,10 @@ background_inputs:
   B__L5_E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 103.33601125266476
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -190,10 +190,10 @@ background_inputs:
   B__L5_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 38.74648995044652
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -201,10 +201,10 @@ background_inputs:
   B__L5_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -212,10 +212,10 @@ background_inputs:
   B__L5_VIP:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 51.66800562633238
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -223,10 +223,10 @@ background_inputs:
   B__L6_E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 103.33601125266476
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -234,10 +234,10 @@ background_inputs:
   B__L6_PV:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 38.74648995044652
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -245,10 +245,10 @@ background_inputs:
   B__L6_SOM:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 67.46623365417616
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -256,10 +256,10 @@ background_inputs:
   B__L6_VIP:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 51.66800562633238
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0

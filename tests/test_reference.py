@@ -130,8 +130,5 @@ def test_background_weights():
 
     assert weights.shape == (len(network.populations),)
 
-    #
-    # Before PSP->PSC conversion these are biological PSP amplitudes.
-    #
     expected = [network.background_inputs[name].weight.mean for name in network.populations]
     assert np.allclose(weights, expected)

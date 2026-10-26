@@ -30,7 +30,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import delay, psp_to_psc_iaf_psc_exp, weight, write_network_directory
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -72,26 +72,32 @@ def main(argv: list[str] | None = None) -> None:
         },
     }
 
+    # The weights are written as the simulator gets them: currents in pA for
+    # iaf_psc_exp. This model gives them as PSP amplitudes (mV), so they are
+    # converted with the neuron's parameters (tau_syn_in for inhibition).
+    lif = neurons["lif"]["parameters"]
+    w_exc = psp_to_psc_iaf_psc_exp(0.15, C_m=lif["C_m"], tau_m=lif["tau_m"], tau_syn=lif["tau_syn_ex"])
+    w_inh = psp_to_psc_iaf_psc_exp(-0.6, C_m=lif["C_m"], tau_m=lif["tau_m"], tau_syn=lif["tau_syn_in"])
+
     # connectivity.yaml: one entry per connection. n_synapses is the total for
-    # the connection (indegree * target size). The weight unit is "PSP" (mV,
-    # converted to pA), "PSC" (pA) or "native"; delay is in ms. rel_std sets the
-    # spread: 0 gives one fixed value, above 0 a normal distribution; pass
-    # distribution= for another one.
+    # the connection (indegree * target size). The weight unit is "pA", "nS"
+    # or "mV"; delay is in ms. rel_std sets the spread: 0 gives one fixed
+    # value, above 0 a normal distribution; pass distribution= for another one.
     connections = [
         {"source": "E", "target": "E", "n_synapses": 64000,
-         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+         "weight": weight(w_exc, unit="pA", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
         {"source": "E", "target": "I", "n_synapses": 16000,
-         "weight": weight(0.15, unit="PSP", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
+         "weight": weight(w_exc, unit="pA", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
         {"source": "I", "target": "E", "n_synapses": 16000,
-         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+         "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
         {"source": "I", "target": "I", "n_synapses": 4000,
-         "weight": weight(-0.6, unit="PSP", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+         "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
     ]
 
     # background_inputs.yaml: population name -> its always-on Poisson input.
     background_inputs = {
-        "E": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
-        "I": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)},
+        "E": {"rate": 8.0, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
+        "I": {"rate": 8.0, "weight": weight(w_exc, unit="pA"), "delay": delay(1.5)},
     }
 
     write_network_directory(

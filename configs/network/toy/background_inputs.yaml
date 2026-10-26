@@ -8,10 +8,10 @@ background_inputs:
   E:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 87.80849352920843  # a 0.15 mV PSP
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0
@@ -20,10 +20,10 @@ background_inputs:
   I:
     rate: 8.0
     weight:
-      mean: 0.15
+      mean: 87.80849352920843  # a 0.15 mV PSP
       rel_std: 0.0
       distribution: fixed
-      unit: PSP
+      unit: pA
     delay:
       mean: 1.5
       rel_std: 0.0

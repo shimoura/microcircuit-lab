@@ -16,6 +16,7 @@ from builders.toy_two_areas import data
 from microcircuit_lab.builder_tools import (
     delay,
     num_synapses_from_conn_prob,
+    psp_to_psc_iaf_psc_exp,
     weight,
     write_network_directory,
 )
@@ -46,6 +47,19 @@ def build_neurons() -> dict[str, dict[str, Any]]:
         name: {"model": data.NEURON_MODEL, "parameters": {**data.BASE_NEURON, **changes}}
         for name, changes in data.NEURONS.items()
     }
+
+
+def current(psp: float, neuron: str) -> float:
+    """The current amplitude (pA) of a PSP amplitude (mV) onto the neuron entry
+    ``neuron``: the toy gives its weights as PSPs, and iaf_psc_exp takes
+    currents. Excitation uses tau_syn_ex, inhibition tau_syn_in."""
+    parameters = {**data.BASE_NEURON, **data.NEURONS[neuron]}
+    return psp_to_psc_iaf_psc_exp(
+        psp,
+        C_m=parameters["C_m"],
+        tau_m=parameters["tau_m"],
+        tau_syn=parameters["tau_syn_ex"] if psp >= 0 else parameters["tau_syn_in"],
+    )
 
 
 def connection_probability(source: tuple, target: tuple) -> float:
@@ -81,7 +95,7 @@ def build_connections() -> list[dict[str, Any]]:
                     "source": population_name(*source[:3]),
                     "target": population_name(*target[:3]),
                     "n_synapses": num_synapses_from_conn_prob(probability, source[3], target[3]),
-                    "weight": weight(data.PSP[source[2]], unit="PSP", rel_std=data.WEIGHT_REL_STD),
+                    "weight": weight(current(data.PSP[source[2]], target[4]), unit="pA", rel_std=data.WEIGHT_REL_STD),
                     "delay": delay(delay_mean(source, target), rel_std=data.DELAY_REL_STD),
                 }
             )
@@ -93,10 +107,10 @@ def build_background_inputs() -> dict[str, dict[str, Any]]:
     return {
         population_name(area, layer, cell_type): {
             "rate": data.BG_RATE,
-            "weight": weight(data.BG_PSP, unit="PSP"),
+            "weight": weight(current(data.BG_PSP, neuron), unit="pA"),
             "delay": delay(data.BG_DELAY),
         }
-        for area, layer, cell_type, _, _ in data.POPULATIONS
+        for area, layer, cell_type, _, neuron in data.POPULATIONS
     }
 
 

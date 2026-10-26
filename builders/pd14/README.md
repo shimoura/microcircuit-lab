@@ -28,4 +28,4 @@ The full network has 77,169 neurons and about 300 million synapses; building it 
 ## Files
 
 - `data.py`: the PD14 parameters, each with its source.
-- `build.py`: writes `configs/network/pd14/` from `data.py`; connection probabilities become synapse numbers with `num_synapses_from_conn_prob` from `microcircuit_lab.builder_tools`. `main(argv)` is the entry point `microcircuit-lab generate pd14` calls.
+- `build.py`: writes `configs/network/pd14/` from `data.py`; connection probabilities become synapse numbers with `num_synapses_from_conn_prob`, and the PSPs (mV) the currents (pA) that give them with `psp_to_psc_iaf_psc_exp`, both from `microcircuit_lab.builder_tools`. `main(argv)` is the entry point `microcircuit-lab generate pd14` calls.

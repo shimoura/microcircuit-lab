@@ -179,7 +179,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             name=name,
             model=entry.model,
             parameters=entry.parameters,
-            psp_conversion_aliases=entry.psp_conversion_aliases,
         )
         for name, entry in directory.neurons.neurons.items()
     }

@@ -36,13 +36,13 @@ def _parts(tmp_path: Path, **overrides):
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
             {"source": s, "target": t, "n_synapses": 20,
-             "weight": weight(0.15 if s == "E" else -0.6, unit="PSP", rel_std=0.1),
+             "weight": weight(87.8 if s == "E" else -351.2, unit="pA", rel_std=0.1),
              "delay": delay(1.5, rel_std=0.5)}
             for s in ("E", "I")
             for t in ("E", "I")
         ],
         background_inputs={
-            p: {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)}
+            p: {"rate": 8.0, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}
             for p in ("E", "I")
         },
     )

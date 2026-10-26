@@ -233,22 +233,11 @@ class NetworkConfig(FrozenConfig):
         table = self.connections
         synapse = table["synapse"]
         for name in sorted({s for s in synapse.tolist() if s is not None}):
-            uses = synapse == name
-            first = int(np.flatnonzero(uses)[0])
-            user = f"connection {table['source'][first]} -> {table['target'][first]}"
             if name not in self.synapses:
-                raise ValueError(
-                    f"The {user} uses synapse {name!r}, which is not defined in synapses.yaml."
-                )
-            psp = uses & (table["weight.unit"] == "PSP")
-            if self.synapses[name].receptor_port is not None and psp.any():
-                first = int(np.flatnonzero(psp)[0])
+                first = int(np.flatnonzero(synapse == name)[0])
                 user = f"connection {table['source'][first]} -> {table['target'][first]}"
                 raise ValueError(
-                    f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[name].receptor_port!r} (synapse {name!r}). "
-                    "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
-                    "default port only; give this weight as unit: PSC or native."
+                    f"The {user} uses synapse {name!r}, which is not defined in synapses.yaml."
                 )
 
         users = [(f"background input of {name}", b) for name, b in self.background_inputs.items()]
@@ -264,15 +253,6 @@ class NetworkConfig(FrozenConfig):
                 raise ValueError(
                     f"The {user} uses synapse {item.synapse!r}, which is not defined in "
                     "synapses.yaml."
-                )
-            # The PSP-to-PSC conversion uses tau_syn_ex/tau_syn_in, the time
-            # constants of the default port; another port has its own.
-            if self.synapses[item.synapse].receptor_port is not None and item.weight.unit == "PSP":
-                raise ValueError(
-                    f"The {user} has a unit: PSP weight on receptor port "
-                    f"{self.synapses[item.synapse].receptor_port!r} (synapse {item.synapse!r}). "
-                    "PSP weights are converted with tau_syn_ex/tau_syn_in, which describe the "
-                    "default port only; give this weight as unit: PSC or native."
                 )
         return self
 

@@ -82,8 +82,8 @@ def _recurrent_compensation(original: NetworkConfig) -> np.ndarray:
     unknown = [f"{s} -> {t}" for s, t in zip(table["source"][~known], table["target"][~known])]
     if unknown:
         logger.warning(
-            "The input lost by scaling is not compensated for %s: their weights are "
-            "native (e.g. conductances) or reach another receptor port than the default.",
+            "The input lost by scaling is not compensated for %s: their weights are not "
+            "currents in pA (e.g. conductances) or reach another receptor port than the default.",
             ", ".join(unknown),
         )
 
@@ -128,7 +128,7 @@ def _background_compensation(original: NetworkConfig) -> np.ndarray:
     if unknown:
         logger.warning(
             "The background input lost by scaling is not compensated for %s: its weight "
-            "is native (e.g. a conductance) or reaches another receptor port than the default.",
+            "is not a current in pA (e.g. a conductance) or reaches another receptor port than the default.",
             ", ".join(unknown),
         )
         PSC_ext = np.where(np.isin(pop_names, unknown), 0.0, PSC_ext)
@@ -165,8 +165,8 @@ def replace_background_by_mean_current(
     if unknown:
         raise ValueError(
             f"background_mode: mean_current needs the mean background current, which is only known "
-            f"for current weights (PSP or PSC) on the default receptor port; the background "
-            f"input of {unknown} is native or uses another port. Use background_mode: poisson."
+            f"for weights in pA on the default receptor port; the background input of {unknown} "
+            "has another unit or uses another port. Use background_mode: poisson."
         )
 
     K_ext = background_indegrees(original)
@@ -208,13 +208,13 @@ def _add_to_I_e(network: NetworkConfig, current: np.ndarray) -> NetworkConfig:
 def _mean_current_is_known(network: NetworkConfig, item) -> bool:
     """
     Whether the core knows the mean current of a connection, background input
-    or stimulus: its weight is a current (PSP, converted, or PSC) and it reaches
-    the default receptor port, whose synaptic time constants are tau_syn_ex
-    and tau_syn_in. A native weight (e.g. a conductance in nS) or another port
-    has no current the core can compute.
+    or stimulus: its weight is a current (pA) and it reaches the default
+    receptor port, whose synaptic time constants are tau_syn_ex and
+    tau_syn_in. Another unit (e.g. a conductance in nS) or another port has no
+    current the core can compute.
     """
 
-    return item.weight.unit != "native" and network.receptor_port(item.synapse) is None
+    return item.weight.unit == "pA" and network.receptor_port(item.synapse) is None
 
 
 def _connections_with_known_current(network: NetworkConfig) -> np.ndarray:
@@ -223,7 +223,7 @@ def _connections_with_known_current(network: NetworkConfig) -> np.ndarray:
     table = network.connections
     ports = {name: network.receptor_port(name) for name in set(table["synapse"].tolist())}
     default_port = np.asarray([ports[name] is None for name in table["synapse"]], dtype=bool)
-    return (table["weight.unit"] != "native") & default_port
+    return (table["weight.unit"] == "pA") & default_port
 
 
 def _background_without_known_current(network: NetworkConfig) -> list[str]:

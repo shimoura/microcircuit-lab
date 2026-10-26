@@ -46,17 +46,16 @@ What each field accepts: [config_files.md](config_files.md).
 ```mermaid
 %%{init: {"flowchart": {"rankSpacing": 28, "nodeSpacing": 15, "padding": 5}}}%%
 flowchart LR
-  U["mV → pA<br/><i>if unit: PSP</i>"]:::opt --> K["scale<br/><i>if scaling.yaml</i>"]:::opt --> D["DC for input lost<br/><i>if scaling.yaml</i>"]:::opt --> R["rate × indegree<br/><b>always</b>"] --> M["constant current<br/><i>if mean_current</i>"]:::opt
+  K["scale<br/><i>if scaling.yaml</i>"]:::opt --> D["DC for input lost<br/><i>if scaling.yaml</i>"]:::opt --> R["rate × indegree<br/><b>always</b>"] --> M["constant current<br/><i>if mean_current</i>"]:::opt
   classDef opt stroke-dasharray: 5 4,fill:#ffffff
 ```
 
-- **mV → pA:** a weight written as the size of a PSP becomes the current that gives it.
 - **scale:** fewer neurons and synapses, stronger weights.
 - **DC for input lost:** the mean input of the missing synapses, as a constant current.
 - **rate × indegree:** each population's background is one Poisson generator, firing at the rate per synapse times the number of synapses.
 - **constant current:** the background becomes its mean, a constant current.
 
-So with weights in pA (`unit: PSC`) and no `scaling.yaml`, everything is simulated as written, except that the background rate is multiplied by the indegree. To see the two ends:
+So without `scaling.yaml`, everything is simulated as written, except that the background rate is multiplied by the indegree. To see the two ends:
 
 ```python
 from microcircuit_lab.network.load import read_network, load_network
@@ -65,7 +64,7 @@ written = read_network("configs/network/pd14")    # as written
 prepared = load_network("configs/network/pd14")   # ready to simulate
 ```
 
-**Code:** `network/prepare.py` (the order), `network/psp_psc_conversion.py`, `network/scaling.py`, `network/compensation.py`
+**Code:** `network/prepare.py` (the order), `network/scaling.py`, `network/compensation.py`
 
 ## 3 · Simulate
 

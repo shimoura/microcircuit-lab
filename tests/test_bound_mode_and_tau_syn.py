@@ -63,7 +63,7 @@ def _network(
     )
 
 
-def _psc(mean: float, unit: str = "PSC") -> WeightDistribution:
+def _psc(mean: float, unit: str = "pA") -> WeightDistribution:
     return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
 
 
@@ -115,36 +115,6 @@ def test_compensation_is_unchanged_when_both_time_constants_are_equal() -> None:
     assert _compensation_into_E(TAU_SYN_EX) == pytest.approx(expected)
 
 
-def test_compensation_sign_rule_also_holds_for_weights_given_as_psp() -> None:
-    """A PSP weight keeps its sign when converted to a PSC, so an inhibitory
-    PSP is compensated with tau_syn_in just like an inhibitory PSC."""
-    from microcircuit_lab.network.psp_psc_conversion import psp_to_psc_iaf_psc_exp
-
-    tau_syn_in = 4.0
-    config = _network(
-        tau_syn_in=tau_syn_in,
-        connections=[
-            ConnectionConfig(source="I", target="E", n_synapses=1000, weight=_psc(-0.5, "PSP"), delay=_fixed_delay()),
-        ],
-        scaling=ScalingConfig(K_scaling=0.25),
-        reference=ReferenceConfig(full_mean_rates={"E": 4.0, "I": 8.0}),
-    )
-    config = config.model_copy(
-        update={
-            "background_inputs": {
-                name: BackgroundInputConfig(rate=0.0, weight=_psc(0.0), delay=_fixed_delay())
-                for name in ("E", "I")
-            }
-        }
-    )
-    psc = psp_to_psc_iaf_psc_exp(psp=-0.5, C_m=250.0, tau_m=10.0, tau_syn=tau_syn_in)
-    expected = 0.001 * (1.0 - np.sqrt(0.25)) * tau_syn_in * psc * 10.0 * 8.0
-
-    derived = prepare_network(config)
-
-    assert derived.populations["E"].neuron.parameters.I_e == pytest.approx(expected)
-
-
 def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitory_input() -> None:
     tau_syn_in = 4.0
     config = _network(
@@ -188,10 +158,10 @@ def _write(tmp_path: Path, **overrides) -> Path:
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
             {"source": "E", "target": "E", "n_synapses": 20,
-             "weight": weight(0.15, unit="PSP", rel_std=0.1),
+             "weight": weight(87.8, unit="pA", rel_std=0.1),
              "delay": delay(1.5, rel_std=0.5, minimum=0.1)},
         ],
-        background_inputs={"E": {"rate": 8.0, "weight": weight(0.15, unit="PSP"), "delay": delay(1.5)}},
+        background_inputs={"E": {"rate": 8.0, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}},
     )
     parts.update(overrides)
     write_network_directory(**parts)
@@ -232,7 +202,7 @@ def _draw_synapses(
     enough that many draws fall outside their range; return both lists."""
     import nest
 
-    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution=distribution, unit="PSC")
+    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution=distribution, unit="pA")
     wide_delay = DelayDistribution(mean=1.0, rel_std=rel_std, distribution=distribution, minimum=minimum)
     config = _network(
         tau_syn_in=TAU_SYN_EX,
