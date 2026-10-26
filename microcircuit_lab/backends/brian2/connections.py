@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 import brian2 as b2
 import numpy as np
+from brian2.utils.stringtools import word_substitute
 
 from microcircuit_lab.backends.brian2.models import ConnectionRule
 from microcircuit_lab.config.connectivity import RULE_NUMBER, SHARED_RULES
@@ -156,14 +157,18 @@ def _single(row: Row, n_source: int, prefix: str, rng) -> tuple[dict, dict, int]
 
     if row.definition is not None:
         rule = row.definition
-        condition = f"{in_source}{not_self} and ({rule.condition})"
+        # The parameters get the call's prefix, as the tables do, so that
+        # those of another row of the same Synapses never take their place.
+        names = {name: f"{prefix}{name}" for name in row.parameters}
+        condition = f"{in_source}{not_self} and ({word_substitute(rule.condition, names)})"
         if rule.p != "1":
-            condition += f" and rand() < ({rule.p})"
+            condition += f" and rand() < ({word_substitute(rule.p, names)})"
         arguments = {"j": f"k for k in range({t0}, {t0 + nt}) if {condition}"}
         if rule.n != "1":
-            arguments["n"] = rule.n
+            arguments["n"] = word_substitute(rule.n, names)
+        namespace = {names[name]: value for name, value in row.parameters.items()}
         # The count is known only once Brian2 has drawn the pairs: at most every pair.
-        return arguments, dict(row.parameters), ns * (nt - self_)
+        return arguments, namespace, ns * (nt - self_)
 
     if row.rule == "pairwise_bernoulli":
         p = min(float(row.number), 1.0)

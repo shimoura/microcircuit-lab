@@ -240,9 +240,9 @@ Each connection has a `rule` and the number that rule takes:
 | `one_to_one` | none | the k-th source neuron to the k-th target neuron (populations of the same size) |
 | `all_to_all` | none | every pair |
 
-These rules run on every simulator. Any other name is a rule of your own, with `parameters` instead of a number; for now Brian2 only (see [Connection rules of your own](#connection-rules-of-your-own)).
+These rules run on every simulator. Any other name, with `parameters` instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, parameters: {pairwise_avg_num_conns: 2}`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
 
-Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and a rule of your own. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
 
 A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses the simulator's `static_synapse` on the default port:
 
@@ -661,7 +661,7 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 - {source: E, target: E, rule: ring, parameters: {width: 10, p0: 0.5}, allow_autapses: false, weight: {...}, delay: {...}}
 ```
 
-In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). A network with such a rule runs on Brian2 only: NEST stops before building, and so does a scaled network, since the core can't know how the rule scales (scale it in its builder instead).
+In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). A scaled network with such a rule stops before building, since the core can't know how the rule scales (scale it in its builder instead).
 
 ### Distributions of your own
 
@@ -684,7 +684,7 @@ decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index
 - A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
 - A scaled network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
-Brian2 spends time on every object it has, so the network is built from few: the populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has. The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs, also of the same network with other numbers. `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network. `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs. Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
+Brian2 spends time on every object it has, so the network is built from few: the populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has. The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs, also of the same network with other numbers. `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network. `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs; with `backend_options={"standalone_directory": "brian2_build"}` (or `standalone_directory` in the simulation file's `backend.options`) it keeps its code in that folder and compiles only what changed since the last run there. Two runs at the same time must not share the folder. Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.
 
 Brian2 runs in one process (no MPI). Background input goes through static synapses only: each neuron gets a Poisson number of input spikes at each step, as from NEST's `poisson_generator`, and the input's delay is left out, since it only shifts a stationary Poisson train.
 

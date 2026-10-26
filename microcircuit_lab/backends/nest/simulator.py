@@ -17,7 +17,7 @@ import numpy as np
 from microcircuit_lab.backends import population_spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.config.connection_table import COLUMNS
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -117,20 +117,13 @@ class NestBackend:
     def check(self) -> None:
         """
         Raise if the network uses something NEST cannot build, before anything
-        is built: a project connection rule or distribution (NEST runs the
-        shared ones only).
-        Neuron and synapse model names are left to NEST, which knows them only
-        once the modules are installed.
+        is built: a project distribution (NEST draws from the shared ones
+        only).
+        Neuron and synapse model names and connection rules other than the
+        shared ones are left to NEST, which knows them only once the modules
+        are installed.
         """
 
-        rules = self._network.connections["rule"]
-        project = np.flatnonzero(~np.isin(rules, SHARED_RULES))
-        if project.size:
-            rule = rules[project[0]]
-            raise ValueError(
-                f"NEST has no connection rule {rule!r}: it runs the shared rules only "
-                f"({', '.join(SHARED_RULES)}), not project rules."
-            )
         for what in ("weight", "delay"):
             names = self._network.connections[f"{what}.distribution"]
             project = np.flatnonzero(~np.isin(names, SHARED_DISTRIBUTIONS))
@@ -288,7 +281,8 @@ class NestBackend:
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
-                conn_spec = {"rule": rule}
+                # A rule that is not a shared one is NEST's own, with its parameters.
+                conn_spec = {"rule": rule, **(column["parameters"][i] or {})}
                 if rule in nest_number:
                     number = column["number"][i]
                     conn_spec[nest_number[rule]] = number if rule == "pairwise_bernoulli" else int(number)

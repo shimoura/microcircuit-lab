@@ -140,8 +140,8 @@ connections:
     # optional, default fixed_total_number · text · how the synapses are placed:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
-    #   all_to_all, with no number; or the name of a project rule, which the backend
-    #   defines, with parameters
+    #   all_to_all, with no number; or another rule, which the simulator looks up, with
+    #   parameters
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
@@ -153,7 +153,7 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
-    # optional · mapping · only for a project rule: the values its expressions use, e.g.
+    # optional · mapping · only for a rule that is not shared: its parameters, e.g.
     #   {width: 10, p0: 0.5}
     parameters:
     # optional · true or false · whether a neuron may connect to itself; omit for the

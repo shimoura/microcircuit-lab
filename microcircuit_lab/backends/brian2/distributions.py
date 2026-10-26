@@ -316,11 +316,15 @@ def set_delays(
     minimum_delay = np.zeros(max(entries) + 1)
     out_of_bounds = []
     for k, (mean, rel_std, distribution, minimum, number) in entries.items():
+        # A fixed delay has no minimum, so it is kept as given even when
+        # other entries of these synapses are set to theirs.
+        if (distribution == "fixed" or rel_std == 0.0) and k not in projects:
+            continue
         minimum_delay[k] = 0.5 * resolution
         # NaN is "not set" too
         if minimum is not None and minimum == minimum:
             minimum_delay[k] = max(minimum, minimum_delay[k])
-        if distribution != "fixed" and rel_std != 0.0 and k not in projects:
+        if k not in projects:
             out_of_bounds.append((number, chance_below(minimum_delay[k], mean, rel_std, distribution)))
     synapses.namespace["delay_minimum"] = table(minimum_delay, f"{synapses.name}_delay_minimum")
     set_drawn(

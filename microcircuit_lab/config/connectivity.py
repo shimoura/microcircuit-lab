@@ -119,8 +119,8 @@ RULE_NUMBER = {
     "pairwise_bernoulli": "p",
 }
 
-#: The rules every backend implements. Any other name is a project rule, which
-#: the backend defines (see its ``models.py``).
+#: The rules every backend implements. Any other name is looked up by the
+#: backend: a rule of the simulator or of the project.
 SHARED_RULES = (*RULE_NUMBER, "one_to_one", "all_to_all")
 
 
@@ -138,12 +138,12 @@ class ConnectionConfig(FrozenConfig):
 
     Two take none: ``one_to_one`` (the k-th source neuron to the k-th target
     neuron; the populations have the same size) and ``all_to_all``. Any other
-    name is a project rule, defined for the backend (see ``SHARED_RULES``),
-    which takes ``parameters`` instead of a number.
+    name is looked up by the backend (see ``SHARED_RULES``) and takes
+    ``parameters`` instead of a number.
 
     The core computes with the expected number of synapses
     (``network.mean_input.expected_synapses``) and scales the given number
-    with the network (``network.scaling.scale_rule_number``). A project rule
+    with the network (``network.scaling.scale_rule_number``). Any other rule
     cannot be scaled yet.
     """
 
@@ -153,8 +153,8 @@ class ConnectionConfig(FrozenConfig):
         default="fixed_total_number",
         description="how the synapses are placed: fixed_total_number, fixed_indegree, "
         "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
-        "outdegree or p); one_to_one or all_to_all, with no number; or the name of a project "
-        "rule, which the backend defines, with parameters",
+        "outdegree or p); one_to_one or all_to_all, with no number; or another rule, which the "
+        "simulator looks up, with parameters",
     )
     n_synapses: int | None = Field(
         default=None,
@@ -176,7 +176,7 @@ class ConnectionConfig(FrozenConfig):
     )
     parameters: Parameters = Field(
         default=None,
-        description="only for a project rule: the values its expressions use, e.g. "
+        description="only for a rule that is not shared: its parameters, e.g. "
         "{width: 10, p0: 0.5}",
     )
     allow_autapses: bool | None = Field(
@@ -209,7 +209,7 @@ class ConnectionConfig(FrozenConfig):
         if needed is None and others:
             raise ValueError(f"rule {self.rule!r} takes no number; remove {others}")
         if self.parameters is not None and self.rule in SHARED_RULES:
-            raise ValueError(f"rule {self.rule!r} takes no parameters (only a project rule does)")
+            raise ValueError(f"rule {self.rule!r} takes no parameters (only a rule that is not shared does)")
         return self
 
     @property

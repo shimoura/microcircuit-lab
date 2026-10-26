@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
 from microcircuit_lab.project_code import find_definitions
 
 EXTENSIONS_FOLDER = Path("extensions") / "brian2"
@@ -42,8 +43,13 @@ class NeuronModel:
         current of ``dc`` stimuli. For a model whose equations depend on its
         parameters, a function of the population's ``parameters`` that returns
         the equations.
-    threshold, reset, refractory, method
+    threshold, reset, method
         As for ``brian2.NeuronGroup``.
+    refractory
+        As for ``brian2.NeuronGroup``. The default holds the neuron for
+        ``t_ref`` after its spike, as NEST does: Brian2 counts the time from
+        the start of the spike's step and NEST (and the spike times saved)
+        from its end, so a time above 0 gets one more step.
     excitatory, inhibitory
         The variable a connection adds to when its weight is positive or
         negative and its synapse has no ``receptor_port``. A conductance is
@@ -64,7 +70,7 @@ class NeuronModel:
     excitatory: str | None = None
     inhibitory: str | None = None
     receptor_port: str | None = None
-    refractory: str = "t_ref"
+    refractory: str = "t_ref + dt*int(t_ref > 0*ms)"
     method: str = "exact"
     defaults: dict[str, Any] = field(default_factory=dict)
 
@@ -182,11 +188,19 @@ def load_models(extensions: Sequence[str] = ()) -> dict[type, dict[str, Any]]:
     Every one at the top level of the files in ``extensions/brian2/`` (of the
     folder you run from) and of the modules ``extensions`` is found (see
     :func:`microcircuit_lab.project_code.find_definitions`). A project's own
-    ``static_synapse`` replaces the backend's.
+    ``static_synapse`` replaces the backend's; a rule or distribution may
+    not take a shared name.
     """
 
     found = find_definitions(EXTENSIONS_FOLDER, "extensions.brian2", extensions, KINDS)
     found[SynapseModel].setdefault(STATIC_SYNAPSE.name, STATIC_SYNAPSE)
+    for kind, shared in ((ConnectionRule, SHARED_RULES), (Distribution, SHARED_DISTRIBUTIONS)):
+        clashes = sorted(set(found[kind]) & set(shared))
+        if clashes:
+            raise ValueError(
+                f"The project defines a {kind.__name__} named {clashes[0]!r}, which is a shared name "
+                "that every simulator runs the same way; give it another name."
+            )
     return found
 
 

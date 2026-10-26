@@ -125,10 +125,12 @@ def test_one_to_one_needs_populations_of_the_same_size():
         _network([_connection(rule="one_to_one")])
 
 
-def test_nest_rejects_a_project_rule_before_building():
-    network = _network([_connection(rule="ring", parameters={"width": 2})])
-    with pytest.raises(ValueError, match="NEST has no connection rule 'ring'.*not project rules"):
-        NestBackend(network, SimulationConfig(print_time=False)).check()
+def test_nest_runs_its_own_rule_with_its_parameters():
+    network = _network([_connection(rule="pairwise_poisson", parameters={"pairwise_avg_num_conns": 2.0})])
+    _, connections = _built_connections(network)
+    expected = 2.0 * SIZES["S"] * SIZES["T"]
+    assert abs(len(connections) - expected) < 5 * np.sqrt(expected)
+    nest.ResetKernel()
 
 
 @pytest.mark.parametrize(
@@ -136,7 +138,7 @@ def test_nest_rejects_a_project_rule_before_building():
     [
         (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
         (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
-        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "project rule 'ring' cannot be scaled"),
+        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "rule 'ring' is not a shared one and cannot be scaled"),
     ],
 )
 def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):

@@ -13,8 +13,9 @@ populations of one neuron model are one ``NeuronGroup`` (each a range of its
 neurons), and all connections between two groups through the same synapse
 are one ``Synapses``. Every object and table gets a name fixed by the
 network: Brian2 puts the names in the code it generates, so a network built
-again (in a sweep, or in the next run) reuses the code compiled before. Neurons are numbered as in NEST: population after
-population, from 1.
+again (in a sweep, or in the next run) reuses the code compiled before (with
+``cpp_standalone``, when it is built in the same ``standalone_directory``).
+Neurons are numbered as in NEST: population after population, from 1.
 """
 
 from __future__ import annotations
@@ -116,6 +117,7 @@ class Brian2Backend:
         *,
         device: Literal["runtime", "cpp_standalone"] = "runtime",
         codegen_target: Literal["auto", "cython", "numpy"] = "auto",
+        standalone_directory: str | Path | None = None,
         extensions: Sequence[str] = (),
     ) -> None:
         """
@@ -133,6 +135,11 @@ class Brian2Backend:
             compiler). Compiling takes a while the first time a kind of
             network runs, and is kept for later runs; ``"numpy"`` compiles
             nothing, so it starts at once but runs slower.
+        standalone_directory
+            Where ``"cpp_standalone"`` writes and compiles the network's C++
+            code. A folder kept from run to run lets Brian2 compile only what
+            changed; two runs at the same time must not share it. None: a new
+            temporary folder at each run, so all is compiled again.
         extensions
             Python modules that define neuron and synapse models, besides the
             files in ``extensions/brian2/`` of the folder you run from.
@@ -140,6 +147,8 @@ class Brian2Backend:
 
         if device not in ("runtime", "cpp_standalone"):
             raise ValueError(f"Unknown Brian2 device {device!r}; use 'runtime' or 'cpp_standalone'.")
+        if standalone_directory is not None and device != "cpp_standalone":
+            raise ValueError("Brian2's standalone_directory is used only with device: cpp_standalone.")
         if codegen_target not in ("auto", "cython", "numpy"):
             raise ValueError(
                 f"Unknown Brian2 codegen_target {codegen_target!r}; use 'auto', 'cython' or 'numpy'."
@@ -149,6 +158,7 @@ class Brian2Backend:
         self._simulation_config = simulation_config
         self._device = device
         self._codegen_target = codegen_target
+        self._standalone_directory = standalone_directory
         self._extensions = extensions
         self._rng = np.random.default_rng(simulation_config.rng_seed)
         self._standalone_dir: tempfile.TemporaryDirectory | None = None
@@ -156,6 +166,7 @@ class Brian2Backend:
         self._synapse_models: dict[str, models.SynapseModel] = {}
         self._connection_rules: dict[str, models.ConnectionRule] = {}
         self._distributions: dict[str, models.Distribution] = {}
+        self._checked = False
         self._groups: list[_Group] = []
         self._group_of: dict[str, _Group] = {}
 
@@ -197,8 +208,11 @@ class Brian2Backend:
         b2.device.activate()
 
         if self._device == "cpp_standalone":
-            self._standalone_dir = tempfile.TemporaryDirectory(prefix="brian2_standalone_")
-            b2.set_device("cpp_standalone", directory=self._standalone_dir.name, build_on_run=True)
+            directory = self._standalone_directory
+            if directory is None:
+                self._standalone_dir = tempfile.TemporaryDirectory(prefix="brian2_standalone_")
+                directory = self._standalone_dir.name
+            b2.set_device("cpp_standalone", directory=str(directory), build_on_run=True)
             b2.prefs.devices.cpp_standalone.openmp_threads = self._simulation_config.local_num_threads
         else:
             if self._simulation_config.local_num_threads > 1:
@@ -268,14 +282,17 @@ class Brian2Backend:
             for target, synapse in set(zip(table["target"].tolist(), table["synapse"].tolist())):
                 if synapse in named:
                     self._target_variable(target, synapse, 0.0)
+        self._checked = True
 
     def build(self) -> None:
         """
-        Build the complete network. It calls :meth:`check` first, so a
-        backend used without ``Simulation`` also fails before building.
+        Build the complete network. It calls :meth:`check` first if it has
+        not run yet, so a backend used without ``Simulation`` also fails
+        before building.
         """
 
-        self.check()
+        if not self._checked:
+            self.check()
         self.initialize()
 
         self.create_populations()
@@ -300,6 +317,15 @@ class Brian2Backend:
         if name not in self._neuron_models:
             raise models.missing_model_error("neuron", name, self._neuron_models)
         return self._neuron_models[name]
+
+    def _equations_text(self, population: str) -> str:
+        """The equations of a population's model, for its parameters if they
+        depend on them."""
+
+        model = self.neuron_model(population)
+        if callable(model.equations):
+            return model.equations(dict(self._network.populations[population].neuron.parameters))
+        return model.equations
 
     def synapse_model(self, synapse: str | None) -> models.SynapseModel:
         """The Brian2 model of a synapses.yaml entry (None: static_synapse)."""
@@ -327,8 +353,7 @@ class Brian2Backend:
         for pop_name, pop_cfg in self._network.populations.items():
             model = self.neuron_model(pop_name)
             parameters = dict(pop_cfg.neuron.parameters)
-            text = model.equations(parameters) if callable(model.equations) else model.equations
-            equations = b2.Equations(text)
+            equations = b2.Equations(self._equations_text(pop_name))
 
             values[pop_name] = {**model.defaults, **_by_port(parameters), **pop_cfg.initial_state}
             missing = sorted(set(equations.parameter_names) - set(values[pop_name]) - {"I_stim"})
@@ -444,9 +469,7 @@ class Brian2Backend:
         model = self.neuron_model(target)
         port = self._network.receptor_port(synapse)
         if isinstance(port, str):
-            parameters = dict(self._network.populations[target].neuron.parameters)
-            text = model.equations(parameters) if callable(model.equations) else model.equations
-            names = _variable_names(text)
+            names = _variable_names(self._equations_text(target))
             if port not in names:
                 raise ValueError(
                     f"Synapse {synapse!r} sets receptor_port {port!r}, but the Brian2 model "
@@ -520,6 +543,11 @@ class Brian2Backend:
             *(model.on_pre if isinstance(model.on_pre, dict) else ["pre"] * bool(model.on_pre)),
             *(model.on_post if isinstance(model.on_post, dict) else ["post"] * bool(model.on_post)),
         }
+        if isinstance(model.on_pre, dict) and "pre" not in model.on_pre:
+            raise ValueError(
+                f"Synapse model {model.name!r} has on_pre pathways {sorted(model.on_pre)}; one must be "
+                "named 'pre', which gets the delays of connectivity.yaml (set the others in delays)."
+            )
         for pathway in model.delays:
             if pathway not in pathways:
                 raise ValueError(
@@ -891,8 +919,8 @@ class Brian2Backend:
 
     def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        All spikes of the run as (senders, times), sorted by sender.
-        Kept until the next simulate().
+        All spikes of the run as (senders, times), sorted by sender, with
+        times as NEST gives them. Kept until the next simulate().
         """
 
         if self._cached_spikes is not None:
@@ -903,7 +931,10 @@ class Brian2Backend:
             return self._cached_spikes
 
         senders = [self._node_ids(group, np.asarray(monitor.i[:], dtype=int)) for group, monitor in self.spike_recorders]
-        times = [np.asarray(monitor.t / b2.ms, dtype=float) for _, monitor in self.spike_recorders]
+        # Brian2 gives a spike the time at the start of the step in which the
+        # threshold is crossed, NEST the time at its end: one step later.
+        step = self._simulation_config.resolution
+        times = [np.asarray(monitor.t / b2.ms, dtype=float) + step for _, monitor in self.spike_recorders]
         self._cached_spikes = population_spikes.sort_by_sender(np.concatenate(senders), np.concatenate(times))
         return self._cached_spikes
 

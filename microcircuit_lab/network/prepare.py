@@ -151,8 +151,8 @@ def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> N
     Raise for a connection that scaling cannot keep at the full-scale input.
     Its rule cannot keep each neuron's inputs at ``K_scaling`` times the
     full-scale number: ``one_to_one`` always gives one input, ``all_to_all``
-    gives ``n_source``, which shrinks with ``N_scaling``, and a project rule
-    says nothing about its scaling. Or its weights come from a project
+    gives ``n_source``, which shrinks with ``N_scaling``, and a rule that is not
+    shared says nothing about its scaling. Or its weights come from a project
     distribution, whose real mean, which the compensation needs, is not known
     here. (A project delay distribution is fine: scaling leaves delays alone.)
     """
@@ -165,8 +165,8 @@ def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> N
          "all_to_all gives each neuron n_source inputs, which shrink with N_scaling, so "
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
-         "project rule {rule} cannot be scaled yet; scale the network in its builder, or run "
-         "it at full scale"),
+         "rule {rule} is not a shared one and cannot be scaled yet; scale the network in its "
+         "builder, or run it at full scale"),
         (~np.isin(table["weight.distribution"], SHARED_DISTRIBUTIONS),
          "weights from a project distribution cannot be scaled yet; scale the network in its "
          "builder, or run it at full scale"),
