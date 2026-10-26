@@ -90,7 +90,7 @@ my_project/
 | Command | What you get |
 |---|---|
 | `microcircuit-lab init my_project` | the empty folders; the core stays installed in your Python environment |
-| `microcircuit-lab init my_project --with-core` | the folders, the examples, and a copy of the core in `microcircuit-lab/` (installed editable) |
+| `microcircuit-lab init my_project --with-core` | the folders, the examples, and a copy of the core in `microcircuit-lab/` (installed editable) with the backends of your installed simulators; `--backends nest brian2` chooses, and running it again adds a missing one |
 
 Then, for a model of your own:
 

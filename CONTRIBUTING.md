@@ -8,6 +8,8 @@ First ask whether the change belongs in the core. Behaviour that only your proje
 4. Run `ruff check .` and `pytest`. CI runs both.
 5. Push the branch to your fork and open a pull request into `main`.
 
+A project made with `init --with-core` has a copy of the core with only the backends of the simulators installed when it was made; `init <project> --with-core --backends <name>` adds another.
+
 To pull later changes into your fork, add this repository as a remote: `git remote add upstream git@github.com:shimoura/microcircuit-lab.git`.
 
 ## Changing the core

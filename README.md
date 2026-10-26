@@ -15,7 +15,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 
-microcircuit-lab init my_project --with-core
+microcircuit-lab init my_project --with-core   # copies the backends of the installed simulators
 cd my_project
 microcircuit-lab run --network toy
 ```

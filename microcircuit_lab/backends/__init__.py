@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
 
@@ -13,14 +14,29 @@ from microcircuit_lab.config.simulation import BackendName
 from .interface import SimulationBackend
 
 
+def _import_backend(name: str, module: str):
+    """Import ``backends/<name>/<module>.py``. A copy of the core made by
+    ``init --with-core`` has only the backends of the installed simulators; a
+    missing backend folder says so, while a simulator that is not installed
+    keeps its own error."""
+    try:
+        return importlib.import_module(f"{__name__}.{name}.{module}")
+    except ModuleNotFoundError as error:
+        if error.name != f"{__name__}.{name}":
+            raise
+        raise ModuleNotFoundError(
+            f"This copy of the core has no {name} backend (init --with-core copies only "
+            f"the installed simulators). Add it with: "
+            f"microcircuit-lab init <project> --with-core --backends {name}"
+        ) from None
+
+
 def get_backend(name: BackendName):
     """Return a backend class by name without importing optional backends eagerly."""
     if name == "nest":
-        from .nest.simulator import NestBackend
-        return NestBackend
+        return _import_backend("nest", "simulator").NestBackend
     if name == "brian2":
-        from .brian2.simulator import Brian2Backend
-        return Brian2Backend
+        return _import_backend("brian2", "simulator").Brian2Backend
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 
@@ -31,11 +47,9 @@ def read_saved_spikes(name: BackendName, recordings_dir: Path) -> tuple[np.ndarr
     Only file reading happens here, so a saved run can be analysed without the
     simulator installed."""
     if name == "nest":
-        from .nest.spike_files import read_saved_spikes as read_nest_spikes
-        return read_nest_spikes(recordings_dir)
+        return _import_backend("nest", "spike_files").read_saved_spikes(recordings_dir)
     if name == "brian2":
-        from .brian2.spike_files import read_saved_spikes as read_brian2_spikes
-        return read_brian2_spikes(recordings_dir)
+        return _import_backend("brian2", "spike_files").read_saved_spikes(recordings_dir)
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 
@@ -66,11 +80,9 @@ def read_recording(run_dir: Path, variable: str) -> tuple[np.ndarray, np.ndarray
     name = json.loads(metadata_path.read_text())["backend"]
     recordings_dir = run_dir / "recordings"
     if name == "nest":
-        from .nest.spike_files import read_saved_variable as read_nest_variable
-        return read_nest_variable(recordings_dir, variable)
+        return _import_backend("nest", "spike_files").read_saved_variable(recordings_dir, variable)
     if name == "brian2":
-        from .brian2.spike_files import read_saved_variable as read_brian2_variable
-        return read_brian2_variable(recordings_dir, variable)
+        return _import_backend("brian2", "spike_files").read_saved_variable(recordings_dir, variable)
     raise ValueError(f"Unknown simulation backend: {name!r}.")
 
 

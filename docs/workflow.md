@@ -113,4 +113,6 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | `generate` does not list your builder | step 0: a `main(argv)` in `builders/<model>/__init__.py` |
 | a large network loads slowly | `connections_file` (CSV), `config/connection_table.py` |
 
+`init --with-core` copies only the backends of the installed simulators (`--backends nest brian2` to choose).
+
 To change the core: [CONTRIBUTING.md](../CONTRIBUTING.md#changing-the-core).
