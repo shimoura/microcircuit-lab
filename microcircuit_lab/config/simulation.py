@@ -41,8 +41,9 @@ class VariableRecording(FrozenConfig):
     )
     populations: list[str] | None = Field(
         default=None,
+        min_length=1,
         examples=[["E", "I"]],
-        description="names of the populations to record; null records all",
+        description="names of the populations to record (at least one); omit it to record all",
     )
 
 
@@ -112,7 +113,7 @@ class OutputConfig(FrozenConfig):
     )
     save_config: bool = Field(
         default=True,
-        description="write config.yaml (the network); needed to re-plot the run",
+        description="write config.yaml (the network and the simulation settings); needed to re-plot the run",
     )
 
 

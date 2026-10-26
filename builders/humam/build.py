@@ -588,15 +588,16 @@ def generate_humam_configs(
         write_yaml(network_dir / name, payload, header_comment=header)
 
     # HuMAM is written scaled: the files hold the numbers that are simulated,
-    # and scaling.yaml records how they were made. Only the background input
-    # lost by scaling is compensated (the recurrent rates are not known).
+    # and scaling.yaml records how they were made. The recurrent and background
+    # input lost by scaling are compensated from the full-scale rates in
+    # reference.yaml (mean-field estimates).
     if n_scaling != 1.0 or k_scaling != 1.0:
         scaled = scale_network(
             read_network(network_dir),
             N_scaling=n_scaling,
             K_scaling=k_scaling,
             scaled_from=f"humam --area {area}",
-            compensate_recurrent_input=False,
+            compensate_recurrent_input=True,
         )
         write_network(scaled, network_dir)
         if neurons_header is not None:

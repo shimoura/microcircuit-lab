@@ -41,7 +41,9 @@ def share_run_directory(
     The run folder, the same on every MPI process.
 
     With ``overwrite: true`` the folder is fixed, so every process resolves it
-    itself. Otherwise process 0 resolves it (:func:`resolve_run_directory`) and
+    itself; process 0 empties its ``recordings`` folder, so that files of the
+    previous run are not read as part of this one, and the others wait for it.
+    Otherwise process 0 resolves it (:func:`resolve_run_directory`) and
     writes its path to ``<output_dir>/.run_dir/path``; the others read it there
     once all processes have met, and process 0 then deletes ``.run_dir``. The
     simulator provides the meeting point, so no MPI package for Python is needed.
@@ -52,7 +54,16 @@ def share_run_directory(
     by a crashed run and is replaced.
     """
 
-    if backend.num_processes() == 1 or output.overwrite:
+    if output.overwrite:
+        run_dir = resolve_run_directory(
+            output, network_name=network_name, simulation_name=simulation_name
+        )
+        if backend.rank() == 0:
+            _empty_directory(run_dir / "recordings")
+        backend.sync_processes()
+        return run_dir
+
+    if backend.num_processes() == 1:
         return resolve_run_directory(
             output, network_name=network_name, simulation_name=simulation_name
         )
@@ -70,6 +81,18 @@ def share_run_directory(
     if backend.rank() == 0:
         shutil.rmtree(handoff)
     return run_dir
+
+
+def _empty_directory(folder: Path) -> None:
+    """Delete the files of ``folder``, if it exists; the folder stays."""
+
+    if not folder.is_dir():
+        return
+    for path in folder.iterdir():
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
 
 
 def _claim(handoff: Path) -> None:

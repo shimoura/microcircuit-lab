@@ -27,6 +27,7 @@ from .plot_styles import (
     population_metadata,
 )
 from .run_command_plots import UNSET, register_plot
+from .time_window import resolve_end
 
 PowerSpectrumEstimator = Callable[..., tuple[np.ndarray, np.ndarray]]
 
@@ -147,7 +148,8 @@ def compute_population_rate_signal(
     pop_name
         The population.
     bin_size
-        The bin width in ms.
+        The bin width in ms. Only whole bins are used, from ``begin``: a
+        remainder shorter than one bin at the end is left out.
 
     Returns
     -------
@@ -159,7 +161,8 @@ def compute_population_rate_signal(
     _, times = run.spikes(pop_name)
     times = times[(times >= begin) & (times < end)]
 
-    edges = np.arange(begin, end + bin_size, bin_size)
+    n_bins = int(np.floor((end - begin) / bin_size + 1e-9))
+    edges = begin + bin_size * np.arange(n_bins + 1)
     counts, _ = np.histogram(times, bins=edges)
     return counts / (n_neurons * (bin_size / 1000.0))
 
@@ -209,9 +212,7 @@ def compute_power_spectrum(
             f"Available: {sorted(POWER_SPECTRUM_METHODS)}"
         )
 
-    end = run.simulation.t_sim if end is None else end
-    if end <= begin:
-        raise ValueError("'end' must be greater than 'begin'.")
+    end = resolve_end(run, begin, end)
 
     selected = select_populations(run, populations, area)
     fs = 1000.0 / bin_size

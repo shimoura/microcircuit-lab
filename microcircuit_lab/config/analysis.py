@@ -62,21 +62,21 @@ class RasterPlotConfig(FrozenConfig):
     """Raster-specific presentation settings."""
 
     enabled: bool = Field(default=True, description="make this plot")
-    marker_size: float = Field(default=1.0, description="size of a spike dot")
+    marker_size: float = Field(default=1.5, description="size of a spike dot")
     alpha: float = Field(default=0.8, description="opacity of the dots (0-1)")
     figsize: tuple[float, float] | None = Field(
         default=None,
         examples=[[6.0, 4.0]],
         description="width and height (inches); omit to size from the number of populations",
     )
-    width: float = Field(default=10.0, description="width (inches) when figsize is omitted")
+    width: float = Field(default=6.0, description="width (inches) when figsize is omitted")
     height_per_population: float = Field(
         default=0.55, description="height per population (inches) when figsize is omitted"
     )
     min_height: float = Field(default=4.0, description="smallest height (inches) when figsize is omitted")
     separator_lines: bool = Field(default=True, description="draw a line between populations")
     separator_alpha: float = Field(default=0.25, description="opacity of those lines (0-1)")
-    show_legend: bool = Field(default=True, description="show a legend")
+    show_legend: bool = Field(default=False, description="show a legend (the populations are also named on the y axis)")
     invert_yaxis: bool = Field(default=True, description="first population at the top")
     max_neurons_per_population: int | None = Field(
         default=None, gt=0, description="show at most this many neurons per population; omit for all"

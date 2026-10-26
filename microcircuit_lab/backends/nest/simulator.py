@@ -196,8 +196,7 @@ class NestBackend:
         if "I_e" in parameters and "I_e" not in nest.GetDefaults(pop_cfg.neuron.model):
             raise ValueError(
                 f"Population {pop_cfg.name!r}: the NEST model {pop_cfg.neuron.model!r} has no I_e, "
-                "which neurons.yaml sets, or a constant current "
-                "written by a builder (scaling, replace_background_by_mean_current) adds to."
+                "but neurons.yaml sets it (or a builder added a constant current to it)."
             )
         for values in (parameters, pop_cfg.initial_state):
             nodes.set(

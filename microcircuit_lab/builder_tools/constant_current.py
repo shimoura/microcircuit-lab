@@ -80,10 +80,16 @@ def _recurrent_compensation(original: NetworkConfig, K_scaling: float) -> np.nda
     known = _connections_with_known_current(original)
     if not known.all():
         i = int(np.flatnonzero(~known)[0])
+        unit, synapse = table["weight.unit"][i], table["synapse"][i]
+        reason = (
+            f"a weight in {unit}"
+            if unit != "pA"
+            else f"synapse {synapse!r} on receptor port {original.receptor_port(synapse)!r}"
+        )
         raise ValueError(
             f"The mean input lost by scaling is known only for weights in pA on the default "
             f"receptor port; connection {table['source'][i]} -> {table['target'][i]} has "
-            f"unit {table['weight.unit'][i]} or another port. Set preserve_mean_input or "
+            f"{reason}. Set preserve_mean_input or "
             "compensate_recurrent_input to false, or preserve_variance to false (no current needed)."
         )
 

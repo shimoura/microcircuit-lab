@@ -158,7 +158,7 @@ class NetworkConfig(FrozenConfig):
         repeated = sorted(self.connections.duplicates(["source", "target", "synapse"]), key=str)
         if repeated:
             raise ValueError(
-                f"connectivity.yaml has more than one entry for (source, target, synapse) "
+                f"The connections (connectivity.yaml, or its connections_file) have more than one entry for (source, target, synapse) "
                 f"{repeated}. A pair takes one entry per synapse; to connect it twice "
                 "(e.g. AMPA and NMDA), give each entry its own synapse."
             )

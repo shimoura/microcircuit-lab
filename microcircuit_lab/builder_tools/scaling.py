@@ -11,6 +11,7 @@ the constant currents are in ``constant_current.py``.
 
 from __future__ import annotations
 
+import logging
 import math
 
 import numpy as np
@@ -19,6 +20,8 @@ from microcircuit_lab.builder_tools.constant_current import compensate_lost_mean
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.scaling import ScalingRecord
+
+logger = logging.getLogger(__name__)
 
 
 def scale_network(
@@ -236,7 +239,14 @@ def _scale_indegrees(
             "needs a higher probability; increase N_scaling or lower K_scaling."
         )
 
-    # A connection scaled to no synapse is left out.
+    # A connection scaled to no synapse is left out; say which.
+    lost = np.flatnonzero((scaled == 0) & (table["number"] != 0))
+    if lost.size:
+        names = [f"{table['source'][i]} -> {table['target'][i]}" for i in lost[:5]]
+        logger.warning(
+            "Scaling left out %d connection(s) with no synapse left: %s%s",
+            lost.size, ", ".join(names), ", ..." if lost.size > 5 else "",
+        )
     connections = table.with_columns(copy=False, number=scaled).keep_rows(scaled != 0)
 
     return network.model_copy(update={"poisson_background": poisson_background, "connections": connections})

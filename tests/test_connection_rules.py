@@ -263,7 +263,7 @@ def test_receptor_ports(caplog):
     nest.ResetKernel()
 
     # Scaled: the core can't compute the input lost on other ports, so it stops
-    with pytest.raises(ValueError, match="connection S -> T has unit pA or another port"):
+    with pytest.raises(ValueError, match="connection S -> T has synapse .* on receptor port"):
         _scaled(network, K_scaling=0.5)
     scaled = _scaled(network, K_scaling=0.5, preserve_mean_input=False)
     assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
@@ -338,7 +338,7 @@ def test_conductance_weights_stop_the_compensation():
     }
     network = network.model_copy(update={"poisson_background": background})
 
-    with pytest.raises(ValueError, match="connection S -> T has unit nS"):
+    with pytest.raises(ValueError, match="connection S -> T has a weight in nS"):
         _scaled(network, K_scaling=0.5)
     scaled = _scaled(network, K_scaling=0.5, preserve_mean_input=False)
     assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())

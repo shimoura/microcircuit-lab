@@ -45,3 +45,11 @@ def test_a_missing_run_folder_exits_with_one_line(tmp_path):
 
     with pytest.raises(SystemExit, match="No run folder at"):
         run.main(["--run-dir", str(tmp_path / "missing")])
+
+
+def test_run_dir_refuses_simulation_flags(tmp_path, capsys):
+    from microcircuit_lab.cli import run
+
+    with pytest.raises(SystemExit):
+        run.main(["--run-dir", str(tmp_path), "--backend", "nest", "--nest-modules", "m"])
+    assert "--backend, --nest-modules only apply when simulating" in capsys.readouterr().err

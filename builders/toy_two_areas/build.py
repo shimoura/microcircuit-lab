@@ -163,6 +163,21 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--k-scaling", type=float, default=1.0, help="multiplies the synapses per neuron")
     args = parser.parse_args(argv)
 
+    # scale_network compensates the mean input lost by scaling, which needs the
+    # full-scale rate of every population (the clustered populations have none)
+    # and receptors on the default port (the advanced network uses others).
+    scaled = args.n_scaling != 1.0 or args.k_scaling != 1.0
+    if scaled and args.clusters is not None:
+        parser.error(
+            "--clusters cannot be scaled: reference.yaml has no full-scale rate for the cluster "
+            "populations, which the compensation of the lost mean input needs."
+        )
+    if scaled and args.advanced:
+        parser.error(
+            "--advanced cannot be scaled: the compensation of the lost mean input is known only "
+            "for synapses on the default receptor port, and this network uses other ports."
+        )
+
     # The builder command of the full-scale network, recorded in scaling.yaml.
     variant = "toy_two_areas" + (f" --clusters {args.clusters}" if args.clusters is not None else "") + (
         " --advanced" if args.advanced else ""
@@ -188,9 +203,9 @@ def main(argv: list[str] | None = None) -> None:
     folder = Path(args.config_dir) / "network" / name
     # A scaled network is written scaled: its files hold the numbers that are
     # simulated, and scaling.yaml records how they were made.
-    if args.n_scaling != 1.0 or args.k_scaling != 1.0:
-        scaled = scale_network(network, N_scaling=args.n_scaling, K_scaling=args.k_scaling, scaled_from=variant)
-        write_network(scaled, folder, compact=False)
+    if scaled:
+        network = scale_network(network, N_scaling=args.n_scaling, K_scaling=args.k_scaling, scaled_from=variant)
+        write_network(network, folder, compact=False)
     print(f"Generated and validated {folder}")
 
 

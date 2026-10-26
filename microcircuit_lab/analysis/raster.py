@@ -8,6 +8,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.patches import ConnectionPatch
+from matplotlib.transforms import ScaledTranslation
 
 from .areas import select_populations
 from .plot_styles import (
@@ -19,6 +21,7 @@ from .plot_styles import (
     population_label,
 )
 from .run_command_plots import UNSET, register_plot
+from .time_window import resolve_end
 
 
 def plot_raster(
@@ -72,11 +75,11 @@ def plot_raster(
     """
     style = style or DEFAULT_PLOT_STYLE
     config = config or DEFAULT_RASTER_CONFIG
-    end = run.simulation.t_sim if end is None else end
     if config.begin is not None:
         begin = config.begin
     if config.end is not None:
         end = config.end
+    end = resolve_end(run, begin, end)
     selected = select_populations(run, populations, area)
     figsize = config.figsize or (
         config.width,
@@ -104,7 +107,7 @@ def plot_raster(
             nodes = nodes[keep]
 
         senders, times = run.spikes(pop_name)
-        mask = (times >= begin) & (times <= end) & np.isin(senders, nodes)
+        mask = (times >= begin) & (times < end) & np.isin(senders, nodes)
         times, senders = times[mask], senders[mask]
         # Each kept neuron gets one row; nodes is sorted.
         rows = offset + np.searchsorted(nodes, senders)
@@ -139,18 +142,25 @@ def plot_raster(
     low, high = -0.5 - margin, offset - 0.5 + margin
     ax.set(xlim=(begin, end), ylim=(low, high), xlabel="Time (ms)", ylabel="Population")
     # A small population's band can be thinner than its label: move crowded
-    # labels apart and join each to its band with a short line.
+    # labels apart and join each to its band with a short line, drawn between
+    # the label and the axis. Labels that need no moving keep plain ticks.
     axes_height_pt = fig.get_figheight() * ax.get_position().height * 72
     gap = 1.3 * style.tick_label_size * (high - low) / axes_height_pt
     label_positions = _spread(yticks, gap, low, high)
     ax.set_yticks(label_positions, ylabels)
     ax.tick_params(axis="both", labelsize=style.tick_label_size)
-    ax.tick_params(axis="y", length=0)
-    for band, label_y in zip(yticks, label_positions):
-        ax.plot(
-            [-0.015, 0.0], [label_y, band], transform=ax.get_yaxis_transform(),
-            color="black", linewidth=0.6, clip_on=False,
+    if not np.allclose(label_positions, yticks, atol=1e-6 * (high - low)):
+        connector_pt = 6.0
+        ax.tick_params(axis="y", length=0, pad=connector_pt + 2.0)
+        label_end = ax.get_yaxis_transform() + ScaledTranslation(
+            -connector_pt / 72, 0, fig.dpi_scale_trans
         )
+        for band, label_y in zip(yticks, label_positions):
+            fig.add_artist(ConnectionPatch(
+                xyA=(0, label_y), coordsA=label_end,
+                xyB=(0, band), coordsB=ax.get_yaxis_transform(),
+                color="black", linewidth=0.6,
+            ))
     ax.xaxis.label.set_size(style.axis_label_size)
     ax.yaxis.label.set_size(style.axis_label_size)
 

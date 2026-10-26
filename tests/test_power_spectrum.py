@@ -56,6 +56,21 @@ def test_compute_power_spectrum_on_toy_run(tmp_path):
         assert np.all(power >= 0.0)
 
 
+def test_end_after_t_sim_is_refused(tmp_path):
+    run = _run_toy(tmp_path, t_sim=200.0)
+    with pytest.raises(ValueError, match="t_sim = 200"):
+        compute_power_spectrum(run, end=5000.0)
+
+
+def test_rate_signal_uses_whole_bins_only(tmp_path):
+    from microcircuit_lab.analysis.power_spectrum import compute_population_rate_signal
+
+    run = _run_toy(tmp_path, t_sim=200.0)
+    population = next(iter(run.populations))
+    signal = compute_population_rate_signal(run, 0.0, 105.0, population, bin_size=10.0)
+    assert len(signal) == 10
+
+
 def test_compute_power_spectrum_rejects_unknown_method(tmp_path):
     run = _run_toy(tmp_path, t_sim=200.0)
 

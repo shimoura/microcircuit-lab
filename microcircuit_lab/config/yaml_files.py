@@ -41,8 +41,8 @@ def read_yaml(path: str | Path) -> dict[str, Any]:
         return {}
 
     if not isinstance(data, dict):
-        raise TypeError(
-            f"Expected top-level mapping in '{path}', " f"got {type(data).__name__}."
+        raise ValueError(
+            f"{path}: expected a mapping of keys and values at the top level, got {type(data).__name__}."
         )
 
     return data

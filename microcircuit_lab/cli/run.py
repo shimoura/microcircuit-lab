@@ -154,6 +154,21 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         )
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
+    if args.run_dir is not None:
+        simulation_flags = {
+            "--simulation": args.simulation,
+            "--backend": args.backend,
+            "--brian2-device": args.brian2_device,
+            "--brian2-codegen-target": args.brian2_codegen_target,
+            "--nest-modules": args.nest_modules,
+            "--extensions": args.extensions,
+        }
+        given = [flag for flag, value in simulation_flags.items() if value is not None]
+        if given:
+            parser.error(
+                f"{', '.join(given)} only apply when simulating (--network); "
+                "--run-dir only plots a finished run."
+            )
     return args
 
 
@@ -234,7 +249,13 @@ def main(argv: list[str] | None = None) -> None:
     else:
         plot_targets = [(area, run.folder / "plots")]
 
+    spike_recording = run.simulation.recording.spike_recording
+    if not spike_recording:
+        print("recording.spike_recording is false: the plots need spikes, so none were made.")
+
     for name, spec in PLOT_REGISTRY.items():
+        if not spike_recording:
+            break
         plot_config = analysis_config.plot_config(name, spec.config_cls)
         cli_override = getattr(args, name)
         enabled = (
@@ -256,23 +277,28 @@ def main(argv: list[str] | None = None) -> None:
             if not args.show:
                 plt.close("all")
 
-    print(f"Plots saved under: {run.folder / 'plots'}")
-    print(
-        "Re-plot without re-simulating: "
-        f"microcircuit-lab run --run-dir {run.folder}"
-    )
+    if spike_recording:
+        print(f"Plots saved under: {run.folder / 'plots'}")
+        print(
+            "Re-plot without re-simulating: "
+            f"microcircuit-lab run --run-dir {run.folder}"
+        )
 
     if args.validate_reference:
-        try:
-            deviations = check_reference_rates(
-                run, begin=begin, end=end, area=area,
-                rtol=args.reference_rtol,
-            )
-            print(f"\nReference check passed (rtol={args.reference_rtol:.0%}):")
-            for name, dev in deviations.items():
-                print(f"  {name:>12}  {dev:+.1%}")
-        except ValueError:
+        reference = run.network.reference
+        if not spike_recording:
+            print("\nNo spikes were recorded -- skipping --validate-reference.")
+        elif reference is None or not reference.full_mean_rates:
             print("\nNo reference.full_mean_rates on this network -- skipping --validate-reference.")
-        except AssertionError as exc:
-            print(f"\nReference check FAILED: {exc}")
+        else:
+            try:
+                deviations = check_reference_rates(
+                    run, begin=begin, end=end, area=area,
+                    rtol=args.reference_rtol,
+                )
+                print(f"\nReference check passed (rtol={args.reference_rtol:.0%}):")
+                for name, dev in deviations.items():
+                    print(f"  {name:>12}  {dev:+.1%}")
+            except AssertionError as exc:
+                print(f"\nReference check FAILED: {exc}")
 
