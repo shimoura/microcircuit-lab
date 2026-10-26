@@ -15,7 +15,7 @@ from microcircuit_lab.config.frozen_config import FrozenConfig
 
 class ScalingRecord(FrozenConfig):
     """How a network was scaled, written by the function that scaled it: the
-    core's :func:`microcircuit_lab.network.scaling.scale_network`, or a
+    core's :func:`microcircuit_lab.builder_tools.scaling.scale_network`, or a
     project's own, with its own ``parameters``. Nothing reads it to change a
     value: the files already hold the scaled ones."""
 
@@ -24,7 +24,7 @@ class ScalingRecord(FrozenConfig):
         description="the full-scale network this one was scaled from (or the builder command that makes it)",
     )
     scaled_with: str = Field(
-        examples=["microcircuit_lab.network.scaling.scale_network"],
+        examples=["microcircuit_lab.builder_tools.scaling.scale_network"],
         description="the function that scaled it",
     )
     parameters: dict[str, Any] = Field(

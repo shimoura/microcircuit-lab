@@ -6,7 +6,7 @@ weights, and a constant current for the mean input that is lost.
 it and a record of how it was scaled; nothing is scaled when the network runs.
 Builders, scripts and sweeps call it; a project that wants other rules copies
 it, changes it and calls its own copy. The formulas are the functions below;
-the constant currents are in ``compensation.py``.
+the constant currents are in ``constant_current.py``.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ import math
 
 import numpy as np
 
+from microcircuit_lab.builder_tools.constant_current import compensate_lost_mean_input
 from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.scaling import ScalingRecord
-from microcircuit_lab.network.compensation import compensate_lost_mean_input
 
 
 def scale_network(

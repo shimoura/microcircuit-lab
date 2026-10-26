@@ -1,6 +1,6 @@
 import numpy as np
 
-from microcircuit_lab.network.compensation import mean_current
+from microcircuit_lab.builder_tools.constant_current import mean_current
 
 
 def test_mean_current():

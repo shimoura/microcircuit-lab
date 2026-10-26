@@ -293,7 +293,7 @@ microcircuit-lab run --network pd14_downscaled
 ```yaml
 # configs/network/pd14_downscaled/scaling.yaml
 scaled_from: pd14
-scaled_with: microcircuit_lab.network.scaling.scale_network
+scaled_with: microcircuit_lab.builder_tools.scaling.scale_network
 parameters:          # the function's own arguments
   N_scaling: 0.1
   K_scaling: 0.1
@@ -315,7 +315,7 @@ write_network(small, "configs/network/toy_half")                       # a folde
 Simulation(small, SimulationConfig(t_sim=1000.0), network_name="toy_half").run()   # each run folder keeps the scaled numbers
 ```
 
-Other scaling rules: copy `scale_network` (`network/scaling.py`) into your project, e.g. `builders/common/scaling.py`, change it, and call your copy; its record names it in `scaled_with` (`f"{__name__}.scale_network"`), with its own `parameters`. A function of your own builds the record the same way: `ScalingRecord(scaled_from=..., scaled_with=f"{__name__}.my_scaling", parameters={...})` (`config/scaling.py`), set as the network's `scaling`. A scaled network can't be scaled again (its currents aren't the full input): scale the full one with the product of the factors.
+Other scaling rules: copy `scale_network` (`builder_tools/scaling.py`) into your project, e.g. `builders/common/scaling.py`, change it, and call your copy; its record names it in `scaled_with` (`f"{__name__}.scale_network"`), with its own `parameters`. A function of your own builds the record the same way: `ScalingRecord(scaled_from=..., scaled_with=f"{__name__}.my_scaling", parameters={...})` (`config/scaling.py`), set as the network's `scaling`. A scaled network can't be scaled again (its currents aren't the full input): scale the full one with the product of the factors.
 
 `N_scaling` only makes the populations smaller: each neuron keeps all its inputs. `K_scaling` cuts the inputs, and that changes the input current each neuron gets. With $K$ inputs of weight $J$ (pA) firing at rate $\nu$ (spikes/ms), and synaptic time constant $\tau_s$, the mean and the variance of that current are
 
@@ -731,7 +731,7 @@ microcircuit_lab/
 ├── backends/          the simulators (NEST, Brian2), and reading back a saved run
 ├── analysis/          measures and plots
 ├── cli/               the microcircuit-lab command
-├── builder_tools.py   what a builder needs, in one import
+├── builder_tools/     what a builder needs, in one import (also scaling)
 ├── run_folder.py      run folders and their metadata
 ├── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 └── yaml_files.py      reading and writing YAML

@@ -22,7 +22,7 @@ In the diagrams on this page, a dashed box runs only when *the condition in ital
 
 Optional: the YAML files can also be written by hand. A builder is a folder `builders/<model>/` with a `main(argv)`, run by `microcircuit-lab generate <model>`.
 
-**Code:** `cli/generate.py`, `builder_tools.py`
+**Code:** `cli/generate.py`, `builder_tools/`
 
 ## 1 · Check
 
@@ -62,7 +62,7 @@ written = read_network("configs/network/pd14")    # as written
 prepared = load_network("configs/network/pd14")   # ready to simulate
 ```
 
-**Code:** `network/prepare.py`, `network/compensation.py` (`replace_background_by_mean_current`)
+**Code:** `network/prepare.py`, `builder_tools/constant_current.py` (`replace_background_by_mean_current`)
 
 ## 3 · Simulate
 
@@ -124,7 +124,7 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
 | the simulator "has no" model, rule, distribution or receptor | its `check()`, in `backends/<name>/simulator.py`; for Brian2, `extensions/brian2/` |
 | weights or sizes differ from the files | step 2: compare `read_network` and `load_network` |
-| rates drop in a scaled run | `network/scaling.py`, `network/compensation.py`; full-scale rates in `reference.yaml` |
+| rates drop in a scaled run | `builder_tools/scaling.py`, `builder_tools/constant_current.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 3: the `create_...` method for that part, in `backends/nest/simulator.py` |
 | something looks wrong in Brian2 | step 3: the model in `extensions/brian2/`, then the `create_...` method in `backends/brian2/simulator.py` |
 | the run went to the wrong folder | the `output` section of the simulation file |

@@ -304,7 +304,7 @@ Only in a scaled network: how it was scaled, written by `scale_network` and neve
 #   command that makes it)
 scaled_from: pd14
 # required · text · the function that scaled it
-scaled_with: microcircuit_lab.network.scaling.scale_network
+scaled_with: microcircuit_lab.builder_tools.scaling.scale_network
 # required · mapping · the arguments the function was given (its own, e.g. N_scaling and
 #   K_scaling)
 parameters:

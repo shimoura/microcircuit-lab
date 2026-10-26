@@ -24,7 +24,7 @@ flowchart TD
   B --> T["tests/test_stimuli.py"]
 ```
 
-The files hold the numbers that are simulated: the core converts nothing at run time, except the background rate per synapse into the rate of its generator (or a constant current), in `prepare_network` (`network/prepare.py`). Scaling writes a new network folder (`scale_network` in `network/scaling.py`; its currents are in `network/compensation.py`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
+The files hold the numbers that are simulated: the core converts nothing at run time, except the background rate per synapse into the rate of its generator (or a constant current), in `prepare_network` (`network/prepare.py`). Scaling writes a new network folder (`scale_network` in `builder_tools/scaling.py`; its currents are in `builder_tools/constant_current.py`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
 
 ### Does your idea fit what already exists?
 
@@ -81,16 +81,16 @@ A rule only one project needs doesn't go in the core: with Brian2 it is a `Conne
 1. `config/connectivity.py`: add it to `ConnectionConfig` (a field), or to `SHARED_RULES` (a rule; to `RULE_NUMBER` too if it takes a number).
 2. `config/connection_table.py`: add a field's column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
 3. `backends/nest/simulator.py`: use it in `create_connections`, which reads the table column by column; `backends/brian2/simulator.py` too, and a rule in `backends/brian2/connections.py`: its counts in `_counts` if it takes a number, its `connect` call in `_single`.
-4. If scaling or the indegrees depend on it: `network/mean_input.py` (`expected_synapses`) and `network/scaling.py` (`_check_connections_can_scale` for a rule that can't follow the scaling), on whole columns.
+4. If scaling or the indegrees depend on it: `builder_tools/mean_input.py` (`expected_synapses`) and `builder_tools/scaling.py` (`_check_connections_can_scale` for a rule that can't follow the scaling), on whole columns.
 5. Test in `tests/test_connection_rules.py`.
 </details>
 
 <details>
 <summary><b>A scaling or compensation option</b></summary>
 
-1. `network/scaling.py`: the option, as an argument of `scale_network`, and its formula.
+1. `builder_tools/scaling.py`: the option, as an argument of `scale_network`, and its formula.
 2. `config/scaling.py`: the field that records it in `scaling.yaml`.
-3. `network/compensation.py`, for a compensation current.
+3. `builder_tools/constant_current.py`, for a compensation current.
 4. Test in `tests/test_scaling.py` or `tests/test_scaling_compensation.py`, and in `tests/test_heterogeneous_areas.py` if it depends on cell types.
 </details>
 

@@ -33,7 +33,7 @@ class NeuronParams(BaseModel):
 
     ``I_e`` (constant input current, pA) is the one parameter read back here,
     because scaling adds a compensation current to it (see
-    ``network/compensation.py``). It is a number, or not set (``None``): then
+    ``builder_tools/constant_current.py``). It is a number, or not set (``None``): then
     it is not passed to the simulator at all, so a model without ``I_e`` works,
     and the model's own value is used. A compensation sets it.
 

@@ -153,8 +153,8 @@ class ConnectionConfig(FrozenConfig):
     ``parameters`` instead of a number.
 
     The core computes with the expected number of synapses
-    (``network.mean_input.expected_synapses``), and ``scale_network`` scales
-    the given number (``network.scaling.scale_rule_number``). Any other rule
+    (``builder_tools.mean_input.expected_synapses``), and ``scale_network`` scales
+    the given number (``builder_tools.scaling.scale_rule_number``). Any other rule
     cannot be scaled yet.
     """
 

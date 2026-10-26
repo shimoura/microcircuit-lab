@@ -65,7 +65,7 @@ def test_a_scaled_folder_records_how_and_is_not_scaled_again(tmp_path) -> None:
 
     assert read_network(tmp_path / "toy_half") == written
     assert written.scaling.scaled_from == "toy" and written.scaling.parameters["K_scaling"] == 0.5
-    assert written.scaling.scaled_with == "microcircuit_lab.network.scaling.scale_network"
+    assert written.scaling.scaled_with == "microcircuit_lab.builder_tools.scaling.scale_network"
     with pytest.raises(ValueError, match="already scaled"):
         _scaled(written)
 

@@ -3,13 +3,13 @@ import math
 import pytest
 
 from microcircuit_lab.builder_tools import scale_network
-from microcircuit_lab.network.compensation import mean_current
-from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.mean_input import (
+from microcircuit_lab.builder_tools.constant_current import mean_current
+from microcircuit_lab.builder_tools.mean_input import (
     full_mean_rates,
     indegree_matrix,
     mean_psc_matrix,
 )
+from microcircuit_lab.network.load import assemble_network, read_network_files
 
 
 def _load_toy():

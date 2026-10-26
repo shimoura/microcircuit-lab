@@ -2,9 +2,7 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.builder_tools import scale_network
-from microcircuit_lab.config.reference import ReferenceConfig
-from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.mean_input import (
+from microcircuit_lab.builder_tools.mean_input import (
     background_indegrees,
     background_weights,
     full_mean_rates,
@@ -12,6 +10,8 @@ from microcircuit_lab.network.mean_input import (
     num_neurons,
     num_synapses,
 )
+from microcircuit_lab.config.reference import ReferenceConfig
+from microcircuit_lab.network.load import assemble_network, read_network_files
 
 
 def test_reference_matrices():

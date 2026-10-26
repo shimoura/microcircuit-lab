@@ -110,7 +110,7 @@ class NetworkConfig(FrozenConfig):
         constant current of the same mean (Potjans & Diesmann 2014, Fig. 5).
         The rate, weight and delay in ``background_inputs`` are used to compute
         that mean (step ``replace_background_by_mean_current`` in
-        ``network/compensation.py``). No Poisson generator is created.
+        ``builder_tools/constant_current.py``). No Poisson generator is created.
 
     bound_mode:
         What to do with a drawn weight or delay that falls outside its

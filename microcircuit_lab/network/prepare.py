@@ -3,14 +3,13 @@ Prepare a network for the simulation: the steps between the network as
 written in the files and the network the simulator builds.
 
 The files hold the numbers that are simulated (a scaled network is written
-scaled, see ``scaling.py``), so only two steps remain, both about the
+scaled, see ``builder_tools/scaling.py``), so only two steps remain, both about the
 background input: :func:`prepare_network` lists them.
 """
 
 from __future__ import annotations
 
 from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.compensation import replace_background_by_mean_current
 
 
 def prepare_network(config: NetworkConfig) -> NetworkConfig:
@@ -36,6 +35,12 @@ def prepare_network(config: NetworkConfig) -> NetworkConfig:
         A new network description with the background rates per generator,
         or the background's current in ``I_e``.
     """
+
+    # Imported here: builder_tools/write.py imports network.load, which imports this
+    # module. Goes away when this step leaves prepare_network.
+    from microcircuit_lab.builder_tools.constant_current import (
+        replace_background_by_mean_current,
+    )
 
     network = replace_background_by_mean_current(config.model_copy(deep=True))
     return _background_rate_per_neuron(network)

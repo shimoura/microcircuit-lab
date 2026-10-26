@@ -76,7 +76,7 @@ def read_network(folder: str | Path) -> NetworkConfig:
     -------
     NetworkConfig
         The network as described by its files, e.g. to change it, or to
-        scale it with :func:`~microcircuit_lab.network.scaling.scale_network`.
+        scale it with :func:`~microcircuit_lab.builder_tools.scaling.scale_network`.
     """
 
     return assemble_network(read_network_files(folder))

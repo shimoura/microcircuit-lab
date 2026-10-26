@@ -1,8 +1,8 @@
 """
-The steps that add constant currents to ``I_e``.
+Constant currents: the steps that add a constant current to ``I_e``.
 
 ``compensate_lost_mean_input`` replaces the mean input that scaling removes
-(a step of :func:`~microcircuit_lab.network.scaling.scale_network`, from the
+(a step of :func:`~microcircuit_lab.builder_tools.scaling.scale_network`, from the
 full-scale network ``original``); ``replace_background_by_mean_current``
 replaces the background Poisson input by a constant current of the same mean
 (a step of :func:`~microcircuit_lab.network.prepare.prepare_network`). The
@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from microcircuit_lab.config.network import NetworkConfig
-from microcircuit_lab.network.mean_input import (
+from microcircuit_lab.builder_tools.mean_input import (
     background_indegrees,
     background_rates,
     background_weights,
@@ -29,6 +28,7 @@ from microcircuit_lab.network.mean_input import (
     tau_syn_ex,
     tau_syn_in,
 )
+from microcircuit_lab.config.network import NetworkConfig
 
 
 def compensate_lost_mean_input(

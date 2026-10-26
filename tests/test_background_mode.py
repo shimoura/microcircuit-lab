@@ -12,20 +12,20 @@ import yaml
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.builder_tools import scale_network
+from microcircuit_lab.builder_tools.constant_current import mean_current
+from microcircuit_lab.builder_tools.mean_input import (
+    background_indegrees,
+    background_rates,
+    background_weights,
+    tau_syn_ex,
+)
 from microcircuit_lab.config.background_inputs import BackgroundInputConfig
 from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.network.compensation import mean_current
 from microcircuit_lab.network.load import assemble_network, read_network_files
-from microcircuit_lab.network.mean_input import (
-    background_indegrees,
-    background_rates,
-    background_weights,
-    tau_syn_ex,
-)
 from microcircuit_lab.network.prepare import prepare_network
 
 

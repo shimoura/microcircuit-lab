@@ -1,5 +1,5 @@
 scaled_from: humam --area rostralanteriorcingulate
-scaled_with: microcircuit_lab.network.scaling.scale_network
+scaled_with: microcircuit_lab.builder_tools.scaling.scale_network
 parameters:
   N_scaling: 0.001
   K_scaling: 0.001

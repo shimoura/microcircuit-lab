@@ -15,7 +15,7 @@ class BackgroundInputConfig(FrozenConfig):
     Always-on Poisson input to a population.
 
     Scaling changes this input and compensates for it (see
-    ``network/scaling.py`` and ``network/compensation.py``). A
+    ``builder_tools/scaling.py`` and ``builder_tools/constant_current.py``). A
     ``StimulusConfig`` is for an input applied to some populations during
     part of the run.
     """
