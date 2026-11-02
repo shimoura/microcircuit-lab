@@ -69,7 +69,7 @@ This installs the latest version. For a fixed one, add its tag from the [release
 
 For NEST from source or with MPI, see [NEST](#nest); for Brian2, see [Brian2](#brian2).
 
-Python 3.12 or newer is needed. All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
+Python 3.11 or newer is needed (3.12 for Brian2). All that matters is that `import nest` works. Check the install with `microcircuit-lab --version`.
 
 The power spectrum with `method: multitaper` needs `mne`: `pip install "microcircuit_lab[multitaper]"`.
 
@@ -681,7 +681,7 @@ mpirun -n 4 microcircuit-lab run --network pd14
 
 ### Brian2
 
-Install [Brian2](https://brian2.readthedocs.io) with `pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"` (in a clone: `pip install -e ".[brian2]"`), then
+Install [Brian2](https://brian2.readthedocs.io) with `pip install "microcircuit_lab[brian2] @ git+https://github.com/shimoura/microcircuit-lab"` (in a clone: `pip install -e ".[brian2]"`; Brian2 2.10 needs Python 3.12 or newer), then
 
 ```bash
 microcircuit-lab run --network toy --backend brian2

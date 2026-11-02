@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -22,8 +22,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install package (with dev, nest and brian2 extras)
-        run: pip install -e ".[dev,nest,brian2]"
+      # Brian2 2.10 needs Python 3.12, so on 3.11 the Brian2 tests are skipped.
+      - name: Install package (with dev, nest and, from Python 3.12, brian2 extras)
+        run: pip install -e ".[dev,nest${{ matrix.python-version != '3.11' && ',brian2' || '' }}]"
 
       - name: Lint with ruff
         run: ruff check .
