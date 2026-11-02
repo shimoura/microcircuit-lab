@@ -796,7 +796,6 @@ Brian2 spends time on every object it has, so the network is built from few:
 
 - The populations of a neuron model share one `NeuronGroup`, and all connections between two of them through the same synapse are one `Synapses`, however many rows the connection table has.
 - The default device runs on one thread. It compiles the network's code with Cython (Brian2's default, or numpy if there is no compiler): that takes a minute or so the first time a kind of network runs, and the compiled code is kept for later runs.
-- Each connection without multapses is compiled on its own, so a network with many of them takes longer the first time (`toy_two_areas_advanced`: about 18 minutes, then 26 s); changing a connection's number compiles it again.
 - `backend_options={"codegen_target": "numpy"}` compiles nothing, so it starts at once but runs slower; worth it for a quick look at a small network.
 - `cpp_standalone` compiles the whole network for a minute or so at every run, and is the faster one for long or large runs; with `backend_options={"standalone_directory": "brian2_build"}` (or `standalone_directory` in the simulation file's `backend.options`) it keeps its code in that folder and compiles only what changed since the last run there. Two runs at the same time must not share the folder.
 - Its threads (`local_num_threads`) speed up the simulation itself; Brian2 creates the synapses on one thread.

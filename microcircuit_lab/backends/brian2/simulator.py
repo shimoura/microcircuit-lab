@@ -626,8 +626,7 @@ class Brian2Backend:
             **options,
         )
         for arguments, namespace in calls:
-            synapses.namespace.update(namespace)
-            synapses.connect(**arguments)
+            synapses.connect(**arguments, namespace=namespace)
 
         if si_unit == "siemens":
             weights = {k: (abs(mean), *rest) for k, (mean, *rest) in weights.items()}
