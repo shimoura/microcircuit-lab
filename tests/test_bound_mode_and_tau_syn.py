@@ -171,11 +171,11 @@ def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Pat
     assert config.connections["delay.minimum"][0] == 0.1
 
 
-def test_bound_mode_defaults_to_redraw_and_is_not_written(tmp_path: Path) -> None:
+def test_bound_mode_defaults_to_redraw_and_is_written(tmp_path: Path) -> None:
     network_dir = _write(tmp_path)
 
     assert read_network(network_dir).bound_mode == "redraw"
-    assert "bound_mode" not in (network_dir / "connectivity.yaml").read_text()
+    assert "bound_mode: redraw" in (network_dir / "connectivity.yaml").read_text()
 
 
 def test_a_delay_without_a_minimum_leaves_it_out_of_the_file() -> None:

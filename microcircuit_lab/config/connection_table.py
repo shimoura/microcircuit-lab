@@ -175,34 +175,27 @@ class ConnectionTable:
             message = re.sub(r"connections\.(\d+)\.", lambda m: f"line {int(m[1]) + 2}, ", str(error))
             raise ValueError(f"{path}: {message}") from error
 
-    def write_csv(self, path: str | Path, *, write_defaults: bool = False) -> None:
-        """Write the table as CSV: the rule's number under its own name, and a
-        column with a default only where some row differs from it.
-
-        ``write_defaults=True`` also writes a column whose rows all equal its
-        default (e.g. ``rule``, ``weight.distribution``), so the file states
-        every value; a column no row sets is still left out."""
+    def write_csv(self, path: str | Path) -> None:
+        """Write the table as CSV: the rule's number under its own name, and
+        every column with a value, defaults included (e.g. ``rule``,
+        ``weight.distribution``), so the file states what is simulated. A
+        column no row sets (e.g. ``synapse``) is left out."""
 
         frame = pd.DataFrame(self._columns)
         for rule, name in RULE_NUMBER.items():
             rows = frame["rule"] == rule
             if rows.any():
                 values = frame["number"].where(rows)
-                frame[name] = values if name == "p" else values.astype("Int64")
+                # Next to the rule, as in connectivity.yaml.
+                frame.insert(frame.columns.get_loc("number"), name, values if name == "p" else values.astype("Int64"))
         frame = frame.drop(columns="number")
         for name in PARAMETER_COLUMNS:
             frame[name] = [None if v is None else json.dumps(v) for v in frame[name]]
         for column in COLUMNS:
             field = _field(column) if column != "number" else None
-            if field is None or field.is_required():
+            if field is None or field.is_required() or field.default is not None:
                 continue
-            if field.default is None:
-                all_default = frame[column].isna().all()
-            elif write_defaults:
-                all_default = False
-            else:
-                all_default = (frame[column] == field.default).all()
-            if all_default:
+            if frame[column].isna().all():
                 frame = frame.drop(columns=column)
         frame.to_csv(path, index=False)
 

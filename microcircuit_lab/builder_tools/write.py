@@ -35,7 +35,6 @@ def write_network_directory(
     stimuli: Iterable[Mapping[str, Any]] | None = None,
     synapses: Mapping[str, Mapping[str, Any]] | None = None,
     compact: bool = True,
-    write_defaults: bool = False,
 ) -> NetworkConfig:
     """
     Write a whole network folder and check it.
@@ -62,8 +61,7 @@ def write_network_directory(
     poisson_background
         ``{population name: {"rate": ..., "indegree": ..., "weight": ..., "delay": ...}}``.
     bound_mode
-        ``"redraw"`` or ``"clip"``; written only when ``"clip"`` (or with
-        ``write_defaults``).
+        ``"redraw"`` or ``"clip"``; always written, so the file states it.
     scaling
         The record of a scaled network (``scaling.yaml``), which
         :func:`write_network` passes on; ``None`` writes none.
@@ -79,11 +77,6 @@ def write_network_directory(
         Connections are always written one per line. ``True`` writes populations
         and the Poisson background the same way; ``False`` writes them in block
         style, easier to read for a small network.
-    write_defaults
-        ``True`` writes ``bound_mode`` and, for a ``ConnectionTable``, every
-        column even where it equals its default, so the files state every
-        value and keep their meaning if a default changes. Rows given as
-        dicts are written as given either way.
 
     Returns
     -------
@@ -115,12 +108,10 @@ def write_network_directory(
 
     table = flow_records if compact else (lambda records: records)
 
-    connectivity_payload: dict[str, Any] = {}
-    if write_defaults or bound_mode != "redraw":
-        connectivity_payload["bound_mode"] = bound_mode
+    connectivity_payload: dict[str, Any] = {"bound_mode": bound_mode}
     if isinstance(connections, ConnectionTable):
         # A large network: the table goes to a CSV file, named in connectivity.yaml.
-        connections.write_csv(directory / "connections.csv", write_defaults=write_defaults)
+        connections.write_csv(directory / "connections.csv")
         connectivity_payload["connections_file"] = "connections.csv"
     else:
         connectivity_payload["connections"] = flow_records(list(connections))
