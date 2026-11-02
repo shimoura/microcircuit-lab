@@ -157,7 +157,7 @@ def compute_population_rate_signal(
         The population rate in each bin, in spikes/s.
     """
 
-    n_neurons = run.network.populations[pop_name].size
+    n_neurons = len(run.node_ids(pop_name))
     _, times = run.spikes(pop_name)
     times = times[(times >= begin) & (times < end)]
 

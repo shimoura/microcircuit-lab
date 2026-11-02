@@ -393,6 +393,17 @@ def test_a_run_folder_is_read_back(tmp_path: Path) -> None:
             run.node_ids(population), sim.backend.get_population(population).tolist()
         )
 
+    # A network this version cannot read (e.g. from an older one) still re-plots;
+    # only run.network fails, naming the version the run was made with.
+    saved = yaml.safe_load((tmp_path / "config.yaml").read_text())
+    saved["network"]["old_field"] = 1
+    (tmp_path / "config.yaml").write_text(yaml.safe_dump(saved))
+    run = read_run(tmp_path)
+    assert run.populations == list(network.populations)
+    assert len(run.spikes(run.populations[0]).times) > 0
+    with pytest.raises(ValueError, match="the run was made with"):
+        run.network
+
 
 
 def test_only_the_first_mpi_process_saves(tmp_path: Path, monkeypatch) -> None:

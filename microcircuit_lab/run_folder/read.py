@@ -16,14 +16,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import numpy as np
+from pydantic import BaseModel, ValidationError
 
 from microcircuit_lab.backends import read_saved_spikes, read_saved_variable
 from microcircuit_lab.backends.spikes import spikes_in_id_range
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
+from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.yaml_files import read_yaml
 
@@ -53,8 +55,13 @@ class Run:
         The run folder.
     populations : list of str
         The population names, in network order.
+    reference : ReferenceConfig or None
+        The network's reference rates, if it has any.
     network : NetworkConfig
-        The network as it was simulated (from ``config.yaml``).
+        The whole network as it was simulated (from ``config.yaml``), read
+        the first time it is used. The plots do not need it, so a run made
+        with an older version still re-plots, even if its network can only
+        be read with that version.
     simulation : SimulationConfig
         The simulation settings (from ``config.yaml``).
     metadata : dict
@@ -62,19 +69,47 @@ class Run:
         statistics of each population, the files of the run.
     """
 
-    def __init__(
-        self,
-        folder: Path,
-        network: NetworkConfig,
-        simulation: SimulationConfig,
-        metadata: dict,
-    ) -> None:
+    def __init__(self, folder: Path, saved: dict, metadata: dict) -> None:
         self.folder = folder
-        self.populations = list(network.populations)
-        self.network = network
-        self.simulation = simulation
         self.metadata = metadata
+        self.populations = list(saved["network"]["populations"])
+        reference = saved["network"].get("reference")
+        self.reference = None if reference is None else self._config(ReferenceConfig, reference, "network's reference")
+        self.simulation = self._config(SimulationConfig, saved["simulation"], "simulation settings")
+        self._saved_network = saved["network"]
+        self._network: NetworkConfig | None = None
         self._spikes: Spikes | None = None
+
+    @property
+    def network(self) -> NetworkConfig:
+        if self._network is None:
+            saved = dict(self._saved_network)
+            # A large network's connections are in a CSV file next to config.yaml.
+            if "connections_file" in saved:
+                name = saved.pop("connections_file")
+                csv_path = self.folder / name
+                if not csv_path.is_file():
+                    raise FileNotFoundError(
+                        f"{self.folder}: config.yaml names connections_file '{name}', but there is "
+                        f"no file {csv_path}."
+                    )
+                saved["connections"] = ConnectionTable.read_csv(csv_path)
+            self._network = self._config(NetworkConfig, saved, "network")
+        return self._network
+
+    def _config(self, config_class: type[BaseModel], saved: Any, what: str) -> Any:
+        """``saved`` read as ``config_class``; if this version's format
+        does not fit it, the error names the version the run was made with."""
+
+        try:
+            return config_class.model_validate(saved)
+        except ValidationError as error:
+            made_with = self.metadata.get("microcircuit_lab_version") or "an unknown version"
+            raise ValueError(
+                f"{self.folder}: the {what} in config.yaml cannot be read by this version of "
+                f"microcircuit_lab; the run was made with {made_with} (metadata.json), which "
+                f"reads it.\n{error}"
+            ) from error
 
     def node_ids(self, population: str) -> np.ndarray:
         """The node IDs of a population: one block, ``first_node_id`` to ``last_node_id`` in ``metadata.json``."""
@@ -157,8 +192,9 @@ def read_run(run_dir: str | Path) -> Run:
         If ``run_dir`` does not exist.
     ValueError
         If the run has no ``config.yaml`` (``output.save_config: false``) or no
-        ``metadata.json`` (``output.save_metadata: false``), or the metadata
-        lacks the node IDs of a population (simulate the run again).
+        ``metadata.json`` (``output.save_metadata: false``), the metadata
+        lacks the node IDs of a population (simulate the run again), or this
+        version cannot read the run's simulation settings or reference rates.
     """
 
     folder = Path(run_dir)
@@ -180,22 +216,10 @@ def read_run(run_dir: str | Path) -> Run:
         )
 
     saved = read_yaml(config_path)
-    # A large network's connections are in a CSV file next to config.yaml.
-    if "connections_file" in saved["network"]:
-        name = saved["network"].pop("connections_file")
-        csv_path = folder / name
-        if not csv_path.is_file():
-            raise FileNotFoundError(
-                f"{folder}: config.yaml names connections_file '{name}', but there is "
-                f"no file {csv_path}."
-            )
-        saved["network"]["connections"] = ConnectionTable.read_csv(csv_path)
-    network = NetworkConfig.model_validate(saved["network"])
-    simulation = SimulationConfig.model_validate(saved["simulation"])
-
     metadata = json.loads(metadata_path.read_text())
+    run = Run(folder, saved, metadata)
     missing = [
-        name for name in network.populations
+        name for name in run.populations
         if "first_node_id" not in metadata.get("populations", {}).get(name, {})
     ]
     if missing:
@@ -204,4 +228,4 @@ def read_run(run_dir: str | Path) -> Run:
             "Simulate the run again to write it."
         )
 
-    return Run(folder, network, simulation, metadata)
+    return run
