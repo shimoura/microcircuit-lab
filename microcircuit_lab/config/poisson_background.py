@@ -73,7 +73,6 @@ class PoissonBackgroundFile(FrozenConfig):
             raise ValueError(
                 "background_mode was removed: the files show what runs. To replace the background "
                 "by its mean current, write the network with replace_background_by_mean_current "
-                "(microcircuit_lab.builder_tools), e.g. the pd14 builder's --background "
-                "mean_current, and remove background_mode from this file"
+                "(microcircuit_lab.builder_tools), and remove background_mode from this file"
             )
         return data

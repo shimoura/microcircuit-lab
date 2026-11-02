@@ -24,7 +24,7 @@ from microcircuit_lab.analysis import (
     list_areas,
     plot_enabled_in_config,
 )
-from microcircuit_lab.backends import BackendName
+from microcircuit_lab.backends import BackendName, get_backend
 from microcircuit_lab.config.analysis import AnalysisConfig
 from microcircuit_lab.run_folder.write import register_artifact
 
@@ -201,7 +201,9 @@ def main(argv: list[str] | None = None) -> None:
                 backend=args.backend,
                 backend_options=backend_options,
             )
-        except FileNotFoundError as error:
+            # A simulator that is not installed: one line, not a traceback.
+            get_backend(simulation.backend_name)
+        except (FileNotFoundError, ModuleNotFoundError) as error:
             sys.exit(str(error))
         if brian2_options and simulation.backend_name != "brian2":
             sys.exit(

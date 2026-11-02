@@ -4,10 +4,10 @@ The usual entry points::
 
     from microcircuit_lab import Simulation, read_network, read_run
 
-    simulation = Simulation.from_yaml(network_name="pd14")
+    simulation = Simulation.from_yaml(network_name="toy")
     simulation.run()
 
-    network = read_network("configs/network/pd14")   # the network as written in its files
+    network = read_network("configs/network/toy")    # the network as written in its files
 
     run = read_run(simulation.output_dir)             # a finished run folder, no simulator needed
     spikes = run.spikes("E")                          # senders and times (ms) of one population

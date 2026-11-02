@@ -130,16 +130,15 @@ class ConnectionTable:
     def read_csv(cls, path: str | Path) -> ConnectionTable:
         """A table from a CSV file (see the module docstring for its columns)."""
 
-        # Every setting written out: pandas' defaults would round the last digit
-        # of numbers, read text such as "NA" or "None" as missing, and guess the
-        # type of each column. Here only an empty cell is "not set", and each
+        # Every setting written out: pandas' defaults would read text such as
+        # "NA" or "None" as missing, and guess the type of each column (numbers
+        # are read exactly, since pandas 3). Here only an empty cell is "not set", and each
         # column has the type COLUMNS gives it (text read as categories: one
         # string per distinct name, not one per row).
         types = {"text": "category", "yes/no": "boolean", "number": "float64", "parameters": "category"}
         dtype = {column: types[kind] for column, kind in COLUMNS.items() if column != "number"}
         dtype.update({name: "float64" for name in RULE_NUMBER.values()})
-        frame = pd.read_csv(path, dtype=dtype, float_precision="round_trip",
-                            keep_default_na=False, na_values=[""])
+        frame = pd.read_csv(path, dtype=dtype, keep_default_na=False, na_values=[""])
         if "number" in frame.columns:
             raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
                              f"under its name, one of {list(RULE_NUMBER.values())}.")

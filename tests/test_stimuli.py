@@ -226,6 +226,10 @@ def test_create_stimuli_builds_correct_nest_models():
     assert list(inhom_device.get("rate_times")) == [10.0, 20.0]
     assert list(inhom_device.get("rate_values")) == [50.0, 100.0]
 
+    # A second build starts afresh: NEST's reset deleted the first build's nodes.
+    backend.build()
+    assert len(backend.stimulus_generators) == 3
+
 
 def test_dc_stimulus_drives_spiking_only_after_start():
     """Regression test for the primary use case: a constant-current pulse
