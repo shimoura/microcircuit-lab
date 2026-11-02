@@ -175,9 +175,13 @@ class ConnectionTable:
             message = re.sub(r"connections\.(\d+)\.", lambda m: f"line {int(m[1]) + 2}, ", str(error))
             raise ValueError(f"{path}: {message}") from error
 
-    def write_csv(self, path: str | Path) -> None:
+    def write_csv(self, path: str | Path, *, write_defaults: bool = False) -> None:
         """Write the table as CSV: the rule's number under its own name, and a
-        column with a default only where some row differs from it."""
+        column with a default only where some row differs from it.
+
+        ``write_defaults=True`` also writes a column whose rows all equal its
+        default (e.g. ``rule``, ``weight.distribution``), so the file states
+        every value; a column no row sets is still left out."""
 
         frame = pd.DataFrame(self._columns)
         for rule, name in RULE_NUMBER.items():
@@ -194,6 +198,8 @@ class ConnectionTable:
                 continue
             if field.default is None:
                 all_default = frame[column].isna().all()
+            elif write_defaults:
+                all_default = False
             else:
                 all_default = (frame[column] == field.default).all()
             if all_default:

@@ -391,6 +391,7 @@ write_network_directory(
 - A builder is found by its folder `builders/<model>/` with a `main(argv=None)`; there is no list to edit. `microcircuit-lab generate` with no name lists what it found.
 - `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
+- `write_network_directory` leaves out values equal to their default (`bound_mode: redraw`, a CSV column like `rule` or `weight.distribution`). With `write_defaults=True` it writes them too, so a published model's files state every value and keep their meaning if a default of the core changes.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 

@@ -5,10 +5,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import yaml
 
+from microcircuit_lab import read_network
 from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.config.connection_table import ConnectionTable
 
 NEURON = {
     "C_m": 250.0,
@@ -104,6 +107,39 @@ def test_compact_false_writes_block_style_with_the_same_content(tmp_path: Path) 
     assert "- name:" in (tmp_path / "block" / "net" / "populations.yaml").read_text()
     assert "- {source:" in (tmp_path / "block" / "net" / "connectivity.yaml").read_text()
     assert block == compact
+
+
+def _write_table(tmp_path: Path, write_defaults: bool) -> Path:
+    """Write the parts with the connections as a ConnectionTable (a CSV file)."""
+    parts = _parts(tmp_path)
+    parts["connections"] = ConnectionTable.from_yaml_rows(parts["connections"])
+    write_network_directory(**parts, write_defaults=write_defaults)
+    return parts["path"]
+
+
+def test_write_defaults_writes_values_equal_to_their_default(tmp_path: Path) -> None:
+    default = _write_table(tmp_path / "default", write_defaults=False)
+    explicit = _write_table(tmp_path / "explicit", write_defaults=True)
+
+    def columns(folder: Path) -> set[str]:
+        return set(pd.read_csv(folder / "connections.csv", nrows=0).columns)
+
+    assert "bound_mode" not in _load(tmp_path / "default", "connectivity.yaml")
+    assert not {"rule", "weight.distribution", "delay.distribution"} & columns(default)
+
+    assert _load(tmp_path / "explicit", "connectivity.yaml")["bound_mode"] == "redraw"
+    assert {"rule", "weight.distribution", "delay.distribution"} <= columns(explicit)
+    # a column no row sets (synapse) is still left out
+    assert "synapse" not in columns(explicit)
+
+
+def test_write_defaults_loads_the_same_network(tmp_path: Path) -> None:
+    default = read_network(_write_table(tmp_path / "default", write_defaults=False))
+    explicit = read_network(_write_table(tmp_path / "explicit", write_defaults=True))
+
+    assert default.bound_mode == explicit.bound_mode
+    assert default.connections.to_yaml_rows() == explicit.connections.to_yaml_rows()
+    assert default.poisson_background == explicit.poisson_background
 
 
 def test_an_invalid_part_raises_with_the_field_named(tmp_path: Path) -> None:
