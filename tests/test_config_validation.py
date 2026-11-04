@@ -166,8 +166,11 @@ def test_validate_catches_two_entries_for_the_same_pair(network_dir: Path) -> No
         network_dir / "connectivity.yaml",
         lambda d: d["connections"].append(d["connections"][0]),
     )
-    with pytest.raises(ValueError, match="more than one entry"):
+    with pytest.raises(ValueError, match="more than one entry") as error:
         read_network(network_dir)
+    # The folder and the message, as for an error in one file; not pydantic's wrapper.
+    assert str(error.value).startswith(f"Invalid network config in {network_dir}:")
+    assert "validation error" not in str(error.value)
 
 
 def test_validate_catches_a_background_input_for_an_undefined_population(

@@ -52,7 +52,12 @@ def read_network(folder: str | Path) -> NetworkConfig:
         scale it with :func:`~microcircuit_lab.builder_tools.scaling.scale_network`.
     """
 
-    return assemble_network(read_network_files(folder))
+    directory = read_network_files(folder)
+    try:
+        return assemble_network(directory)
+    except ValueError as error:
+        problems = str(error).replace("\n", "\n  ")
+        raise ValueError(f"Invalid network config in {folder}:\n  {problems}") from None
 
 
 def read_network_files(folder: str | Path) -> NetworkDirectory:
@@ -198,13 +203,21 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
                 "which is not defined in populations.yaml."
             )
 
-    return NetworkConfig(
-        populations=populations,
-        connections=connections,
-        poisson_background=dict(directory.poisson_background.poisson_background),
-        bound_mode=directory.connectivity.bound_mode,
-        stimuli=directory.stimuli.stimuli,
-        scaling=directory.scaling,
-        reference=directory.reference,
-        synapses=dict(directory.synapses.synapses),
-    )
+    try:
+        return NetworkConfig(
+            populations=populations,
+            connections=connections,
+            poisson_background=dict(directory.poisson_background.poisson_background),
+            bound_mode=directory.connectivity.bound_mode,
+            stimuli=directory.stimuli.stimuli,
+            scaling=directory.scaling,
+            reference=directory.reference,
+            synapses=dict(directory.synapses.synapses),
+        )
+    except ValidationError as error:
+        # These are the checks across files, each with its own message;
+        # pydantic's wrapper (the type, the whole network as input, a link)
+        # would only hide it.
+        raise ValueError(
+            "\n".join(problem["msg"].removeprefix("Value error, ") for problem in error.errors())
+        ) from None
