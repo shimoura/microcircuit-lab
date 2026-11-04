@@ -1,0 +1,29 @@
+# Background: each neuron of a population gets `indegree` independent Poisson
+# synapses, each firing at `rate` (spikes/s). Other always-on inputs (a constant
+# current, a Poisson train, an inhomogeneous Poisson input) are stimuli.yaml
+# entries without start/stop.
+poisson_background:
+  E:
+    rate: 8.0
+    indegree: 1000
+    weight:
+      mean: 87.80849352920843
+      rel_std: 0.0
+      distribution: fixed
+      unit: pA
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed
+  I:
+    rate: 8.0
+    indegree: 1000
+    weight:
+      mean: 87.80849352920843
+      rel_std: 0.0
+      distribution: fixed
+      unit: pA
+    delay:
+      mean: 1.5
+      rel_std: 0.0
+      distribution: fixed

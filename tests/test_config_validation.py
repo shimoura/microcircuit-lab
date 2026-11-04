@@ -25,6 +25,12 @@ def test_every_network_config_in_the_repository_is_valid(network_config: Path) -
     assert read_network(network_config).populations
 
 
+def test_the_toy_written_by_hand_and_by_its_builder_are_the_same_network() -> None:
+    """The two examples of the toy (the commented YAML files, and the files
+    builders/toy writes) must not drift apart."""
+    assert read_network(TOY) == read_network("configs/network/toy_from_builder")
+
+
 @pytest.fixture
 def network_dir(tmp_path: Path) -> Path:
     """A private, editable copy of the toy network."""

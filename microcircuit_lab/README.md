@@ -87,7 +87,8 @@ pip install -e ".[dev,nest]"
 
 | Network | What it is |
 |---|---|
-| `toy`, `toy_stimulated` | two populations (E and I), with and without stimuli; the smallest example |
+| `toy`, `toy_stimulated` | two populations (E and I), with and without stimuli; the smallest example, written by hand with comments |
+| `toy_from_builder` | the same network as `toy`, written by the builder `builders/toy` |
 | `toy_two_areas` | a made-up two-area network with different layers and cell types (E, PV, SOM, VIP) |
 | `toy_two_areas_advanced` | the same network with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
@@ -112,8 +113,19 @@ my_project/
 
 | Command | What you get |
 |---|---|
-| `microcircuit-lab init my_project` | the empty folders; the core stays installed in your Python environment |
+| `microcircuit-lab init my_project` | the folders and the toy example (below); the core stays installed in your Python environment |
 | `microcircuit-lab init my_project --with-core` | the folders, the examples, and a copy of the core in `microcircuit-lab/` (installed editable) with the backends of your installed simulators; `--backends nest brian2` chooses, and running it again adds a missing one |
+
+The toy example comes twice, once per way of working:
+
+```bash
+cd my_project
+microcircuit-lab run --network toy        # configs/network/toy/: YAML files with comments, edit them directly
+microcircuit-lab generate toy             # builders/toy/build.py writes configs/network/toy_from_builder/
+microcircuit-lab run --network toy_from_builder --simulation toy --analysis toy
+```
+
+Both are the same network, with the same spikes. The Brian2 models (`extensions/brian2/`) come too when Brian2 is installed.
 
 Then, for a model of your own:
 
@@ -129,7 +141,8 @@ Good to know:
 - Run the commands from the project folder; that is where `builders/`, `analyses/`, `configs/` and `extensions/` are looked for.
 - With `--with-core`, the copy of the core is yours: change it and commit it with your project. Your edits take effect at once, and each run's `metadata.json` records your project's git commit, which then covers the core too.
 - A later core release is not applied to the copy by itself; compare and merge it by hand if you want it. To propose a change to the original core, see [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md).
-- The examples (every builder, config and `extensions/` model) are copied too, and are yours as well. A name that already exists is skipped, so `microcircuit-lab init . --with-core` is safe in an existing repository.
+- The examples (every builder, config and `extensions/` model) are copied too, and are yours as well. A name that already exists is skipped, so `microcircuit-lab init .` (with or without `--with-core`) is safe in an existing repository, and adds only what is missing.
+- After an upgrade that changes the file format, delete the toy's folders and run `microcircuit-lab init .` again to get them in the new format.
 
 ## Configuration
 

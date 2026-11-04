@@ -1,9 +1,15 @@
-"""Create the folders of a new project.
+"""Create the folders of a new project, with an example.
 
-    microcircuit-lab init <project>               # builders/, analyses/, configs/, experiments/, extensions/
-    microcircuit-lab init <project> --with-core   # also a copy of the core, and the examples
+    microcircuit-lab init <project>               # builders/, analyses/, configs/, experiments/, extensions/, and the toy example
+    microcircuit-lab init <project> --with-core   # also a copy of the core, and every example
 
-Nothing that already exists is touched. With ``--with-core`` the core (the release
+Nothing that already exists is touched. Plain ``init`` copies the toy network
+twice, once per way of working: ``configs/network/toy`` written by hand, with
+comments, and ``builders/toy``, which writes the same network to
+``configs/network/toy_from_builder``; with the toy's simulation and analysis
+settings, and the Brian2 models of ``extensions/brian2`` if Brian2 is installed.
+They are fetched from the core repository, at the release of the installed
+version, as ``--with-core`` does. With ``--with-core`` the core (the release
 of the installed version, or the latest ``main`` if it has none) is copied into
 ``<project>/microcircuit-lab/`` and installed in editable mode. The copy is part of
 the project: it can be read, changed and committed with the project's own code, and
@@ -35,6 +41,14 @@ EXAMPLE_FOLDERS = ("builders", "configs/network", "configs/simulation", "configs
 # What the copy of the core needs to be installed and edited: the package, its
 # docs (the README links to them), and the files pyproject.toml names (readme, license).
 CORE_FILES = ("microcircuit_lab", "docs", "pyproject.toml", "README.md", "LICENSE", "CITATION.cff")
+# What plain init copies from the core repository.
+TOY_EXAMPLE = (
+    "builders/toy",
+    "configs/network/toy",
+    "configs/network/toy_from_builder",
+    "configs/simulation/toy.yaml",
+    "configs/analysis/toy.yaml",
+)
 
 
 def _ignore_build_files(project: Path) -> None:
@@ -102,6 +116,17 @@ def _add_backends(source: Path, core: Path, backends: list[str]) -> None:
             print(f"Added the {name} backend to {core}")
 
 
+def _copy_example(core: Path, project: Path, path: str) -> None:
+    """Copy ``core/<path>`` to ``project/<path>``, unless the project has it."""
+    target = project / path
+    if target.exists():
+        print(f"Skipped {path} (already exists)")
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _copy(core / path, target)
+    print(f"Copied {path}")
+
+
 def _copy_examples(core: Path, project: Path, backends: list[str]) -> None:
     not_chosen = {core / "extensions" / name for name in BACKENDS if name not in backends}
     for folder in EXAMPLE_FOLDERS:
@@ -111,13 +136,7 @@ def _copy_examples(core: Path, project: Path, backends: list[str]) -> None:
         for entry in sorted(source.iterdir()):
             if entry.name.startswith("__") or entry in not_chosen:
                 continue
-            target = project / folder / entry.name
-            if target.exists():
-                print(f"Skipped {folder}/{entry.name} (already exists)")
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            _copy(entry, target)
-            print(f"Copied {folder}/{entry.name}")
+            _copy_example(core, project, f"{folder}/{entry.name}")
 
 
 def _release_tag() -> str | None:
@@ -133,19 +152,49 @@ def _release_tag() -> str | None:
     return tag if found.stdout.strip() else None
 
 
+def _clone_core(source: Path) -> None:
+    """Clone the core repository into ``source``, at the release of the
+    installed version (the latest main if it has none)."""
+    tag = _release_tag()
+    # The commits and tags, without the files of old commits: enough to
+    # name the version of the commit copied (see _copy_core).
+    branch = [] if tag is None else ["--branch", tag]
+    if tag is None:
+        print("The installed version has no release tag; using the latest main instead.")
+    subprocess.run(["git", "clone", "--quiet", "--filter=blob:none", *branch, CORE_URL, str(source)], check=True)
+
+
+def _copy_toy(project: Path) -> None:
+    """Copy the toy example (see the module docstring). Without git or a
+    connection, the project keeps its empty folders and says why."""
+    paths = list(TOY_EXAMPLE)
+    # NEST has the toy's neuron built in; Brian2 takes it from extensions/brian2.
+    if importlib.util.find_spec("brian2") is not None:
+        paths.append("extensions/brian2")
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / "core"
+        try:
+            _clone_core(source)
+        except OSError:
+            print(f"The toy example was not copied: git is not installed. Install it, then run `microcircuit-lab init {project}` again.")
+            return
+        except subprocess.CalledProcessError:
+            print(
+                f"The toy example was not copied: git could not reach {CORE_URL}. "
+                f"Run `microcircuit-lab init {project}` again once you are online."
+            )
+            return
+        for path in paths:
+            # An older release may not have every part of the example.
+            if (source / path).exists():
+                _copy_example(source, project, path)
+
+
 def _install_core(project: Path, backends: list[str]) -> None:
     core = project / CORE_FOLDER
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "core"
-        tag = _release_tag()
-        # The commits and tags, without the files of old commits: enough to
-        # name the version of the commit copied (see _copy_core).
-        branch = [] if tag is None else ["--branch", tag]
-        if tag is None:
-            print("The installed version has no release tag; using the latest main instead.")
-        subprocess.run(
-            ["git", "clone", "--filter=blob:none", *branch, CORE_URL, str(source)], check=True
-        )
+        _clone_core(source)
         if core.exists():
             print(f"{core} already exists, left as it is.")
             _add_backends(source, core, backends)
@@ -158,7 +207,7 @@ def _install_core(project: Path, backends: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        prog="microcircuit-lab init", description="Create the folders of a new project."
+        prog="microcircuit-lab init", description="Create the folders of a new project, with the toy example."
     )
     parser.add_argument("project", type=Path)
     parser.add_argument(
@@ -187,3 +236,5 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.with_core:
         _install_core(args.project, args.backends or _installed_backends())
+    else:
+        _copy_toy(args.project)
