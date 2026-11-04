@@ -108,8 +108,8 @@ def test_a_rule_takes_its_own_number_only():
         _connection(rule="one_to_one", n_synapses=10)
     with pytest.raises(ValueError, match="'my_rule' takes no number"):
         _connection(rule="my_rule", p=0.1)
-    with pytest.raises(ValueError, match="takes no parameters"):
-        _connection(rule="all_to_all", parameters={"width": 1})
+    with pytest.raises(ValueError, match="parameters was removed: write each argument as a key of its own"):
+        _connection(rule="ring", parameters={"width": 1})
 
 
 def test_one_to_one_and_all_to_all_in_nest():
@@ -129,8 +129,8 @@ def test_one_to_one_needs_populations_of_the_same_size():
         _network([_connection(rule="one_to_one")])
 
 
-def test_nest_runs_its_own_rule_with_its_parameters():
-    network = _network([_connection(rule="pairwise_poisson", parameters={"pairwise_avg_num_conns": 2.0})])
+def test_nest_runs_its_own_rule_with_its_arguments():
+    network = _network([_connection(rule="pairwise_poisson", pairwise_avg_num_conns=2.0)])
     _, connections = _built_connections(network)
     expected = 2.0 * SIZES["S"] * SIZES["T"]
     assert abs(len(connections) - expected) < 5 * np.sqrt(expected)
@@ -142,7 +142,7 @@ def test_nest_runs_its_own_rule_with_its_parameters():
     [
         (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
         (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
-        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "rule 'ring' is not a shared one, and how it scales is not known"),
+        (dict(rule="ring", width=2), dict(N_scaling=0.5), "rule 'ring' is not a shared one, and how it scales is not known"),
     ],
 )
 def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):
@@ -158,17 +158,17 @@ def test_the_new_rules_scale_where_they_can():
 
 
 def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
-    with pytest.raises(ValueError, match="only a project distribution takes parameters"):
-        WeightDistribution(mean=1.0, unit="pA", distribution="normal", parameters={"a": 1})
+    with pytest.raises(ValueError, match="normal takes mean and std, not a"):
+        WeightDistribution(mean=1.0, std=0.1, unit="pA", distribution="normal", a=1)
 
     def connection(weight=None, delay=None):
         weight_fields = {"value": 10.0}
         delay_fields = {"value": 1.0}
         if weight:
-            weight_fields = {"mean": 10.0, "distribution": weight, "parameters": {"a": 1}}
+            weight_fields = {"mean": 10.0, "distribution": weight, "a": 1}
         if delay:
             delay_fields = {
-                "mean": 1.0, "distribution": delay, "parameters": {"a": 1}, "lower_bound": 0.05, "bound_mode": "clip",
+                "mean": 1.0, "distribution": delay, "a": 1, "lower_bound": 0.05, "bound_mode": "clip",
             }
         return _connection(n_synapses=100).model_copy(update={
             "weight": WeightDistribution(unit="pA", **weight_fields),
@@ -182,26 +182,27 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
 
     network = _network([connection()])
     background = network.poisson_background["S"].model_copy(
-        update={"weight": WeightDistribution(mean=10.0, unit="pA", distribution="mine", parameters={"a": 1})}
+        update={"weight": WeightDistribution(mean=10.0, unit="pA", distribution="mine", a=1)}
     )
     with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
         NetworkConfig.model_validate({**network.model_dump(), "poisson_background": {**network.poisson_background, "S": background}})
 
 
-def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
+def test_csv_keeps_project_rules_and_their_arguments(tmp_path):
     rows = [
         _connection(n_synapses=300),
         _connection(rule="one_to_one", source="S", target="S"),
-        _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
+        _connection(rule="ring", source="T", target="T", width=2, p0=0.5),
         _connection(source="T", target="S", n_synapses=10).model_copy(update={
-            "weight": WeightDistribution(mean=1.0, unit="pA", distribution="mine", parameters={"a": 1.5}),
+            "weight": WeightDistribution(mean=1.0, unit="pA", distribution="mine", a=1.5),
         }),
     ]
     table = ConnectionTable.from_yaml_rows(rows)
     table.write_csv(tmp_path / "connections.csv")
 
     assert ConnectionTable.read_csv(tmp_path / "connections.csv") == table
-    assert table.to_yaml_rows()[2]["parameters"] == {"width": 2, "p0": 0.5}
+    ring, mine = table.to_yaml_rows()[2:]
+    assert (ring["width"], ring["p0"], mine["weight"]["a"]) == (2, 0.5, 1.5) and "width" not in mine
     assert "n_synapses" not in table.to_yaml_rows()[1]
 
 

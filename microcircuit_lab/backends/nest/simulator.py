@@ -17,7 +17,7 @@ import numpy as np
 from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.backends.statistics import log_firing_rates
-from microcircuit_lab.config.connection_table import COLUMNS
+from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
 from microcircuit_lab.config.connectivity import (
     SHARED_DISTRIBUTIONS,
     DelayDistribution,
@@ -284,11 +284,15 @@ class NestBackend:
             # numpy array value by value is slow, and lists of whole columns
             # would take gigabytes for millions of connections.
             column = {name: table[name][start:stop].tolist() for name in COLUMNS}
+            rule_arguments = {name: values[start:stop].tolist() for name, values in table.arguments("rule").items()}
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
-                # A rule that is not a shared one is NEST's own, with its parameters.
-                conn_spec = {"rule": rule, **(column["parameters"][i] or {})}
+                # Its arguments go to NEST as they are, which checks them.
+                conn_spec = {
+                    "rule": rule,
+                    **given_arguments({name: values[i] for name, values in rule_arguments.items()}),
+                }
                 if rule in nest_number:
                     number = column["number"][i]
                     conn_spec[nest_number[rule]] = number if rule == "pairwise_bernoulli" else int(number)

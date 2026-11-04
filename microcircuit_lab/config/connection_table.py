@@ -13,16 +13,20 @@ so a connection is described in one place only.
 A large network can keep its connections in a CSV file, named by
 ``connections_file`` in ``connectivity.yaml``, with the same columns. There the
 rule's number goes under its own name (``n_synapses``, ``indegree``,
-``outdegree`` or ``p``), as in the YAML file, the ``parameters`` of a project
-rule or distribution are written as JSON text (``{"width": 10}``), and a column
-with a default can be left out.
+``outdegree`` or ``p``), as in the YAML file, and a column with a default
+can be left out.
+
+The arguments of a rule or distribution that is not shared are columns of
+their own, numbers like the fields: ``pairs_avg_num`` for the rule,
+``weight.beta`` for the weight's distribution. A row that does not use one
+leaves it empty (NaN).
 """
 
 from __future__ import annotations
 
 import functools
-import json
 import re
+from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Annotated, Any
@@ -34,7 +38,6 @@ from pydantic.fields import FieldInfo
 
 from microcircuit_lab.config.connectivity import (
     RULE_NUMBER,
-    SHARED_RULES,
     ConnectionConfig,
     DelayDistribution,
     WeightDistribution,
@@ -47,27 +50,51 @@ from microcircuit_lab.config.connectivity import (
 
 def _drawn_kind(name: str) -> str:
     """How a field of a weight or delay is stored (see COLUMNS)."""
-    return "parameters" if name == "parameters" else "number" if is_number_field(name) else "text"
+    return "number" if is_number_field(name) else "text"
 
 
 # Column name: how its values are stored. The names are the paths of the
 # fields in a connectivity.yaml row; ``number`` is the number the row's rule
 # takes (n_synapses, indegree, outdegree or p; NaN for a rule that takes none).
+# Any other column is an argument (a number; see the module docstring).
 COLUMNS = {
     "source": "text",
     "target": "text",
     "rule": "text",
     "number": "number",
-    "parameters": "parameters",
     "allow_autapses": "yes/no",
     "allow_multapses": "yes/no",
     "synapse": "text",
-    # Every field of a weight (with its unit) and of a delay: text, parameters, or a number.
+    # Every field of a weight (with its unit) and of a delay: text or a number.
     **{f"weight.{name}": _drawn_kind(name) for name in DelayDistribution.model_fields},
     "weight.unit": "text",
     **{f"delay.{name}": _drawn_kind(name) for name in DelayDistribution.model_fields},
 }
-PARAMETER_COLUMNS = [column for column, kind in COLUMNS.items() if kind == "parameters"]
+
+
+def _kind(column: str) -> str:
+    """How a column's values are stored: its entry in COLUMNS, or a number for an argument."""
+    return COLUMNS.get(column, "number")
+
+
+def _argument_problem(column: str) -> str | None:
+    """Why a column that is not in COLUMNS cannot be an argument; None if it can."""
+    group, _, name = column.rpartition(".")
+    if group not in ("", "weight", "delay"):
+        return f"unknown connection column {column!r}: an argument is <name>, weight.<name> or delay.<name>"
+    if old_field_message(name):
+        return f"{column}: {old_field_message(name)}"
+    if not group and name in ConnectionConfig.model_fields:
+        return f"{column!r} is a field of a connection, not a column (the rule's number is the column 'number')"
+    return None
+
+
+def given_arguments(values: Mapping[str, float]) -> dict[str, int | float]:
+    """The arguments of one row that are set (not NaN), a whole number as an
+    int: the table holds them as floats, and a simulator may need an int
+    (e.g. NEST's ``uniform_int``)."""
+    return {name: int(value) if float(value).is_integer() else value
+            for name, value in values.items() if value == value}
 
 
 def _check_every_field_has_a_column() -> None:
@@ -127,7 +154,15 @@ class ConnectionTable:
 
         rows = [row if isinstance(row, ConnectionConfig) else ConnectionConfig.model_validate(row)
                 for row in rows]
-        return cls({column: [_value(row, column) for row in rows] for column in COLUMNS}, copy=False)
+        arguments = {
+            f"{group}.{name}" if group else name: None
+            for row in rows
+            for group, extra in (("", row.model_extra), ("weight", row.weight.model_extra),
+                                 ("delay", row.delay.model_extra))
+            for name in extra
+        }
+        return cls({column: [_value(row, column) for row in rows] for column in [*COLUMNS, *arguments]},
+                   copy=False)
 
     @classmethod
     def read_csv(cls, path: str | Path) -> ConnectionTable:
@@ -137,22 +172,22 @@ class ConnectionTable:
         # "NA" or "None" as missing, and guess the type of each column (numbers
         # are read exactly, since pandas 3). Here only an empty cell is "not set", and each
         # column has the type COLUMNS gives it (text read as categories: one
-        # string per distinct name, not one per row).
-        types = {"text": "category", "yes/no": "boolean", "number": "float64", "parameters": "category"}
-        dtype = {column: types[kind] for column, kind in COLUMNS.items() if column != "number"}
-        dtype.update({name: "float64" for name in RULE_NUMBER.values()})
-        frame = pd.read_csv(path, dtype=dtype, keep_default_na=False, na_values=[""])
+        # string per distinct name, not one per row; an argument is a number).
+        types = {"text": "category", "yes/no": "boolean", "number": "float64"}
+        dtype = defaultdict(lambda: "float64", {column: types[kind] for column, kind in COLUMNS.items()})
+        try:
+            frame = pd.read_csv(path, dtype=dtype, keep_default_na=False, na_values=[""])
+        except ValueError as error:
+            # e.g. text in an argument's column, which holds numbers
+            raise ValueError(f"{path}: {error}") from None
         if "number" in frame.columns:
             raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
                              f"under its name, one of {list(RULE_NUMBER.values())}.")
-        old = [f"{column}: {old_field_message(column.partition('.')[2])}" for column in frame.columns
-               if old_field_message(column.partition(".")[2])]
+        old = [f"{column}: {old_field_message(column.rpartition('.')[2])}" for column in frame.columns
+               if old_field_message(column.rpartition(".")[2])]
         if old:
             raise ValueError(f"{path}: " + "; ".join(old))
         columns = {name: _csv_column(frame[name]) for name in frame.columns}
-        for name in PARAMETER_COLUMNS:
-            if name in columns:
-                columns[name] = _parameters_from_json(columns[name], name, path)
 
         # The rule's number, from the column named after the rule.
         rule = columns.get("rule", _field("rule").default)
@@ -195,13 +230,11 @@ class ConnectionTable:
                 # Next to the rule, as in connectivity.yaml.
                 frame.insert(frame.columns.get_loc("number"), name, values if name == "p" else values.astype("Int64"))
         frame = frame.drop(columns="number")
-        for name in PARAMETER_COLUMNS:
-            frame[name] = [None if v is None else json.dumps(v) for v in frame[name]]
-        for column in COLUMNS:
-            field = _field(column) if column != "number" else None
-            if field is None or field.is_required() or field.default is not None:
+        for column in list(frame.columns):
+            field = _field(column) if column in COLUMNS else None
+            if field is not None and (field.is_required() or field.default is not None):
                 continue
-            if frame[column].isna().all():
+            if column not in RULE_NUMBER.values() and frame[column].isna().all():
                 frame = frame.drop(columns=column)
         frame.to_csv(path, index=False)
 
@@ -209,7 +242,7 @@ class ConnectionTable:
         """The rows as ``connectivity.yaml`` writes them: nested dicts, the
         rule's number under its own name, fields that are not set left out."""
 
-        columns = {column: self._columns[column].tolist() for column in COLUMNS}
+        columns = {column: values.tolist() for column, values in self._columns.items()}
         rows = []
         for i in range(len(self)):
             row: dict[str, Any] = {}
@@ -220,6 +253,8 @@ class ConnectionTable:
                     if name is not None:
                         row[name] = value if name == "p" else int(value)
                 elif not _is_unset(value):
+                    if column not in COLUMNS:
+                        value = given_arguments({column: value})[column]
                     group, _, name = column.rpartition(".")
                     (row.setdefault(group, {}) if group else row)[name] = value
             rows.append(row)
@@ -233,6 +268,14 @@ class ConnectionTable:
     def __getitem__(self, column: str) -> np.ndarray:
         """A column, e.g. ``table["weight.mean"]``."""
         return self._columns[column]
+
+    def arguments(self, group: str) -> dict[str, np.ndarray]:
+        """The argument columns of the rows' ``"rule"``, or of the
+        distribution of their ``"weight"`` or ``"delay"``, by argument name:
+        ``{"beta": table["weight.beta"]}``."""
+        prefix = "" if group == "rule" else group
+        return {column.rpartition(".")[2]: values for column, values in self._columns.items()
+                if column not in COLUMNS and column.rpartition(".")[0] == prefix}
 
     def expected(self, group: str) -> np.ndarray:
         """The mean of each row's weight or delay (``group``) before any bound:
@@ -265,7 +308,7 @@ class ConnectionTable:
         For a name with a dot, pass a dict: ``with_columns(**{"weight.mean": values})``.
         ``copy=False`` for arrays that nothing else holds (see :class:`ConnectionTable`)."""
 
-        unknown = [name for name in columns if name not in COLUMNS]
+        unknown = [name for name in columns if name not in self._columns]
         if unknown:
             raise ValueError(f"unknown connection column(s) {unknown}.")
         table = ConnectionTable.__new__(ConnectionTable)
@@ -293,8 +336,8 @@ class ConnectionTable:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ConnectionTable):
             return NotImplemented
-        return len(self) == len(other) and all(
-            np.array_equal(self[c], other[c], equal_nan=COLUMNS[c] == "number") for c in COLUMNS
+        return len(self) == len(other) and self._columns.keys() == other._columns.keys() and all(
+            np.array_equal(self[c], other[c], equal_nan=_kind(c) == "number") for c in self._columns
         )
 
     def __repr__(self) -> str:
@@ -307,20 +350,24 @@ def to_connection_table(value: Any) -> ConnectionTable:
 
 
 def _value(row: ConnectionConfig, column: str) -> Any:
-    """The value of ``column`` in one row."""
+    """The value of ``column`` in one row (NaN for an argument it does not give)."""
     if column == "number":
         return row.number
     group, _, name = column.rpartition(".")
-    return getattr(getattr(row, group) if group else row, name)
+    entry = getattr(row, group) if group else row
+    if column not in COLUMNS:
+        return entry.model_extra.get(name, np.nan)
+    return getattr(entry, name)
 
 
 def _fill_defaults(columns: Mapping[str, Any], copy: bool) -> dict[str, np.ndarray]:
     """Every column as a read-only array (see :func:`_as_column`); a left-out
-    column gets its field's default."""
+    column gets its field's default. A column not in COLUMNS is an argument."""
 
-    unknown = [name for name in columns if name not in COLUMNS]
-    if unknown:
-        raise ValueError(f"unknown connection column(s) {unknown}; the columns are {list(COLUMNS)}.")
+    problems = [_argument_problem(name) for name in columns if name not in COLUMNS]
+    problems = [problem for problem in problems if problem]
+    if problems:
+        raise ValueError("; ".join(problems))
     n = len(columns["source"]) if "source" in columns else 0
 
     filled = {}
@@ -331,6 +378,9 @@ def _fill_defaults(columns: Mapping[str, Any], copy: bool) -> dict[str, np.ndarr
             filled[column] = _as_column(column, [_field(column).default] * n, copy=False)
         else:
             raise ValueError(f"the connections have no column {column!r}.")
+    for column in columns:
+        if column not in COLUMNS:
+            filled[column] = _as_column(column, columns[column], copy)
     return filled
 
 
@@ -340,7 +390,7 @@ def _as_column(column: str, values: Any, copy: bool) -> np.ndarray:
     ``copy``, never the array given (see :class:`ConnectionTable`)."""
 
     make = np.array if copy else np.asarray
-    return _read_only(make(values, dtype=float if COLUMNS[column] == "number" else object))
+    return _read_only(make(values, dtype=float if _kind(column) == "number" else object))
 
 
 def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None:
@@ -352,18 +402,21 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
 
     problems = []
     for column in which:
-        if column != "number":
+        # An argument is checked by the simulator; the table holds it as a number.
+        if column != "number" and column in COLUMNS:
             problems += _problems(column, columns[column], _checker(column))
     if "number" in which:
         for rule, name in RULE_NUMBER.items():
             rows = np.flatnonzero(columns["rule"] == rule)
             if rows.size:
                 problems += _problems(name, columns["number"][rows], _checker(name, required=True), rows)
-    if {"rule", "number", "parameters"} & set(which):
+    if {"rule", "number"} & set(which):
         problems += _rule_problems(columns)
     for group in ("weight", "delay"):
         if any(column.startswith(f"{group}.") for column in which):
             fields = {name: columns[f"{group}.{name}"] for name in DelayDistribution.model_fields}
+            fields |= {column.partition(".")[2]: values for column, values in columns.items()
+                       if column not in COLUMNS and column.startswith(f"{group}.")}
             for field, rows, message in drawn_value_problems(fields, delay=group == "delay"):
                 i = int(np.flatnonzero(rows)[0])
                 more = f" (and {rows.sum() - 1} more rows)" if rows.sum() > 1 else ""
@@ -373,38 +426,13 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
 
 
 def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
-    """A number for a rule that takes none, or parameters for a shared rule."""
+    """A number for a rule that takes none."""
 
-    def given(column: str) -> np.ndarray:
-        return np.array([value is not None for value in columns[column]], dtype=bool)
-
-    rule = columns["rule"]
-    checks = [
-        ("rule", ~np.isin(rule, list(RULE_NUMBER)) & ~np.isnan(columns["number"]), "takes no number"),
-        ("rule", np.isin(rule, SHARED_RULES) & given("parameters"), "takes no parameters"),
-    ]
-    problems = []
-    for column, rows, what in checks:
-        if rows.any():
-            i = int(np.flatnonzero(rows)[0])
-            problems.append(f"connections.{i}.{column}: {columns[column][i]!r} {what} (only a project one does)")
-    return problems
-
-
-def _parameters_from_json(values: np.ndarray, column: str, path: str | Path) -> np.ndarray:
-    """A parameters column of a CSV file: each cell's JSON text as a dict.
-    Each distinct text is parsed once, and its rows share the dict."""
-
-    parsed = np.empty(len(values), dtype=object)
-    known: dict[str | None, dict | None] = {None: None}
-    for i, text in enumerate(values):
-        if text not in known:
-            try:
-                known[text] = json.loads(text)
-            except json.JSONDecodeError as error:
-                raise ValueError(f"{path}: line {i + 2}, {column}: not JSON ({error.msg}): {text}") from None
-        parsed[i] = known[text]
-    return parsed
+    rows = ~np.isin(columns["rule"], list(RULE_NUMBER)) & ~np.isnan(columns["number"])
+    if rows.any():
+        i = int(np.flatnonzero(rows)[0])
+        return [f"connections.{i}.rule: {columns['rule'][i]!r} takes no number"]
+    return []
 
 
 @functools.cache

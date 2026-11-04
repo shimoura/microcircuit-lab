@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import re
 import tempfile
 from collections import defaultdict
 from collections.abc import Sequence
@@ -43,7 +44,7 @@ from microcircuit_lab.backends.brian2 import (
     recording,
 )
 from microcircuit_lab.backends.statistics import log_firing_rates
-from microcircuit_lab.config.connection_table import COLUMNS
+from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
 from microcircuit_lab.config.connectivity import (
     SHARED_RULES,
     DelayDistribution,
@@ -58,6 +59,12 @@ from microcircuit_lab.config.stimuli import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _names(*expressions: str) -> set[str]:
+    """The names the Brian2 expressions use."""
+    return set(re.findall(r"[A-Za-z_]\w*", " ".join(expressions)))
+
 
 #: For each dimension: its name in Brian2 equations, and NEST's unit, which is
 #: the unit of the numbers in the config files.
@@ -256,9 +263,10 @@ class Brian2Backend:
         Find the project's models, connection rules and distributions, and
         raise if a population, a ``synapses.yaml`` entry or a connection names
         one that is not defined, if a distribution's ``redraw_rounds`` is
-        needed but not set, if a project rule with several synapses per
-        pair is used without multapses, or if a weight's ``unit`` is not that
-        of the variable it adds to.
+        needed but not set, if a rule or distribution is given an argument
+        its expressions do not use (a shared rule uses none), if a project
+        rule with several synapses per pair is used without multapses, or if
+        a weight's ``unit`` is not that of the variable it adds to.
         """
 
         found = models.load_models(self._extensions)
@@ -287,6 +295,24 @@ class Brian2Backend:
                         "set how many times a value past its bound is drawn again (0: clip at once), "
                         f"or write bound_mode: clip (connections.{int(np.flatnonzero(redraws)[0])}.{group})."
                     )
+
+        # An argument that no expression uses is most likely a typo.
+        for group in ("rule", "weight", "delay"):
+            names = table["rule"] if group == "rule" else table[f"{group}.distribution"]
+            for argument, values in table.arguments(group).items():
+                rows = ~np.isnan(values)
+                for name in sorted(set(names[rows].tolist())):
+                    if group == "rule":
+                        rule = self._connection_rules.get(name)
+                        used = _names(rule.condition, rule.p, rule.n) if rule else set()
+                    else:
+                        used = _names(self._distributions[name].expression)
+                    if argument not in used:
+                        first = int(np.flatnonzero(rows & (names == name))[0])
+                        raise ValueError(
+                            f"connections.{first}: {argument} is given to {group} {name!r}, which does not use "
+                            "it in Brian2 (a shared rule takes no arguments)."
+                        )
 
         # Brian2 makes n synapses for each pair a project rule picks, so such a
         # rule cannot keep a connection free of multapses.
@@ -678,6 +704,14 @@ class Brian2Backend:
 
         table = self.network.connections
         column = {name: table[name].tolist() for name in COLUMNS}
+        arguments = {
+            group: {name: values.tolist() for name, values in table.arguments(group).items()}
+            for group in ("rule", "weight", "delay")
+        }
+
+        def given(group: str, row: int) -> dict:
+            return given_arguments({name: values[row] for name, values in arguments[group].items()})
+
         weight = table.expected("weight").tolist()
         objects: dict[tuple, list[int]] = defaultdict(list)
         seen: dict[tuple, int] = defaultdict(int)
@@ -703,7 +737,7 @@ class Brian2Backend:
                     autapses=True if column["allow_autapses"][row] is None else bool(column["allow_autapses"][row]),
                     multapses=True if column["allow_multapses"][row] is None else bool(column["allow_multapses"][row]),
                     same_population=column["source"][row] == column["target"][row],
-                    parameters=column["parameters"][row] or {},
+                    arguments=given("rule", row),
                     definition=self._connection_rules.get(column["rule"][row]),
                 )
                 for row in rows
@@ -721,6 +755,7 @@ class Brian2Backend:
                 )
                 for what, entries in (("weight", weights), ("delay", delays)):
                     fields = {name: column[f"{what}.{name}"][row] for name in DelayDistribution.model_fields}
+                    fields |= given(what, row)
                     entries[pair] = (fields, number)
                     distribution = self._distributions.get(fields["distribution"])
                     if distribution is not None:

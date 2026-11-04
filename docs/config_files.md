@@ -133,7 +133,7 @@ connections:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
     #   all_to_all, with no number; or another rule, which the simulator looks up, with
-    #   parameters
+    #   its arguments as keys of their own (e.g. pairs_avg_num: 0.3)
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
@@ -145,9 +145,6 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
-    # optional · mapping · only for a rule that is not shared: its parameters, e.g.
-    #   {width: 10, p0: 0.5}
-    parameters:
     # optional · true or false · whether a neuron may connect to itself; omit for the
     #   simulator's default
     allow_autapses:
@@ -160,7 +157,8 @@ connections:
     weight:
       # optional · text · how each weight is drawn: normal or lognormal, with mean and
       #   std; uniform, with min and max; or the name of a project distribution, which
-      #   the backend defines, with parameters. Omit it for a fixed weight
+      #   the backend defines, with its arguments as keys of their own (e.g. beta: 20).
+      #   Omit it for a fixed weight
       distribution: normal
       # optional · number · a fixed weight, the same for every synapse
       value:
@@ -174,9 +172,6 @@ connections:
       min:
       # optional · number · largest weight a uniform draw gives
       max:
-      # optional · mapping · only for a project distribution: the values its expression
-      #   uses, e.g. {length: 20}
-      parameters:
       # optional · number · smallest allowed drawn weight (e.g. 0, so that an excitatory
       #   weight stays positive); omit for none
       lower_bound: 0.0
@@ -193,7 +188,7 @@ connections:
     delay:
       # optional · text · how each delay is drawn: normal or lognormal, with mean and
       #   std; uniform, with min and max; or the name of a project distribution, with
-      #   parameters. Omit it for a fixed delay
+      #   its arguments as keys of their own. Omit it for a fixed delay
       distribution: normal
       # optional · number · a fixed delay (ms), the same for every synapse
       value:
@@ -205,9 +200,6 @@ connections:
       min:
       # optional · number · longest delay (ms) a uniform draw gives
       max:
-      # optional · mapping · only for a project distribution: the values its expression
-      #   uses
-      parameters:
       # optional · number · shortest allowed drawn delay (ms), needed for a drawn delay;
       #   e.g. the simulation step (a delay below half a step rounds to 0)
       lower_bound: 0.1

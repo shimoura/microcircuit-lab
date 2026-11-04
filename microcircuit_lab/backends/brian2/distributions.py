@@ -156,11 +156,12 @@ def negated(fields: dict) -> dict:
 
 def _project_expression(distribution: Distribution, fields: dict) -> str:
     """A project distribution's expression with the fields it was given
-    (``mean``, ``std``, ...) and its ``parameters`` written in as numbers, so
-    the entries of one Synapses cannot mix up their values."""
+    (``mean``, ``std``, ...) and its arguments (any other number in
+    ``fields``) written in as numbers, so the entries of one Synapses cannot
+    mix up their values."""
 
-    values = {name: fields[name] for name in ("value", "mean", "std", "min", "max") if not _unset(fields[name])}
-    values.update(fields["parameters"] or {})
+    text = ("distribution", "lower_bound", "upper_bound", "bound_mode", "unit")
+    values = {name: value for name, value in fields.items() if name not in text and not _unset(value)}
     return re.sub(
         r"\b[A-Za-z_]\w*\b",
         lambda name: f"({values[name[0]]!r})" if name[0] in values else name[0],

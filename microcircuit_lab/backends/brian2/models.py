@@ -135,7 +135,8 @@ class ConnectionRule:
         As for ``brian2.Synapses.connect``: which pairs may connect, the
         probability that such a pair does, and how many synapses it then
         gets. Brian2 expressions, which can use the connection's
-        ``parameters`` (as constants), the variables of the pre- and
+        arguments (``{rule: my_rule, width: 10}``: ``width``, as a
+        constant), the variables of the pre- and
         post-synaptic neurons (``V_m_pre``, ``V_m_post``), and
         ``index_pre`` / ``index_post``: each neuron's index within its
         population. A neuron is not connected to itself when the connection
@@ -162,7 +163,8 @@ class Distribution:
         A Brian2 expression for each synapse's value, as a number in the
         package's units (pA or nS for a weight, ms for a delay). It can use
         the fields the entry gives (``mean``, ``std``, ``min``, ``max``), its
-        ``parameters``, the variables of the pre- and post-synaptic neurons
+        arguments (``{distribution: my_distribution, length: 20, ...}``:
+        ``length``), the variables of the pre- and post-synaptic neurons
         (``V_m_pre``), and ``index_pre`` / ``index_post`` (see
         :class:`ConnectionRule`).
     redraw_rounds

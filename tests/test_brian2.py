@@ -251,7 +251,7 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
         source="T",
         target="T",
         rule="ring",
-        parameters={"width": 1},
+        width=1,
         allow_autapses=False,
         weight=WeightDistribution(value=10.0, unit="pA"),
         delay=DelayDistribution(value=1.0),
@@ -264,6 +264,17 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
     assert pairs == {(a, b) for a in range(100, 150) for b in range(100, 150) if abs(a - b) == 1}
 
 
+def test_an_argument_no_expression_uses_is_an_error() -> None:
+    # e.g. a typo: width written widht
+    for rule, arguments in (("ring", {"width": 1, "widht": 1}), ("all_to_all", {"width": 1})):
+        connection = ConnectionConfig(
+            source="T", target="T", rule=rule, **arguments,
+            weight=WeightDistribution(value=10.0, unit="pA"), delay=DelayDistribution(value=1.0),
+        )
+        with pytest.raises(ValueError, match=f"is given to rule '{rule}', which does not use it"):
+            _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__]).build()
+
+
 def _row(source, target, weight, delay, **fields):
     return ConnectionConfig(source=source, target=target, rule="all_to_all", weight=weight, delay=delay, **fields)
 
@@ -272,9 +283,9 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
     fixed_delay = DelayDistribution(value=1.0)
     project = _row(
         "S", "T",
-        WeightDistribution(mean=2.0, unit="pA", distribution="by_target", parameters={"step": 0.5}),
+        WeightDistribution(mean=2.0, unit="pA", distribution="by_target", step=0.5),
         DelayDistribution(
-            mean=1.0, distribution="by_target", parameters={"step": 0.1}, lower_bound=0.05, bound_mode="clip"
+            mean=1.0, distribution="by_target", step=0.1, lower_bound=0.05, bound_mode="clip"
         ),
     )
     shared = _row("T", "T", WeightDistribution(value=7.0, unit="pA"), fixed_delay)

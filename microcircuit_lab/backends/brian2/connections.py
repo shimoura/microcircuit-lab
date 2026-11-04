@@ -31,7 +31,7 @@ from microcircuit_lab.config.connectivity import RULE_NUMBER, SHARED_RULES
 @dataclass(frozen=True)
 class Row:
     """One row of the connection table: its rule and number (or, for a
-    project rule, its definition and parameters), and where its source and
+    project rule, its definition and arguments), and where its source and
     target populations are in their Brian2 groups."""
 
     rule: str
@@ -43,7 +43,7 @@ class Row:
     autapses: bool
     multapses: bool
     same_population: bool
-    parameters: dict = field(default_factory=dict)
+    arguments: dict = field(default_factory=dict)
     definition: ConnectionRule | None = None
 
     @property
@@ -169,16 +169,16 @@ def _single(row: Row, n_source: int, prefix: str, rng) -> tuple[dict, dict, int]
 
     if row.definition is not None:
         rule = row.definition
-        # The parameters get a prefix, so that none takes the place of the
+        # The arguments get a prefix, so that none takes the place of the
         # row's numbers above.
-        names = {name: f"rule_{name}" for name in row.parameters}
+        names = {name: f"rule_{name}" for name in row.arguments}
         condition = f"{in_source}{not_self} and ({word_substitute(rule.condition, names)})"
         if rule.p != "1":
             condition += f" and rand() < ({word_substitute(rule.p, names)})"
         arguments = {"j": f"k for k in range(target_start, target_start + target_size) if {condition}"}
         if rule.n != "1":
             arguments["n"] = word_substitute(rule.n, names)
-        namespace.update({names[name]: value for name, value in row.parameters.items()})
+        namespace.update({names[name]: value for name, value in row.arguments.items()})
         # The count is known only once Brian2 has drawn the pairs: at most every pair.
         return arguments, namespace, ns * (nt - self_)
 

@@ -13,8 +13,8 @@ from typing import Annotated, Any, Literal
 import numpy as np
 from pydantic import (
     BeforeValidator,
+    ConfigDict,
     Field,
-    StrictBool,
     StrictFloat,
     StrictInt,
     model_validator,
@@ -25,14 +25,17 @@ from microcircuit_lab.config.frozen_config import FrozenConfig
 #: The distributions every backend draws weights and delays from, and the
 #: fields each one takes: the mean and standard deviation of the drawn values,
 #: or the range of a uniform draw. Any other name is a project distribution,
-#: with ``parameters``, which the backend defines (see its ``models.py``). A
-#: weight has the same fields as a delay (DelayDistribution), and its unit.
+#: which the backend defines (see its ``models.py``), with its arguments as
+#: keys of their own. A weight has the same fields as a delay
+#: (DelayDistribution), and its unit.
 SHARED_DISTRIBUTIONS = {"normal": ("mean", "std"), "lognormal": ("mean", "std"), "uniform": ("min", "max")}
 
 #: What to do with a drawn weight or delay outside its bounds.
 BoundMode = Literal["redraw", "clip"]
 
-Parameters = dict[str, StrictInt | StrictFloat | StrictBool] | None
+#: The arguments of a rule or distribution that is not shared, each a key of
+#: its own next to the fields (``{rule: pairwise_poisson, pairs_avg_num: 0.3}``).
+Arguments = dict[str, StrictInt | StrictFloat]
 
 
 #: The weight units of earlier versions, and what to write instead.
@@ -44,8 +47,9 @@ OLD_UNITS = {
 }
 
 def old_field_message(name: str) -> str | None:
-    """What to write instead of a field of a weight or delay of earlier
-    versions (``rel_std``, ``minimum``); None for any other name."""
+    """What to write instead of a field of a connection, weight or delay of
+    earlier versions (``rel_std``, ``minimum``, ``parameters``); None for any
+    other name."""
     if name == "rel_std":
         return (
             "rel_std was removed: write the standard deviation of the drawn values, std = |mean| x "
@@ -54,13 +58,19 @@ def old_field_message(name: str) -> str | None:
         )
     if name == "minimum":
         return "minimum was removed: write lower_bound with bound_mode (e.g. lower_bound: 0.1, bound_mode: redraw)"
+    if name == "parameters":
+        return (
+            "parameters was removed: write each argument as a key of its own, next to the rule or "
+            "distribution (e.g. {rule: pairwise_poisson, pairs_avg_num: 0.3} or {distribution: erlang2, "
+            "beta: 20, mean: -40, unit: pA}); in a CSV file, one column per argument (pairs_avg_num, weight.beta)"
+        )
     return None
 
 
 def is_number_field(name: str) -> bool:
     """Whether a field of a weight or delay is a number (``value``, ``mean``,
-    ..., the bounds), rather than text or ``parameters``. The numbers are all
-    in the weight's unit or in ms, so scaling a weight scales them all."""
+    ..., the bounds), rather than text. The numbers are all in the weight's
+    unit or in ms, so scaling a weight scales them all."""
     return float in typing.get_args(DelayDistribution.model_fields[name].annotation)
 
 
@@ -83,13 +93,14 @@ def drawn_value_problems(fields: dict[str, np.ndarray], delay: bool) -> list[tup
     rows, message)``, ``rows`` a boolean array.
 
     ``fields`` holds each field (``distribution``, ``value``, ``mean``, ...,
-    ``bound_mode``) as an array with one entry per weight or delay, so the
-    same checks serve one entry of a file and the millions of rows of a
-    connection table. A field's own limits (e.g. ``std`` >= 0) are checked
-    by pydantic with its ``Field``.
+    ``bound_mode``) and each argument of a project distribution as an array
+    with one entry per weight or delay, so the same checks serve one entry of
+    a file and the millions of rows of a connection table. A field's own
+    limits (e.g. ``std`` >= 0) are checked by pydantic with its ``Field``.
     """
 
     distribution = fields["distribution"]
+    arguments = [name for name in fields if name not in DelayDistribution.model_fields]
     given = {name: _given(values) for name, values in fields.items()}
     fixed = ~given["distribution"]
     kinds = {name: distribution == name for name in SHARED_DISTRIBUTIONS}
@@ -107,16 +118,14 @@ def drawn_value_problems(fields: dict[str, np.ndarray], delay: bool) -> list[tup
             ("upper_bound", fields["lower_bound"] > fields["upper_bound"], "lower_bound is above upper_bound"),
             ("max", kinds["uniform"] & (fields["min"] > fields["max"]), "min is above max"),
             ("mean", kinds["lognormal"] & (fields["mean"] == 0), "a lognormal value needs a mean other than 0"),
-            ("parameters", given["parameters"] & np.logical_or.reduce(list(kinds.values())),
-             "only a project distribution takes parameters"),
         ]
         for name, takes in SHARED_DISTRIBUTIONS.items():
             for field in takes:
                 checks.append((field, kinds[name] & ~given[field], f"{name} needs {' and '.join(takes)}"))
-            for field in ("mean", "std", "min", "max"):
+            for field in ("mean", "std", "min", "max", *arguments):
                 if field not in takes:
                     checks.append((field, kinds[name] & given[field], f"{name} takes {' and '.join(takes)}, not {field}"))
-        for field in ("mean", "std", "min", "max"):
+        for field in ("mean", "std", "min", "max", *arguments):
             checks.append((field, fixed & given[field], f"a fixed value takes value, not {field}"))
         if not delay:
             project = ~fixed & ~np.logical_or.reduce(list(kinds.values()))
@@ -150,6 +159,10 @@ class _DrawnValue(FrozenConfig):
     # To add a shared distribution: list it in SHARED_DISTRIBUTIONS and draw it
     # in backends/nest/distributions.py and backends/brian2/distributions.py.
 
+    # Any other key is an argument of a project distribution.
+    model_config = ConfigDict(frozen=True, extra="allow")
+    __pydantic_extra__: Arguments = Field(init=False)
+
     @model_validator(mode="before")
     @classmethod
     def _refuse_old_fields(cls, data):
@@ -159,11 +172,13 @@ class _DrawnValue(FrozenConfig):
         return data
 
     def _as_columns(self) -> dict[str, np.ndarray]:
-        """The fields as columns of one row, as a connection table holds them."""
-        return {
+        """The fields and arguments as columns of one row, as a connection
+        table holds them."""
+        columns = {
             name: np.array([getattr(self, name)], dtype=float if is_number_field(name) else object)
             for name in DelayDistribution.model_fields
         }
+        return columns | {name: np.array([value], dtype=float) for name, value in self.model_extra.items()}
 
     @model_validator(mode="after")
     def _check_fields_fit(self):
@@ -237,7 +252,7 @@ class WeightDistribution(_DrawnValue):
         examples=["normal"],
         description="how each weight is drawn: normal or lognormal, with mean and std; uniform, "
         "with min and max; or the name of a project distribution, which the backend defines, "
-        "with parameters. Omit it for a fixed weight",
+        "with its arguments as keys of their own (e.g. beta: 20). Omit it for a fixed weight",
     )
     value: float | None = Field(default=None, description="a fixed weight, the same for every synapse")
     mean: float | None = Field(
@@ -249,10 +264,6 @@ class WeightDistribution(_DrawnValue):
     )
     min: float | None = Field(default=None, description="smallest weight a uniform draw gives")
     max: float | None = Field(default=None, description="largest weight a uniform draw gives")
-    parameters: Parameters = Field(
-        default=None,
-        description="only for a project distribution: the values its expression uses, e.g. {length: 20}",
-    )
     lower_bound: float | None = Field(
         default=None, examples=[0.0],
         description="smallest allowed drawn weight (e.g. 0, so that an excitatory weight stays positive); "
@@ -282,7 +293,8 @@ class DelayDistribution(_DrawnValue):
         default=None,
         examples=["normal"],
         description="how each delay is drawn: normal or lognormal, with mean and std; uniform, with "
-        "min and max; or the name of a project distribution, with parameters. Omit it for a fixed delay",
+        "min and max; or the name of a project distribution, with its arguments as keys of their own. "
+        "Omit it for a fixed delay",
     )
     value: float | None = Field(default=None, description="a fixed delay (ms), the same for every synapse")
     mean: float | None = Field(default=None, examples=[1.5], description="mean of the drawn delays (ms)")
@@ -291,9 +303,6 @@ class DelayDistribution(_DrawnValue):
     )
     min: float | None = Field(default=None, description="shortest delay (ms) a uniform draw gives")
     max: float | None = Field(default=None, description="longest delay (ms) a uniform draw gives")
-    parameters: Parameters = Field(
-        default=None, description="only for a project distribution: the values its expression uses"
-    )
     lower_bound: float | None = Field(
         default=None, examples=[0.1],
         description="shortest allowed drawn delay (ms), needed for a drawn delay; e.g. the simulation "
@@ -333,14 +342,20 @@ class ConnectionConfig(FrozenConfig):
 
     Two take none: ``one_to_one`` (the k-th source neuron to the k-th target
     neuron; the populations have the same size) and ``all_to_all``. Any other
-    name is looked up by the backend (see ``SHARED_RULES``) and takes
-    ``parameters`` instead of a number.
+    name is looked up by the backend (see ``SHARED_RULES``) and takes its
+    arguments as keys of their own instead of a number
+    (``{rule: pairwise_poisson, pairs_avg_num: 0.3}``). Any rule passes such
+    keys to the simulator, which checks them.
 
     The core computes with the expected number of synapses
     (``builder_tools.mean_input.expected_synapses``), and ``scale_network`` scales
     the given number (``builder_tools.scaling.scale_rule_number``). Any other rule
     cannot be scaled yet.
     """
+
+    # Any other key is an argument of the rule.
+    model_config = ConfigDict(frozen=True, extra="allow")
+    __pydantic_extra__: Arguments = Field(init=False)
 
     source: str = Field(examples=["L4_E"], description="source population name")
     target: str = Field(examples=["L23_E"], description="target population name")
@@ -349,7 +364,7 @@ class ConnectionConfig(FrozenConfig):
         description="how the synapses are placed: fixed_total_number, fixed_indegree, "
         "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
         "outdegree or p); one_to_one or all_to_all, with no number; or another rule, which the "
-        "simulator looks up, with parameters",
+        "simulator looks up, with its arguments as keys of their own (e.g. pairs_avg_num: 0.3)",
     )
     n_synapses: int | None = Field(
         default=None,
@@ -369,11 +384,6 @@ class ConnectionConfig(FrozenConfig):
         le=1.0,
         description="pairwise_bernoulli: probability that a source-target pair is connected",
     )
-    parameters: Parameters = Field(
-        default=None,
-        description="only for a rule that is not shared: its parameters, e.g. "
-        "{width: 10, p0: 0.5}",
-    )
     allow_autapses: bool | None = Field(
         default=None,
         description="whether a neuron may connect to itself; omit for the simulator's default",
@@ -390,6 +400,13 @@ class ConnectionConfig(FrozenConfig):
     weight: WeightDistribution = Field(description="weight of each synapse")
     delay: DelayDistribution = Field(description="delay of each synapse")
 
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_parameters(cls, data):
+        if isinstance(data, dict) and "parameters" in data:
+            raise ValueError(old_field_message("parameters"))
+        return data
+
     @model_validator(mode="after")
     def _check_number_matches_rule(self) -> ConnectionConfig:
         needed = RULE_NUMBER.get(self.rule)
@@ -403,8 +420,6 @@ class ConnectionConfig(FrozenConfig):
             )
         if needed is None and others:
             raise ValueError(f"rule {self.rule!r} takes no number; remove {others}")
-        if self.parameters is not None and self.rule in SHARED_RULES:
-            raise ValueError(f"rule {self.rule!r} takes no parameters (only a rule that is not shared does)")
         return self
 
     @property
