@@ -5,9 +5,10 @@ All rows of the connection table between two Brian2 groups through the same
 synapse go into one ``Synapses`` object (see ``simulator.py``), and Brian2 draws
 their pairs itself, from the ``Synapses.connect`` calls made here, so the
 indices of millions of synapses are never held in Python (in C++ standalone
-mode they are drawn in C++). Each call is one more piece of generated code, so
-the rows with multapses (NEST's default) are made by one call for all of them;
-the others by one call each.
+mode they are drawn in C++). Each call costs Brian2 a fixed time, so the rows
+with multapses (NEST's default) are made by one call for all of them; the
+others by one call each, whose numbers Brian2 reads from the namespace, so
+that the calls of one rule share their compiled code.
 
 The pairs are drawn as NEST draws them: autapses and multapses are allowed
 unless the connection says otherwise, and without multapses no pair is drawn
@@ -140,62 +141,73 @@ def _merged(rows: list[Row], outward: bool, n_outer: int, prefix: str, rng) -> t
 
 def _single(row: Row, n_source: int, prefix: str, rng) -> tuple[dict, dict, int]:
     """One ``connect`` call for one row: pairwise_bernoulli, one_to_one,
-    all_to_all, a project rule, or a rule without multapses."""
+    all_to_all, a project rule, or a rule without multapses.
 
-    s0, ns, t0, nt, self_ = row.source_start, row.source_size, row.target_start, row.target_size, row.no_autapses
-    in_source = f"i >= {s0} and i < {s0 + ns}"
-    in_target = f"j >= {t0} and j < {t0 + nt}"
+    The row's numbers go in the namespace, not in the code: the calls of the
+    same rule then have the same code, which Brian2 compiles once."""
+
+    ns, nt, self_ = row.source_size, row.target_size, row.no_autapses
+    namespace = {
+        "source_start": row.source_start,
+        "source_size": ns,
+        "target_start": row.target_start,
+        "target_size": nt,
+        "no_autapses": self_,
+    }
+    in_source = "i >= source_start and i < source_start + source_size"
+    in_target = "j >= target_start and j < target_start + target_size"
     not_self = " and k != i" if self_ else ""
 
     if row.rule == "one_to_one":
         # The populations have the same size: the k-th source to the k-th target.
-        k = f"i - {s0} + {t0}"
-        return {"j": f"k for k in range({k}, {k} + 1) if {in_source}{not_self}"}, {}, ns * (1 - self_)
+        k = "i - source_start + target_start"
+        return {"j": f"k for k in range({k}, {k} + 1) if {in_source}{not_self}"}, namespace, ns * (1 - self_)
 
     if row.rule == "all_to_all":
-        return {"j": f"k for k in range({t0}, {t0 + nt}) if {in_source}{not_self}"}, {}, ns * (nt - self_)
+        j = f"k for k in range(target_start, target_start + target_size) if {in_source}{not_self}"
+        return {"j": j}, namespace, ns * (nt - self_)
 
     if row.definition is not None:
         rule = row.definition
-        # The parameters get the call's prefix, as the tables do, so that
-        # those of another row of the same Synapses never take their place.
-        names = {name: f"{prefix}{name}" for name in row.parameters}
+        # The parameters get a prefix, so that none takes the place of the
+        # row's numbers above.
+        names = {name: f"rule_{name}" for name in row.parameters}
         condition = f"{in_source}{not_self} and ({word_substitute(rule.condition, names)})"
         if rule.p != "1":
             condition += f" and rand() < ({word_substitute(rule.p, names)})"
-        arguments = {"j": f"k for k in range({t0}, {t0 + nt}) if {condition}"}
+        arguments = {"j": f"k for k in range(target_start, target_start + target_size) if {condition}"}
         if rule.n != "1":
             arguments["n"] = word_substitute(rule.n, names)
-        namespace = {names[name]: value for name, value in row.parameters.items()}
+        namespace.update({names[name]: value for name, value in row.parameters.items()})
         # The count is known only once Brian2 has drawn the pairs: at most every pair.
         return arguments, namespace, ns * (nt - self_)
 
     if row.rule == "pairwise_bernoulli":
-        p = min(float(row.number), 1.0)
-        condition = in_source + (" and k != i" if self_ else "")
-        return {"j": f"k for k in sample({t0}, {t0 + nt}, p={p}) if {condition}"}, {}, round(p * ns * (nt - self_))
+        namespace["probability"] = min(float(row.number), 1.0)
+        j = f"k for k in sample(target_start, target_start + target_size, p=probability) if {in_source}{not_self}"
+        return {"j": j}, namespace, round(namespace["probability"] * ns * (nt - self_))
+
+    namespace["number"] = int(row.number)
 
     if row.rule == "fixed_indegree":
-        k = int(row.number)
-        drawn = f"{s0} + (k + {self_}*(j - {s0} + 1)) % {ns}"
-        return {"i": f"{drawn} for k in sample({ns - self_}, size={k}) if {in_target}"}, {}, k * nt
+        drawn = "source_start + (k + no_autapses*(j - source_start + 1)) % source_size"
+        i = f"{drawn} for k in sample(source_size - no_autapses, size=number) if {in_target}"
+        return {"i": i}, namespace, int(row.number) * nt
 
+    drawn = "target_start + (k + no_autapses*(i - target_start + 1)) % target_size"
     if row.rule == "fixed_outdegree":
-        k = int(row.number)
-        drawn = f"{t0} + (k + {self_}*(i - {t0} + 1)) % {nt}"
-        return {"j": f"{drawn} for k in sample({nt - self_}, size={k}) if {in_source}"}, {}, k * ns
+        j = f"{drawn} for k in sample(target_size - no_autapses, size=number) if {in_source}"
+        return {"j": j}, namespace, int(row.number) * ns
 
     # fixed_total_number without multapses: how many synapses each source makes,
     # then that many distinct targets.
     counts = np.zeros(n_source)
-    counts[s0:s0 + ns] = rng.multivariate_hypergeometric(np.full(ns, nt - self_), int(row.number))
-    drawn = f"{t0} + (k + {self_}*(i - {t0} + 1)) % {nt}"
-    size = f"int({prefix}count(i*second))"
-    return (
-        {"j": f"{drawn} for k in sample({nt - self_}, size={size})"},
-        {f"{prefix}count": table(counts, f"{prefix}count")},
-        int(row.number),
+    counts[row.source_start:row.source_start + ns] = rng.multivariate_hypergeometric(
+        np.full(ns, nt - self_), int(row.number)
     )
+    size = f"int({prefix}count(i*second))"
+    namespace[f"{prefix}count"] = table(counts, f"{prefix}count")
+    return {"j": f"{drawn} for k in sample(target_size - no_autapses, size={size})"}, namespace, int(row.number)
 
 
 def connect_calls(
