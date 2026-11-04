@@ -486,3 +486,15 @@ def test_cpp_standalone_device(tmp_path: Path) -> None:
 
     assert len(simulation.backend.get_spike_events("E")["times"]) > 0
     assert (tmp_path / "recordings" / "spikes.csv").exists()
+
+
+def test_a_second_build_starts_afresh() -> None:
+    backend = _backend(Simulation.from_yaml(network_name="toy", backend="brian2").network)
+    spikes = []
+    for _ in range(2):
+        backend.build()
+        backend.simulate()
+        spikes.append(backend.get_spike_events("E"))
+
+    np.testing.assert_array_equal(spikes[0]["senders"], spikes[1]["senders"])
+    np.testing.assert_array_equal(spikes[0]["times"], spikes[1]["times"])

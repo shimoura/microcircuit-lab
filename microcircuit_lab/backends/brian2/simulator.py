@@ -173,9 +173,14 @@ class Brian2Backend:
         self._connection_rules: dict[str, models.ConnectionRule] = {}
         self._distributions: dict[str, models.Distribution] = {}
         self._checked = False
+        self._forget_build()
+
+    def _forget_build(self) -> None:
+        """No Brian2 objects: before the first build, and at the start of each
+        build, so that a second one does not reuse those of the first."""
+
         self.groups: list[_Group] = []
         self.group_of: dict[str, _Group] = {}
-
         #: Each population as a Brian2 subgroup of its NeuronGroup.
         self.populations: dict[str, b2.Subgroup] = {}
         self.first_ids: dict[str, int] = {}
@@ -213,10 +218,16 @@ class Brian2Backend:
         # build in the same Python process starts afresh.
         b2.device.reinit()
         b2.device.activate()
+        self._forget_build()
 
         if self._device == "cpp_standalone":
             directory = self._standalone_directory
             if directory is None:
+                # A second build gets a new folder: delete the first one now,
+                # not when Python exits. The last one is deleted when this
+                # backend is, after its recordings have been read.
+                if self._standalone_dir is not None:
+                    self._standalone_dir.cleanup()
                 self._standalone_dir = tempfile.TemporaryDirectory(prefix="brian2_standalone_")
                 directory = self._standalone_dir.name
             b2.set_device("cpp_standalone", directory=str(directory), build_on_run=True)
