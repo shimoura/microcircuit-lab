@@ -3,9 +3,6 @@ style:
   cell_type_colors:
     E: "#595289"
     I: "#af143c"
-  population_labels:
-    L23_E: "L2/3_E"
-    L23_I: "L2/3_I"
   tick_label_size: 5.0
   axis_label_size: 8.0
   legend_size: 6.0

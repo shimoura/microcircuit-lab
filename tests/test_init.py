@@ -1,4 +1,4 @@
-"""`microcircuit-lab init`: project folders, never overwriting, --with-core (a copy of the core) and its examples."""
+"""`microcircuit-lab init`: project folders, the toy example, never overwriting, --with-core (a copy of the core) and its examples."""
 
 import subprocess
 from pathlib import Path
@@ -18,13 +18,15 @@ def _recorder(commands, tag_exists=True):
     return run
 
 
-def test_creates_the_project_folders(tmp_path):
+def test_creates_the_project_folders(tmp_path, monkeypatch):
+    _fake_clone(monkeypatch)
     init.main([str(tmp_path / "proj")])
     for name in ("builders", "analyses", "configs", "experiments"):
         assert (tmp_path / "proj" / name).is_dir()
 
 
-def test_existing_files_are_left_alone(tmp_path, capsys):
+def test_existing_files_are_left_alone(tmp_path, monkeypatch, capsys):
+    _fake_clone(monkeypatch)
     (tmp_path / "builders").mkdir()
     (tmp_path / "builders" / "mine.py").write_text("keep")
     init.main([str(tmp_path)])
@@ -42,7 +44,7 @@ def test_with_core_installs_the_copy_and_ignores_only_build_files(tmp_path, monk
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][:3] == ["git", "ls-remote", "--tags"]
-    assert commands[1][:3] == ["git", "clone", "--filter=blob:none"]
+    assert commands[1][:4] == ["git", "clone", "--quiet", "--filter=blob:none"]
     assert commands[-1][1:] == ["-m", "pip", "install", "-e", str(tmp_path / init.CORE_FOLDER)]
     assert (tmp_path / ".gitignore").read_text() == "output/\n*.egg-info/\n"
 
@@ -54,7 +56,7 @@ def test_with_core_clones_the_release_tag_of_the_installed_version(tmp_path, mon
     init.main([str(tmp_path), "--with-core"])
 
     assert commands[0][-1] == "refs/tags/v0.1.0"
-    assert commands[1][:5] == ["git", "clone", "--filter=blob:none", "--branch", "v0.1.0"]
+    assert commands[1][:6] == ["git", "clone", "--quiet", "--filter=blob:none", "--branch", "v0.1.0"]
 
 
 def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch, capsys):
@@ -62,7 +64,7 @@ def test_with_core_clones_main_when_the_version_has_no_tag(tmp_path, monkeypatch
     monkeypatch.setattr(subprocess, "run", _recorder(commands, tag_exists=False))
     init.main([str(tmp_path), "--with-core"])
 
-    assert commands[1][:4] == ["git", "clone", "--filter=blob:none", init.CORE_URL]
+    assert commands[1][:5] == ["git", "clone", "--quiet", "--filter=blob:none", init.CORE_URL]
     assert "no release tag" in capsys.readouterr().out
 
 
@@ -94,8 +96,38 @@ def _fake_clone(monkeypatch):
         (core / "configs" / "simulation" / "demo.yaml").write_text("core")
         (core / "configs" / "analysis").mkdir()
         (core / "configs" / "analysis" / "demo.yaml").write_text("core")
+        for path in init.TOY_EXAMPLE:
+            (core / path).parent.mkdir(parents=True, exist_ok=True)
+            (core / path).write_text("toy")
+        (core / "extensions" / "brian2").mkdir(parents=True)
+        (core / "extensions" / "brian2" / "model.py").write_text("brian2")
 
     monkeypatch.setattr(subprocess, "run", run)
+
+
+def test_copies_only_the_toy_example_and_the_brian2_models_with_brian2(tmp_path, monkeypatch):
+    _fake_clone(monkeypatch)
+    monkeypatch.setattr(init.importlib.util, "find_spec", lambda name: None)
+    init.main([str(tmp_path / "without")])
+    monkeypatch.setattr(init.importlib.util, "find_spec", lambda name: object())
+    init.main([str(tmp_path / "with")])
+
+    for path in init.TOY_EXAMPLE:
+        assert (tmp_path / "without" / path).read_text() == "toy"
+    assert not (tmp_path / "without" / "builders" / "demo").exists()
+    assert not (tmp_path / "without" / "extensions" / "brian2").exists()
+    assert (tmp_path / "with" / "extensions" / "brian2" / "model.py").is_file()
+
+
+def test_without_a_connection_the_folders_are_still_made(tmp_path, monkeypatch, capsys):
+    def offline(command, check, **kwargs):
+        raise subprocess.CalledProcessError(128, command)
+
+    monkeypatch.setattr(subprocess, "run", offline)
+    init.main([str(tmp_path)])
+
+    assert (tmp_path / "builders").is_dir()
+    assert "The toy example was not copied" in capsys.readouterr().out
 
 
 def test_with_core_copies_the_core_without_its_git_history(tmp_path, monkeypatch):
