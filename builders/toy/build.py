@@ -23,6 +23,7 @@ from microcircuit_lab.builder_tools import (
     psp_to_psc_iaf_psc_exp,
     weight,
     write_network_directory,
+    zero_bound,
 )
 from microcircuit_lab.config.network import NetworkConfig
 
@@ -30,11 +31,11 @@ from microcircuit_lab.config.network import NetworkConfig
 # (2000): sparse random connectivity, inhibition 4x stronger than excitation,
 # driven by strong Poisson background input. It spikes at about 20 spikes/s
 # per population.
-SIZES = {"E": 800, "I": 200}
+sizes = {"E": 800, "I": 200}
 
 # NEST's iaf_psc_exp; its parameters are passed to the simulator as they are.
-NEURON_MODEL = "iaf_psc_exp"
-NEURON_PARAMETERS = {
+neuron_model = "iaf_psc_exp"
+neuron_parameters = {
     "C_m": 250.0,
     "tau_m": 10.0,
     "tau_syn_ex": 0.5,
@@ -48,26 +49,32 @@ NEURON_PARAMETERS = {
 
 # The weights are chosen as PSP amplitudes (mV); the files hold the currents
 # (pA) that iaf_psc_exp takes, converted once here.
-PSP_E = 0.15
-PSP_I = -0.6
-DELAY_E = 1.5
-DELAY_I = 0.75
+psp_e = 0.15
+psp_i = -0.6
+delay_e = 1.5
+delay_i = 0.75
+
+# Drawn weights keep their sign and drawn delays stay at delay_min (ms) or
+# more, both drawn again past the bound. delay_min is half the 0.1 ms time
+# step: a shorter delay would round to 0 steps.
+bound_mode = "redraw"
+delay_min = 0.05
 
 # Synapses of each connection (source, target).
-N_SYNAPSES = {("E", "E"): 64000, ("I", "E"): 16000, ("E", "I"): 16000, ("I", "I"): 4000}
+synapses = {("E", "E"): 64000, ("I", "E"): 16000, ("E", "I"): 16000, ("I", "I"): 4000}
 
 # Background: each neuron gets INDEGREE Poisson synapses firing at RATE (spikes/s).
-BACKGROUND_RATE = 8.0
-BACKGROUND_INDEGREE = 1000
+background_rate = 8.0
+background_indegree = 1000
 
 
 def _current(psp: float) -> float:
     """The current (pA) of a PSP amplitude (mV) for the toy's neuron."""
     return psp_to_psc_iaf_psc_exp(
         psp,
-        C_m=NEURON_PARAMETERS["C_m"],
-        tau_m=NEURON_PARAMETERS["tau_m"],
-        tau_syn=NEURON_PARAMETERS["tau_syn_ex"],
+        C_m=neuron_parameters["C_m"],
+        tau_m=neuron_parameters["tau_m"],
+        tau_syn=neuron_parameters["tau_syn_ex"],
     )
 
 
@@ -84,21 +91,21 @@ def _populations() -> list[dict[str, Any]]:
             # The membrane potential at the start, drawn per neuron.
             "initial_state": {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}},
         }
-        for name, size in SIZES.items()
+        for name, size in sizes.items()
     ]
 
 
 def _connections() -> list[dict[str, Any]]:
     connections = []
-    for (source, target), n_synapses in N_SYNAPSES.items():
-        psp, delay_mean = (PSP_E, DELAY_E) if source == "E" else (PSP_I, DELAY_I)
+    for (source, target), n_synapses in synapses.items():
+        psp, delay_mean = (psp_e, delay_e) if source == "E" else (psp_i, delay_i)
         connections.append(
             {
                 "source": source,
                 "target": target,
                 "n_synapses": n_synapses,
-                "weight": weight(_current(psp), unit="pA", rel_std=0.1),
-                "delay": delay(delay_mean, rel_std=0.5),
+                "weight": weight(_current(psp), unit="pA", rel_std=0.1, **zero_bound(psp, bound_mode)),
+                "delay": delay(delay_mean, rel_std=0.5, lower_bound=delay_min, bound_mode=bound_mode),
             }
         )
     return connections
@@ -107,19 +114,19 @@ def _connections() -> list[dict[str, Any]]:
 def _poisson_background() -> dict[str, dict[str, Any]]:
     return {
         name: {
-            "rate": BACKGROUND_RATE,
-            "indegree": BACKGROUND_INDEGREE,
-            "weight": weight(_current(PSP_E), unit="pA"),
-            "delay": delay(DELAY_E),
+            "rate": background_rate,
+            "indegree": background_indegree,
+            "weight": weight(_current(psp_e), unit="pA"),
+            "delay": delay(delay_e),
         }
-        for name in SIZES
+        for name in sizes
     }
 
 
 def generate_toy(*, config_dir: str | Path = "configs", network_name: str = "toy_from_builder") -> NetworkConfig:
     """Write ``<config_dir>/network/<network_name>/`` and check it."""
 
-    neuron = {"model": NEURON_MODEL, "parameters": dict(NEURON_PARAMETERS)}
+    neuron = {"model": neuron_model, "parameters": dict(neuron_parameters)}
     return write_network_directory(
         Path(config_dir) / "network" / network_name,
         populations=_populations(),

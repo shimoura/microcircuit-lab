@@ -161,15 +161,15 @@ class Distribution:
     expression
         A Brian2 expression for each synapse's value, as a number in the
         package's units (pA or nS for a weight, ms for a delay). It can use
-        the connection's ``mean`` and ``rel_std``, its ``parameters``, the
-        variables of the pre- and post-synaptic neurons (``V_m_pre``), and
-        ``index_pre`` / ``index_post`` (see :class:`ConnectionRule`).
+        the fields the entry gives (``mean``, ``std``, ``min``, ``max``), its
+        ``parameters``, the variables of the pre- and post-synaptic neurons
+        (``V_m_pre``), and ``index_pre`` / ``index_post`` (see
+        :class:`ConnectionRule`).
     redraw_rounds
-        With the network's ``bound_mode: redraw``, how many times a value
-        past its bound (a weight of the other sign than ``mean``, a delay
-        below the minimum) is drawn again before it is clipped to the bound.
-        0 clips at once. Required with ``redraw``: how often the expression
-        crosses its bound is not known here.
+        For an entry with ``bound_mode: redraw``, how many times a value
+        past its ``lower_bound`` or ``upper_bound`` is drawn again before it
+        is set to the bound. 0 sets it at once. Required with ``redraw``: how
+        often the expression crosses a bound is not known here.
     """
 
     name: str

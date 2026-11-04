@@ -133,7 +133,7 @@ def background_weights(network: NetworkConfig) -> np.ndarray:
     """The background weight of each population, 0 for one without background input."""
     return np.asarray(
         [
-            network.poisson_background[name].weight.mean if name in network.poisson_background else 0.0
+            network.poisson_background[name].weight.expected if name in network.poisson_background else 0.0
             for name in network.populations
         ],
         dtype=float,
@@ -165,7 +165,7 @@ def mean_psc_matrix(
     n = len(pop_names)
     table = network.connections
 
-    weight = table["weight.mean"]
+    weight = table.expected("weight")
     synapses = expected_synapses_per_connection(network)
     pair = (table.population_index("target", pop_names), table.population_index("source", pop_names))
 

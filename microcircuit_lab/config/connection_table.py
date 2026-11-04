@@ -34,12 +34,21 @@ from pydantic.fields import FieldInfo
 
 from microcircuit_lab.config.connectivity import (
     RULE_NUMBER,
-    SHARED_DISTRIBUTIONS,
     SHARED_RULES,
     ConnectionConfig,
     DelayDistribution,
     WeightDistribution,
+    drawn_value_problems,
+    expected_values,
+    is_number_field,
+    old_field_message,
 )
+
+
+def _drawn_kind(name: str) -> str:
+    """How a field of a weight or delay is stored (see COLUMNS)."""
+    return "parameters" if name == "parameters" else "number" if is_number_field(name) else "text"
+
 
 # Column name: how its values are stored. The names are the paths of the
 # fields in a connectivity.yaml row; ``number`` is the number the row's rule
@@ -53,16 +62,10 @@ COLUMNS = {
     "allow_autapses": "yes/no",
     "allow_multapses": "yes/no",
     "synapse": "text",
-    "weight.mean": "number",
-    "weight.rel_std": "number",
-    "weight.distribution": "text",
-    "weight.parameters": "parameters",
+    # Every field of a weight (with its unit) and of a delay: text, parameters, or a number.
+    **{f"weight.{name}": _drawn_kind(name) for name in DelayDistribution.model_fields},
     "weight.unit": "text",
-    "delay.mean": "number",
-    "delay.rel_std": "number",
-    "delay.distribution": "text",
-    "delay.parameters": "parameters",
-    "delay.minimum": "number",
+    **{f"delay.{name}": _drawn_kind(name) for name in DelayDistribution.model_fields},
 }
 PARAMETER_COLUMNS = [column for column, kind in COLUMNS.items() if kind == "parameters"]
 
@@ -142,6 +145,10 @@ class ConnectionTable:
         if "number" in frame.columns:
             raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
                              f"under its name, one of {list(RULE_NUMBER.values())}.")
+        old = [f"{column}: {old_field_message(column.partition('.')[2])}" for column in frame.columns
+               if old_field_message(column.partition(".")[2])]
+        if old:
+            raise ValueError(f"{path}: " + "; ".join(old))
         columns = {name: _csv_column(frame[name]) for name in frame.columns}
         for name in PARAMETER_COLUMNS:
             if name in columns:
@@ -226,6 +233,12 @@ class ConnectionTable:
     def __getitem__(self, column: str) -> np.ndarray:
         """A column, e.g. ``table["weight.mean"]``."""
         return self._columns[column]
+
+    def expected(self, group: str) -> np.ndarray:
+        """The mean of each row's weight or delay (``group``) before any bound:
+        its ``value``, ``mean``, or the middle of ``min`` and ``max`` (see
+        :func:`~microcircuit_lab.config.connectivity.expected_values`)."""
+        return expected_values({name: self._columns[f"{group}.{name}"] for name in DelayDistribution.model_fields})
 
     def population_index(self, column: str, names: list[str]) -> np.ndarray:
         """For ``column`` "source" or "target": each row's population as its
@@ -334,7 +347,7 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
     """Check the columns named in ``which`` with pydantic, each against its
     field in ``ConnectionConfig``; the number against the field of each row's
     rule (n_synapses, ..., p). Raises one error listing every column with a
-    problem, e.g. ``connections.12.weight.rel_std: Input should be greater
+    problem, e.g. ``connections.12.weight.std: Input should be greater
     than or equal to 0``."""
 
     problems = []
@@ -346,15 +359,21 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
             rows = np.flatnonzero(columns["rule"] == rule)
             if rows.size:
                 problems += _problems(name, columns["number"][rows], _checker(name, required=True), rows)
-    if {"rule", "number", *PARAMETER_COLUMNS, "weight.distribution", "delay.distribution"} & set(which):
+    if {"rule", "number", "parameters"} & set(which):
         problems += _rule_problems(columns)
+    for group in ("weight", "delay"):
+        if any(column.startswith(f"{group}.") for column in which):
+            fields = {name: columns[f"{group}.{name}"] for name in DelayDistribution.model_fields}
+            for field, rows, message in drawn_value_problems(fields, delay=group == "delay"):
+                i = int(np.flatnonzero(rows)[0])
+                more = f" (and {rows.sum() - 1} more rows)" if rows.sum() > 1 else ""
+                problems.append(f"connections.{i}.{group}.{field}: {message}{more}")
     if problems:
         raise ValueError("\n".join(problems))
 
 
 def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
-    """A number for a rule that takes none, or parameters for a shared rule or
-    distribution."""
+    """A number for a rule that takes none, or parameters for a shared rule."""
 
     def given(column: str) -> np.ndarray:
         return np.array([value is not None for value in columns[column]], dtype=bool)
@@ -364,9 +383,6 @@ def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
         ("rule", ~np.isin(rule, list(RULE_NUMBER)) & ~np.isnan(columns["number"]), "takes no number"),
         ("rule", np.isin(rule, SHARED_RULES) & given("parameters"), "takes no parameters"),
     ]
-    for group in ("weight", "delay"):
-        shared = np.isin(columns[f"{group}.distribution"], SHARED_DISTRIBUTIONS)
-        checks.append((f"{group}.distribution", shared & given(f"{group}.parameters"), "takes no parameters"))
     problems = []
     for column, rows, what in checks:
         if rows.any():

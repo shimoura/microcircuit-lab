@@ -1,7 +1,7 @@
 """Generate the two-area toy network configuration from ``data.py``.
 
 Writes ``configs/network/toy_two_areas/``: populations named
-``<area>__<layer>_<cell type>``, one neuron entry per row of ``data.NEURONS``,
+``<area>__<layer>_<cell type>``, one neuron entry per row of ``data.neurons``,
 connections within and between the areas from the probability rules, Poisson
 background input and the full-scale reference rates.
 """
@@ -21,6 +21,7 @@ from microcircuit_lab.builder_tools import (
     weight,
     write_network,
     write_network_directory,
+    zero_bound,
 )
 from microcircuit_lab.config.network import NetworkConfig
 
@@ -36,17 +37,17 @@ def build_populations() -> list[dict[str, Any]]:
             "size": size,
             "neuron": neuron,
             "initial_state": {
-                "V_m": {"distribution": "normal", "mean": data.V0_MEAN, "std": data.V0_STD}
+                "V_m": {"distribution": "normal", "mean": data.v0_mean, "std": data.v0_std}
             },
         }
-        for area, layer, cell_type, size, neuron in data.POPULATIONS
+        for area, layer, cell_type, size, neuron in data.populations
     ]
 
 
 def build_neurons() -> dict[str, dict[str, Any]]:
     return {
-        name: {"model": data.NEURON_MODEL, "parameters": {**data.BASE_NEURON, **changes}}
-        for name, changes in data.NEURONS.items()
+        name: {"model": data.neuron_model, "parameters": {**data.base_neuron, **changes}}
+        for name, changes in data.neurons.items()
     }
 
 
@@ -54,7 +55,7 @@ def current(psp: float, neuron: str) -> float:
     """The current amplitude (pA) of a PSP amplitude (mV) onto the neuron entry
     ``neuron``: the toy gives its weights as PSPs, and iaf_psc_exp takes
     currents. Excitation uses tau_syn_ex, inhibition tau_syn_in."""
-    parameters = {**data.BASE_NEURON, **data.NEURONS[neuron]}
+    parameters = {**data.base_neuron, **data.neurons[neuron]}
     return psp_to_psc_iaf_psc_exp(
         psp,
         C_m=parameters["C_m"],
@@ -69,24 +70,24 @@ def connection_probability(source: tuple, target: tuple) -> float:
 
     if source_area == target_area:
         layer = "same" if source_layer == target_layer else "other"
-        return data.P_LOCAL[source_type][target_type] * data.LAYER_FACTOR[layer]
+        return data.p_local[source_type][target_type] * data.layer_factor[layer]
 
-    if source_type in data.EXCITATORY_TYPES:
-        return data.P_INTER_AREA.get(target_type, 0.0)
+    if source_type in data.excitatory_types:
+        return data.p_inter_area.get(target_type, 0.0)
     return 0.0
 
 
 def delay_mean(source: tuple, target: tuple) -> float:
     if source[0] != target[0]:
-        return data.DISTANCE_MM / data.CONDUCTION_SPEED_MM_PER_MS
-    return data.DELAY_EXC if source[2] in data.EXCITATORY_TYPES else data.DELAY_INH
+        return data.distance_mm / data.conduction_speed_mm_per_ms
+    return data.delay_exc if source[2] in data.excitatory_types else data.delay_inh
 
 
 def build_connections() -> list[dict[str, Any]]:
     connections: list[dict[str, Any]] = []
 
-    for target in data.POPULATIONS:
-        for source in data.POPULATIONS:
+    for target in data.populations:
+        for source in data.populations:
             probability = connection_probability(source, target)
             if probability == 0.0:
                 continue
@@ -96,8 +97,18 @@ def build_connections() -> list[dict[str, Any]]:
                     "source": population_name(*source[:3]),
                     "target": population_name(*target[:3]),
                     "n_synapses": num_synapses_from_conn_prob(probability, source[3], target[3]),
-                    "weight": weight(current(data.PSP[source[2]], target[4]), unit="pA", rel_std=data.WEIGHT_REL_STD),
-                    "delay": delay(delay_mean(source, target), rel_std=data.DELAY_REL_STD),
+                    "weight": weight(
+                        current(data.psp[source[2]], target[4]),
+                        unit="pA",
+                        rel_std=data.weight_rel_std,
+                        **zero_bound(data.psp[source[2]], data.bound_mode),
+                    ),
+                    "delay": delay(
+                        delay_mean(source, target),
+                        rel_std=data.delay_rel_std,
+                        lower_bound=data.delay_min,
+                        bound_mode=data.bound_mode,
+                    ),
                 }
             )
 
@@ -107,12 +118,12 @@ def build_connections() -> list[dict[str, Any]]:
 def build_poisson_background() -> dict[str, dict[str, Any]]:
     return {
         population_name(area, layer, cell_type): {
-            "rate": data.BG_RATE,
-            "indegree": data.K_EXT[cell_type],
-            "weight": weight(current(data.BG_PSP, neuron), unit="pA"),
-            "delay": delay(data.BG_DELAY),
+            "rate": data.bg_rate,
+            "indegree": data.k_ext[cell_type],
+            "weight": weight(current(data.bg_psp, neuron), unit="pA"),
+            "delay": delay(data.bg_delay),
         }
-        for area, layer, cell_type, _, neuron in data.POPULATIONS
+        for area, layer, cell_type, _, neuron in data.populations
     }
 
 
@@ -129,7 +140,7 @@ def generate_toy_two_areas(
         neurons=build_neurons(),
         connections=build_connections(),
         poisson_background=build_poisson_background(),
-        reference=data.FULL_MEAN_RATES,
+        reference=data.full_mean_rates,
         compact=False,
     )
 

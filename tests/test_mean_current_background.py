@@ -62,8 +62,8 @@ def _background(rate: float = 8.0, mean: float = 50.0, indegree: float = 100.0) 
     return PoissonBackgroundConfig(
         rate=rate,
         indegree=indegree,
-        weight=WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit="pA"),
-        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+        weight=WeightDistribution(value=mean, unit="pA"),
+        delay=DelayDistribution(value=1.0),
     )
 
 

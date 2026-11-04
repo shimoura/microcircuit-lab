@@ -23,16 +23,23 @@ from brian2.devices.device import RuntimeDevice
 
 from microcircuit_lab.backends.brian2.connections import table
 from microcircuit_lab.backends.brian2.models import Distribution
+from microcircuit_lab.config.connectivity import lognormal_parameters
 from microcircuit_lab.config.distributions import DrawnValue
 
 logger = logging.getLogger(__name__)
+
+def _lognormal(rng: np.random.Generator, arguments: dict, n: int) -> np.ndarray:
+    """Lognormal values with the mean and std of ``arguments`` and the sign of the mean."""
+    mu, sigma = lognormal_parameters(arguments["mean"], arguments["std"])
+    return np.sign(arguments["mean"]) * rng.lognormal(mu, sigma, n)
+
 
 #: The distributions a per-neuron value can have: NEST's names (nest.random)
 #: and arguments, and how numpy draws them.
 PER_NEURON_DRAWS = {
     "normal": (("mean", "std"), lambda rng, a, n: rng.normal(a["mean"], a["std"], n)),
     "uniform": (("min", "max"), lambda rng, a, n: rng.uniform(a["min"], a["max"], n)),
-    "lognormal": (("mean", "std"), lambda rng, a, n: rng.lognormal(a["mean"], a["std"], n)),
+    "lognormal": (("mean", "std"), _lognormal),
     "exponential": (("beta",), lambda rng, a, n: rng.exponential(a["beta"], n)),
 }
 
@@ -75,52 +82,85 @@ DRAWS = {
 }
 
 
-def _numbers(mean: float, rel_std: float, distribution: str) -> tuple[str, float, float, float]:
-    """The kind of draw (see DRAWS) and its numbers a, b and s, for a value with
-    mean ``mean`` and standard deviation ``|mean| * rel_std``. A uniform value
-    spans mean ± sqrt(3) * std; a lognormal one has the sign of its mean. A
-    value with no spread (std 0, e.g. mean 0) is fixed."""
+def _unset(number) -> bool:
+    return number is None or number != number
 
-    if distribution == "fixed" or rel_std == 0.0 or mean == 0.0:
-        return "normal", mean, 0.0, 1.0
-    std = abs(mean * rel_std)
+
+def _numbers(fields: dict) -> tuple[str, float, float, float]:
+    """The kind of draw (see DRAWS) and its numbers a, b and s, from the fields
+    of a weight or delay (config/connectivity.py): a uniform value spans min
+    to max; a lognormal one has the mean and standard deviation of its fields,
+    and the sign of its mean."""
+
+    distribution = fields["distribution"]
+    if distribution is None:
+        return "normal", fields["value"], 0.0, 1.0
     if distribution == "normal":
-        return "normal", mean, std, 1.0
+        return "normal", fields["mean"], fields["std"], 1.0
     if distribution == "uniform":
-        half_width = np.sqrt(3.0) * std
-        return "uniform", mean - half_width, 2 * half_width, 1.0
+        return "uniform", fields["min"], fields["max"] - fields["min"], 1.0
     if distribution == "lognormal":
-        sigma2 = np.log1p((std / mean) ** 2)
-        return "lognormal", np.log(abs(mean)) - sigma2 / 2.0, np.sqrt(sigma2), float(np.sign(mean))
+        mu, sigma = lognormal_parameters(fields["mean"], fields["std"])
+        return "lognormal", mu, sigma, float(np.sign(fields["mean"]))
     raise ValueError(f"Unsupported distribution: {distribution!r}")
 
 
-def chance_below(bound: float, mean: float, rel_std: float, distribution: str) -> float:
-    """The chance that a value drawn as by set_drawn is below ``bound``."""
+def _chance_past(bound: float, fields: dict, below: bool) -> float:
+    """The chance that a value drawn from ``fields`` is below ``bound``
+    (``below``) or above it. Each direction is computed on its own, so a tiny
+    chance is not lost to rounding (it decides how often to redraw)."""
 
-    if distribution == "fixed" or rel_std == 0.0 or mean == 0.0:
-        return float(mean < bound)
-    std = abs(mean * rel_std)
-    if distribution == "normal":
-        return 0.5 * math.erfc((mean - bound) / (std * math.sqrt(2.0)))
-    if distribution == "uniform":
-        half_width = np.sqrt(3.0) * std
-        return min(max((bound - mean + half_width) / (2 * half_width), 0.0), 1.0)
-    if distribution == "lognormal":
-        if bound <= 0.0:
-            return 0.0
-        sigma2 = np.log1p(rel_std**2)
-        mu = np.log(mean) - sigma2 / 2.0
-        return 0.5 * math.erfc((mu - math.log(bound)) / math.sqrt(2.0 * sigma2))
-    raise ValueError(f"Unsupported distribution: {distribution!r}")
+    kind, a, b, s = _numbers(fields)
+    if b == 0.0:
+        value = s * math.exp(a) if kind == "lognormal" else a
+        return float(value < bound if below else value > bound)
+    if kind == "normal":
+        z = (a - bound) / (b * math.sqrt(2.0))
+        return 0.5 * math.erfc(z if below else -z)
+    if kind == "uniform":
+        share = min(max((bound - a) / b, 0.0), 1.0)
+        return share if below else 1.0 - share
+    # A lognormal value s * exp(x), x normal (a, b): mirror a negative one.
+    if s < 0:
+        bound, below = -bound, not below
+    if bound <= 0.0:
+        return 0.0 if below else 1.0
+    z = (a - math.log(bound)) / (b * math.sqrt(2.0))
+    return 0.5 * math.erfc(z if below else -z)
 
 
-def _project_expression(distribution: Distribution, mean: float, rel_std: float, parameters: dict) -> str:
-    """A project distribution's expression with its ``mean``, ``rel_std`` and
-    ``parameters`` written in as numbers, so the entries of one Synapses
-    cannot mix up their values."""
+def chance_out_of_bounds(fields: dict) -> float:
+    """The chance that a value drawn from ``fields`` is past its bounds."""
+    chance = 0.0
+    if not _unset(fields["lower_bound"]):
+        chance += _chance_past(fields["lower_bound"], fields, below=True)
+    if not _unset(fields["upper_bound"]):
+        chance += _chance_past(fields["upper_bound"], fields, below=False)
+    return chance
 
-    values = {"mean": mean, "rel_std": rel_std, **parameters}
+
+def negated(fields: dict) -> dict:
+    """The fields of the negative of a value: e.g. an inhibitory weight onto a
+    conductance, which Brian2 takes as a size, as NEST does."""
+
+    def minus(name: str):
+        return None if _unset(fields[name]) else -fields[name]
+
+    return {
+        **fields,
+        "value": minus("value"), "mean": minus("mean"),
+        "min": minus("max"), "max": minus("min"),
+        "lower_bound": minus("upper_bound"), "upper_bound": minus("lower_bound"),
+    }
+
+
+def _project_expression(distribution: Distribution, fields: dict) -> str:
+    """A project distribution's expression with the fields it was given
+    (``mean``, ``std``, ...) and its ``parameters`` written in as numbers, so
+    the entries of one Synapses cannot mix up their values."""
+
+    values = {name: fields[name] for name in ("value", "mean", "std", "min", "max") if not _unset(fields[name])}
+    values.update(fields["parameters"] or {})
     return re.sub(
         r"\b[A-Za-z_]\w*\b",
         lambda name: f"({values[name[0]]!r})" if name[0] in values else name[0],
@@ -128,76 +168,95 @@ def _project_expression(distribution: Distribution, mean: float, rel_std: float,
     )
 
 
-def _set_projects(target, variable, index, entries, unit, bound_mode, wrong, bound, projects) -> None:
-    """The values of the entries ``projects`` (``{k: (Distribution,
-    parameters)}``), from each distribution's expression; past the bound,
-    drawn again its ``redraw_rounds`` times (bound_mode "redraw"), then set to
-    the bound. One assignment per entry: each has its own expression."""
-
-    values = getattr(target, variable)
-    for k, (distribution, parameters) in projects.items():
-        mean, rel_std = entries[k][:2]
-        expression = f"({_project_expression(distribution, mean, rel_std, parameters)})*{unit}"
-        here = f"({index}) == {k}"
-        values[here] = expression
-        if wrong is None:
-            continue
-        rounds = distribution.redraw_rounds if bound_mode == "redraw" else 0
-        for _ in range(rounds):
-            values[f"{here} and {wrong}"] = expression
-        values[f"{here} and {wrong}"] = bound
-
-
 def set_drawn(
     target,
     variable: str,
     index: str,
-    entries: dict[int, tuple[float, float, str]],
+    entries: dict[int, tuple[dict, int]],
     unit: str,
-    bound_mode: str,
-    wrong: str | None = None,
-    bound: str | None = None,
-    out_of_bounds: list[tuple[int, float]] = (),
-    projects: dict[int, tuple[Distribution, dict]] | None = None,
+    projects: dict[int, Distribution] | None = None,
 ) -> None:
     """
     Set ``variable`` of a Brian2 group or synapses to values drawn for each
-    entry ``{k: (mean, rel_std, distribution)}``, for the neurons or synapses
-    whose ``index`` (a Brian2 expression) is k.
+    entry ``{k: (fields, number of values)}`` (the fields of a weight or
+    delay, see config/connectivity.py), for the neurons or synapses whose
+    ``index`` (a Brian2 expression) is k. The entries in ``projects`` (``{k:
+    Distribution}``) are drawn from their project distribution instead.
 
-    Then the values where the condition ``wrong`` holds are drawn again
-    (bound_mode "redraw", see LEFT_OUT) and the rest set to ``bound``.
-    ``out_of_bounds`` gives, per entry, its number of values and the chance of
-    each to be out of bounds. Brian2 does all this itself, also in C++
-    standalone mode, where the values cannot be looked at before the run.
-
-    The entries in ``projects`` (``{k: (Distribution, parameters)}``) are
-    drawn from their project distribution instead (see _set_projects).
+    Then the values past their bounds are drawn again (``bound_mode``
+    "redraw"; see LEFT_OUT, or the distribution's ``redraw_rounds``) and the
+    rest set to the bound. Brian2 does all this itself, also in C++ standalone
+    mode, where the values cannot be looked at before the run.
     """
 
     projects = projects or {}
+    size = max(entries) + 1
+    lower, upper, redraw = np.full(size, -np.inf), np.full(size, np.inf), np.zeros(size)
+    for k, (fields, _) in entries.items():
+        if not _unset(fields["lower_bound"]):
+            lower[k] = fields["lower_bound"]
+        if not _unset(fields["upper_bound"]):
+            upper[k] = fields["upper_bound"]
+        redraw[k] = fields["bound_mode"] == "redraw"
+    target.namespace.update({
+        f"{variable}_{name}": table(values, f"{target.name}_{variable}_{name}")
+        for name, values in (("lower", lower), ("upper", upper), ("redraw", redraw))
+    })
+
+    def read(name: str) -> str:
+        return f"{variable}_{name}(({index})*second)"
+
+    # Past a bound: only the comparisons some entry needs.
+    past = [f"{variable} < {read('lower')}*{unit}"] * bool(np.isfinite(lower).any())
+    past += [f"{variable} > {read('upper')}*{unit}"] * bool(np.isfinite(upper).any())
+    wrong = " or ".join(past) or None
+    if wrong is not None and len(past) == 2:
+        wrong = f"({wrong})"
+    to_redraw = wrong if redraw.all() else f"{wrong} and {read('redraw')} == 1"
+
+    clip = f"clip({variable}, {read('lower')}*{unit}, {read('upper')}*{unit})"
     shared = {k: entry for k, entry in entries.items() if k not in projects}
     if shared:
-        _set_shared(target, variable, index, shared, unit, bound_mode, wrong, bound, out_of_bounds)
-    _set_projects(target, variable, index, entries, unit, bound_mode, wrong, bound, projects)
+        _set_shared(target, variable, read, shared, unit, wrong, to_redraw, clip)
+    _set_projects(target, variable, index, entries, unit, wrong, projects, clip)
 
 
-def _set_shared(target, variable, index, entries, unit, bound_mode, wrong, bound, out_of_bounds) -> None:
-    """set_drawn for the entries of shared distributions."""
+def _set_projects(target, variable, index, entries, unit, wrong, projects, clip) -> None:
+    """The values of the entries ``projects`` (``{k: Distribution}``), from
+    each distribution's expression; past a bound, drawn again its
+    ``redraw_rounds`` times (``bound_mode`` "redraw"), then set to the bound
+    (``clip``). One assignment per entry: each has its own expression."""
+
+    values = getattr(target, variable)
+    for k, distribution in projects.items():
+        fields = entries[k][0]
+        expression = f"({_project_expression(distribution, fields)})*{unit}"
+        here = f"({index}) == {k}"
+        values[here] = expression
+        if wrong is None:
+            continue
+        rounds = distribution.redraw_rounds if fields["bound_mode"] == "redraw" else 0
+        for _ in range(rounds):
+            values[f"{here} and {wrong}"] = expression
+        values[f"{here} and {wrong}"] = clip
+
+
+def _set_shared(target, variable, read, entries, unit, wrong, to_redraw, clip) -> None:
+    """set_drawn for the entries of shared distributions and fixed values. A
+    bound that is (almost) never crossed (fewer than NEVER values expected
+    past it) is not checked at all: each check is one more piece of code for
+    Brian2."""
 
     size = max(entries) + 1
     kinds, a, b, s = np.zeros(size, dtype=int), np.zeros(size), np.zeros(size), np.ones(size)
     names = list(DRAWS)
-    for k, (mean, rel_std, distribution) in entries.items():
-        kind, a[k], b[k], s[k] = _numbers(mean, rel_std, distribution)
+    for k, (fields, _) in entries.items():
+        kind, a[k], b[k], s[k] = _numbers(fields)
         kinds[k] = names.index(kind)
     target.namespace.update({
         f"{variable}_{name}": table(values, f"{target.name}_{variable}_{name}")
         for name, values in (("a", a), ("b", b), ("s", s), ("kind", kinds))
     })
-
-    def read(name: str) -> str:
-        return f"{variable}_{name}(({index})*second)"
 
     def expression(kinds_here: list[int]) -> str:
         parts = [DRAWS[names[kind]].format(a=read("a"), b=read("b"), s=read("s")) for kind in kinds_here]
@@ -227,110 +286,31 @@ def _set_shared(target, variable, index, entries, unit, bound_mode, wrong, bound
         else:
             values[condition] = drawn
 
+    # How many values are expected past their bounds after some rounds of
+    # redrawing (only the entries that redraw are drawn again).
+    out = [(number, chance_out_of_bounds(fields), fields["bound_mode"] == "redraw")
+           for fields, number in entries.values()]
+
     def expected(rounds: int) -> float:
-        return sum(n * chance ** (rounds + 1) for n, chance in out_of_bounds)
+        return sum(n * chance ** (rounds + 1 if again else 1) for n, chance, again in out)
 
     if wrong is None or expected(0) < NEVER:
         return
-    if bound_mode == "redraw":
-        look = isinstance(b2.get_device(), RuntimeDevice)
-        rounds = 0
-        while expected(rounds) >= LEFT_OUT and rounds < MAX_REDRAW_ROUNDS:
-            if look and len(values[wrong]) == 0:
-                break
-            for condition, drawn in assignments:
-                values[wrong if condition is None else f"({wrong}) and {condition}"] = drawn
-            rounds += 1
-        if rounds == MAX_REDRAW_ROUNDS:
-            # In C++ standalone mode the values are known only when it runs.
-            left = len(values[wrong]) if look else expected(rounds)
-            if left >= LEFT_OUT:
-                logger.warning(
-                    "%s of %s: about %d values are still out of bounds after %d redraws and are set "
-                    "to the bound; their distribution lies mostly past it.",
-                    variable, target.name, math.ceil(left), MAX_REDRAW_ROUNDS,
-                )
-    values[wrong] = bound
-
-
-def set_weights(
-    target,
-    variable: str,
-    index: str,
-    entries: dict[int, tuple[float, float, str, int]],
-    unit: str,
-    bound_mode: str,
-    projects: dict[int, tuple[Distribution, dict]] | None = None,
-) -> None:
-    """
-    Draw the weights ``variable`` of ``target`` for each entry
-    ``{k: (mean, rel_std, distribution, number of weights)}``, by ``index``
-    (see set_drawn; ``projects`` too).
-
-    A normal or uniform weight of the other sign than its mean is redrawn or
-    clipped to 0, as set by the network's ``bound_mode``; as in NEST. So is a
-    project distribution's (see _set_projects).
-    """
-
-    projects = projects or {}
-
-    sign = np.zeros(max(entries) + 1)
-    out_of_bounds = []
-    for k, (mean, rel_std, distribution, number) in entries.items():
-        sign[k] = 1.0 if mean >= 0 else -1.0
-        # A lognormal weight always has the sign of its mean; normal and uniform
-        # ones are symmetric, so the chance of the other sign is that of a
-        # weight of mean |mean| below 0.
-        if distribution != "lognormal" and k not in projects:
-            out_of_bounds.append((number, chance_below(0.0, abs(mean), rel_std, distribution)))
-    target.namespace[f"{variable}_sign"] = table(sign, f"{target.name}_{variable}_sign")
-    set_drawn(
-        target, variable, index, {k: entry[:3] for k, entry in entries.items()}, unit, bound_mode,
-        wrong=f"{variable}*{variable}_sign(({index})*second) < 0*{unit}",
-        bound=f"0*{unit}",
-        out_of_bounds=out_of_bounds,
-        projects=projects,
-    )
-
-
-def set_delays(
-    synapses,
-    index: str,
-    entries: dict[int, tuple[float, float, str, float | None, int]],
-    bound_mode: str,
-    resolution: float,
-    projects: dict[int, tuple[Distribution, dict]] | None = None,
-) -> None:
-    """
-    Draw the delays of ``synapses`` for each entry
-    ``{k: (mean, rel_std, distribution, minimum, number of delays)}``, by
-    ``index`` (see set_drawn).
-
-    A drawn delay below the minimum (``minimum``, or half the simulation
-    step if not set; never below half the step) is redrawn or clipped to the
-    minimum, as set by the network's ``bound_mode``. A fixed delay is used
-    as given. As in NEST. ``projects``: see set_drawn.
-    """
-
-    projects = projects or {}
-    minimum_delay = np.zeros(max(entries) + 1)
-    out_of_bounds = []
-    for k, (mean, rel_std, distribution, minimum, number) in entries.items():
-        # A fixed delay has no minimum, so it is kept as given even when
-        # other entries of these synapses are set to theirs.
-        if (distribution == "fixed" or rel_std == 0.0) and k not in projects:
-            continue
-        minimum_delay[k] = 0.5 * resolution
-        # NaN is "not set" too
-        if minimum is not None and minimum == minimum:
-            minimum_delay[k] = max(minimum, minimum_delay[k])
-        if k not in projects:
-            out_of_bounds.append((number, chance_below(minimum_delay[k], mean, rel_std, distribution)))
-    synapses.namespace["delay_minimum"] = table(minimum_delay, f"{synapses.name}_delay_minimum")
-    set_drawn(
-        synapses, "delay", index, {k: entry[:3] for k, entry in entries.items()}, "ms", bound_mode,
-        wrong=f"delay < delay_minimum(({index})*second)*ms",
-        bound=f"delay_minimum(({index})*second)*ms",
-        out_of_bounds=out_of_bounds,
-        projects=projects,
-    )
+    look = isinstance(b2.get_device(), RuntimeDevice)
+    rounds = 0
+    while any(again for *_, again in out) and expected(rounds) >= LEFT_OUT and rounds < MAX_REDRAW_ROUNDS:
+        if look and len(values[to_redraw]) == 0:
+            break
+        for condition, drawn in assignments:
+            values[to_redraw if condition is None else f"({to_redraw}) and {condition}"] = drawn
+        rounds += 1
+    if rounds == MAX_REDRAW_ROUNDS:
+        # In C++ standalone mode the values are known only when it runs.
+        left = len(values[to_redraw]) if look else expected(rounds)
+        if left >= LEFT_OUT:
+            logger.warning(
+                "%s of %s: about %d values are still out of bounds after %d redraws and are set "
+                "to the bound; their distribution lies mostly past it.",
+                variable, target.name, math.ceil(left), MAX_REDRAW_ROUNDS,
+            )
+    values[wrong] = clip

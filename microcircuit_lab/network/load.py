@@ -208,7 +208,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             populations=populations,
             connections=connections,
             poisson_background=dict(directory.poisson_background.poisson_background),
-            bound_mode=directory.connectivity.bound_mode,
             stimuli=directory.stimuli.stimuli,
             scaling=directory.scaling,
             reference=directory.reference,

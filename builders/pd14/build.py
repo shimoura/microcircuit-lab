@@ -26,6 +26,7 @@ from microcircuit_lab.builder_tools import (
     weight,
     write_network,
     write_network_directory,
+    zero_bound,
 )
 from microcircuit_lab.config.network import NetworkConfig
 
@@ -97,8 +98,15 @@ def _build_connections() -> list[dict[str, Any]]:
                     "source": source,
                     "target": target,
                     "n_synapses": n_synapses,
-                    "weight": weight(_current(weight_mean), unit="pA", rel_std=data.weight_rel_std),
-                    "delay": delay(delay_mean, rel_std=data.delay_rel_std),
+                    "weight": weight(
+                        _current(weight_mean),
+                        unit="pA",
+                        rel_std=data.weight_rel_std,
+                        **zero_bound(weight_mean, data.bound_mode),
+                    ),
+                    "delay": delay(
+                        delay_mean, rel_std=data.delay_rel_std, lower_bound=data.delay_min, bound_mode=data.bound_mode
+                    ),
                 }
             )
 
