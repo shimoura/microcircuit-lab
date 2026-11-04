@@ -813,3 +813,7 @@ class Brian2Backend:
         """
 
         return recording.save_recordings(self, run_dir)
+
+
+# The class get_backend() returns (see backends/__init__.py).
+Backend = Brian2Backend

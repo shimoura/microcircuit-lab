@@ -596,3 +596,7 @@ class NestBackend:
         senders, times = self._memory_spikes()
         spikes.write_csv_spikes(path, senders, times)
         return path
+
+
+# The class get_backend() returns (see backends/__init__.py).
+Backend = NestBackend
