@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from microcircuit_lab.config.connectivity import (
+from microcircuit_lab.config.distributions import (
     SHARED_DISTRIBUTIONS,
     DelayDistribution,
     WeightDistribution,
@@ -104,7 +104,7 @@ def weight(
     -------
     dict
         The entry as written in the YAML file. It is checked against
-        :class:`~microcircuit_lab.config.connectivity.WeightDistribution`, so a bad value
+        :class:`~microcircuit_lab.config.distributions.WeightDistribution`, so a bad value
         raises here.
     """
     drawn = _drawn(mean, rel_std, distribution, arguments)
@@ -143,7 +143,7 @@ def delay(
     -------
     dict
         The entry as written in the YAML file, checked against
-        :class:`~microcircuit_lab.config.connectivity.DelayDistribution`.
+        :class:`~microcircuit_lab.config.distributions.DelayDistribution`.
     """
     drawn = _drawn(mean, rel_std, distribution, arguments)
     return DelayDistribution(**drawn, **_bounds(drawn, lower_bound, upper_bound, bound_mode)).model_dump(

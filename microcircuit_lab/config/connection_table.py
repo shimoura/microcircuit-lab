@@ -36,14 +36,14 @@ import pandas as pd
 from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
-from microcircuit_lab.config.connectivity import (
-    RULE_NUMBER,
-    ConnectionConfig,
+from microcircuit_lab.config.connectivity import RULE_NUMBER, ConnectionConfig
+from microcircuit_lab.config.distributions import (
     DelayDistribution,
     WeightDistribution,
     drawn_value_problems,
     expected_values,
     is_number_field,
+    is_unset,
     old_field_message,
 )
 
@@ -254,7 +254,7 @@ class ConnectionTable:
                     name = RULE_NUMBER.get(columns["rule"][i])
                     if name is not None:
                         row[name] = value if name == "p" else int(value)
-                elif not _is_unset(value):
+                elif not is_unset(value):
                     if column not in COLUMNS:
                         value = given_arguments({column: value})[column]
                     group, _, name = column.rpartition(".")
@@ -282,7 +282,7 @@ class ConnectionTable:
     def expected(self, group: str) -> np.ndarray:
         """The mean of each row's weight or delay (``group``) before any bound:
         its ``value``, ``mean``, or the middle of ``min`` and ``max`` (see
-        :func:`~microcircuit_lab.config.connectivity.expected_values`)."""
+        :func:`~microcircuit_lab.config.distributions.expected_values`)."""
         return expected_values({name: self._columns[f"{group}.{name}"] for name in DelayDistribution.model_fields})
 
     def population_index(self, column: str, names: list[str]) -> np.ndarray:
@@ -300,7 +300,7 @@ class ConnectionTable:
         # pandas finds repeated rows by hashing them.
         frame = pd.DataFrame({column: self._columns[column] for column in columns})
         doubled = frame[frame.duplicated(keep=False)].drop_duplicates()
-        return [tuple(None if _is_unset(v) else v for v in row)
+        return [tuple(None if is_unset(v) else v for v in row)
                 for row in doubled.itertuples(index=False)]
 
     # A new table ------------------------------------------------------------
@@ -487,7 +487,3 @@ def _read_only(values: np.ndarray) -> np.ndarray:
     view = values.view()
     view.flags.writeable = False
     return view
-
-
-def _is_unset(value: Any) -> bool:
-    return value is None or (isinstance(value, float) and np.isnan(value))

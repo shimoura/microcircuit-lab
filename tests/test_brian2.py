@@ -19,11 +19,8 @@ from microcircuit_lab.backends.brian2.models import (
     NeuronModel,
     SynapseModel,
 )
-from microcircuit_lab.config.connectivity import (
-    ConnectionConfig,
-    DelayDistribution,
-    WeightDistribution,
-)
+from microcircuit_lab.config.connectivity import ConnectionConfig
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig

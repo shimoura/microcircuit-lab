@@ -18,8 +18,7 @@ from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
-from microcircuit_lab.config.connectivity import DelayDistribution
-from microcircuit_lab.config.distributions import DrawnNeuronValue
+from microcircuit_lab.config.distributions import DelayDistribution, DrawnNeuronValue
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig

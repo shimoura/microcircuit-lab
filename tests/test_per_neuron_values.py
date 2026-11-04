@@ -5,11 +5,8 @@ import numpy as np
 import pytest
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
-from microcircuit_lab.config.connectivity import (
-    ConnectionConfig,
-    DelayDistribution,
-    WeightDistribution,
-)
+from microcircuit_lab.config.connectivity import ConnectionConfig
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig

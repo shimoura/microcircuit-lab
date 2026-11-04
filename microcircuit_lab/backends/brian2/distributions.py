@@ -23,7 +23,11 @@ from brian2.devices.device import RuntimeDevice
 
 from microcircuit_lab.backends.brian2.connections import table
 from microcircuit_lab.backends.brian2.models import Distribution
-from microcircuit_lab.config.connectivity import DelayDistribution, lognormal_parameters
+from microcircuit_lab.config.distributions import (
+    DelayDistribution,
+    is_unset,
+    lognormal_parameters,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +55,10 @@ DRAWS = {
 }
 
 
-def _unset(number) -> bool:
-    return number is None or number != number
-
 
 def _numbers(fields: dict) -> tuple[str, float, float, float]:
     """The kind of draw (see DRAWS) and its numbers a, b and s, from the fields
-    of a weight or delay (config/connectivity.py): a uniform value spans min
+    of a weight or delay (config/distributions.py): a uniform value spans min
     to max; a lognormal one has the mean and standard deviation of its fields,
     and the sign of its mean."""
 
@@ -101,9 +102,9 @@ def _chance_past(bound: float, fields: dict, below: bool) -> float:
 def chance_out_of_bounds(fields: dict) -> float:
     """The chance that a value drawn from ``fields`` is past its bounds."""
     chance = 0.0
-    if not _unset(fields["lower_bound"]):
+    if not is_unset(fields["lower_bound"]):
         chance += _chance_past(fields["lower_bound"], fields, below=True)
-    if not _unset(fields["upper_bound"]):
+    if not is_unset(fields["upper_bound"]):
         chance += _chance_past(fields["upper_bound"], fields, below=False)
     return chance
 
@@ -113,7 +114,7 @@ def negated(fields: dict) -> dict:
     conductance, which Brian2 takes as a size, as NEST does."""
 
     def minus(name: str):
-        return None if _unset(fields[name]) else -fields[name]
+        return None if is_unset(fields[name]) else -fields[name]
 
     return {
         **fields,
@@ -130,7 +131,7 @@ def _project_expression(distribution: Distribution, fields: dict) -> str:
     mix up their values."""
 
     text = ("distribution", "lower_bound", "upper_bound", "bound_mode", "unit")
-    values = {name: value for name, value in fields.items() if name not in text and not _unset(value)}
+    values = {name: value for name, value in fields.items() if name not in text and not is_unset(value)}
     return re.sub(
         r"\b[A-Za-z_]\w*\b",
         lambda name: f"({values[name[0]]!r})" if name[0] in values else name[0],
@@ -149,7 +150,7 @@ def set_drawn(
     """
     Set ``variable`` of a Brian2 group or synapses to values drawn for each
     entry ``{k: (fields, number of values)}`` (the fields of a weight or
-    delay, see config/connectivity.py), for the neurons or synapses whose
+    delay, see config/distributions.py), for the neurons or synapses whose
     ``index`` (a Brian2 expression) is k. The entries in ``projects`` (``{k:
     Distribution}``) are drawn from their project distribution instead.
 
@@ -163,9 +164,9 @@ def set_drawn(
     size = max(entries) + 1
     lower, upper, redraw = np.full(size, -np.inf), np.full(size, np.inf), np.zeros(size)
     for k, (fields, _) in entries.items():
-        if not _unset(fields["lower_bound"]):
+        if not is_unset(fields["lower_bound"]):
             lower[k] = fields["lower_bound"]
-        if not _unset(fields["upper_bound"]):
+        if not is_unset(fields["upper_bound"]):
             upper[k] = fields["upper_bound"]
         redraw[k] = fields["bound_mode"] == "redraw"
     target.namespace.update({

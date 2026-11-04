@@ -77,7 +77,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 
 A distribution only one project needs doesn't go in the core: with NEST it is a function in the project's `extensions/nest/`, with Brian2 a `Distribution` in `extensions/brian2/` (see "Other distributions" and "Distributions of your own" in the core's README). A shared one, which every simulator draws:
 
-1. `config/connectivity.py`: add its name and the fields it takes to `SHARED_DISTRIBUTIONS` (e.g. `"gamma": ("mean", "std")`, the mean and standard deviation of the drawn values).
+1. `config/distributions.py`: add its name and the fields it takes to `SHARED_DISTRIBUTIONS` (e.g. `"gamma": ("mean", "std")`, the mean and standard deviation of the drawn values).
 2. `backends/nest/distributions.py`: draw it in `drawn_parameter`.
    `backends/brian2/distributions.py`: its Brian2 expression in `DRAWS` and its two numbers in `_numbers`, and its chance of crossing a bound in `_chance_past`.
 3. Test in `tests/test_bound_mode_and_tau_syn.py`.

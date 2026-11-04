@@ -45,12 +45,12 @@ from microcircuit_lab.backends.brian2 import (
 )
 from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
-from microcircuit_lab.config.connectivity import (
-    SHARED_RULES,
+from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.distributions import (
     DelayDistribution,
+    DrawnNeuronValue,
     expected_value,
 )
-from microcircuit_lab.config.distributions import DrawnNeuronValue
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import (

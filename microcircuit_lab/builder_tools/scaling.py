@@ -17,8 +17,8 @@ import math
 import numpy as np
 
 from microcircuit_lab.builder_tools.constant_current import compensate_lost_mean_input
-from microcircuit_lab.config.connectivity import (
-    SHARED_RULES,
+from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.distributions import (
     DelayDistribution,
     is_number_field,
     not_shared_rows,

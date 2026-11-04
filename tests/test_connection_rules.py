@@ -12,11 +12,8 @@ from microcircuit_lab.builder_tools import (
 )
 from microcircuit_lab.builder_tools.mean_input import expected_synapses, num_synapses
 from microcircuit_lab.config.connection_table import ConnectionTable
-from microcircuit_lab.config.connectivity import (
-    ConnectionConfig,
-    DelayDistribution,
-    WeightDistribution,
-)
+from microcircuit_lab.config.connectivity import ConnectionConfig
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig

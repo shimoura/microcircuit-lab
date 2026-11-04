@@ -13,7 +13,7 @@ returns a NEST parameter:
 
 The function gets the keys of the entry it names (``{distribution: erlang2,
 beta: 20, ...}``), as NEST's own do. A lognormal value's ``mean`` and ``std``
-are those of the values (see ``config/connectivity.py``).
+are those of the values (see ``config/distributions.py``).
 """
 
 from __future__ import annotations
@@ -26,8 +26,9 @@ from pathlib import Path
 import nest
 
 from microcircuit_lab.config.connection_table import given_arguments
-from microcircuit_lab.config.connectivity import (
+from microcircuit_lab.config.distributions import (
     SHARED_DISTRIBUTIONS,
+    is_unset,
     lognormal_parameters,
 )
 from microcircuit_lab.project_code import find_functions
@@ -85,7 +86,7 @@ def arguments(draw: Callable) -> tuple[str, ...]:
 def drawn_parameter(fields: dict, functions: dict[str, Callable]):
     """
     A NEST value from the ``fields`` of a weight, delay or neuron value in
-    the config files (``config/connectivity.py``; a number left out is None
+    the config files (``config/distributions.py``; a number left out is None
     or NaN) and its arguments: a fixed ``value`` as it is, or a NEST
     parameter that draws one value per synapse or neuron from
     ``distribution``, within its bounds.
@@ -113,8 +114,8 @@ def drawn_parameter(fields: dict, functions: dict[str, Callable]):
         # A whole number as an int: uniform_int's max: 10 is read as 10.0.
         drawn = draw(**given_arguments({name: fields[name] for name in arguments(draw)}))
 
-    lower = None if _unset(fields["lower_bound"]) else fields["lower_bound"]
-    upper = None if _unset(fields["upper_bound"]) else fields["upper_bound"]
+    lower = None if is_unset(fields["lower_bound"]) else fields["lower_bound"]
+    upper = None if is_unset(fields["upper_bound"]) else fields["upper_bound"]
     if fields["bound_mode"] == "clip":
         if lower is not None:
             drawn = nest.math.max(drawn, lower)
@@ -126,7 +127,3 @@ def drawn_parameter(fields: dict, functions: dict[str, Callable]):
         high = float("inf") if upper is None else upper
         return nest.math.redraw(drawn, min=low, max=high)
     return drawn
-
-
-def _unset(number) -> bool:
-    return number is None or number != number

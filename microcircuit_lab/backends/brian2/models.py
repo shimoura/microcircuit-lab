@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
+from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.distributions import SHARED_DISTRIBUTIONS
 from microcircuit_lab.project_code import find_definitions
 
 EXTENSIONS_FOLDER = Path("extensions") / "brian2"

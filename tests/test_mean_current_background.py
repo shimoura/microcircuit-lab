@@ -24,7 +24,7 @@ from microcircuit_lab.builder_tools.mean_input import (
     background_weights,
     tau_syn_ex,
 )
-from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig

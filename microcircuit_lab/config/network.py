@@ -24,12 +24,12 @@ from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
 )
-from microcircuit_lab.config.connectivity import (
+from microcircuit_lab.config.connectivity import ConnectivityFile
+from microcircuit_lab.config.distributions import (
     SHARED_DISTRIBUTIONS,
-    ConnectivityFile,
+    DrawnNeuronValue,
     not_shared_rows,
 )
-from microcircuit_lab.config.distributions import DrawnNeuronValue
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.poisson_background import (
