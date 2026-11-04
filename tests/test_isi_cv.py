@@ -24,7 +24,7 @@ class _FakeRun:
         self._populations = populations
         self._events = events
         self.simulation = types.SimpleNamespace(t_sim=1000.0)
-        self.network = types.SimpleNamespace(populations=dict.fromkeys(populations))
+        self.populations = list(populations)
 
     def node_ids(self, name):
         return np.array(self._populations[name])

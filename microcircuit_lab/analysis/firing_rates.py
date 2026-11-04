@@ -192,7 +192,7 @@ def compute_reference_deviation(
         If the network has no reference rates, or none for a selected population.
     """
 
-    reference = run.network.reference
+    reference = run.reference
     if reference is None or not reference.full_mean_rates:
         raise ValueError("This network has no reference.full_mean_rates to validate against.")
 
@@ -368,7 +368,7 @@ def plot_firing_rates(
 
     reference_plotted = False
     if show_reference:
-        reference = run.network.reference
+        reference = run.reference
         if reference is not None:
             for position, name in zip(positions, names):
                 if name in reference.full_mean_rates:

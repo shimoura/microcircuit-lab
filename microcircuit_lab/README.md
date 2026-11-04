@@ -526,13 +526,14 @@ run.populations                  # ["E", "I"], in network order
 spikes = run.spikes("E")         # spikes.senders, spikes.times (ms), sorted by sender
 run.node_ids("E")                # the node IDs of the population
 trace = run.recording("V_m")     # trace.senders, trace.times (ms), trace.values; needs recording.variables
-run.network                      # the network as simulated (config.yaml)
+run.reference                    # the reference rates, or None
+run.network                      # the whole network as simulated (config.yaml), read when first used
 run.simulation                   # the simulation settings (config.yaml), e.g. run.simulation.t_sim
 run.metadata                     # metadata.json as a dict: simulator, seed, spike counts, files
 run.folder                       # the run folder, a pathlib.Path
 ```
 
-The spike files are read once, at the first `run.spikes(...)`.
+The spike files are read once, at the first `run.spikes(...)`. A run made with an older version still re-plots: only `run.network` may need that version, and its error names it.
 
 **Without the package** (another language, another tool), the run folder is plain files:
 

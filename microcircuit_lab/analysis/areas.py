@@ -21,7 +21,7 @@ def list_areas(run):
         The area names; empty for a single-area network.
     """
     areas = []
-    for name in run.network.populations:
+    for name in run.populations:
         area, sep, _ = name.partition("__")
         if sep and area not in areas:
             areas.append(area)
@@ -51,7 +51,7 @@ def select_populations(run, populations, area):
     ValueError
         If a population or the area does not exist.
     """
-    available = list(run.network.populations)
+    available = list(run.populations)
     if populations is not None:
         missing = set(populations) - set(available)
         if missing:

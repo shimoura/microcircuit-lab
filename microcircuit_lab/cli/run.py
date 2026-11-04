@@ -285,7 +285,7 @@ def main(argv: list[str] | None = None) -> None:
         )
 
     if args.validate_reference:
-        reference = run.network.reference
+        reference = run.reference
         if not spike_recording:
             print("\nNo spikes were recorded -- skipping --validate-reference.")
         elif reference is None or not reference.full_mean_rates:

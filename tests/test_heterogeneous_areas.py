@@ -66,17 +66,17 @@ def test_areas_keep_their_own_layers_and_cell_types():
 
 
 def test_area_selection_finds_each_area():
-    simulation = SimpleNamespace(network=_config())
+    run = SimpleNamespace(populations=list(_config().populations))
 
-    assert list_areas(simulation) == ["A", "B"]
-    assert len(select_populations(simulation, None, "A")) == 12
-    assert len(select_populations(simulation, None, "B")) == 12
+    assert list_areas(run) == ["A", "B"]
+    assert len(select_populations(run, None, "A")) == 12
+    assert len(select_populations(run, None, "B")) == 12
 
 
 def test_a_single_area_network_has_no_areas():
-    simulation = SimpleNamespace(network=assemble_network(read_network_files("configs/network/toy")))
+    run = SimpleNamespace(populations=list(assemble_network(read_network_files("configs/network/toy")).populations))
 
-    assert list_areas(simulation) == []
+    assert list_areas(run) == []
 
 
 def test_weights_follow_each_target_neuron():
