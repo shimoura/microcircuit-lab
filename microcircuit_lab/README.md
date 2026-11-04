@@ -197,8 +197,8 @@ stimuli:
     rate: 50.0               # spikes/s
     start: 200.0
     stop: 400.0
-    weight: {mean: 87.8, rel_std: 0.0, distribution: fixed, unit: pA}
-    delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
+    weight: {value: 87.8, unit: pA}
+    delay: {value: 1.5}
 ```
 
 - Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). [docs/config_files.md](../docs/config_files.md#stimuliyaml) lists their fields.
@@ -212,18 +212,38 @@ stimuli:
 
 ```yaml
 poisson_background:
-  E: {rate: 8.0, indegree: 1600, weight: {mean: 87.8, rel_std: 0.0, distribution: fixed, unit: pA}, delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}}
+  E: {rate: 8.0, indegree: 1600, weight: {value: 87.8, unit: pA}, delay: {value: 1.5}}
 ```
 
 Other always-on inputs (a constant current, a Poisson train, an inhomogeneous Poisson input) are `stimuli.yaml` entries without `start` and `stop`.
 
 - **A mean current instead of the Poisson input**: the builder step `replace_background_by_mean_current` (`microcircuit_lab.builder_tools`) adds the mean of that input to `I_e` and removes the input from the files (`poisson_background` empty): the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Apply it after `scale_network` and before `write_network`. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current`.
 - **A constant current of your own** adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
+- **A drawn background weight is drawn once per neuron**, not per synapse: the simulators make one generator at `rate × indegree` and one connection per neuron, as the reference codes do. The mean input is the same; its spread across neurons is larger.
 - **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
 ### Weights and delays
 
-A weight's `mean` is what the simulator gets, and its `unit` (required) says what it is. Nothing is converted:
+A weight or delay is a fixed `value`, or drawn for each synapse from a `distribution`. The numbers are what the simulator gets, and what the drawn values have:
+
+```yaml
+weight: {value: 87.8, unit: pA}                                                         # fixed
+weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0, bound_mode: redraw, unit: pA}
+weight: {distribution: uniform, min: 72.6, max: 103.0, unit: pA}
+weight: {distribution: lognormal, mean: -351.2, std: 35.1, unit: pA}                   # negative: inhibitory
+delay:  {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}
+```
+
+| Field | What it is |
+|---|---|
+| `value` | a fixed weight or delay |
+| `distribution` | `normal` or `lognormal` (with `mean`, `std`), `uniform` (with `min`, `max`), or one of your own |
+| `mean`, `std` | the mean and standard deviation of the drawn values, for every distribution: a lognormal value has them too, and the sign of `mean` |
+| `lower_bound`, `upper_bound` | optional: a drawn value past one is drawn again or set to it; a drawn delay needs `lower_bound` |
+| `bound_mode` | with a bound: `redraw` draws again, `clip` sets the value to the bound |
+| `unit` | weights only (below) |
+
+A weight's `unit` (required) says what it is. Nothing is converted:
 
 | `unit` | Meaning | Example model |
 |---|---|---|
@@ -234,17 +254,20 @@ A weight's `mean` is what the simulator gets, and its `unit` (required) says wha
 NEST can't check the unit; Brian2 checks it against the variable the weight adds to. A model that gives its weights as PSP amplitudes converts them in its builder, with the target's neuron parameters:
 
 ```python
-from microcircuit_lab.builder_tools import psp_to_psc_iaf_psc_exp, weight
+from microcircuit_lab.builder_tools import psp_to_psc_iaf_psc_exp, weight, zero_bound
 
 current = psp_to_psc_iaf_psc_exp(0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5)   # 87.8 pA
-weight(current, unit="pA", rel_std=0.1)
+weight(current, unit="pA", rel_std=0.1, **zero_bound(current, "redraw"))
+# {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}
 ```
 
 The formula holds for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants); for an inhibitory weight, pass `tau_syn=<tau_syn_in>`. Keep the PSP in a comment next to the value if you write the file by hand, as `configs/network/toy/` does.
 
-- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
-- **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
-- **Distributions.** A weight or delay is drawn from `normal` (default), `uniform`, `lognormal` or `fixed`, with its `mean` and `rel_std`, on every simulator. Any other name is a distribution of your own, with `parameters`, for the weights and delays of connections; for now Brian2 only (see [Distributions of your own](#distributions-of-your-own)).
+- **Nothing is bounded unless the file says so.** An excitatory normal weight can turn negative without `lower_bound: 0`; `zero_bound(mean, mode)` writes the bound that keeps a weight's sign. A delay below half the time step rounds to 0, so a drawn delay needs a `lower_bound` (e.g. the time step).
+- **A relative spread** (a paper's "10 % of the mean") is converted in the builder: `weight(87.8, unit="pA", rel_std=0.1)` writes `std: 8.78`, and `distribution="uniform"` the `min` and `max` with that mean and standard deviation.
+- **Bounds change the mean.** Values drawn again or clipped no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`std` a tenth of the mean), noticeable when `std` is about the mean.
+- **Excitatory or inhibitory** input is told by the sign of the weight (its mean), never by a population's name.
+- **Distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is a distribution of your own, with `parameters`, for the weights and delays of connections; for now Brian2 only (see [Distributions of your own](#distributions-of-your-own)).
 
 ### Connection rules and synapses
 
@@ -291,23 +314,22 @@ A builder writes long tables (`connectivity.yaml` of a multi-area model) one rec
 For millions of connections, YAML gets slow to write and read. `connectivity.yaml` can then name a CSV file instead of listing the rows:
 
 ```yaml
-bound_mode: redraw
 connections_file: connections.csv
 ```
 
-The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`). This entry of `connectivity.yaml`
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.lower_bound`). This entry of `connectivity.yaml`
 
 ```yaml
 - {source: E, target: I, rule: pairwise_bernoulli, p: 0.1,
-   weight: {mean: 87.8, rel_std: 0.1, distribution: normal, unit: pA},
-   delay: {mean: 1.5, rel_std: 0.5, distribution: normal}}
+   weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA},
+   delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}}
 ```
 
 is this row of `connections.csv`:
 
 ```
-source,target,rule,p,weight.mean,weight.rel_std,weight.distribution,weight.unit,delay.mean,delay.rel_std,delay.distribution
-E,I,pairwise_bernoulli,0.1,87.8,0.1,normal,pA,1.5,0.5,normal
+source,target,rule,p,weight.distribution,weight.mean,weight.std,weight.lower_bound,weight.bound_mode,weight.unit,delay.distribution,delay.mean,delay.std,delay.lower_bound,delay.bound_mode
+E,I,pairwise_bernoulli,0.1,normal,87.8,8.78,0.0,redraw,pA,normal,1.5,0.75,0.1,redraw
 ```
 
 The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. `parameters` is written as JSON text, e.g. `"{""a"": 1.0}"`. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
@@ -403,15 +425,15 @@ microcircuit-lab generate my_model      # runs it: writes configs/network/my_mod
 Replace the example values with your model's. The builder hands its parts to `write_network_directory`, which writes and checks every file:
 
 ```python
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory, zero_bound
 
 write_network_directory(
     "configs/network/my_model",
     populations=[...],
     neurons={...},
     connections=[{"source": "E", "target": "I", "n_synapses": 5000,
-                  "weight": weight(87.8, unit="pA", rel_std=0.1),
-                  "delay": delay(1.5, rel_std=0.5)}, ...],
+                  "weight": weight(87.8, unit="pA", rel_std=0.1, **zero_bound(87.8, "redraw")),
+                  "delay": delay(1.5, rel_std=0.5, lower_bound=0.1, bound_mode="redraw")}, ...],
     poisson_background={...},
 )
 ```
@@ -419,7 +441,7 @@ write_network_directory(
 - A builder is found by its folder `builders/<model>/` with a `main(argv=None)`; there is no list to edit. `microcircuit-lab generate` with no name lists what it found.
 - `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
-- `write_network_directory` writes every value, defaults included (`bound_mode: redraw`, `rule`, `distribution: normal`), so the files keep their meaning if a default of the core changes.
+- `write_network_directory` writes every value, defaults included (e.g. `rule`), so the files keep their meaning if a default of the core changes.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
@@ -801,7 +823,7 @@ In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 
 
 #### Distributions of your own
 
-A weight or delay `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the connection's `mean` and `rel_std`, its `parameters`, the neurons' variables and `index_pre` / `index_post`:
+A weight or delay `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the fields the entry gives (`mean`, `std`, `min`, `max`), its `parameters`, the neurons' variables and `index_pre` / `index_post`:
 
 ```python
 # extensions/brian2/distributions.py
@@ -813,11 +835,12 @@ decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index
 ```yaml
 # connectivity.yaml
 - {source: E, target: E, rule: fixed_indegree, indegree: 100,
-   weight: {mean: 87.8, rel_std: 0, unit: pA, distribution: decay, parameters: {length: 20}}, delay: {...}}
+   weight: {distribution: decay, mean: 87.8, parameters: {length: 20}, lower_bound: 0, bound_mode: redraw, unit: pA},
+   delay: {...}}
 ```
 
-- `mean` is still required: its sign says whether the weight is excitatory or inhibitory, and the expression gets it.
-- A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
+- A weight needs `mean`: its sign says whether the weight is excitatory or inhibitory, and the expression can use it.
+- How often an expression crosses a bound can't be known, so the definition says what to do with `bound_mode: redraw`: the value is drawn again `redraw_rounds` times and then set to the bound (0 sets it at once). A definition without `redraw_rounds` stops the run before the build when an entry uses `redraw`; `clip` needs none.
 - Scaling a network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
 #### Performance

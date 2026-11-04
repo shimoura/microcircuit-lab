@@ -77,9 +77,9 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 
 A distribution only one project needs doesn't go in the core: with Brian2 it is a `Distribution` in the project's `extensions/brian2/` (see "Distributions of your own" in the core's README). A shared one, which every simulator draws:
 
-1. `config/connectivity.py`: add its name to `SHARED_DISTRIBUTIONS`.
-2. `backends/nest/distributions.py`: draw it in `create_weight_spec` or `create_delay_parameter`.
-   `backends/brian2/distributions.py`: its Brian2 expression in `DRAWS`, and its chance of crossing a bound in `chance_below`.
+1. `config/connectivity.py`: add its name and the fields it takes to `SHARED_DISTRIBUTIONS` (e.g. `"gamma": ("mean", "std")`, the mean and standard deviation of the drawn values).
+2. `backends/nest/distributions.py`: draw it in `drawn_parameter`.
+   `backends/brian2/distributions.py`: its Brian2 expression in `DRAWS` and its two numbers in `_numbers`, and its chance of crossing a bound in `_chance_past`.
 3. Test in `tests/test_bound_mode_and_tau_syn.py`.
 </details>
 
@@ -157,8 +157,8 @@ When a stimulus `type` is not known, the error message points to this section.
      - type: spike
        targets: [L4_E]
        spike_times: [500.0]
-       weight: {mean: 87.8, rel_std: 0.0, unit: pA}
-       delay: {mean: 1.5, rel_std: 0.0}
+       weight: {value: 87.8, unit: pA}
+       delay: {value: 1.5}
    ```
 2. Running it fails with `stimuli.yaml: stimuli.0: Input tag 'spike' ... does not match any of the expected tags` and points here.
 3. In `config/stimuli.py`, add the class next to the others and to `StimulusConfig`:

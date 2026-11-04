@@ -38,7 +38,7 @@ Each file is checked against its own module (`connectivity.yaml` → `config/con
 
 ```text
 Invalid network config in configs/network/toy:
-  connectivity.yaml: connections.0.weight.rel_std: Input should be greater than or equal to 0
+  connectivity.yaml: connections.0.weight.std: Input should be greater than or equal to 0
 ```
 
 What each field accepts: [config_files.md](config_files.md).
