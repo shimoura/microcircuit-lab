@@ -80,10 +80,8 @@ def scale_network(
     ------
     ValueError
         If ``network`` was already scaled; if a population would have no
-        neuron left; if a connection's rule cannot be scaled; if the current
-        for recurrent connections is added (``preserve_variance``,
-        ``preserve_mean_input`` and ``compensate_recurrent_input``, with
-        ``K_scaling`` not 1) and a connection's weight distribution is not a
+        neuron left; if a connection's rule cannot be scaled; if
+        ``K_scaling`` is not 1 and a connection's weight distribution is not a
         shared one; or, to add the current, if a weight is not in pA on the
         default receptor port.
     """
@@ -108,11 +106,7 @@ def scale_network(
     )
 
     scaled = _scale_neuron_numbers(network, N_scaling)
-    # The current for recurrent connections needs the real mean of every weight.
-    needs_weight_means = (
-        preserve_variance and preserve_mean_input and compensate_recurrent_input and K_scaling != 1.0
-    )
-    scaled = _scale_indegrees(scaled, N_scaling, K_scaling, needs_weight_means)
+    scaled = _scale_indegrees(scaled, N_scaling, K_scaling)
     scaled = scale_weights(scaled, K_scaling, preserve_variance)
     scaled = compensate_lost_mean_input(
         scaled,
@@ -218,9 +212,7 @@ def _scale_neuron_numbers(network: NetworkConfig, N_scaling: float) -> NetworkCo
     return network.model_copy(update={"populations": populations})
 
 
-def _scale_indegrees(
-    network: NetworkConfig, N_scaling: float, K_scaling: float, needs_weight_means: bool
-) -> NetworkConfig:
+def _scale_indegrees(network: NetworkConfig, N_scaling: float, K_scaling: float) -> NetworkConfig:
     """
     Multiply the background indegrees by ``K_scaling`` and scale the number
     each connection rule takes (see :func:`scale_rule_number`). Weights and
@@ -237,7 +229,7 @@ def _scale_indegrees(
     # for all connections at once.
     table = network.connections
     rule = table["rule"]
-    _check_connections_can_scale(table, N_scaling, K_scaling, needs_weight_means)
+    _check_connections_can_scale(table, N_scaling, K_scaling)
     scaled = scale_rule_number(table["number"], rule, N_scaling, K_scaling)
 
     too_likely = np.flatnonzero((rule == "pairwise_bernoulli") & (scaled > 1.0))
@@ -263,18 +255,17 @@ def _scale_indegrees(
     return network.model_copy(update={"poisson_background": poisson_background, "connections": connections})
 
 
-def _check_connections_can_scale(
-    table, N_scaling: float, K_scaling: float, needs_weight_means: bool
-) -> None:
+def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> None:
     """
     Raise for a connection that scaling cannot keep at the full-scale input.
     Its rule cannot keep each neuron's inputs at ``K_scaling`` times the
     full-scale number: ``one_to_one`` always gives one input, ``all_to_all``
     gives ``n_source``, which shrinks with ``N_scaling``, and a rule that is not
-    shared says nothing about its scaling. Or, if ``needs_weight_means``, its
-    weights come from a distribution that is not shared, whose real mean,
-    which the compensation needs, is not known here. (Such a delay
-    distribution is fine: scaling leaves delays alone.)
+    shared says nothing about its scaling. Or, with ``K_scaling`` not 1, its
+    weights come from a distribution that is not shared: dividing its
+    ``mean`` would not change the weights its arguments draw (e.g. ``beta``),
+    and the compensation needs their real mean, which is not known here.
+    (Such a delay distribution is fine: scaling leaves delays alone.)
     """
 
     rule = table["rule"]
@@ -286,14 +277,14 @@ def _check_connections_can_scale(
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
          "rule {rule} is not a shared one, and how it scales is not known"),
-        (needs_weight_means & not_shared_rows(table["weight.distribution"]),
-         "the real mean of weights from a distribution that is not shared, which the "
-         "compensation needs, is not known"),
+        ((K_scaling != 1.0) & not_shared_rows(table["weight.distribution"]),
+         "weights from distribution {weight} are drawn with its arguments, which scaling "
+         "cannot divide, so K_scaling must be 1 (scale them in the builder)"),
     )
     for rows, why in reasons:
         if rows.any():
             i = int(np.flatnonzero(rows)[0])
             raise ValueError(
                 f"Connection {table['source'][i]} -> {table['target'][i]} (N_scaling={N_scaling}, "
-                f"K_scaling={K_scaling}): " + why.format(rule=repr(rule[i])) + "."
+                f"K_scaling={K_scaling}): " + why.format(rule=repr(rule[i]), weight=repr(table["weight.distribution"][i])) + "."
             )

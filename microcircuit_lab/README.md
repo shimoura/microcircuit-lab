@@ -269,7 +269,7 @@ The formula holds for current-based LIF neurons with exponential synaptic curren
 - **A relative spread** (a paper's "10 % of the mean") is converted in the builder: `weight(87.8, unit="pA", rel_std=0.1)` writes `std: 8.78`, and `distribution="uniform"` the `min` and `max` with that mean and standard deviation.
 - **Bounds change the mean.** Values drawn again or clipped no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`std` a tenth of the mean), noticeable when `std` is about the mean.
 - **Excitatory or inhibitory** input is told by the sign of the weight (its mean), never by a population's name.
-- **Other distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is looked up by the simulator, with its arguments as keys of their own: NEST's own (`{distribution: exponential, beta: 2}`), or one of your own. A weight from one also needs `mean`, the mean of its values, since the core can't know it: its sign tells excitatory from inhibitory. Background inputs and stimuli take the shared distributions only.
+- **Other distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is looked up by the simulator, with its arguments as keys of their own: NEST's own (`{distribution: exponential, beta: 2}`), or one of your own. A weight from one also needs `mean`, the mean of its values, since the core can't know it: its sign tells excitatory from inhibitory, so the distribution must draw values of that sign (NEST's `exponential` draws positive ones; the core can't check this). Background inputs and stimuli take the shared distributions only.
 
 With NEST, a distribution of your own is a function in a file of `extensions/nest/` (or of a module given with `--extensions`) that returns a NEST parameter. It gets the keys of the entry it names, and the entry gives all of them:
 
@@ -858,10 +858,10 @@ decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index
    delay: {...}}
 ```
 
-- A weight needs `mean`: its sign says whether the weight is excitatory or inhibitory, and the expression can use it.
+- A weight needs `mean`: its sign says whether the weight is excitatory or inhibitory, so the expression must give values of that sign (the core can't check this), and it can use `mean`.
 - An argument the expression doesn't use stops the run (a misspelled name).
 - How often an expression crosses a bound can't be known, so the definition says what to do with `bound_mode: redraw`: the value is drawn again `redraw_rounds` times and then set to the bound (0 sets it at once). A definition without `redraw_rounds` stops the run before the build when an entry uses `redraw`; `clip` needs none.
-- Scaling a network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
+- Scaling a network's synapses (`K_scaling` other than 1) with weights from such a distribution stops with an error: the core can't divide its arguments, and the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
 #### Performance
 

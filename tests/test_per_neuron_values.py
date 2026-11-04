@@ -119,6 +119,7 @@ def test_unknown_distribution_names_the_available_ones() -> None:
 
 def test_a_missing_or_unknown_argument_is_an_error() -> None:
     for C_m, problem in (({"distribution": "exponential"}, r"give \['beta'\]"),
-                         ({"distribution": "exponential", "beta": 2.0, "bta": 1.0}, r"does not take \['bta'\]")):
+                         ({"distribution": "exponential", "beta": 2.0, "bta": 1.0}, r"does not take \['bta'\]"),
+                         ({"distribution": "exponential", "beta": 2.0, "std": 1.0}, r"does not take \['std'\]")):
         with pytest.raises(ValueError, match=rf"C_m of E \(neurons.yaml\): distribution 'exponential' .*{problem}"):
             NestBackend(_network(C_m=C_m), SimulationConfig(print_time=False)).build()

@@ -284,7 +284,7 @@ class Brian2Backend:
                 raise models.missing_model_error("rule", name, self._connection_rules)
         for use in self.network.distributions_not_shared():
             if use.name not in self._distributions:
-                raise models.missing_model_error("distribution", use.name, self._distributions)
+                raise models.missing_model_error("distribution", use.name, self._distributions, where=use.where)
             distribution = self._distributions[use.name]
             if use.redraw and distribution.redraw_rounds is None:
                 raise ValueError(
@@ -292,7 +292,7 @@ class Brian2Backend:
                     "set how many times a value past its bound is drawn again (0: clip at once), "
                     f"or write bound_mode: clip ({use.where})."
                 )
-            # An argument that no expression uses is most likely a typo.
+            # A key that the expression does not use would be ignored: most likely a typo.
             unused = sorted(use.arguments - _names(distribution.expression))
             if unused:
                 raise ValueError(

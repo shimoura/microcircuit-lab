@@ -27,7 +27,6 @@ from microcircuit_lab.config.connection_table import (
 from microcircuit_lab.config.connectivity import (
     SHARED_DISTRIBUTIONS,
     ConnectivityFile,
-    DelayDistribution,
     not_shared_rows,
 )
 from microcircuit_lab.config.distributions import DrawnNeuronValue
@@ -52,9 +51,14 @@ from microcircuit_lab.config.synapses import SynapseEntry, SynapsesFile
 class DistributionUse:
     """
     A distribution that is not shared, where the network uses it: its
-    ``name``, the keys (fields and arguments) every entry there gives, the
-    arguments any of them gives, and whether one redraws past a bound. A
-    backend checks these against what it knows before it builds anything.
+    ``name``, the keys (numbers and arguments) every entry there gives, the
+    keys any of them gives that the distribution must take, and whether one
+    redraws past a bound. A backend checks these against what it knows
+    before it builds anything.
+
+    The keys to take are the arguments and ``std``, ``min``, ``max`` or
+    ``mean`` if given (not a weight's ``mean``, which the core needs): a
+    number the distribution does not take would be ignored.
     """
 
     where: str
@@ -279,12 +283,15 @@ class NetworkConfig(FrozenConfig):
             for name in sorted(set(names[not_shared_rows(names)].tolist())):
                 rows = names == name
                 given = {key: ~np.isnan(values[rows]) for key, values in keys.items()}
+                # The first row that leaves out a key another row gives, else the first row.
+                complete = np.logical_and.reduce([where for where in given.values() if where.any()])
+                first = int(np.flatnonzero(rows)[np.argmin(complete)])
                 uses.append(DistributionUse(
-                    where=f"connections.{int(np.flatnonzero(rows)[0])}.{group}",
+                    where=f"connections.{first}.{group}",
                     name=name,
                     given=frozenset(key for key, where in given.items() if where.all()),
                     arguments=frozenset(key for key, where in given.items()
-                                        if key not in DelayDistribution.model_fields and where.any()),
+                                        if where.any() and not (group == "weight" and key == "mean")),
                     redraw=bool((table[f"{group}.bound_mode"][rows] == "redraw").any()),
                 ))
         for population in self.populations.values():
@@ -298,7 +305,7 @@ class NetworkConfig(FrozenConfig):
                             where=f"{variable} of {population.name} ({file})",
                             name=value.distribution,
                             given=given,
-                            arguments=frozenset(value.model_extra),
+                            arguments=given,
                             redraw=value.bound_mode == "redraw",
                         ))
         return uses

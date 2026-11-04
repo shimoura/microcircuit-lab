@@ -35,7 +35,7 @@ SHARED_DISTRIBUTIONS = {"normal": ("mean", "std"), "lognormal": ("mean", "std"),
 BoundMode = Literal["redraw", "clip"]
 
 #: The arguments of a rule or distribution that is not shared, each a key of
-#: its own next to the fields (``{rule: pairwise_poisson, pairs_avg_num: 0.3}``,
+#: its own next to the fields (``{rule: pairwise_poisson, pairwise_avg_num_conns: 0.3}``,
 #: ``{distribution: exponential, beta: 2}``).
 Arguments = dict[str, StrictInt | StrictFloat]
 
@@ -47,6 +47,7 @@ OLD_UNITS = {
     "PSC": "unit: PSC is now written unit: pA",
     "native": "unit: native was removed: write the weight's unit, pA, nS or mV",
 }
+
 
 def old_field_message(name: str) -> str | None:
     """What to write instead of a field of a connection, weight or delay of
@@ -63,8 +64,8 @@ def old_field_message(name: str) -> str | None:
     if name == "parameters":
         return (
             "parameters was removed: write each argument as a key of its own, next to the rule or "
-            "distribution (e.g. {rule: pairwise_poisson, pairs_avg_num: 0.3} or {distribution: erlang2, "
-            "beta: 20, mean: -40, unit: pA}); in a CSV file, one column per argument (pairs_avg_num, weight.beta)"
+            "distribution (e.g. {rule: pairwise_poisson, pairwise_avg_num_conns: 0.3} or {distribution: erlang2, "
+            "beta: 20, mean: 40, unit: pA}); in a CSV file, one column per argument (pairwise_avg_num_conns, weight.beta)"
         )
     return None
 
@@ -206,8 +207,6 @@ class DrawnValue(FrozenConfig):
         the middle of ``min`` and ``max``. NaN for a distribution that is not
         shared and has no ``mean``."""
         return expected_value(self.fields)
-
-
 
 
 def lognormal_parameters(mean: float, std: float) -> tuple[float, float]:
@@ -363,7 +362,7 @@ class ConnectionConfig(FrozenConfig):
     neuron; the populations have the same size) and ``all_to_all``. Any other
     name is looked up by the backend (see ``SHARED_RULES``) and takes its
     arguments as keys of their own instead of a number
-    (``{rule: pairwise_poisson, pairs_avg_num: 0.3}``). Any rule passes such
+    (``{rule: pairwise_poisson, pairwise_avg_num_conns: 0.3}``). Any rule passes such
     keys to the simulator, which checks them.
 
     The core computes with the expected number of synapses
@@ -383,7 +382,7 @@ class ConnectionConfig(FrozenConfig):
         description="how the synapses are placed: fixed_total_number, fixed_indegree, "
         "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
         "outdegree or p); one_to_one or all_to_all, with no number; or another rule, which the "
-        "simulator looks up, with its arguments as keys of their own (e.g. pairs_avg_num: 0.3)",
+        "simulator looks up, with its arguments as keys of their own (e.g. pairwise_avg_num_conns: 0.3)",
     )
     n_synapses: int | None = Field(
         default=None,

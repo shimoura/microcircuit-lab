@@ -25,6 +25,7 @@ from pathlib import Path
 
 import nest
 
+from microcircuit_lab.config.connection_table import given_arguments
 from microcircuit_lab.config.connectivity import (
     SHARED_DISTRIBUTIONS,
     lognormal_parameters,
@@ -34,6 +35,7 @@ from microcircuit_lab.project_code import find_functions
 EXTENSIONS_FOLDER = Path("extensions") / "nest"
 
 
+@functools.cache
 def _nest_distributions() -> dict[str, Callable]:
     """NEST's own distributions, by name."""
     return {name: item for name, item in vars(nest.random).items() if inspect.isfunction(item)}
@@ -108,7 +110,8 @@ def drawn_parameter(fields: dict, functions: dict[str, Callable]):
             drawn = -1.0 * drawn
     else:
         draw = lookup(distribution, functions)
-        drawn = draw(**{name: fields[name] for name in arguments(draw)})
+        # A whole number as an int: uniform_int's max: 10 is read as 10.0.
+        drawn = draw(**given_arguments({name: fields[name] for name in arguments(draw)}))
 
     lower = None if _unset(fields["lower_bound"]) else fields["lower_bound"]
     upper = None if _unset(fields["upper_bound"]) else fields["upper_bound"]

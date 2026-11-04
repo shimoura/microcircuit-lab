@@ -208,16 +208,17 @@ def load_models(extensions: Sequence[str] = ()) -> dict[type, dict[str, Any]]:
     return found
 
 
-def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
+def missing_model_error(kind: str, name: str, known: dict, where: str | None = None) -> ValueError:
     """The error for a model that ``neurons.yaml`` or ``synapses.yaml`` names,
-    or a rule that ``connectivity.yaml`` names, but the project does not
+    a rule that ``connectivity.yaml`` names, or a distribution that a weight,
+    delay or neuron value names (``where``), but the project does not
     define, saying where to define it."""
 
     what, file, cls = {
         "neuron": ("neuron model", "neurons.yaml", "NeuronModel"),
         "synapse": ("synapse model", "synapses.yaml", "SynapseModel"),
         "rule": ("connection rule", "connectivity.yaml", "ConnectionRule"),
-        "distribution": ("distribution", "connectivity.yaml", "Distribution"),
+        "distribution": ("distribution", where, "Distribution"),
     }[kind]
     return ValueError(
         f"Brian2 has no {what} {name!r} (named in {file}). Define it as a {cls} in a file of "

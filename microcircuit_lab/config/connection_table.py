@@ -17,7 +17,7 @@ rule's number goes under its own name (``n_synapses``, ``indegree``,
 can be left out.
 
 The arguments of a rule or distribution that is not shared are columns of
-their own, numbers like the fields: ``pairs_avg_num`` for the rule,
+their own, numbers like the fields: ``pairwise_avg_num_conns`` for the rule,
 ``weight.beta`` for the weight's distribution. A row that does not use one
 leaves it empty (NaN).
 """
@@ -175,18 +175,20 @@ class ConnectionTable:
         # string per distinct name, not one per row; an argument is a number).
         types = {"text": "category", "yes/no": "boolean", "number": "float64"}
         dtype = defaultdict(lambda: "float64", {column: types[kind] for column, kind in COLUMNS.items()})
+        # The header first: a column of earlier versions holds text (parameters: JSON).
+        header = pd.read_csv(path, nrows=0).columns
+        if "number" in header:
+            raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
+                             f"under its name, one of {list(RULE_NUMBER.values())}.")
+        old = [f"{column}: {old_field_message(column.rpartition('.')[2])}" for column in header
+               if old_field_message(column.rpartition(".")[2])]
+        if old:
+            raise ValueError(f"{path}: " + "; ".join(old))
         try:
             frame = pd.read_csv(path, dtype=dtype, keep_default_na=False, na_values=[""])
         except ValueError as error:
             # e.g. text in an argument's column, which holds numbers
             raise ValueError(f"{path}: {error}") from None
-        if "number" in frame.columns:
-            raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
-                             f"under its name, one of {list(RULE_NUMBER.values())}.")
-        old = [f"{column}: {old_field_message(column.rpartition('.')[2])}" for column in frame.columns
-               if old_field_message(column.rpartition(".")[2])]
-        if old:
-            raise ValueError(f"{path}: " + "; ".join(old))
         columns = {name: _csv_column(frame[name]) for name in frame.columns}
 
         # The rule's number, from the column named after the rule.

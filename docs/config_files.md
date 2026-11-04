@@ -133,7 +133,7 @@ connections:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
     #   all_to_all, with no number; or another rule, which the simulator looks up, with
-    #   its arguments as keys of their own (e.g. pairs_avg_num: 0.3)
+    #   its arguments as keys of their own (e.g. pairwise_avg_num_conns: 0.3)
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection

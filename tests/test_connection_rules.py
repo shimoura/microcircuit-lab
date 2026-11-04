@@ -175,9 +175,11 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
             "delay": DelayDistribution(**delay_fields),
         })
 
-    with pytest.raises(ValueError, match="real mean of weights from a distribution that is not shared"):
-        _scaled(_network([connection(weight="mine")]), 0.5, 0.5)
-    _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=False)
+    # Scaling would divide the weight's mean but not its arguments (a).
+    for preserve_mean_input in (True, False):
+        with pytest.raises(ValueError, match="weights from distribution 'mine' are drawn with its arguments"):
+            _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=preserve_mean_input)
+    _scaled(_network([connection(weight="mine")]), 0.5, 1.0, preserve_mean_input=False)
     _scaled(_network([connection(delay="mine")]), 0.5, 0.5, preserve_mean_input=False)
 
     network = _network([connection()])
