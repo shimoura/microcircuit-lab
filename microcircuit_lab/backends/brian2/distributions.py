@@ -23,25 +23,9 @@ from brian2.devices.device import RuntimeDevice
 
 from microcircuit_lab.backends.brian2.connections import table
 from microcircuit_lab.backends.brian2.models import Distribution
-from microcircuit_lab.config.connectivity import lognormal_parameters
-from microcircuit_lab.config.distributions import DrawnValue
+from microcircuit_lab.config.connectivity import DelayDistribution, lognormal_parameters
 
 logger = logging.getLogger(__name__)
-
-def _lognormal(rng: np.random.Generator, arguments: dict, n: int) -> np.ndarray:
-    """Lognormal values with the mean and std of ``arguments`` and the sign of the mean."""
-    mu, sigma = lognormal_parameters(arguments["mean"], arguments["std"])
-    return np.sign(arguments["mean"]) * rng.lognormal(mu, sigma, n)
-
-
-#: The distributions a per-neuron value can have: NEST's names (nest.random)
-#: and arguments, and how numpy draws them.
-PER_NEURON_DRAWS = {
-    "normal": (("mean", "std"), lambda rng, a, n: rng.normal(a["mean"], a["std"], n)),
-    "uniform": (("min", "max"), lambda rng, a, n: rng.uniform(a["min"], a["max"], n)),
-    "lognormal": (("mean", "std"), _lognormal),
-    "exponential": (("beta",), lambda rng, a, n: rng.exponential(a["beta"], n)),
-}
 
 #: With bound_mode "redraw", values out of bounds are drawn again until fewer
 #: than LEFT_OUT of them are expected (at most MAX_REDRAW_ROUNDS times); the
@@ -53,24 +37,9 @@ MAX_REDRAW_ROUNDS = 50
 NEVER = 1e-9
 
 
-def per_neuron_value(value, size: int, rng: np.random.Generator):
-    """
-    A number as given, or one value per neuron drawn from its distribution.
-    """
-
-    if not isinstance(value, DrawnValue):
-        return value
-
-    if value.distribution not in PER_NEURON_DRAWS:
-        raise ValueError(
-            f"The Brian2 backend has no distribution '{value.distribution}'; "
-            f"it has {sorted(PER_NEURON_DRAWS)}."
-        )
-    arguments, draw = PER_NEURON_DRAWS[value.distribution]
-    missing = [name for name in arguments if name not in value.model_extra]
-    if missing:
-        raise ValueError(f"Distribution '{value.distribution}' needs {missing}.")
-    return draw(rng, value.model_extra, size)
+def fixed(value: float) -> dict:
+    """The fields of a fixed value, as set_drawn takes them."""
+    return {name: None for name in DelayDistribution.model_fields} | {"value": value}
 
 
 #: How each kind of distribution is drawn from its two numbers a and b (and

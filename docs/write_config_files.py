@@ -370,8 +370,9 @@ def render() -> str:
             "- **A population has one neuron entry.** Every neuron in it gets the same model and "
             "parameters, except values written as a distribution (a neuron parameter in "
             "`neurons.yaml`, a starting value in `initial_state`): those are drawn for each "
-            "neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in "
-            "`nest.random` works, with its arguments as keys.",
+            "neuron, as weights and delays are, e.g. `{distribution: normal, mean: -58, std: 10}`, "
+            "with bounds if needed; another name is looked up by the simulator (e.g. NEST's "
+            "`exponential`, with `beta`) or the project (`extensions/`).",
             "- **Connections are set per pair of populations**: an entry for each source and "
             "target, with a rule and its number (`n_synapses` in total, an `indegree`, an "
             "`outdegree` or a probability `p`) and the distributions the weights and delays are "

@@ -18,11 +18,8 @@ from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
-from microcircuit_lab.config.connectivity import (
-    SHARED_DISTRIBUTIONS,
-    DelayDistribution,
-    project_rows,
-)
+from microcircuit_lab.config.connectivity import DelayDistribution
+from microcircuit_lab.config.distributions import DrawnNeuronValue
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -44,6 +41,7 @@ class NestBackend:
         simulation_config: SimulationConfig,
         *,
         nest_modules: Sequence[str] = (),
+        extensions: Sequence[str] = (),
     ) -> None:
         """
         Parameters
@@ -55,11 +53,18 @@ class NestBackend:
             built, for example a NESTML neuron model that ``neurons.yaml`` uses.
             They are installed again at every build, because NEST is reset each
             time.
+        extensions
+            Names of Python modules with distributions of the project, besides
+            the files in ``extensions/nest/`` of the folder you run from (see
+            distributions.py).
         """
 
         self.network = network
         self.simulation_config = simulation_config
         self._nest_modules = nest_modules
+        self._extensions = extensions
+        # The project's distributions, found by check().
+        self._functions: dict | None = None
         self._recordings_dir: Path | None = None
         self._receptor_types: dict[str, dict] = {}
         self._forget_build()
@@ -128,28 +133,41 @@ class NestBackend:
 
     def check(self) -> None:
         """
-        Raise if the network uses something NEST cannot build, before anything
-        is built: a project distribution (NEST draws from the shared ones
-        only).
+        Find the project's distributions, and raise before anything is built
+        if the network uses a distribution that neither NEST nor the project
+        has, leaves out an argument its function takes, or gives one it
+        does not take (most likely a typo).
         Neuron and synapse model names and connection rules other than the
         shared ones are left to NEST, which knows them only once the modules
         are installed.
         """
 
-        for what in ("weight", "delay"):
-            names = self.network.connections[f"{what}.distribution"]
-            project = np.flatnonzero(project_rows(names))
-            if project.size:
+        self._functions = distributions.load_functions(self._extensions)
+        for use in self.network.distributions_not_shared():
+            try:
+                draw = distributions.lookup(use.name, self._functions)
+            except ValueError as error:
+                raise ValueError(f"{use.where}: {error}") from None
+            takes = distributions.arguments(draw)
+            missing = [name for name in takes if name not in use.given]
+            unused = sorted(use.arguments - set(takes))
+            if missing or unused:
                 raise ValueError(
-                    f"NEST has no {what} distribution {names[project[0]]!r}: it draws from the shared "
-                    f"ones only ({', '.join(SHARED_DISTRIBUTIONS)}), not project distributions."
+                    f"{use.where}: distribution {use.name!r} takes {list(takes)}"
+                    + (f"; give {missing}" if missing else "")
+                    + (f"; it does not take {unused}" if unused else "")
+                    + "."
                 )
 
     def build(self) -> None:
         """
-        Build the complete network.
+        Build the complete network. It calls :meth:`check` first if it has
+        not run yet, so a backend used without ``Simulation`` also fails
+        before building.
         """
 
+        if self._functions is None:
+            self.check()
         self.initialize()
 
         self.create_synapse_models()
@@ -209,9 +227,11 @@ class NestBackend:
                 "but neurons.yaml sets it (or a builder added a constant current to it)."
             )
         for values in (parameters, pop_cfg.initial_state):
-            nodes.set(
-                {name: distributions.per_neuron_value(value) for name, value in values.items()}
-            )
+            nodes.set({
+                name: distributions.drawn_parameter(value.fields, self._functions)
+                if isinstance(value, DrawnNeuronValue) else value
+                for name, value in values.items()
+            })
 
     def create_synapse_models(self) -> None:
         """
@@ -254,10 +274,7 @@ class NestBackend:
         """The NEST weight and delay of a background input or stimulus, from its
         ``weight`` and ``delay`` as written in the config files."""
 
-        return tuple(
-            distributions.drawn_parameter({name: getattr(entry, name) for name in DelayDistribution.model_fields})
-            for entry in (weight, delay)
-        )
+        return tuple(distributions.drawn_parameter(entry.fields, self._functions) for entry in (weight, delay))
 
     def create_connections(self) -> None:
         """
@@ -284,21 +301,28 @@ class NestBackend:
             # numpy array value by value is slow, and lists of whole columns
             # would take gigabytes for millions of connections.
             column = {name: table[name][start:stop].tolist() for name in COLUMNS}
-            rule_arguments = {name: values[start:stop].tolist() for name, values in table.arguments("rule").items()}
+            arguments = {
+                group: {name: values[start:stop].tolist() for name, values in table.arguments(group).items()}
+                for group in ("rule", "weight", "delay")
+            }
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
                 # Its arguments go to NEST as they are, which checks them.
                 conn_spec = {
                     "rule": rule,
-                    **given_arguments({name: values[i] for name, values in rule_arguments.items()}),
+                    **given_arguments({name: values[i] for name, values in arguments["rule"].items()}),
                 }
                 if rule in nest_number:
                     number = column["number"][i]
                     conn_spec[nest_number[rule]] = number if rule == "pairwise_bernoulli" else int(number)
                 synapse = column["synapse"][i]
                 weight, delay = (
-                    distributions.drawn_parameter({name: column[f"{group}.{name}"][i] for name in DelayDistribution.model_fields})
+                    distributions.drawn_parameter(
+                        {name: column[f"{group}.{name}"][i] for name in DelayDistribution.model_fields}
+                        | given_arguments({name: values[i] for name, values in arguments[group].items()}),
+                        self._functions,
+                    )
                     for group in ("weight", "delay")
                 )
 

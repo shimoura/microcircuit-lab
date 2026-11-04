@@ -75,7 +75,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A weight or delay distribution</b></summary>
 
-A distribution only one project needs doesn't go in the core: with Brian2 it is a `Distribution` in the project's `extensions/brian2/` (see "Distributions of your own" in the core's README). A shared one, which every simulator draws:
+A distribution only one project needs doesn't go in the core: with NEST it is a function in the project's `extensions/nest/`, with Brian2 a `Distribution` in `extensions/brian2/` (see "Other distributions" and "Distributions of your own" in the core's README). A shared one, which every simulator draws:
 
 1. `config/connectivity.py`: add its name and the fields it takes to `SHARED_DISTRIBUTIONS` (e.g. `"gamma": ("mean", "std")`, the mean and standard deviation of the drawn values).
 2. `backends/nest/distributions.py`: draw it in `drawn_parameter`.

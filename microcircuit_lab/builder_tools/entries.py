@@ -27,7 +27,7 @@ def _drawn(
     ``|mean| * rel_std``: ``value`` without spread (whatever the shared
     distribution); else ``mean`` and ``std`` (normal, by default, or
     lognormal), or the ``min`` and ``max`` of a uniform draw with that mean
-    and standard deviation (mean ± sqrt(3) std). A project distribution gets
+    and standard deviation (mean ± sqrt(3) std). Another distribution gets
     ``mean`` and its ``arguments``; they are written for the others too, so
     that the checks refuse them (e.g. a misspelled ``rel_sd=0.1``)."""
 
@@ -91,9 +91,10 @@ def weight(
         ``"normal"`` (the default with a spread) or ``"lognormal"``, written
         with ``mean`` and ``std = |mean| * rel_std``; ``"uniform"``, written as
         the ``min`` and ``max`` with that mean and standard deviation; or a
-        project distribution (connections only), written with ``mean``.
+        distribution that is not shared (connections only; the simulator's own or
+        the project's), written with ``mean``.
     **arguments
-        A project distribution's arguments, e.g. ``beta=20``.
+        The arguments of a distribution that is not shared, e.g. ``beta=20``.
     lower_bound, upper_bound, bound_mode
         Bounds of a drawn weight, and what to do past them (``"redraw"`` or
         ``"clip"``); see :func:`zero_bound` to keep the weight's sign. A fixed

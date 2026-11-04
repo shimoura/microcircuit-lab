@@ -175,7 +175,7 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
             "delay": DelayDistribution(**delay_fields),
         })
 
-    with pytest.raises(ValueError, match="real mean of weights from a project distribution"):
+    with pytest.raises(ValueError, match="real mean of weights from a distribution that is not shared"):
         _scaled(_network([connection(weight="mine")]), 0.5, 0.5)
     _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=False)
     _scaled(_network([connection(delay="mine")]), 0.5, 0.5, preserve_mean_input=False)
@@ -184,7 +184,7 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
     background = network.poisson_background["S"].model_copy(
         update={"weight": WeightDistribution(mean=10.0, unit="pA", distribution="mine", a=1)}
     )
-    with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
+    with pytest.raises(ValueError, match="background input of S has a weight from distribution 'mine', which is not shared"):
         NetworkConfig.model_validate({**network.model_dump(), "poisson_background": {**network.poisson_background, "S": background}})
 
 

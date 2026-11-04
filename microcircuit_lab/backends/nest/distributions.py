@@ -2,54 +2,91 @@
 Weights, delays and per-neuron values drawn from their distributions in NEST.
 
 A value given as a distribution becomes a NEST parameter that draws one value
-per neuron or synapse; a plain number is passed on as it is. A lognormal
-value's ``mean`` and ``std`` are those of the values (see
-``config/connectivity.py``).
+per neuron or synapse; a fixed value is passed on as it is. A name is looked
+up in this order: a shared distribution (normal, lognormal, uniform), NEST's
+own (``nest.random``, e.g. ``exponential``), then a function of the project,
+in a file of ``extensions/nest/`` (or a module given as ``extensions``) that
+returns a NEST parameter:
+
+    def erlang2(beta):
+        return nest.random.exponential(beta=beta) + nest.random.exponential(beta=beta)
+
+The function gets the keys of the entry it names (``{distribution: erlang2,
+beta: 20, ...}``), as NEST's own do. A lognormal value's ``mean`` and ``std``
+are those of the values (see ``config/connectivity.py``).
 """
 
 from __future__ import annotations
 
+import functools
 import inspect
+from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import nest
 
-from microcircuit_lab.config.connectivity import lognormal_parameters
-from microcircuit_lab.config.distributions import DrawnValue
+from microcircuit_lab.config.connectivity import (
+    SHARED_DISTRIBUTIONS,
+    lognormal_parameters,
+)
+from microcircuit_lab.project_code import find_functions
+
+EXTENSIONS_FOLDER = Path("extensions") / "nest"
 
 
-def per_neuron_value(value):
+def _nest_distributions() -> dict[str, Callable]:
+    """NEST's own distributions, by name."""
+    return {name: item for name, item in vars(nest.random).items() if inspect.isfunction(item)}
+
+
+def load_functions(extensions: Sequence[str] = ()) -> dict[str, Callable]:
     """
-    A number as given, or a NEST parameter drawing one value per neuron.
+    The project's distributions: every function in the files of
+    ``extensions/nest/`` (of the folder you run from) and of the modules
+    ``extensions`` (see :func:`microcircuit_lab.project_code.find_functions`).
+    None may take a name that is shared or NEST's own.
     """
 
-    if not isinstance(value, DrawnValue):
-        return value
-
-    draw = getattr(nest.random, value.distribution, None)
-    if not inspect.isfunction(draw):
-        available = [name for name, item in vars(nest.random).items() if inspect.isfunction(item)]
+    found = find_functions(EXTENSIONS_FOLDER, "extensions.nest", extensions)
+    taken = {**dict.fromkeys(SHARED_DISTRIBUTIONS, "a shared distribution"),
+             **dict.fromkeys(_nest_distributions(), "NEST's own (nest.random)")}
+    clashes = sorted(set(found) & set(taken))
+    if clashes:
         raise ValueError(
-            f"NEST has no distribution '{value.distribution}'; nest.random has {available}."
+            f"The project defines a function named {clashes[0]!r}, which is {taken[clashes[0]]}; "
+            "give it another name."
         )
-    # NEST would fill in a left-out argument with its default.
-    missing = [name for name in inspect.signature(draw).parameters if name not in value.model_extra]
-    if missing:
-        raise ValueError(f"Distribution '{value.distribution}' needs {missing}.")
-    if value.distribution == "lognormal":
-        # mean and std are those of the values, as for weights and delays.
-        mean, std = value.model_extra["mean"], value.model_extra["std"]
-        mu, sigma = lognormal_parameters(mean, std)
-        drawn = draw(mean=mu, std=sigma)
-        return drawn if mean > 0 else -1.0 * drawn
-    return draw(**value.model_extra)
+    return found
 
 
-def drawn_parameter(fields: dict):
+def lookup(name: str, functions: dict[str, Callable]) -> Callable:
+    """The function that draws from the distribution ``name``: NEST's own
+    or the project's (``functions``, see :func:`load_functions`)."""
+
+    draw = _nest_distributions().get(name) or functions.get(name)
+    if draw is None:
+        raise ValueError(
+            f"NEST has no distribution {name!r}: nest.random has {sorted(_nest_distributions())}, and "
+            f"{EXTENSIONS_FOLDER}/ (or --extensions) defines {sorted(functions)}."
+        )
+    return draw
+
+
+@functools.cache
+def arguments(draw: Callable) -> tuple[str, ...]:
+    """The names of the arguments a distribution's function takes, all of
+    which the entry gives: a NEST default left out would not show in the
+    files."""
+    return tuple(inspect.signature(draw).parameters)
+
+
+def drawn_parameter(fields: dict, functions: dict[str, Callable]):
     """
-    A NEST weight or delay from the ``fields`` of a weight or delay in the
-    config files (``config/connectivity.py``; a number left out is None or
-    NaN): a fixed ``value`` as it is, or a NEST parameter that draws one value
-    per synapse from ``distribution``, within its bounds.
+    A NEST value from the ``fields`` of a weight, delay or neuron value in
+    the config files (``config/connectivity.py``; a number left out is None
+    or NaN) and its arguments: a fixed ``value`` as it is, or a NEST
+    parameter that draws one value per synapse or neuron from
+    ``distribution``, within its bounds.
 
     ``mean`` and ``std`` are those of the drawn values: a lognormal value is
     drawn with the log-space numbers that give them, and has the sign of
@@ -70,7 +107,8 @@ def drawn_parameter(fields: dict):
         if mean < 0:
             drawn = -1.0 * drawn
     else:
-        raise ValueError(f"NEST has no shared distribution {distribution!r}.")
+        draw = lookup(distribution, functions)
+        drawn = draw(**{name: fields[name] for name in arguments(draw)})
 
     lower = None if _unset(fields["lower_bound"]) else fields["lower_bound"]
     upper = None if _unset(fields["upper_bound"]) else fields["upper_bound"]

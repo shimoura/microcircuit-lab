@@ -49,9 +49,8 @@ from microcircuit_lab.config.connectivity import (
     SHARED_RULES,
     DelayDistribution,
     expected_value,
-    project_rows,
 )
-from microcircuit_lab.config.distributions import DrawnValue
+from microcircuit_lab.config.distributions import DrawnNeuronValue
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import (
@@ -283,36 +282,33 @@ class Brian2Backend:
         for name in sorted(set(table["rule"][~np.isin(table["rule"], SHARED_RULES)].tolist())):
             if name not in self._connection_rules:
                 raise models.missing_model_error("rule", name, self._connection_rules)
-        for group in ("weight", "delay"):
-            distribution = table[f"{group}.distribution"]
-            for name in sorted(set(distribution[project_rows(distribution)].tolist())):
-                if name not in self._distributions:
-                    raise models.missing_model_error("distribution", name, self._distributions)
-                redraws = (distribution == name) & (table[f"{group}.bound_mode"] == "redraw")
-                if redraws.any() and self._distributions[name].redraw_rounds is None:
+        for use in self.network.distributions_not_shared():
+            if use.name not in self._distributions:
+                raise models.missing_model_error("distribution", use.name, self._distributions)
+            distribution = self._distributions[use.name]
+            if use.redraw and distribution.redraw_rounds is None:
+                raise ValueError(
+                    f"Distribution {use.name!r} has no redraw_rounds, which bound_mode: redraw needs: "
+                    "set how many times a value past its bound is drawn again (0: clip at once), "
+                    f"or write bound_mode: clip ({use.where})."
+                )
+            # An argument that no expression uses is most likely a typo.
+            unused = sorted(use.arguments - _names(distribution.expression))
+            if unused:
+                raise ValueError(
+                    f"{use.where}: {unused[0]} is given to distribution {use.name!r}, which does not use it."
+                )
+        names = table["rule"]
+        for argument, values in table.arguments("rule").items():
+            rows = ~np.isnan(values)
+            for name in sorted(set(names[rows].tolist())):
+                rule = self._connection_rules.get(name)
+                if rule is None or argument not in _names(rule.condition, rule.p, rule.n):
+                    first = int(np.flatnonzero(rows & (names == name))[0])
                     raise ValueError(
-                        f"Distribution {name!r} has no redraw_rounds, which bound_mode: redraw needs: "
-                        "set how many times a value past its bound is drawn again (0: clip at once), "
-                        f"or write bound_mode: clip (connections.{int(np.flatnonzero(redraws)[0])}.{group})."
+                        f"connections.{first}: {argument} is given to rule {name!r}, which does not use "
+                        "it in Brian2 (a shared rule takes no arguments)."
                     )
-
-        # An argument that no expression uses is most likely a typo.
-        for group in ("rule", "weight", "delay"):
-            names = table["rule"] if group == "rule" else table[f"{group}.distribution"]
-            for argument, values in table.arguments(group).items():
-                rows = ~np.isnan(values)
-                for name in sorted(set(names[rows].tolist())):
-                    if group == "rule":
-                        rule = self._connection_rules.get(name)
-                        used = _names(rule.condition, rule.p, rule.n) if rule else set()
-                    else:
-                        used = _names(self._distributions[name].expression)
-                    if argument not in used:
-                        first = int(np.flatnonzero(rows & (names == name))[0])
-                        raise ValueError(
-                            f"connections.{first}: {argument} is given to {group} {name!r}, which does not use "
-                            "it in Brian2 (a shared rule takes no arguments)."
-                        )
 
         # Brian2 makes n synapses for each pair a project rule picks, so such a
         # rule cannot keep a connection free of multapses.
@@ -519,10 +515,10 @@ class Brian2Backend:
                 name=f"group_{self.groups.index(group)}",
             )
             group.neurons = neurons
-            self._set_group_values(group, values)
             sizes = [self.network.populations[pop].size for pop in group.populations]
             neurons.population_index = np.repeat(np.arange(len(group.populations)), sizes)
             neurons.index = np.concatenate([np.arange(size) for size in sizes])
+            self._set_group_values(group, values)
             if has_dc:
                 neurons.dc_index = np.repeat(
                     [dc_index[pop] for pop in group.populations],
@@ -533,17 +529,28 @@ class Brian2Backend:
 
     def _set_group_values(self, group: _Group, values: dict[str, dict]) -> None:
         """Set the parameters and initial state of a group's neurons, given in
-        the package's units: one array per variable, for all its populations."""
+        the package's units, one variable at a time for all its populations:
+        numbers as one array; a variable that some population draws per
+        neuron is drawn by Brian2 (distributions.set_drawn), as weights are,
+        from the entry of each neuron's population."""
 
         for name in sorted({name for pop in group.populations for name in values[pop]}):
             unit = _units(group.neurons.variables[name].dim, f"{name!r} of {group.model.name!r}")[1]
+            given = {k: values[pop][name] for k, pop in enumerate(group.populations) if name in values[pop]}
+            if any(isinstance(value, DrawnNeuronValue) for value in given.values()):
+                entries = {
+                    k: (value.fields if isinstance(value, DrawnNeuronValue) else distributions.fixed(value),
+                        self.network.populations[group.populations[k]].size)
+                    for k, value in given.items()
+                }
+                projects = {k: self._distributions[fields["distribution"]] for k, (fields, _) in entries.items()
+                            if fields["distribution"] in self._distributions}
+                distributions.set_drawn(group.neurons, name, "population_index", entries, unit, projects)
+                continue
             array = np.zeros(group.size)
-            for pop_name, start in zip(group.populations, group.starts):
-                if name in values[pop_name]:
-                    size = self.network.populations[pop_name].size
-                    array[start:start + size] = distributions.per_neuron_value(
-                        values[pop_name][name], size, self._rng
-                    )
+            for k, value in given.items():
+                start = group.starts[k]
+                array[start:start + self.network.populations[group.populations[k]].size] = value
             setattr(group.neurons, name, array * getattr(b2, unit, 1))
 
     def _set_values(self, target, equations: b2.Equations, values: dict, where: str) -> None:
@@ -556,8 +563,6 @@ class Brian2Backend:
                     f"it has {sorted(equations.names)}."
                 )
             unit = _units(target.variables[name].dim, f"{name!r} of {where}")[1]
-            if isinstance(value, DrawnValue):
-                raise ValueError(f"{where}: {name!r} must be a number in the Brian2 backend.")
             setattr(target, name, value * getattr(b2, unit, 1))
 
     def target_variable(self, target: str, synapse: str | None, weight: float) -> str:

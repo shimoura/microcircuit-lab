@@ -417,7 +417,7 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
             fields = {name: columns[f"{group}.{name}"] for name in DelayDistribution.model_fields}
             fields |= {column.partition(".")[2]: values for column, values in columns.items()
                        if column not in COLUMNS and column.startswith(f"{group}.")}
-            for field, rows, message in drawn_value_problems(fields, delay=group == "delay"):
+            for field, rows, message in drawn_value_problems(fields, group):
                 i = int(np.flatnonzero(rows)[0])
                 more = f" (and {rows.sum() - 1} more rows)" if rows.sum() > 1 else ""
                 problems.append(f"connections.{i}.{group}.{field}: {message}{more}")

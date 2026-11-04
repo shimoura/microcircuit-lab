@@ -12,7 +12,7 @@ One folder per network, one file per part. A population is named once, in `popul
 
 What this means for a model:
 
-- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in `nest.random` works, with its arguments as keys.
+- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, as weights and delays are, e.g. `{distribution: normal, mean: -58, std: 10}`, with bounds if needed; another name is looked up by the simulator (e.g. NEST's `exponential`, with `beta`) or the project (`extensions/`).
 - **Connections are set per pair of populations**: an entry for each source and target, with a rule and its number (`n_synapses` in total, an `indegree`, an `outdegree` or a probability `p`) and the distributions the weights and delays are drawn from. A pair can have several entries, one per synapse in `synapses.yaml` (e.g. AMPA and NMDA on their own receptor ports). PSP weights and the scaling compensation are only computed for the default receptor port.
 - **So, for neurons with another model or other parameters, or wired differently, make a separate population.** In `configs/network/toy_stimulated/`, `E` (`iaf_psc_exp`) and `E_adex` (`aeif_cond_exp`) are two populations, each with its own connections.
 - **Several populations can share one neuron entry**, e.g. one `excitatory` entry for the excitatory populations of every layer.
@@ -156,9 +156,10 @@ connections:
     # required · weight of each synapse
     weight:
       # optional · text · how each weight is drawn: normal or lognormal, with mean and
-      #   std; uniform, with min and max; or the name of a project distribution, which
-      #   the backend defines, with its arguments as keys of their own (e.g. beta: 20).
-      #   Omit it for a fixed weight
+      #   std; uniform, with min and max; or another name, which the simulator looks up
+      #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
+      #   keys of their own (e.g. beta: 20) and the mean of its values. Omit it for a
+      #   fixed weight
       distribution: normal
       # optional · number · a fixed weight, the same for every synapse
       value:
@@ -187,8 +188,9 @@ connections:
     # required · delay of each synapse
     delay:
       # optional · text · how each delay is drawn: normal or lognormal, with mean and
-      #   std; uniform, with min and max; or the name of a project distribution, with
-      #   its arguments as keys of their own. Omit it for a fixed delay
+      #   std; uniform, with min and max; or another name, which the simulator looks up
+      #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
+      #   keys of their own. Omit it for a fixed delay
       distribution: normal
       # optional · number · a fixed delay (ms), the same for every synapse
       value:

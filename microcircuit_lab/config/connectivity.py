@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 import typing
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import numpy as np
 from pydantic import (
@@ -17,6 +17,7 @@ from pydantic import (
     Field,
     StrictFloat,
     StrictInt,
+    model_serializer,
     model_validator,
 )
 
@@ -24,17 +25,18 @@ from microcircuit_lab.config.frozen_config import FrozenConfig
 
 #: The distributions every backend draws weights and delays from, and the
 #: fields each one takes: the mean and standard deviation of the drawn values,
-#: or the range of a uniform draw. Any other name is a project distribution,
-#: which the backend defines (see its ``models.py``), with its arguments as
-#: keys of their own. A weight has the same fields as a delay
-#: (DelayDistribution), and its unit.
+#: or the range of a uniform draw. Any other name is looked up by the backend:
+#: the simulator's own (NEST's ``exponential``) or the project's (see
+#: ``extensions/``), with its arguments as keys of their own. A weight has the
+#: same fields as a delay (DelayDistribution), and its unit.
 SHARED_DISTRIBUTIONS = {"normal": ("mean", "std"), "lognormal": ("mean", "std"), "uniform": ("min", "max")}
 
 #: What to do with a drawn weight or delay outside its bounds.
 BoundMode = Literal["redraw", "clip"]
 
 #: The arguments of a rule or distribution that is not shared, each a key of
-#: its own next to the fields (``{rule: pairwise_poisson, pairs_avg_num: 0.3}``).
+#: its own next to the fields (``{rule: pairwise_poisson, pairs_avg_num: 0.3}``,
+#: ``{distribution: exponential, beta: 2}``).
 Arguments = dict[str, StrictInt | StrictFloat]
 
 
@@ -87,14 +89,15 @@ def _given(values: np.ndarray) -> np.ndarray:
     return ~np.isnan(values)
 
 
-def drawn_value_problems(fields: dict[str, np.ndarray], delay: bool) -> list[tuple[str, np.ndarray, str]]:
+def drawn_value_problems(fields: dict[str, np.ndarray], kind: str) -> list[tuple[str, np.ndarray, str]]:
     """
-    Where the fields of weights or delays do not fit together, as ``(field,
-    rows, message)``, ``rows`` a boolean array.
+    Where the fields of weights, delays or neuron values (``kind``:
+    ``"weight"``, ``"delay"`` or ``"neuron"``) do not fit together, as
+    ``(field, rows, message)``, ``rows`` a boolean array.
 
     ``fields`` holds each field (``distribution``, ``value``, ``mean``, ...,
-    ``bound_mode``) and each argument of a project distribution as an array
-    with one entry per weight or delay, so the same checks serve one entry of
+    ``bound_mode``) and each argument of a distribution that is not shared as
+    an array with one entry per value, so the same checks serve one entry of
     a file and the millions of rows of a connection table. A field's own
     limits (e.g. ``std`` >= 0) are checked by pydantic with its ``Field``.
     """
@@ -127,12 +130,12 @@ def drawn_value_problems(fields: dict[str, np.ndarray], delay: bool) -> list[tup
                     checks.append((field, kinds[name] & given[field], f"{name} takes {' and '.join(takes)}, not {field}"))
         for field in ("mean", "std", "min", "max", *arguments):
             checks.append((field, fixed & given[field], f"a fixed value takes value, not {field}"))
-        if not delay:
-            project = ~fixed & ~np.logical_or.reduce(list(kinds.values()))
-            checks.append(("mean", project & ~given["mean"],
-                           "a weight from a project distribution needs mean: its sign tells an excitatory "
-                           "weight from an inhibitory one, and its expression can use it"))
-        if delay:
+        if kind == "weight":
+            other = ~fixed & ~np.logical_or.reduce(list(kinds.values()))
+            checks.append(("mean", other & ~given["mean"],
+                           "a weight from a distribution that is not shared needs mean, the mean of its "
+                           "values: its sign tells an excitatory weight from an inhibitory one"))
+        if kind == "delay":
             checks += [
                 ("lower_bound", ~fixed & ~given["lower_bound"],
                  "a drawn delay needs lower_bound (ms), e.g. the simulation step, with bound_mode"),
@@ -143,12 +146,12 @@ def drawn_value_problems(fields: dict[str, np.ndarray], delay: bool) -> list[tup
     return [(field, rows, message) for field, rows, message in checks if rows.any()]
 
 
-class _DrawnValue(FrozenConfig):
+class DrawnValue(FrozenConfig):
     """
-    What weights and delays share: a fixed ``value``, or a ``distribution``
-    to draw each one from, with the fields it takes; and optional bounds.
-    The fields are declared by each (their units and examples differ); the
-    checks are here.
+    What weights, delays and neuron values share: a fixed ``value``, or a
+    ``distribution`` to draw each one from, with the fields it takes; and
+    optional bounds. The fields are declared by each (their units and
+    examples differ); the checks are here.
 
     ``mean`` and ``std`` are those of the drawn values, for every
     distribution: a lognormal value with mean -351.2 and std 35.1 has that
@@ -159,9 +162,12 @@ class _DrawnValue(FrozenConfig):
     # To add a shared distribution: list it in SHARED_DISTRIBUTIONS and draw it
     # in backends/nest/distributions.py and backends/brian2/distributions.py.
 
-    # Any other key is an argument of a project distribution.
+    # Any other key is an argument of a distribution that is not shared.
     model_config = ConfigDict(frozen=True, extra="allow")
     __pydantic_extra__: Arguments = Field(init=False)
+
+    #: Which checks of drawn_value_problems apply: "weight", "delay" or "neuron".
+    kind: ClassVar[str]
 
     @model_validator(mode="before")
     @classmethod
@@ -171,27 +177,35 @@ class _DrawnValue(FrozenConfig):
             raise ValueError("; ".join(old))
         return data
 
-    def _as_columns(self) -> dict[str, np.ndarray]:
-        """The fields and arguments as columns of one row, as a connection
-        table holds them."""
-        columns = {
-            name: np.array([getattr(self, name)], dtype=float if is_number_field(name) else object)
-            for name in DelayDistribution.model_fields
-        }
-        return columns | {name: np.array([value], dtype=float) for name, value in self.model_extra.items()}
+    @model_serializer(mode="wrap")
+    def _leave_out_unset(self, handler):
+        # Written out, only what is set: {distribution: normal, mean: ..., std: ...}.
+        return {name: value for name, value in handler(self).items() if value is not None}
+
+    @property
+    def fields(self) -> dict[str, Any]:
+        """Every field (None where not set; a neuron value has no ``value``)
+        and every argument, by name, as the backends draw from them."""
+        return {name: getattr(self, name, None) for name in DelayDistribution.model_fields} | self.model_extra
 
     @model_validator(mode="after")
     def _check_fields_fit(self):
-        for field, _, message in drawn_value_problems(self._as_columns(), delay=isinstance(self, DelayDistribution)):
+        # The fields as columns of one row, as a connection table holds them.
+        columns = {
+            name: np.array([value], dtype=float if name not in DelayDistribution.model_fields or is_number_field(name)
+                           else object)
+            for name, value in self.fields.items()
+        }
+        for field, _, message in drawn_value_problems(columns, self.kind):
             raise ValueError(f"{field}: {message}")
         return self
 
     @property
     def expected(self) -> float:
         """The mean of the values, before any bound: ``value``, ``mean``, or
-        the middle of ``min`` and ``max``. NaN for a project distribution
-        without a ``mean``."""
-        return expected_value({name: getattr(self, name) for name in DelayDistribution.model_fields})
+        the middle of ``min`` and ``max``. NaN for a distribution that is not
+        shared and has no ``mean``."""
+        return expected_value(self.fields)
 
 
 
@@ -207,9 +221,9 @@ def lognormal_parameters(mean: float, std: float) -> tuple[float, float]:
     return np.log(abs(mean)) - 0.5 * sigma_squared, np.sqrt(sigma_squared)
 
 
-def project_rows(distribution: np.ndarray) -> np.ndarray:
-    """Where a column of distribution names holds a project distribution: a
-    name that is not a shared one (``None`` is a fixed value)."""
+def not_shared_rows(distribution: np.ndarray) -> np.ndarray:
+    """Where a column of distribution names holds one that is not shared
+    (the simulator's own or the project's; ``None`` is a fixed value)."""
     shared = np.logical_or.reduce([distribution == name for name in SHARED_DISTRIBUTIONS])
     return _given(distribution) & ~shared
 
@@ -219,7 +233,7 @@ def expected_values(fields: dict[str, np.ndarray]) -> np.ndarray:
     The mean of each weight or delay before any bound, from the arrays of
     its fields (see :func:`drawn_value_problems`): ``value`` for a fixed one,
     the middle of ``min`` and ``max`` for a uniform one, else ``mean`` (NaN
-    for a project distribution that has none).
+    for a distribution that is not shared and has none).
     """
 
     distribution = fields["distribution"]
@@ -237,7 +251,7 @@ def expected_value(fields: dict[str, Any]) -> float:
     })[0])
 
 
-class WeightDistribution(_DrawnValue):
+class WeightDistribution(DrawnValue):
     """
     The weight of each synapse: a fixed ``value``, or drawn from a
     ``distribution``, in ``unit``: ``pA`` (a current), ``nS`` (a conductance)
@@ -247,12 +261,15 @@ class WeightDistribution(_DrawnValue):
     current needs them. A negative weight is inhibitory.
     """
 
+    kind: ClassVar[str] = "weight"
+
     distribution: str | None = Field(
         default=None,
         examples=["normal"],
         description="how each weight is drawn: normal or lognormal, with mean and std; uniform, "
-        "with min and max; or the name of a project distribution, which the backend defines, "
-        "with its arguments as keys of their own (e.g. beta: 20). Omit it for a fixed weight",
+        "with min and max; or another name, which the simulator looks up (its own, e.g. NEST's "
+        "exponential, or the project's), with its arguments as keys of their own (e.g. beta: 20) and "
+        "the mean of its values. Omit it for a fixed weight",
     )
     value: float | None = Field(default=None, description="a fixed weight, the same for every synapse")
     mean: float | None = Field(
@@ -285,16 +302,18 @@ class WeightDistribution(_DrawnValue):
     )
 
 
-class DelayDistribution(_DrawnValue):
+class DelayDistribution(DrawnValue):
     """The delay (ms) of each synapse: a fixed ``value``, or drawn from a
     ``distribution``, with a ``lower_bound``."""
+
+    kind: ClassVar[str] = "delay"
 
     distribution: str | None = Field(
         default=None,
         examples=["normal"],
         description="how each delay is drawn: normal or lognormal, with mean and std; uniform, with "
-        "min and max; or the name of a project distribution, with its arguments as keys of their own. "
-        "Omit it for a fixed delay",
+        "min and max; or another name, which the simulator looks up (its own, e.g. NEST's exponential, "
+        "or the project's), with its arguments as keys of their own. Omit it for a fixed delay",
     )
     value: float | None = Field(default=None, description="a fixed delay (ms), the same for every synapse")
     mean: float | None = Field(default=None, examples=[1.5], description="mean of the drawn delays (ms)")

@@ -21,7 +21,7 @@ from microcircuit_lab.config.connectivity import (
     SHARED_RULES,
     DelayDistribution,
     is_number_field,
-    project_rows,
+    not_shared_rows,
 )
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.scaling import ScalingRecord
@@ -272,8 +272,9 @@ def _check_connections_can_scale(
     full-scale number: ``one_to_one`` always gives one input, ``all_to_all``
     gives ``n_source``, which shrinks with ``N_scaling``, and a rule that is not
     shared says nothing about its scaling. Or, if ``needs_weight_means``, its
-    weights come from a project distribution, whose real mean, which the
-    compensation needs, is not known here. (A project delay distribution is fine: scaling leaves delays alone.)
+    weights come from a distribution that is not shared, whose real mean,
+    which the compensation needs, is not known here. (Such a delay
+    distribution is fine: scaling leaves delays alone.)
     """
 
     rule = table["rule"]
@@ -285,9 +286,9 @@ def _check_connections_can_scale(
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
          "rule {rule} is not a shared one, and how it scales is not known"),
-        (needs_weight_means & project_rows(table["weight.distribution"]),
-         "the real mean of weights from a project distribution, which the compensation "
-         "needs, is not known"),
+        (needs_weight_means & not_shared_rows(table["weight.distribution"]),
+         "the real mean of weights from a distribution that is not shared, which the "
+         "compensation needs, is not known"),
     )
     for rows, why in reasons:
         if rows.any():

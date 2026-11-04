@@ -182,7 +182,7 @@ def _with_backend(
             raise ValueError(
                 "The backend option extension_modules was split in two: nest_modules for "
                 "compiled NEST modules (e.g. from NESTML), extensions for Python modules "
-                "with Brian2 models."
+                "with models or distributions."
             )
     if backend is None:
         backend = configured.name

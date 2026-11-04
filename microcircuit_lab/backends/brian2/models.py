@@ -152,21 +152,23 @@ class ConnectionRule:
 @dataclass(frozen=True)
 class Distribution:
     """
-    A distribution of the project, for the weights or delays of connections.
+    A distribution of the project, for the weights or delays of connections
+    and for values drawn per neuron.
 
     Parameters
     ----------
     name
-        The name ``connectivity.yaml`` gives as a weight's or delay's
+        The name a weight, delay or neuron value gives as its
         ``distribution``.
     expression
-        A Brian2 expression for each synapse's value, as a number in the
-        package's units (pA or nS for a weight, ms for a delay). It can use
+        A Brian2 expression for each value, as a number in the package's
+        units (pA or nS for a weight, ms for a delay, the variable's for a
+        neuron value). It can use
         the fields the entry gives (``mean``, ``std``, ``min``, ``max``), its
         arguments (``{distribution: my_distribution, length: 20, ...}``:
-        ``length``), the variables of the pre- and post-synaptic neurons
-        (``V_m_pre``), and ``index_pre`` / ``index_post`` (see
-        :class:`ConnectionRule`).
+        ``length``), and for a weight or delay the variables of the pre- and
+        post-synaptic neurons (``V_m_pre``) and ``index_pre`` /
+        ``index_post`` (see :class:`ConnectionRule`).
     redraw_rounds
         For an entry with ``bound_mode: redraw``, how many times a value
         past its ``lower_bound`` or ``upper_bound`` is drawn again before it
