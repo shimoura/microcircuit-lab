@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from microcircuit_lab.config.connection_table import ConnectionTable
+from microcircuit_lab.config.connectivity import BoundMode
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.yaml_files import flow_records, write_yaml
 from microcircuit_lab.network.load import read_network
@@ -29,7 +30,7 @@ def write_network_directory(
     neurons: Mapping[str, Mapping[str, Any]],
     connections: Iterable[Mapping[str, Any]] | ConnectionTable,
     poisson_background: Mapping[str, Mapping[str, Any]],
-    bound_mode: Literal["redraw", "clip"] = "redraw",
+    bound_mode: BoundMode = "redraw",
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
     stimuli: Iterable[Mapping[str, Any]] | None = None,

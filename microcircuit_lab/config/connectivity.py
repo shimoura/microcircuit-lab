@@ -25,6 +25,9 @@ from microcircuit_lab.config.frozen_config import FrozenConfig
 #: defines (see its ``models.py``).
 SHARED_DISTRIBUTIONS = ("normal", "uniform", "lognormal", "fixed")
 
+#: What to do with a drawn weight or delay outside its allowed range.
+BoundMode = Literal["redraw", "clip"]
+
 Parameters = dict[str, StrictInt | StrictFloat | StrictBool] | None
 
 
@@ -253,7 +256,7 @@ class ConnectivityFile(FrozenConfig):
         description="instead of connections: a CSV file, relative to the network folder, "
         "with one row per connection (e.g. connections.csv), for a large network",
     )
-    bound_mode: Literal["redraw", "clip"] = Field(
+    bound_mode: BoundMode = Field(
         default="redraw",
         description="what to do with a drawn weight or delay outside its allowed "
         "range: 'redraw' draws again, 'clip' replaces it by the limit; applies to "

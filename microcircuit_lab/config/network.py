@@ -8,7 +8,7 @@ analysis all use it.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 import numpy as np
 from pydantic import (
@@ -23,7 +23,11 @@ from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
 )
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, ConnectivityFile
+from microcircuit_lab.config.connectivity import (
+    SHARED_DISTRIBUTIONS,
+    BoundMode,
+    ConnectivityFile,
+)
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
 from microcircuit_lab.config.poisson_background import (
@@ -133,7 +137,7 @@ class NetworkConfig(FrozenConfig):
     ]
 
     poisson_background: dict[str, PoissonBackgroundConfig]
-    bound_mode: Literal["redraw", "clip"] = "redraw"
+    bound_mode: BoundMode = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     # How the network was scaled, if it was; never applied (see config/scaling.py).
     scaling: ScalingRecord | None = None
