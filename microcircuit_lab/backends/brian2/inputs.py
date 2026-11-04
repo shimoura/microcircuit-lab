@@ -18,6 +18,7 @@ import brian2 as b2
 import numpy as np
 
 from microcircuit_lab.backends.brian2 import distributions
+from microcircuit_lab.config.connectivity import DelayDistribution
 from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
     InhomogeneousPoissonStimulusConfig,
@@ -30,6 +31,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _fields(entry) -> dict:
+    """The fields of a weight or delay entry, as distributions.set_drawn takes them."""
+    return {name: getattr(entry, name) for name in DelayDistribution.model_fields}
+
+
 def _background_variables(backend: Brian2Backend, group: _Group) -> dict[str, list[str]]:
     """The variables the group's Poisson background inputs add to, each
     with its populations."""
@@ -38,7 +44,7 @@ def _background_variables(backend: Brian2Backend, group: _Group) -> dict[str, li
     for pop_name in group.populations:
         background = backend.network.poisson_background.get(pop_name)
         if background is not None:
-            variable = backend.target_variable(pop_name, background.synapse, background.weight.mean)
+            variable = backend.target_variable(pop_name, background.synapse, background.weight.expected)
             variables[variable].append(pop_name)
     return variables
 
@@ -87,18 +93,18 @@ def create_poisson_background(backend: Brian2Backend) -> None:
                     )
                 start, size = group.start(pop_name), backend.network.populations[pop_name].size
                 rates[start:start + size] = background.generator_rate * backend.simulation_config.resolution / 1000.0
-                weight = background.weight
-                mean = abs(weight.mean) if backend.weight_units(pop_name, variable)[0] == "siemens" else weight.mean
-                weights[group.populations.index(pop_name)] = (mean, weight.rel_std, weight.distribution, size)
+                fields = _fields(background.weight)
+                # A weight onto a conductance is its size, as in NEST.
+                if backend.weight_units(pop_name, variable)[0] == "siemens" and background.weight.expected < 0:
+                    fields = distributions.negated(fields)
+                weights[group.populations.index(pop_name)] = (fields, size)
             setattr(group.neurons, f"background_{variable}", rates)
             group.neurons.run_regularly(
                 f"{variable} += w_background*poisson(background_{variable})", when="synapses",
                 name=f"{group.neurons.name}_background_{variable}",
             )
         unit = backend.weight_units(next(iter(variables.values()))[0], next(iter(variables)))[1]
-        distributions.set_weights(
-            group.neurons, "w_background", "population_index", weights, unit, backend.network.bound_mode
-        )
+        distributions.set_drawn(group.neurons, "w_background", "population_index", weights, unit)
 
 def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
     """
@@ -185,10 +191,10 @@ def create_stimuli(backend: Brian2Backend) -> None:
                 generator,
                 group,
                 stimulus.synapse,
-                backend.target_variable(target, stimulus.synapse, weight.mean),
+                backend.target_variable(target, stimulus.synapse, weight.expected),
                 [({"j": f"i + {group.start(target)}"}, {})],
                 f"{name}_synapses",
                 "0",
-                {0: (weight.mean, weight.rel_std, weight.distribution, size)},
-                {0: (delay.mean, delay.rel_std, delay.distribution, delay.minimum, size)},
+                {0: (_fields(weight), size)},
+                {0: (_fields(delay), size)},
             )

@@ -47,11 +47,11 @@ def _population(name: str, neuron: NeuronConfig, size: int = 10) -> PopulationCo
 
 
 def _weight(mean: float = 100.0, unit: str = "pA") -> WeightDistribution:
-    return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
+    return WeightDistribution(value=mean, unit=unit)
 
 
 def _delay(mean: float = 1.0) -> DelayDistribution:
-    return DelayDistribution(mean=mean, rel_std=0.0, distribution="fixed")
+    return DelayDistribution(value=mean)
 
 
 # -----------------------------------------------------------------------------

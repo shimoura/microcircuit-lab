@@ -4,15 +4,15 @@ Everything a builder needs, in one import.
 A builder turns a model's data (published tables, pickles, recordings) into a
 network folder ``configs/network/<name>/``::
 
-    from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+    from microcircuit_lab.builder_tools import delay, weight, write_network_directory, zero_bound
 
     write_network_directory(
         "configs/network/my_model",
         populations=[{"name": "E", "size": 800, "neuron": "lif", ...}],
         neurons={"lif": {"model": "iaf_psc_exp", "parameters": {...}}},
         connections=[{"source": "E", "target": "E", "n_synapses": 8000,
-                      "weight": weight(87.8, unit="pA", rel_std=0.1),
-                      "delay": delay(1.5, rel_std=0.5)}],
+                      "weight": weight(87.8, unit="pA", rel_std=0.1, **zero_bound(87.8, "redraw")),
+                      "delay": delay(1.5, rel_std=0.5, lower_bound=0.1, bound_mode="redraw")}],
         poisson_background={"E": {"rate": 8.0, "indegree": 1600, "weight": weight(87.8, unit="pA"),
                                  "delay": delay(1.5)}},
     )
@@ -56,6 +56,7 @@ from microcircuit_lab.builder_tools.entries import (
     delay,
     num_synapses_from_conn_prob,
     weight,
+    zero_bound,
 )
 from microcircuit_lab.builder_tools.psp import psc_to_psp, psp_to_psc_iaf_psc_exp
 from microcircuit_lab.builder_tools.scaling import scale_network
@@ -72,4 +73,5 @@ __all__ = [
     "weight",
     "write_network",
     "write_network_directory",
+    "zero_bound",
 ]

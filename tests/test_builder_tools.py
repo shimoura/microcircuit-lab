@@ -9,7 +9,12 @@ import pandas as pd
 import pytest
 import yaml
 
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import (
+    delay,
+    weight,
+    write_network_directory,
+    zero_bound,
+)
 from microcircuit_lab.config.connection_table import ConnectionTable
 
 NEURON = {
@@ -36,9 +41,9 @@ def _parts(tmp_path: Path, **overrides):
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
             {"source": s, "target": t, "n_synapses": 20,
-             "weight": weight(87.8 if s == "E" else -351.2, unit="pA", rel_std=0.1),
-             "delay": delay(1.5, rel_std=0.5)}
-            for s in ("E", "I")
+             "weight": weight(w, unit="pA", rel_std=0.1, **zero_bound(w, "redraw")),
+             "delay": delay(1.5, rel_std=0.5, lower_bound=0.05, bound_mode="redraw")}
+            for s, w in (("E", 87.8), ("I", -351.2))
             for t in ("E", "I")
         ],
         poisson_background={

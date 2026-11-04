@@ -7,95 +7,63 @@ poisson_background:
     rate: 8.0
     indegree: 1600
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L23_I:
     rate: 8.0
     indegree: 1500
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L4_E:
     rate: 8.0
     indegree: 2100
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L4_I:
     rate: 8.0
     indegree: 1900
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L5_E:
     rate: 8.0
     indegree: 2000
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L5_I:
     rate: 8.0
     indegree: 1900
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L6_E:
     rate: 8.0
     indegree: 2900
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5
   L6_I:
     rate: 8.0
     indegree: 2100
     weight:
-      mean: 87.80849352920843
-      rel_std: 0.0
-      distribution: fixed
+      value: 87.80849352920843
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.0
-      distribution: fixed
+      value: 1.5

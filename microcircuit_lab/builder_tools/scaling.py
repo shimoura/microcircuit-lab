@@ -17,7 +17,12 @@ import math
 import numpy as np
 
 from microcircuit_lab.builder_tools.constant_current import compensate_lost_mean_input
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
+from microcircuit_lab.config.connectivity import (
+    SHARED_RULES,
+    DelayDistribution,
+    is_number_field,
+    project_rows,
+)
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.scaling import ScalingRecord
 
@@ -167,17 +172,23 @@ def scale_weights(network: NetworkConfig, K_scaling: float, preserve_variance: b
 
     divisor = math.sqrt(K_scaling) if preserve_variance else K_scaling
 
-    # Recurrent connections: the whole weight column at once.
-    connections = network.connections.with_columns(copy=False, **{
-        "weight.mean": network.connections["weight.mean"] / divisor
+    # Recurrent connections: whole weight columns at once. Every field that
+    # is a number is a weight (the value, mean, spread, range and bounds), so
+    # all of them are scaled.
+    numbers = [name for name in DelayDistribution.model_fields if is_number_field(name)]
+    table = network.connections
+    connections = table.with_columns(copy=False, **{
+        f"weight.{name}": table[f"weight.{name}"] / divisor for name in numbers
     })
 
     # Background Poisson input.
     poisson_background = {}
 
     for pop_name, input_cfg in network.poisson_background.items():
-        mean = input_cfg.weight.mean / divisor
-        weight = input_cfg.weight.model_copy(update={"mean": mean})
+        old = input_cfg.weight
+        weight = old.model_copy(update={
+            name: getattr(old, name) / divisor for name in numbers if getattr(old, name) is not None
+        })
         poisson_background[pop_name] = input_cfg.model_copy(update={"weight": weight})
 
     return network.model_copy(
@@ -274,7 +285,7 @@ def _check_connections_can_scale(
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
          "rule {rule} is not a shared one, and how it scales is not known"),
-        (needs_weight_means & ~np.isin(table["weight.distribution"], SHARED_DISTRIBUTIONS),
+        (needs_weight_means & project_rows(table["weight.distribution"]),
          "the real mean of weights from a project distribution, which the compensation "
          "needs, is not known"),
     )

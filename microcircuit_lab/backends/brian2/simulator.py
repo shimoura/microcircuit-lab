@@ -44,7 +44,12 @@ from microcircuit_lab.backends.brian2 import (
 )
 from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
+from microcircuit_lab.config.connectivity import (
+    SHARED_RULES,
+    DelayDistribution,
+    expected_value,
+    project_rows,
+)
 from microcircuit_lab.config.distributions import DrawnValue
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -267,20 +272,20 @@ class Brian2Backend:
             self.synapse_model(synapse)
 
         table = self.network.connections
-        for column, kind, known in (
-            ("rule", "rule", self._connection_rules),
-            ("weight.distribution", "distribution", self._distributions),
-            ("delay.distribution", "distribution", self._distributions),
-        ):
-            shared = SHARED_RULES if kind == "rule" else SHARED_DISTRIBUTIONS
-            for name in sorted(set(table[column][~np.isin(table[column], shared)].tolist())):
-                if name not in known:
-                    raise models.missing_model_error(kind, name, known)
-                if kind == "distribution" and self.network.bound_mode == "redraw" and known[name].redraw_rounds is None:
+        for name in sorted(set(table["rule"][~np.isin(table["rule"], SHARED_RULES)].tolist())):
+            if name not in self._connection_rules:
+                raise models.missing_model_error("rule", name, self._connection_rules)
+        for group in ("weight", "delay"):
+            distribution = table[f"{group}.distribution"]
+            for name in sorted(set(distribution[project_rows(distribution)].tolist())):
+                if name not in self._distributions:
+                    raise models.missing_model_error("distribution", name, self._distributions)
+                redraws = (distribution == name) & (table[f"{group}.bound_mode"] == "redraw")
+                if redraws.any() and self._distributions[name].redraw_rounds is None:
                     raise ValueError(
                         f"Distribution {name!r} has no redraw_rounds, which bound_mode: redraw needs: "
                         "set how many times a value past its bound is drawn again (0: clip at once), "
-                        "or set bound_mode: clip in connectivity.yaml."
+                        f"or write bound_mode: clip (connections.{int(np.flatnonzero(redraws)[0])}.{group})."
                     )
 
         # Brian2 makes n synapses for each pair a project rule picks, so such a
@@ -297,20 +302,20 @@ class Brian2Backend:
 
         # A fixed delay rounds to a whole number of steps. NEST refuses one that
         # rounds to 0 (below half a step); Brian2 would deliver the spike in the
-        # same step. (A drawn delay is kept at the minimum, half a step or more.)
+        # same step. A drawn delay is kept at its lower_bound or more.
         shortest = 0.5 * self.simulation_config.resolution
         # A synapse model without on_pre (a gap junction) has no spikes to delay.
         delayed = {name: bool(self.synapse_model(name).on_pre) for name in set(table["synapse"].tolist())}
         has_delay = np.asarray([delayed[name] for name in table["synapse"].tolist()], dtype=bool)
-        fixed = (table["delay.distribution"] == "fixed") | (table["delay.rel_std"] == 0.0)
-        too_short = has_delay & fixed & (table["delay.mean"] < shortest) & np.isin(
-            table["delay.distribution"], SHARED_DISTRIBUTIONS
-        )
+        fixed = np.asarray([name is None for name in table["delay.distribution"]], dtype=bool)
+        smallest = np.where(fixed, table["delay.value"], table["delay.lower_bound"])
+        too_short = has_delay & (smallest < shortest)
         if too_short.any():
             row = int(np.flatnonzero(too_short)[0])
+            what = "fixed delay" if fixed[row] else "delay's lower_bound"
             raise ValueError(
-                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the fixed delay "
-                f"{table['delay.mean'][row]} ms is below half the resolution ({shortest} ms), so it "
+                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the {what} "
+                f"{smallest[row]} ms is below half the resolution ({shortest} ms), so a delay "
                 f"rounds to 0; use at least {shortest} ms."
             )
         delays = [(f"background input of {name!r}", b.delay) for name, b in self.network.poisson_background.items()]
@@ -321,11 +326,12 @@ class Brian2Backend:
             for target in stimulus.targets
         ]
         for user, delay in delays:
-            fixed = delay.distribution == "fixed" or delay.rel_std == 0.0
-            if fixed and delay.mean < shortest and delay.distribution in SHARED_DISTRIBUTIONS:
+            smallest = delay.value if delay.distribution is None else delay.lower_bound
+            if smallest < shortest:
                 raise ValueError(
-                    f"{user}: the fixed delay {delay.mean} ms is below half the resolution "
-                    f"({shortest} ms), so it rounds to 0; use at least {shortest} ms."
+                    f"{user}: the delay {'' if delay.distribution is None else 'lower_bound '}{smallest} ms "
+                    f"is below half the resolution ({shortest} ms), so a delay rounds to 0; use at least "
+                    f"{shortest} ms."
                 )
 
         # A weight's unit must be that of the variable it adds to (which also
@@ -333,16 +339,16 @@ class Brian2Backend:
         # per target, synapse, sign and unit.
         users = {}
         columns = (table["target"].tolist(), table["synapse"].tolist(),
-                   (table["weight.mean"] >= 0).tolist(), table["weight.unit"].tolist())
+                   (table.expected("weight") >= 0).tolist(), table["weight.unit"].tolist())
         for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
             users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
         for name, background in self.network.poisson_background.items():
-            key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
+            key = (name, background.synapse, background.weight.expected >= 0, background.weight.unit)
             users.setdefault(key, f"background input of {name!r}")
         for stimulus in self.network.stimuli:
             if not isinstance(stimulus, DcStimulusConfig):
                 for target in stimulus.targets:
-                    key = (target, stimulus.synapse, stimulus.weight.mean >= 0, stimulus.weight.unit)
+                    key = (target, stimulus.synapse, stimulus.weight.expected >= 0, stimulus.weight.unit)
                     users.setdefault(key, f"stimulus onto {target!r}")
         for (target, synapse, positive, unit), user in users.items():
             variable = self.target_variable(target, synapse, 1.0 if positive else -1.0)
@@ -528,7 +534,7 @@ class Brian2Backend:
                 raise ValueError(f"{where}: {name!r} must be a number in the Brian2 backend.")
             setattr(target, name, value * getattr(b2, unit, 1))
 
-    def target_variable(self, target: str, synapse: str | None, weight_mean: float) -> str:
+    def target_variable(self, target: str, synapse: str | None, weight: float) -> str:
         """
         The variable of the target population that a connection adds to: the
         one of its synapse's receptor port (a port name is the variable), or
@@ -555,7 +561,7 @@ class Brian2Backend:
                 )
             return model.receptor_port.format(port=port)
 
-        variable = model.excitatory if weight_mean >= 0 else model.inhibitory
+        variable = model.excitatory if weight >= 0 else model.inhibitory
         if variable is None:
             raise ValueError(
                 f"The Brian2 model {model.name!r} of {target!r} needs a receptor_port in "
@@ -640,13 +646,13 @@ class Brian2Backend:
             synapses.connect(**arguments, namespace=namespace)
 
         if si_unit == "siemens":
-            weights = {k: (abs(mean), *rest) for k, (mean, *rest) in weights.items()}
-        bound_mode = self.network.bound_mode
-        distributions.set_weights(synapses, "w_syn", index, weights, unit, bound_mode, projects["weight"])
+            weights = {
+                k: (distributions.negated(fields) if expected_value(fields) < 0 else fields, number)
+                for k, (fields, number) in weights.items()
+            }
+        distributions.set_drawn(synapses, "w_syn", index, weights, unit, projects["weight"])
         if "pre" in pathways:  # a gap junction has no pathway of spikes to delay
-            distributions.set_delays(
-                synapses, index, delays, bound_mode, self.simulation_config.resolution, projects["delay"]
-            )
+            distributions.set_drawn(synapses, "delay", index, delays, "ms", projects["delay"])
 
         parameters = {} if synapse is None else self.network.synapses[synapse].parameters
         self._set_values(
@@ -672,11 +678,12 @@ class Brian2Backend:
 
         table = self.network.connections
         column = {name: table[name].tolist() for name in COLUMNS}
+        weight = table.expected("weight").tolist()
         objects: dict[tuple, list[int]] = defaultdict(list)
         seen: dict[tuple, int] = defaultdict(int)
         for row in range(len(table)):
             source, target, synapse = column["source"][row], column["target"][row], column["synapse"][row]
-            variable = self.target_variable(target, synapse, column["weight.mean"][row])
+            variable = self.target_variable(target, synapse, weight[row])
             key = (id(self.group_of[source]), id(self.group_of[target]), synapse, variable)
             pair = (*key, source, target)
             objects[(*key, seen[pair])].append(row)
@@ -712,18 +719,12 @@ class Brian2Backend:
                     source.populations.index(column["source"][row]) * n_target
                     + target.populations.index(column["target"][row])
                 )
-                for what in projects:
-                    distribution = self._distributions.get(column[f"{what}.distribution"][row])
+                for what, entries in (("weight", weights), ("delay", delays)):
+                    fields = {name: column[f"{what}.{name}"][row] for name in DelayDistribution.model_fields}
+                    entries[pair] = (fields, number)
+                    distribution = self._distributions.get(fields["distribution"])
                     if distribution is not None:
-                        projects[what][pair] = (distribution, column[f"{what}.parameters"][row] or {})
-                weights[pair] = (
-                    column["weight.mean"][row], column["weight.rel_std"][row],
-                    column["weight.distribution"][row], number,
-                )
-                delays[pair] = (
-                    column["delay.mean"][row], column["delay.rel_std"][row],
-                    column["delay.distribution"][row], column["delay.minimum"][row], number,
-                )
+                        projects[what][pair] = distribution
             self.make_synapses(
                 source.neurons, target, synapse, variable, calls, name,
                 f"population_index_pre*{n_target} + population_index_post", weights, delays, projects,

@@ -240,7 +240,10 @@ class _Writer:
             return [f"{indent}{name}:", *(f"{inner}{key}: {_value(v)}" for key, v in values.items())]
         if model := _model_of(annotation):
             if model in self.seen:
-                example = {key: _example(key, f) for key, f in model.model_fields.items() if f.is_required()}
+                # The fields with an example (and the required ones), so that the
+                # short form is a valid entry too.
+                example = {key: _example(key, f) for key, f in model.model_fields.items()
+                           if f.is_required() or f.examples}
                 return [f"{indent}{name}: {_value(example)}   # all fields as in {self.seen[model]}"]
             self.seen[model] = self.file
             return [f"{indent}{name}:", *self.model(model, inner)]

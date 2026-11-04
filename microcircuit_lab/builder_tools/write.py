@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from microcircuit_lab.config.connection_table import ConnectionTable
-from microcircuit_lab.config.connectivity import BoundMode
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.yaml_files import flow_records, write_yaml
 from microcircuit_lab.network.load import read_network
@@ -30,7 +29,6 @@ def write_network_directory(
     neurons: Mapping[str, Mapping[str, Any]],
     connections: Iterable[Mapping[str, Any]] | ConnectionTable,
     poisson_background: Mapping[str, Mapping[str, Any]],
-    bound_mode: BoundMode = "redraw",
     scaling: Mapping[str, Any] | None = None,
     reference: Mapping[str, float] | None = None,
     stimuli: Iterable[Mapping[str, Any]] | None = None,
@@ -61,8 +59,6 @@ def write_network_directory(
         written as ``connections.csv``.
     poisson_background
         ``{population name: {"rate": ..., "indegree": ..., "weight": ..., "delay": ...}}``.
-    bound_mode
-        ``"redraw"`` or ``"clip"``; always written, so the file states it.
     scaling
         The record of a scaled network (``scaling.yaml``), which
         :func:`write_network` passes on; ``None`` writes none.
@@ -109,7 +105,7 @@ def write_network_directory(
 
     table = flow_records if compact else (lambda records: records)
 
-    connectivity_payload: dict[str, Any] = {"bound_mode": bound_mode}
+    connectivity_payload: dict[str, Any] = {}
     if isinstance(connections, ConnectionTable):
         # A large network: the table goes to a CSV file, named in connectivity.yaml.
         connections.write_csv(directory / "connections.csv")
@@ -195,7 +191,6 @@ def write_network(
         neurons=neurons,
         connections=network.connections if csv else network.connections.to_yaml_rows(),
         poisson_background={name: dump(item) for name, item in network.poisson_background.items()},
-        bound_mode=network.bound_mode,
         scaling=None if network.scaling is None else dump(network.scaling),
         reference=None if network.reference is None else network.reference.full_mean_rates,
         stimuli=[dump(item) for item in network.stimuli] or None,

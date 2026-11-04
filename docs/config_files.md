@@ -158,44 +158,67 @@ connections:
     synapse: depressing
     # required · weight of each synapse
     weight:
-      # required · number · amplitude, in the unit set by `unit`; a negative weight is
-      #   inhibitory
-      mean: 0.15
-      # required · number ≥ 0 · standard deviation / |mean|
-      rel_std: 0.1
-      # optional, default normal · text · how each weight is drawn, with that mean and
-      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
-      #   project distribution, which the backend defines, with parameters
+      # optional · text · how each weight is drawn: normal or lognormal, with mean and
+      #   std; uniform, with min and max; or the name of a project distribution, which
+      #   the backend defines, with parameters. Omit it for a fixed weight
       distribution: normal
+      # optional · number · a fixed weight, the same for every synapse
+      value:
+      # optional · number · mean of the drawn weights (normal, lognormal); a negative
+      #   weight is inhibitory
+      mean: 87.8
+      # optional · number ≥ 0 · standard deviation of the drawn weights (normal,
+      #   lognormal)
+      std: 8.78
+      # optional · number · smallest weight a uniform draw gives
+      min:
+      # optional · number · largest weight a uniform draw gives
+      max:
       # optional · mapping · only for a project distribution: the values its expression
       #   uses, e.g. {length: 20}
       parameters:
+      # optional · number · smallest allowed drawn weight (e.g. 0, so that an excitatory
+      #   weight stays positive); omit for none
+      lower_bound: 0.0
+      # optional · number · largest allowed drawn weight (e.g. 0 for an inhibitory one);
+      #   omit for none
+      upper_bound:
+      # optional · one of redraw | clip · with a bound: what to do with a drawn weight
+      #   past it: redraw draws it again, clip sets it to the bound
+      bound_mode: redraw
       # required · one of pA | nS | mV · the unit of the weight: pA (a current), nS (a
       #   conductance) or mV (a jump of the membrane potential); nothing is converted
       unit: pA
     # required · delay of each synapse
     delay:
-      # required · number > 0 · mean delay (ms)
-      mean: 1.5
-      # required · number ≥ 0 · standard deviation / mean
-      rel_std: 0.5
-      # optional, default normal · text · how each delay is drawn, with that mean and
-      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
-      #   project distribution, with parameters
+      # optional · text · how each delay is drawn: normal or lognormal, with mean and
+      #   std; uniform, with min and max; or the name of a project distribution, with
+      #   parameters. Omit it for a fixed delay
       distribution: normal
+      # optional · number · a fixed delay (ms), the same for every synapse
+      value:
+      # optional · number · mean of the drawn delays (ms)
+      mean: 1.5
+      # optional · number ≥ 0 · standard deviation of the drawn delays (ms)
+      std: 0.75
+      # optional · number · shortest delay (ms) a uniform draw gives
+      min:
+      # optional · number · longest delay (ms) a uniform draw gives
+      max:
       # optional · mapping · only for a project distribution: the values its expression
       #   uses
       parameters:
-      # optional · number > 0 · smallest allowed delay (ms) of a drawn delay, never
-      #   below half the simulation step; omit for half the simulation step
-      minimum: 0.1
+      # optional · number · shortest allowed drawn delay (ms), needed for a drawn delay;
+      #   e.g. the simulation step (a delay below half a step rounds to 0)
+      lower_bound: 0.1
+      # optional · number · longest allowed drawn delay (ms); omit for none
+      upper_bound:
+      # optional · one of redraw | clip · what to do with a drawn delay past a bound:
+      #   redraw draws it again, clip sets it to the bound
+      bound_mode: redraw
 # optional · text · instead of connections: a CSV file, relative to the network folder,
 #   with one row per connection (e.g. connections.csv), for a large network
 connections_file:
-# optional, default redraw · one of redraw | clip · what to do with a drawn weight or
-#   delay outside its allowed range: 'redraw' draws again, 'clip' replaces it by the
-#   limit; applies to all weights and delays of the network, background inputs included
-bound_mode: redraw
 ```
 
 ### poisson_background.yaml
@@ -211,10 +234,13 @@ poisson_background:
     rate: 8.0
     # required · number ≥ 0 · Poisson synapses per neuron
     indegree: 1600
-    # required · weight of each Poisson synapse
-    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    # required · weight of each Poisson synapse. The simulators make one generator at
+    #   rate x indegree and one connection per neuron, as the reference codes do, so a
+    #   drawn weight is drawn once per neuron, not per synapse: the same mean input, a
+    #   larger spread across neurons
+    weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each Poisson synapse
-    delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
     # optional · text · a name for the population's Poisson generator: populations that
@@ -260,9 +286,9 @@ stimuli:
     # required · number ≥ 0 · spike rate (spikes/s)
     rate: 50.0
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
-    delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
   # Poisson spike train with a piecewise-constant rate profile.
@@ -282,9 +308,9 @@ stimuli:
     #   (spikes/s), one per time
     rate_values: [20.0, 0.0]
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
-    delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
 ```

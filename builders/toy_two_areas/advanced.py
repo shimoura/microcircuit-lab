@@ -42,11 +42,12 @@ from microcircuit_lab.builder_tools import (
     psp_to_psc_iaf_psc_exp,
     weight,
     write_network_directory,
+    zero_bound,
 )
 from microcircuit_lab.config.network import NetworkConfig
 
-# The synapse of each kind of input to data.RECEPTOR_PORT_POPULATION (see synapses()).
-SYNAPSE_OF_PORT = {
+# The synapse of each kind of input to data.receptor_port_population (see synapses()).
+synapse_of_port = {
     "excitatory": "excitatory_port",
     "inhibitory": "inhibitory_port",
     "other_area": "depressing_slow_port",
@@ -55,36 +56,36 @@ SYNAPSE_OF_PORT = {
 
 def synapses() -> dict[str, dict[str, Any]]:
     """The entries of synapses.yaml."""
-    ports = data.RECEPTOR_PORTS
+    ports = data.receptor_ports
     return {
         # Input to the population with receptor ports: one synapse per port.
         "excitatory_port": {"model": "static_synapse", "receptor_port": ports["excitatory"]},
         "inhibitory_port": {"model": "static_synapse", "receptor_port": ports["inhibitory"]},
         "depressing_slow_port": {
             "model": "tsodyks2_synapse",
-            "parameters": dict(data.DEPRESSING_SYNAPSE),
+            "parameters": dict(data.depressing_synapse),
             "receptor_port": ports["other_area"],
         },
         # Input from the other area to every other population: default port.
-        "depressing": {"model": "tsodyks2_synapse", "parameters": dict(data.DEPRESSING_SYNAPSE)},
+        "depressing": {"model": "tsodyks2_synapse", "parameters": dict(data.depressing_synapse)},
     }
 
 
 def neurons() -> dict[str, dict[str, Any]]:
     """The neuron entries of toy_two_areas, with each neuron's threshold drawn,
-    and the receptor-port neuron for data.RECEPTOR_PORT_NEURON."""
+    and the receptor-port neuron for data.receptor_port_neuron."""
     entries = build_neurons()
 
     for entry in entries.values():
         threshold = entry["parameters"]["V_th"]
-        entry["parameters"]["V_th"] = {"distribution": "normal", "mean": threshold, "std": data.V_TH_STD}
+        entry["parameters"]["V_th"] = {"distribution": "normal", "mean": threshold, "std": data.v_th_std}
 
     # One synaptic time constant per port, instead of tau_syn_ex and tau_syn_in.
-    receptor_port_neuron = entries[data.RECEPTOR_PORT_NEURON]
-    receptor_port_neuron["model"] = data.RECEPTOR_PORT_MODEL
+    receptor_port_neuron = entries[data.receptor_port_neuron]
+    receptor_port_neuron["model"] = data.receptor_port_model
     parameters = receptor_port_neuron["parameters"]
     del parameters["tau_syn_ex"], parameters["tau_syn_in"]
-    parameters["tau_syn"] = list(data.RECEPTOR_PORT_TAU_SYN.values())
+    parameters["tau_syn"] = list(data.receptor_port_tau_syn.values())
 
     return entries
 
@@ -109,16 +110,16 @@ def populations() -> list[dict[str, Any]]:
 
 
 def weight_onto_port(psp: float, port: str, rel_std: float = 0.0) -> dict[str, Any]:
-    """A weight onto data.RECEPTOR_PORT_POPULATION, converted here from a PSP
+    """A weight onto data.receptor_port_population, converted here from a PSP
     (mV) to a current (pA) with the time constant of that port."""
-    parameters = {**data.BASE_NEURON, **data.NEURONS[data.RECEPTOR_PORT_NEURON]}
+    parameters = {**data.base_neuron, **data.neurons[data.receptor_port_neuron]}
     amplitude = psp_to_psc_iaf_psc_exp(
         psp,
         C_m=parameters["C_m"],
         tau_m=parameters["tau_m"],
-        tau_syn=data.RECEPTOR_PORT_TAU_SYN[port],
+        tau_syn=data.receptor_port_tau_syn[port],
     )
-    return weight(amplitude, unit="pA", rel_std=rel_std)
+    return weight(amplitude, unit="pA", rel_std=rel_std, **zero_bound(amplitude, data.bound_mode))
 
 
 def connections() -> list[dict[str, Any]]:
@@ -126,8 +127,8 @@ def connections() -> list[dict[str, Any]]:
     synapses above."""
     rows: list[dict[str, Any]] = []
 
-    for target in data.POPULATIONS:
-        for source in data.POPULATIONS:
+    for target in data.populations:
+        for source in data.populations:
             probability = connection_probability(source, target)
             if probability == 0.0:
                 continue
@@ -135,7 +136,7 @@ def connections() -> list[dict[str, Any]]:
             source_name = population_name(*source[:3])
             target_name = population_name(*target[:3])
             from_other_area = source[0] != target[0]
-            psp = data.PSP[source[2]]
+            psp = data.psp[source[2]]
             row: dict[str, Any] = {"source": source_name, "target": target_name}
 
             if from_other_area:
@@ -151,20 +152,24 @@ def connections() -> list[dict[str, Any]]:
                     row["allow_autapses"] = False
                 delay_distribution = "normal"
 
-            if target_name == data.RECEPTOR_PORT_POPULATION:
+            if target_name == data.receptor_port_population:
                 if from_other_area:
                     port = "other_area"
                 else:
                     port = "excitatory" if psp > 0 else "inhibitory"
-                row["synapse"] = SYNAPSE_OF_PORT[port]
-                row["weight"] = weight_onto_port(psp, port, rel_std=data.WEIGHT_REL_STD)
+                row["synapse"] = synapse_of_port[port]
+                row["weight"] = weight_onto_port(psp, port, rel_std=data.weight_rel_std)
             else:
-                row["weight"] = weight(current(psp, target[4]), unit="pA", rel_std=data.WEIGHT_REL_STD)
+                row["weight"] = weight(
+                    current(psp, target[4]), unit="pA", rel_std=data.weight_rel_std, **zero_bound(psp, data.bound_mode)
+                )
 
             row["delay"] = delay(
                 delay_mean(source, target),
-                rel_std=data.DELAY_REL_STD,
+                rel_std=data.delay_rel_std,
                 distribution=delay_distribution,
+                lower_bound=data.delay_min,
+                bound_mode=data.bound_mode,
             )
             rows.append(row)
 
@@ -175,9 +180,9 @@ def poisson_background() -> dict[str, dict[str, Any]]:
     """The background input of toy_two_areas. A neuron with receptor ports has
     no default port, so its background input names the excitatory one."""
     inputs = build_poisson_background()
-    receptor_port_input = inputs[data.RECEPTOR_PORT_POPULATION]
-    receptor_port_input["synapse"] = SYNAPSE_OF_PORT["excitatory"]
-    receptor_port_input["weight"] = weight_onto_port(data.BG_PSP, "excitatory")
+    receptor_port_input = inputs[data.receptor_port_population]
+    receptor_port_input["synapse"] = synapse_of_port["excitatory"]
+    receptor_port_input["weight"] = weight_onto_port(data.bg_psp, "excitatory")
     return inputs
 
 

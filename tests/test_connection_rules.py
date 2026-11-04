@@ -33,8 +33,8 @@ def _connection(rule="fixed_total_number", weight=10.0, unit="pA", source="S", t
         source=source,
         target=target,
         rule=rule,
-        weight=WeightDistribution(mean=weight, rel_std=0.0, distribution="fixed", unit=unit),
-        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+        weight=WeightDistribution(value=weight, unit=unit),
+        delay=DelayDistribution(value=1.0),
         **fields,
     )
 
@@ -57,8 +57,8 @@ def _network(connections, synapses=None, background_synapse=None, target_neuron=
         name: PoissonBackgroundConfig(
             rate=8.0,
             indegree=100,
-            weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
-            delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+            weight=WeightDistribution(value=10.0, unit="pA"),
+            delay=DelayDistribution(value=1.0),
             synapse=background_synapse if name == "T" else None,
         )
         for name in SIZES
@@ -158,14 +158,21 @@ def test_the_new_rules_scale_where_they_can():
 
 
 def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
-    with pytest.raises(ValueError, match="takes no parameters"):
-        WeightDistribution(mean=1.0, rel_std=0.0, unit="pA", distribution="normal", parameters={"a": 1})
+    with pytest.raises(ValueError, match="only a project distribution takes parameters"):
+        WeightDistribution(mean=1.0, unit="pA", distribution="normal", parameters={"a": 1})
 
-    def connection(weight="fixed", delay="fixed"):
-        params = {"weight": {"a": 1} if weight != "fixed" else None, "delay": {"a": 1} if delay != "fixed" else None}
+    def connection(weight=None, delay=None):
+        weight_fields = {"value": 10.0}
+        delay_fields = {"value": 1.0}
+        if weight:
+            weight_fields = {"mean": 10.0, "distribution": weight, "parameters": {"a": 1}}
+        if delay:
+            delay_fields = {
+                "mean": 1.0, "distribution": delay, "parameters": {"a": 1}, "lower_bound": 0.05, "bound_mode": "clip",
+            }
         return _connection(n_synapses=100).model_copy(update={
-            "weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution=weight, parameters=params["weight"]),
-            "delay": DelayDistribution(mean=1.0, rel_std=0.0, distribution=delay, parameters=params["delay"]),
+            "weight": WeightDistribution(unit="pA", **weight_fields),
+            "delay": DelayDistribution(**delay_fields),
         })
 
     with pytest.raises(ValueError, match="real mean of weights from a project distribution"):
@@ -175,7 +182,7 @@ def test_project_distributions_are_for_connections_only_and_scale_their_delays_o
 
     network = _network([connection()])
     background = network.poisson_background["S"].model_copy(
-        update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1})}
+        update={"weight": WeightDistribution(mean=10.0, unit="pA", distribution="mine", parameters={"a": 1})}
     )
     with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
         NetworkConfig.model_validate({**network.model_dump(), "poisson_background": {**network.poisson_background, "S": background}})
@@ -187,7 +194,7 @@ def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
         _connection(rule="one_to_one", source="S", target="S"),
         _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
         _connection(source="T", target="S", n_synapses=10).model_copy(update={
-            "weight": WeightDistribution(mean=1.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1.5}),
+            "weight": WeightDistribution(mean=1.0, unit="pA", distribution="mine", parameters={"a": 1.5}),
         }),
     ]
     table = ConnectionTable.from_yaml_rows(rows)

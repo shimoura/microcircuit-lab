@@ -2,7 +2,7 @@
 
 Writes ``configs/network/toy_two_areas_clustered/``: the network of
 ``toy_two_areas`` (see ``build.py``), each population split into Q clusters
-(``data.CLUSTERS``), named ``<population>__c<i>`` (``A__L23_E__c0``). The rule
+(``data.clusters``), named ``<population>__c<i>`` (``A__L23_E__c0``). The rule
 is a common one for clustered networks:
 
 * **Sizes:** each cluster has ceil(N / Q) neurons (200 into 3: 67 each).
@@ -37,7 +37,7 @@ from builders.toy_two_areas.build import (
     build_poisson_background,
     build_populations,
 )
-from microcircuit_lab.builder_tools import write_network_directory
+from microcircuit_lab.builder_tools import weight, write_network_directory, zero_bound
 from microcircuit_lab.config.network import NetworkConfig
 
 
@@ -64,7 +64,7 @@ def weight_factors(clusters: int, j_e_plus: float, r_j: float) -> dict[tuple[boo
 
 
 def is_excitatory(population: str) -> bool:
-    return population.split("_")[-1] in data.EXCITATORY_TYPES
+    return population.split("_")[-1] in data.excitatory_types
 
 
 def clustered_populations(clusters: int) -> list[dict[str, Any]]:
@@ -86,14 +86,15 @@ def clustered_connections(
         e_to_e = is_excitatory(source) and is_excitatory(target)
         for i in range(clusters):
             for k in range(clusters):
-                weight = dict(connection["weight"])
-                weight["mean"] = connection["weight"]["mean"] * factors[(e_to_e, i == k)]
+                # The weight of toy_two_areas times the factor, its spread too.
+                mean = connection["weight"]["mean"] * factors[(e_to_e, i == k)]
+                clustered = weight(mean, unit="pA", rel_std=data.weight_rel_std, **zero_bound(mean, data.bound_mode))
                 connections.append({
                     **connection,
                     "source": cluster_name(source, k),
                     "target": cluster_name(target, i),
                     "n_synapses": math.ceil(connection["n_synapses"] / clusters**2),
-                    "weight": weight,
+                    "weight": clustered,
                 })
     return connections
 
@@ -112,14 +113,14 @@ def generate_toy_two_areas_clustered(
     *,
     config_dir: str | Path = "configs",
     network_name: str = "toy_two_areas_clustered",
-    clusters: int = data.CLUSTERS,
+    clusters: int = data.clusters,
 ) -> NetworkConfig:
     """Write ``<config_dir>/network/<network_name>/`` and validate it."""
 
     if clusters < 2:
         raise ValueError(f"clusters = {clusters}: a population needs at least 2 clusters.")
-    within = weight_factors(clusters, data.J_E_PLUS, data.R_J)
-    between = weight_factors(clusters, data.BETWEEN_AREAS_J_E_PLUS, data.BETWEEN_AREAS_R_J)
+    within = weight_factors(clusters, data.j_e_plus, data.r_j)
+    between = weight_factors(clusters, data.between_areas_j_e_plus, data.between_areas_r_j)
     return write_network_directory(
         Path(config_dir) / "network" / network_name,
         populations=clustered_populations(clusters),

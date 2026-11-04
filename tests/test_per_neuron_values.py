@@ -39,8 +39,8 @@ def _network(C_m) -> NetworkConfig:
         source="E",
         target="E",
         n_synapses=10,
-        weight=WeightDistribution(mean=0.1, rel_std=0.0, distribution="fixed", unit="pA"),
-        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+        weight=WeightDistribution(value=0.1, unit="pA"),
+        delay=DelayDistribution(value=1.0),
     )
     return NetworkConfig(
         populations={"E": population},

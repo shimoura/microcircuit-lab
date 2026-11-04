@@ -18,7 +18,11 @@ from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.nest import distributions, spike_files
 from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS
+from microcircuit_lab.config.connectivity import (
+    SHARED_DISTRIBUTIONS,
+    DelayDistribution,
+    project_rows,
+)
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -134,7 +138,7 @@ class NestBackend:
 
         for what in ("weight", "delay"):
             names = self.network.connections[f"{what}.distribution"]
-            project = np.flatnonzero(~np.isin(names, SHARED_DISTRIBUTIONS))
+            project = np.flatnonzero(project_rows(names))
             if project.size:
                 raise ValueError(
                     f"NEST has no {what} distribution {names[project[0]]!r}: it draws from the shared "
@@ -250,12 +254,9 @@ class NestBackend:
         """The NEST weight and delay of a background input or stimulus, from its
         ``weight`` and ``delay`` as written in the config files."""
 
-        bound_mode = self.network.bound_mode
-        return (
-            distributions.create_weight_spec(weight.mean, weight.rel_std, weight.distribution, bound_mode),
-            distributions.create_delay_parameter(
-                delay.mean, delay.rel_std, delay.distribution, delay.minimum, bound_mode
-            ),
+        return tuple(
+            distributions.drawn_parameter({name: getattr(entry, name) for name in DelayDistribution.model_fields})
+            for entry in (weight, delay)
         )
 
     def create_connections(self) -> None:
@@ -275,8 +276,6 @@ class NestBackend:
         }
 
         table = self.network.connections
-        bound_mode = self.network.bound_mode
-        resolution = nest.resolution
         rows_per_piece = 100_000
 
         for start in range(0, len(table), rows_per_piece):
@@ -294,25 +293,13 @@ class NestBackend:
                     number = column["number"][i]
                     conn_spec[nest_number[rule]] = number if rule == "pairwise_bernoulli" else int(number)
                 synapse = column["synapse"][i]
-                weight = distributions.create_weight_spec(
-                    column["weight.mean"][i],
-                    column["weight.rel_std"][i],
-                    column["weight.distribution"][i],
-                    bound_mode,
-                )
-                delay = distributions.create_delay_parameter(
-                    column["delay.mean"][i],
-                    column["delay.rel_std"][i],
-                    column["delay.distribution"][i],
-                    column["delay.minimum"][i],
-                    bound_mode,
-                    resolution,
+                weight, delay = (
+                    distributions.drawn_parameter({name: column[f"{group}.{name}"][i] for name in DelayDistribution.model_fields})
+                    for group in ("weight", "delay")
                 )
 
                 logger.debug(
-                    "Connecting %s -> %s (%s, synapse=%s, weight=%g, delay=%g)",
-                    source, target, conn_spec, synapse or "default",
-                    column["weight.mean"][i], column["delay.mean"][i],
+                    "Connecting %s -> %s (%s, synapse=%s)", source, target, conn_spec, synapse or "default"
                 )
 
                 for option in ("allow_autapses", "allow_multapses"):

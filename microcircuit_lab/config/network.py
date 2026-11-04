@@ -25,7 +25,6 @@ from microcircuit_lab.config.connection_table import (
 )
 from microcircuit_lab.config.connectivity import (
     SHARED_DISTRIBUTIONS,
-    BoundMode,
     ConnectivityFile,
 )
 from microcircuit_lab.config.frozen_config import FrozenConfig
@@ -116,12 +115,6 @@ class NetworkDirectory(FrozenConfig):
 class NetworkConfig(FrozenConfig):
     """
     The whole network, read from the YAML files in ``configs/network/``.
-
-    bound_mode:
-        What to do with a drawn weight or delay that falls outside its
-        allowed range (a weight of the wrong sign, a delay below its
-        minimum). "redraw" (default): draw again until the value is
-        allowed. "clip": replace the value by the limit. Applies to all weights and delays of the network.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -137,7 +130,6 @@ class NetworkConfig(FrozenConfig):
     ]
 
     poisson_background: dict[str, PoissonBackgroundConfig]
-    bound_mode: BoundMode = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     # How the network was scaled, if it was; never applied (see config/scaling.py).
     scaling: ScalingRecord | None = None
@@ -174,10 +166,10 @@ class NetworkConfig(FrozenConfig):
         for user, item in users:
             for what in ("weight", "delay"):
                 distribution = getattr(item, what).distribution
-                if distribution not in SHARED_DISTRIBUTIONS:
+                if distribution is not None and distribution not in SHARED_DISTRIBUTIONS:
                     raise ValueError(
                         f"The {user} has a {what} from project distribution {distribution!r}; "
-                        f"background inputs and stimuli take {', '.join(SHARED_DISTRIBUTIONS)} only."
+                        f"background inputs and stimuli take a fixed value or {', '.join(SHARED_DISTRIBUTIONS)} only."
                     )
         return self
 

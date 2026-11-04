@@ -37,6 +37,7 @@ from microcircuit_lab.builder_tools import (
     weight,
     write_network,
     write_network_directory,
+    zero_bound,
 )
 
 
@@ -93,16 +94,19 @@ def main(argv: list[str] | None = None) -> None:
     # connectivity.yaml: one entry per connection. n_synapses is the total for
     # the connection (indegree * target size). The weight unit is "pA", "nS"
     # or "mV"; delay is in ms. rel_std sets the spread: 0 gives one fixed
-    # value, above 0 a normal distribution; pass distribution= for another one.
+    # value, above 0 a normal distribution (written as its mean and std); pass
+    # distribution= for another one. A drawn value can have bounds: weights
+    # keep their sign (zero_bound), delays stay at 0.1 ms or more, both drawn
+    # again past the bound ("redraw"; "clip" sets them to it).
+    exc_weight = weight(w_exc, unit="pA", rel_std=0.1, **zero_bound(w_exc, "redraw"))
+    inh_weight = weight(w_inh, unit="pA", rel_std=0.1, **zero_bound(w_inh, "redraw"))
+    exc_delay = delay(1.5, rel_std=0.5, lower_bound=0.1, bound_mode="redraw")
+    inh_delay = delay(0.75, rel_std=0.5, lower_bound=0.1, bound_mode="redraw")
     connections = [
-        {"source": "E", "target": "E", "n_synapses": 64000,
-         "weight": weight(w_exc, unit="pA", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
-        {"source": "E", "target": "I", "n_synapses": 16000,
-         "weight": weight(w_exc, unit="pA", rel_std=0.1), "delay": delay(1.5, rel_std=0.5)},
-        {"source": "I", "target": "E", "n_synapses": 16000,
-         "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
-        {"source": "I", "target": "I", "n_synapses": 4000,
-         "weight": weight(w_inh, unit="pA", rel_std=0.1), "delay": delay(0.75, rel_std=0.5)},
+        {"source": "E", "target": "E", "n_synapses": 64000, "weight": exc_weight, "delay": exc_delay},
+        {"source": "E", "target": "I", "n_synapses": 16000, "weight": exc_weight, "delay": exc_delay},
+        {"source": "I", "target": "E", "n_synapses": 16000, "weight": inh_weight, "delay": inh_delay},
+        {"source": "I", "target": "I", "n_synapses": 4000, "weight": inh_weight, "delay": inh_delay},
     ]
 
     # poisson_background.yaml: population name -> its background Poisson input:
