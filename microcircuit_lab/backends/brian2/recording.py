@@ -108,7 +108,7 @@ def save_recordings(backend: Brian2Backend, run_dir: Path) -> list[Path]:
 
     if backend.spike_recorders:
         path = recordings_dir / "spikes.csv"
-        spikes.write_csv_spikes(path, *load_spikes(backend))
+        spikes.write_csv_spikes(path, *load_spikes(backend), backend.simulation_config.resolution)
         paths.append(path)
 
     for name, monitors in backend.multimeters.items():
@@ -134,7 +134,7 @@ def save_recordings(backend: Brian2Backend, run_dir: Path) -> list[Path]:
             delimiter=",",
             header=f"sender,time_ms,{name}",
             comments="",
-            fmt=["%d", "%.3f", "%.6g"],
+            fmt=["%d", spikes.time_format(backend.simulation_config.resolution), "%.6g"],
         )
         paths.append(path)
 

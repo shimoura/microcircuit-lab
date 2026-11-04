@@ -594,7 +594,7 @@ class NestBackend:
         path = recordings_dir / "spikes.csv"
 
         senders, times = self._memory_spikes()
-        spikes.write_csv_spikes(path, senders, times)
+        spikes.write_csv_spikes(path, senders, times, self.simulation_config.resolution)
         return path
 
 

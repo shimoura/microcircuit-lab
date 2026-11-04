@@ -10,6 +10,7 @@ import yaml
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.backends.nest.spike_files import read_saved_variable
+from microcircuit_lab.backends.spikes import read_spike_files, write_csv_spikes
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
@@ -443,3 +444,10 @@ def test_only_the_first_mpi_process_saves(tmp_path: Path, monkeypatch) -> None:
     assert sorted(path.name for path in base.iterdir()) == [".run_dir", "chosen_by_process_0"]
     assert not (shared_dir / "metadata.json").exists()
     assert not (shared_dir / "config.yaml").exists()
+
+
+def test_saved_spike_times_keep_every_decimal_of_the_time_step(tmp_path: Path) -> None:
+    """A time step of 0.0125 ms (Brian2 allows it) needs four decimals; three would round half the times."""
+    times = np.array([0.0125, 12.1625, 13.475])
+    write_csv_spikes(tmp_path / "spikes.csv", np.array([1, 2, 3]), times, resolution=0.0125)
+    np.testing.assert_array_equal(read_spike_files([tmp_path / "spikes.csv"])[1], times)

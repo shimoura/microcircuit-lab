@@ -88,8 +88,20 @@ def read_recording_files(
     return sort_recording(senders.astype(int), times.astype(float), values.astype(float))
 
 
-def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None:
-    """Write spikes to a ``spikes.csv``, ordered by time."""
+def time_format(resolution: float) -> str:
+    """
+    The format of times (ms) in saved files: three decimals, as NEST writes
+    them, or more when the time step has more (e.g. 0.0125 ms, which Brian2
+    allows), so that no time is rounded.
+    """
+
+    decimals = len(np.format_float_positional(resolution, trim="-").partition(".")[2])
+    return f"%.{max(3, decimals)}f"
+
+
+def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray, resolution: float) -> None:
+    """Write spikes to a ``spikes.csv``, ordered by time, with the decimals
+    the time step ``resolution`` (ms) needs."""
 
     order = np.argsort(times)
     np.savetxt(
@@ -98,5 +110,5 @@ def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None
         delimiter=",",
         header="sender,time_ms",
         comments="",
-        fmt=["%d", "%.3f"],
+        fmt=["%d", time_format(resolution)],
     )
