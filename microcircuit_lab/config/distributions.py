@@ -25,7 +25,11 @@ class DrawnValue(BaseModel):
 
     __pydantic_extra__: dict[str, StrictInt | StrictFloat] = Field(init=False)
 
-    distribution: str
+    distribution: str = Field(
+        examples=["normal"],
+        description="the simulator's distribution to draw from (e.g. normal, uniform, exponential); "
+        "the other keys are its arguments",
+    )
 
 
 PerNeuronValue = StrictInt | StrictFloat | DrawnValue

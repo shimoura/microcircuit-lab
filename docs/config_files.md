@@ -236,7 +236,7 @@ Optional: inputs for an experiment, applied as written (never scaled).
 stimuli:
   # A constant current from ``start`` to ``stop``, injected directly (no weight or
   #   delay).
-  # required · selects the fields below
+  # required · selects the fields below · dc: a constant current
   - type: dc
     # required · list of names, at least 1 · population names to stimulate; one device,
     #   connected to every neuron of each
@@ -248,7 +248,7 @@ stimuli:
     # required · number · current (pA)
     amplitude: 200.0
   # Homogeneous Poisson spike train, active for [start, stop).
-  # required · selects the fields below
+  # required · selects the fields below · poisson: a Poisson spike train
   - type: poisson
     # required · list of names, at least 1 · population names to stimulate; one device,
     #   connected to every neuron of each
@@ -266,7 +266,8 @@ stimuli:
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
   # Poisson spike train with a piecewise-constant rate profile.
-  # required · selects the fields below
+  # required · selects the fields below · inhomogeneous_poisson: a Poisson spike train
+  #   whose rate changes at given times
   - type: inhomogeneous_poisson
     # required · list of names, at least 1 · population names to stimulate; one device,
     #   connected to every neuron of each
