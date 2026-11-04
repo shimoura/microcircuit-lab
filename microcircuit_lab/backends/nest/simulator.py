@@ -57,6 +57,12 @@ class NestBackend:
         self._simulation_config = simulation_config
         self._nest_modules = nest_modules
         self._recordings_dir: Path | None = None
+        self._receptor_types: dict[str, dict] = {}
+        self._forget_nodes()
+
+    def _forget_nodes(self) -> None:
+        """No nodes: before the first build, and after each reset of NEST,
+        which deletes those of an earlier build."""
 
         self.populations: dict[str, nest.NodeCollection] = {}
         self.background_generators: dict[str, nest.NodeCollection] = {}
@@ -65,7 +71,6 @@ class NestBackend:
         self.multimeters: dict[str, nest.NodeCollection] = {}
         self.stimulus_generators: list[tuple] = []
         self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
-        self._receptor_types: dict[str, dict] = {}
 
     def version(self) -> str:
         return nest.__version__
@@ -97,6 +102,7 @@ class NestBackend:
         """
 
         nest.ResetKernel()
+        self._forget_nodes()
 
         for module in self._nest_modules:
             logger.info("Installing NEST module %s", module)

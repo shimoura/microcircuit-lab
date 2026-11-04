@@ -154,7 +154,7 @@ def write_network(
     network
         The network as written (background rates per synapse).
     path
-        The folder to write, e.g. ``configs/network/pd14_downscaled``.
+        The folder to write, e.g. ``configs/network/toy_downscaled``.
     csv
         Write the connections as ``connections.csv`` (for a large network)
         instead of in ``connectivity.yaml``.

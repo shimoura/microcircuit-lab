@@ -117,8 +117,7 @@ class NetworkConfig(FrozenConfig):
         What to do with a drawn weight or delay that falls outside its
         allowed range (a weight of the wrong sign, a delay below its
         minimum). "redraw" (default): draw again until the value is
-        allowed. "clip": replace the value by the limit, as the HuMAM
-        model does. Applies to all weights and delays of the network.
+        allowed. "clip": replace the value by the limit. Applies to all weights and delays of the network.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

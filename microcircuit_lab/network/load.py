@@ -43,7 +43,7 @@ def read_network(folder: str | Path) -> NetworkConfig:
     Parameters
     ----------
     folder
-        The network folder, e.g. ``configs/network/pd14``.
+        The network folder, e.g. ``configs/network/toy``.
 
     Returns
     -------

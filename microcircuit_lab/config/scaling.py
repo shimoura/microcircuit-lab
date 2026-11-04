@@ -23,7 +23,7 @@ class ScalingRecord(FrozenConfig):
     value: the files already hold the scaled ones."""
 
     scaled_from: str = Field(
-        examples=["pd14"],
+        examples=["toy"],
         description="the full-scale network this one was scaled from (or the builder command that makes it)",
     )
     scaled_with: str = Field(

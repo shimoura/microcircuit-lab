@@ -16,11 +16,18 @@ from .interface import SimulationBackend
 def _import_backend(name: str, module: str):
     """Import ``backends/<name>/<module>.py``. A copy of the core made by
     ``init --with-core`` has only the backends of the installed simulators; a
-    missing backend folder says so, while a simulator that is not installed
-    keeps its own error."""
+    missing backend folder says so, and so does a simulator that is not
+    installed. Any other missing module keeps its own error."""
     try:
         return importlib.import_module(f"{__name__}.{name}.{module}")
     except ModuleNotFoundError as error:
+        # The backend's Python package has the backend's name (nest, brian2).
+        if error.name == name:
+            raise ModuleNotFoundError(
+                f"The {name} backend needs the Python package {name}, which is not installed. "
+                f'Install it, e.g. pip install "microcircuit_lab[{name}]" (see Installation '
+                "in microcircuit_lab/README.md)."
+            ) from None
         if error.name != f"{__name__}.{name}":
             raise
         raise ModuleNotFoundError(

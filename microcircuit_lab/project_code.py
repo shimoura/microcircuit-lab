@@ -50,7 +50,7 @@ def import_folder_modules(
     The folder is imported as the package ``package`` (default: the folder's
     name), and the folder that holds that package is added to the front of
     ``sys.path``, as Python does for the folder of a script you run. So
-    ``builders/`` is imported as ``builders`` (``builders.pd14``), and
+    ``builders/`` is imported as ``builders`` (``builders.<model>``), and
     ``extensions/brian2/`` with ``package="extensions.brian2"``, which keeps it apart
     from the ``brian2`` package. Your project's files win over an installed
     package of the same name. With ``packages_only`` plain ``.py`` files are

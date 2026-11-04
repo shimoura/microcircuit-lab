@@ -295,7 +295,7 @@ Only in a scaled network: how it was scaled, written by `scale_network` and neve
 ```yaml
 # required · text · the full-scale network this one was scaled from (or the builder
 #   command that makes it)
-scaled_from: pd14
+scaled_from: toy
 # required · text · the function that scaled it
 scaled_with: microcircuit_lab.builder_tools.scaling.scale_network
 # required · mapping · the arguments the function was given (its own, e.g. N_scaling and
@@ -367,7 +367,7 @@ recording:
 # optional · where and what to save
 output:
   # optional · path · folder for the runs; omit for output/<network name>
-  output_dir: output/pd14
+  output_dir: output/toy
   # optional, default false · true or false · false: each run gets its own
   #   <output_dir>/<date_time> folder; true: every run writes into output_dir itself
   overwrite: false

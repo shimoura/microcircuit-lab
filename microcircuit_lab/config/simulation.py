@@ -98,7 +98,7 @@ class OutputConfig(FrozenConfig):
 
     output_dir: Path | None = Field(
         default=None,
-        examples=["output/pd14"],
+        examples=["output/toy"],
         description="folder for the runs; omit for output/<network name>",
     )
     overwrite: bool = Field(
