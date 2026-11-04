@@ -201,9 +201,10 @@ def main(argv: list[str] | None = None) -> None:
                 backend=args.backend,
                 backend_options=backend_options,
             )
-            # A simulator that is not installed: one line, not a traceback.
+            # The simulator must be installed. A missing or wrong file, a wrong
+            # config or a missing simulator: the message alone, not a traceback.
             get_backend(simulation.backend_name)
-        except (FileNotFoundError, ModuleNotFoundError) as error:
+        except (FileNotFoundError, ModuleNotFoundError, ValueError) as error:
             sys.exit(str(error))
         if brian2_options and simulation.backend_name != "brian2":
             sys.exit(

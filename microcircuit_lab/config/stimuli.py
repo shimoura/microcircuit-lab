@@ -42,14 +42,14 @@ class StimulusBase(FrozenConfig):
 class DcStimulusConfig(StimulusBase):
     """A constant current from ``start`` to ``stop``, injected directly (no weight or delay)."""
 
-    type: Literal["dc"] = "dc"
+    type: Literal["dc"] = Field(default="dc", description="dc: a constant current")
     amplitude: float = Field(examples=[200.0], description="current (pA)")
 
 
 class PoissonStimulusConfig(StimulusBase):
     """Homogeneous Poisson spike train, active for [start, stop)."""
 
-    type: Literal["poisson"] = "poisson"
+    type: Literal["poisson"] = Field(default="poisson", description="poisson: a Poisson spike train")
     rate: float = Field(ge=0.0, examples=[50.0], description="spike rate (spikes/s)")
     weight: WeightDistribution = Field(description="weight of each stimulus connection")
     delay: DelayDistribution = Field(description="delay of each stimulus connection")
@@ -63,7 +63,10 @@ class PoissonStimulusConfig(StimulusBase):
 class InhomogeneousPoissonStimulusConfig(StimulusBase):
     """Poisson spike train with a piecewise-constant rate profile."""
 
-    type: Literal["inhomogeneous_poisson"] = "inhomogeneous_poisson"
+    type: Literal["inhomogeneous_poisson"] = Field(
+        default="inhomogeneous_poisson",
+        description="inhomogeneous_poisson: a Poisson spike train whose rate changes at given times",
+    )
     rate_times: list[float] = Field(
         min_length=1, examples=[[200.0, 400.0]], description="when the rate changes (ms), increasing"
     )

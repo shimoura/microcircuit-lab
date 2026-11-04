@@ -54,17 +54,54 @@ def spikes_in_id_range(
     return {"senders": senders[left:right], "times": times[left:right]}
 
 
-def read_csv_spikes(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """The spikes of a ``spikes.csv``, sorted by sender."""
+def _read_columns(paths: list[Path], columns: list[str], csv_options: dict) -> list[np.ndarray]:
+    """The named columns of one or more files of the same kind, joined in file order."""
 
-    table = pd.read_csv(path)
-    senders = table["sender"].to_numpy(dtype=int)
-    times = table["time_ms"].to_numpy(dtype=float)
-    return sort_by_sender(senders, times)
+    tables = [pd.read_csv(path, usecols=columns, **csv_options) for path in paths]
+    return [np.concatenate([table[column].to_numpy() for table in tables]) for column in columns]
 
 
-def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None:
-    """Write spikes to a ``spikes.csv``, ordered by time."""
+def read_spike_files(paths: list[Path], **csv_options) -> tuple[np.ndarray, np.ndarray]:
+    """
+    The spikes of files with the columns ``sender`` and ``time_ms`` (e.g. one
+    per thread), sorted by sender. ``csv_options`` describe the files to
+    ``pandas.read_csv``: none for a ``spikes.csv``, a tab separator and comment
+    lines for NEST's ascii files.
+    """
+
+    if not paths:
+        return empty_spikes()
+    senders, times = _read_columns(paths, ["sender", "time_ms"], csv_options)
+    return sort_by_sender(senders.astype(int), times.astype(float))
+
+
+def read_recording_files(
+    paths: list[Path], variable: str, **csv_options
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    The samples of a recorded variable, from files with the columns
+    ``sender``, ``time_ms`` and ``variable``, as ``(senders, times, values)``
+    sorted by sender, then time. ``csv_options`` as in :func:`read_spike_files`.
+    """
+
+    senders, times, values = _read_columns(paths, ["sender", "time_ms", variable], csv_options)
+    return sort_recording(senders.astype(int), times.astype(float), values.astype(float))
+
+
+def time_format(resolution: float) -> str:
+    """
+    The format of times (ms) in saved files: three decimals, as NEST writes
+    them, or more when the time step has more (e.g. 0.0125 ms, which Brian2
+    allows), so that no time is rounded.
+    """
+
+    decimals = len(np.format_float_positional(resolution, trim="-").partition(".")[2])
+    return f"%.{max(3, decimals)}f"
+
+
+def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray, resolution: float) -> None:
+    """Write spikes to a ``spikes.csv``, ordered by time, with the decimals
+    the time step ``resolution`` (ms) needs."""
 
     order = np.argsort(times)
     np.savetxt(
@@ -73,5 +110,5 @@ def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None
         delimiter=",",
         header="sender,time_ms",
         comments="",
-        fmt=["%d", "%.3f"],
+        fmt=["%d", time_format(resolution)],
     )

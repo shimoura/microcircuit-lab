@@ -423,7 +423,7 @@ def test_receptor_port_by_name_is_the_variable_added_to() -> None:
     backend = _backend(network("I_b"), extensions=[__name__])
     backend.build()
     backend.simulate()
-    group = backend._group_of["T"].neurons
+    group = backend.group_of["T"].neurons
     assert np.all(group.I_a[:] == 0) and np.any(group.I_b[:] != 0)
 
     with pytest.raises(ValueError, match="'named' sets receptor_port 'I_c'.*no variable of that name"):
@@ -435,7 +435,7 @@ def test_gap_junction_pulls_the_target_toward_the_source() -> None:
     backend.build()
     import brian2 as b2
 
-    neurons = backend._groups[0].neurons
+    neurons = backend.groups[0].neurons
     neurons.E_L[:10] = -50 * b2.mV  # S (10 neurons) holds near -50 mV; T would rest at -70 mV
     backend.simulate()
     assert np.mean(neurons.V_m[10:] / b2.mV) > -65.0
@@ -486,3 +486,15 @@ def test_cpp_standalone_device(tmp_path: Path) -> None:
 
     assert len(simulation.backend.get_spike_events("E")["times"]) > 0
     assert (tmp_path / "recordings" / "spikes.csv").exists()
+
+
+def test_a_second_build_starts_afresh() -> None:
+    backend = _backend(Simulation.from_yaml(network_name="toy", backend="brian2").network)
+    spikes = []
+    for _ in range(2):
+        backend.build()
+        backend.simulate()
+        spikes.append(backend.get_spike_events("E"))
+
+    np.testing.assert_array_equal(spikes[0]["senders"], spikes[1]["senders"])
+    np.testing.assert_array_equal(spikes[0]["times"], spikes[1]["times"])

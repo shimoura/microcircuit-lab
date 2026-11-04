@@ -36,9 +36,9 @@ def _background_variables(backend: Brian2Backend, group: _Group) -> dict[str, li
 
     variables: dict[str, list[str]] = defaultdict(list)
     for pop_name in group.populations:
-        background = backend._network.poisson_background.get(pop_name)
+        background = backend.network.poisson_background.get(pop_name)
         if background is not None:
-            variable = backend._target_variable(pop_name, background.synapse, background.weight.mean)
+            variable = backend.target_variable(pop_name, background.synapse, background.weight.mean)
             variables[variable].append(pop_name)
     return variables
 
@@ -50,7 +50,7 @@ def background_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
     variables = _background_variables(backend, group)
     if not variables:
         return b2.Equations("")
-    units = {backend._weight_units(pops[0], variable)[0] for variable, pops in variables.items()}
+    units = {backend.weight_units(pops[0], variable)[0] for variable, pops in variables.items()}
     if len(units) > 1:
         raise ValueError(
             f"The background inputs of {group.populations} add to variables of different units."
@@ -71,7 +71,7 @@ def create_poisson_background(backend: Brian2Backend) -> None:
     stationary Poisson train in time.
     """
 
-    for group in backend._groups:
+    for group in backend.groups:
         variables = _background_variables(backend, group)
         if not variables:
             continue
@@ -79,25 +79,25 @@ def create_poisson_background(backend: Brian2Backend) -> None:
         for variable, pops in variables.items():
             rates = np.zeros(group.size)
             for pop_name in pops:
-                background = backend._network.poisson_background[pop_name]
-                if backend.synapse_model(background.synapse) is not backend._synapse_models["static_synapse"]:
+                background = backend.network.poisson_background[pop_name]
+                if backend.synapse_model(background.synapse) is not backend.synapse_models["static_synapse"]:
                     raise NotImplementedError(
                         f"The background input of {pop_name!r} uses synapse {background.synapse!r}; "
                         "the Brian2 backend connects background input only through static synapses."
                     )
-                start, size = group.start(pop_name), backend._network.populations[pop_name].size
-                rates[start:start + size] = background.generator_rate * backend._simulation_config.resolution / 1000.0
+                start, size = group.start(pop_name), backend.network.populations[pop_name].size
+                rates[start:start + size] = background.generator_rate * backend.simulation_config.resolution / 1000.0
                 weight = background.weight
-                mean = abs(weight.mean) if backend._weight_units(pop_name, variable)[0] == "siemens" else weight.mean
+                mean = abs(weight.mean) if backend.weight_units(pop_name, variable)[0] == "siemens" else weight.mean
                 weights[group.populations.index(pop_name)] = (mean, weight.rel_std, weight.distribution, size)
             setattr(group.neurons, f"background_{variable}", rates)
             group.neurons.run_regularly(
                 f"{variable} += w_background*poisson(background_{variable})", when="synapses",
                 name=f"{group.neurons.name}_background_{variable}",
             )
-        unit = backend._weight_units(next(iter(variables.values()))[0], next(iter(variables)))[1]
+        unit = backend.weight_units(next(iter(variables.values()))[0], next(iter(variables)))[1]
         distributions.set_weights(
-            group.neurons, "w_background", "population_index", weights, unit, backend._network.bound_mode
+            group.neurons, "w_background", "population_index", weights, unit, backend.network.bound_mode
         )
 
 def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
@@ -107,8 +107,8 @@ def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
     An inhomogeneous rate holds each value until the next time, as in NEST.
     """
 
-    dt = backend._simulation_config.resolution
-    t = np.arange(int(np.ceil(backend._simulation_config.t_sim / dt)) + 1) * dt
+    dt = backend.simulation_config.resolution
+    t = np.arange(int(np.ceil(backend.simulation_config.t_sim / dt)) + 1) * dt
 
     if isinstance(stimulus, DcStimulusConfig):
         curve = np.full(len(t), stimulus.amplitude)
@@ -129,12 +129,12 @@ def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
     step x curve) and each population's curve in it (0: no current).
     """
 
-    curves = [np.zeros(int(np.ceil(backend._simulation_config.t_sim / backend._simulation_config.resolution)) + 1)]
+    curves = [np.zeros(int(np.ceil(backend.simulation_config.t_sim / backend.simulation_config.resolution)) + 1)]
     index = {}
-    for pop_name in backend._network.populations:
+    for pop_name in backend.network.populations:
         dc = [
             _stimulus_curve(backend, stimulus)
-            for stimulus in backend._network.stimuli
+            for stimulus in backend.network.stimuli
             if isinstance(stimulus, DcStimulusConfig) and pop_name in stimulus.targets
         ]
         index[pop_name] = 0
@@ -142,7 +142,7 @@ def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
             index[pop_name] = len(curves)
             curves.append(np.sum(dc, axis=0))
     table = b2.TimedArray(
-        np.column_stack(curves) * b2.pA, dt=backend._simulation_config.resolution * b2.ms, name="dc_current"
+        np.column_stack(curves) * b2.pA, dt=backend.simulation_config.resolution * b2.ms, name="dc_current"
     )
     return table, index
 
@@ -155,9 +155,9 @@ def create_stimuli(backend: Brian2Backend) -> None:
     """
 
     logger.info("Creating stimulus devices:")
-    resolution = backend._simulation_config.resolution * b2.ms
+    resolution = backend.simulation_config.resolution * b2.ms
 
-    for stimulus in backend._network.stimuli:
+    for stimulus in backend.network.stimuli:
         if isinstance(stimulus, DcStimulusConfig):
             continue
         logger.info(
@@ -169,23 +169,23 @@ def create_stimuli(backend: Brian2Backend) -> None:
         )
         rate = b2.TimedArray(
             _stimulus_curve(backend, stimulus) * b2.Hz, dt=resolution,
-            name=f"stimulus_{backend._network.stimuli.index(stimulus)}_rate",
+            name=f"stimulus_{backend.network.stimuli.index(stimulus)}_rate",
         )
 
         for target in stimulus.targets:
-            size = backend._network.populations[target].size
-            group = backend._group_of[target]
+            size = backend.network.populations[target].size
+            group = backend.group_of[target]
             name = f"stimulus_{len(backend.stimulus_generators)}"
             generator = b2.PoissonGroup(
                 size, rates="stimulus_rate(t)", namespace={"stimulus_rate": rate}, name=name
             )
             backend.stimulus_generators.append(generator)
             weight, delay = stimulus.weight, stimulus.delay
-            backend._make_synapses(
+            backend.make_synapses(
                 generator,
                 group,
                 stimulus.synapse,
-                backend._target_variable(target, stimulus.synapse, weight.mean),
+                backend.target_variable(target, stimulus.synapse, weight.mean),
                 [({"j": f"i + {group.start(target)}"}, {})],
                 f"{name}_synapses",
                 "0",
