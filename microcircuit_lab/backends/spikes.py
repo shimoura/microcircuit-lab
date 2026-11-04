@@ -54,13 +54,38 @@ def spikes_in_id_range(
     return {"senders": senders[left:right], "times": times[left:right]}
 
 
-def read_csv_spikes(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """The spikes of a ``spikes.csv``, sorted by sender."""
+def _read_columns(paths: list[Path], columns: list[str], csv_options: dict) -> list[np.ndarray]:
+    """The named columns of one or more files of the same kind, joined in file order."""
 
-    table = pd.read_csv(path)
-    senders = table["sender"].to_numpy(dtype=int)
-    times = table["time_ms"].to_numpy(dtype=float)
-    return sort_by_sender(senders, times)
+    tables = [pd.read_csv(path, usecols=columns, **csv_options) for path in paths]
+    return [np.concatenate([table[column].to_numpy() for table in tables]) for column in columns]
+
+
+def read_spike_files(paths: list[Path], **csv_options) -> tuple[np.ndarray, np.ndarray]:
+    """
+    The spikes of files with the columns ``sender`` and ``time_ms`` (e.g. one
+    per thread), sorted by sender. ``csv_options`` describe the files to
+    ``pandas.read_csv``: none for a ``spikes.csv``, a tab separator and comment
+    lines for NEST's ascii files.
+    """
+
+    if not paths:
+        return empty_spikes()
+    senders, times = _read_columns(paths, ["sender", "time_ms"], csv_options)
+    return sort_by_sender(senders.astype(int), times.astype(float))
+
+
+def read_recording_files(
+    paths: list[Path], variable: str, **csv_options
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    The samples of a recorded variable, from files with the columns
+    ``sender``, ``time_ms`` and ``variable``, as ``(senders, times, values)``
+    sorted by sender, then time. ``csv_options`` as in :func:`read_spike_files`.
+    """
+
+    senders, times, values = _read_columns(paths, ["sender", "time_ms", variable], csv_options)
+    return sort_recording(senders.astype(int), times.astype(float), values.astype(float))
 
 
 def write_csv_spikes(path: Path, senders: np.ndarray, times: np.ndarray) -> None:

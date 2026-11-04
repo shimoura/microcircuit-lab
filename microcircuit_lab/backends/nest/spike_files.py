@@ -15,14 +15,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
-from microcircuit_lab.backends.spikes import (
-    empty_spikes,
-    read_csv_spikes,
-    sort_by_sender,
-    sort_recording,
-)
+from microcircuit_lab.backends.spikes import read_recording_files, read_spike_files
 
 
 def ascii_spike_files(recordings_dir: Path) -> list[Path]:
@@ -32,15 +26,9 @@ def ascii_spike_files(recordings_dir: Path) -> list[Path]:
 
 
 def read_ascii_spikes(paths: list[Path]) -> tuple[np.ndarray, np.ndarray]:
-    """The spikes of NEST's ascii files, sorted by sender."""
+    """The spikes of NEST's ascii files (tab-separated, with comment lines), sorted by sender."""
 
-    if not paths:
-        return empty_spikes()
-
-    tables = [pd.read_csv(path, sep="\t", comment="#") for path in paths]
-    senders = np.concatenate([table["sender"].to_numpy() for table in tables]).astype(int)
-    times = np.concatenate([table["time_ms"].to_numpy() for table in tables]).astype(float)
-    return sort_by_sender(senders, times)
+    return read_spike_files(paths, sep="\t", comment="#")
 
 
 def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -62,7 +50,7 @@ def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
 
     csv_path = recordings_dir / "spikes.csv"
     if csv_path.exists():
-        return read_csv_spikes(csv_path)
+        return read_spike_files([csv_path])
 
     raise ValueError(
         f"No spike recordings under {recordings_dir} (expected 'spikes-*.dat' or "
@@ -90,9 +78,4 @@ def read_saved_variable(
             f"No recording of {variable!r} under {recordings_dir} (expected "
             f"'{variable}-*.dat'). Simulate the run again with it in recording.variables."
         )
-    tables = [pd.read_csv(path, sep="\t", comment="#") for path in paths]
-    return sort_recording(
-        np.concatenate([table["sender"].to_numpy() for table in tables]).astype(int),
-        np.concatenate([table["time_ms"].to_numpy() for table in tables]).astype(float),
-        np.concatenate([table[variable].to_numpy() for table in tables]).astype(float),
-    )
+    return read_recording_files(paths, variable, sep="\t", comment="#")

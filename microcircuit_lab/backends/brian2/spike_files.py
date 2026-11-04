@@ -12,9 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
-from microcircuit_lab.backends.spikes import read_csv_spikes, sort_recording
+from microcircuit_lab.backends.spikes import read_recording_files, read_spike_files
 
 
 def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -33,7 +32,7 @@ def read_saved_spikes(recordings_dir: Path) -> tuple[np.ndarray, np.ndarray]:
             f"No spike recordings under {recordings_dir} (expected 'spikes.csv'). "
             "Simulate the run again with spike_recording enabled."
         )
-    return read_csv_spikes(csv_path)
+    return read_spike_files([csv_path])
 
 
 def read_saved_variable(
@@ -56,9 +55,4 @@ def read_saved_variable(
             f"No recording of {variable!r} under {recordings_dir} (expected "
             f"'{variable}.csv'). Simulate the run again with it in recording.variables."
         )
-    table = pd.read_csv(csv_path)
-    return sort_recording(
-        table["sender"].to_numpy().astype(int),
-        table["time_ms"].to_numpy().astype(float),
-        table[variable].to_numpy().astype(float),
-    )
+    return read_recording_files([csv_path], variable)
