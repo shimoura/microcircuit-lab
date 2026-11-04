@@ -282,7 +282,22 @@ bound_mode: redraw
 connections_file: connections.csv
 ```
 
-The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`); columns with a default can be left out. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`). This entry of `connectivity.yaml`
+
+```yaml
+- {source: E, target: I, rule: pairwise_bernoulli, p: 0.1,
+   weight: {mean: 87.8, rel_std: 0.1, distribution: normal, unit: pA},
+   delay: {mean: 1.5, rel_std: 0.5, distribution: normal}}
+```
+
+is this row of `connections.csv`:
+
+```
+source,target,rule,p,weight.mean,weight.rel_std,weight.distribution,weight.unit,delay.mean,delay.rel_std,delay.distribution
+E,I,pairwise_bernoulli,0.1,87.8,0.1,normal,pA,1.5,0.5,normal
+```
+
+The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. `parameters` is written as JSON text, e.g. `"{""a"": 1.0}"`. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 
@@ -391,6 +406,7 @@ write_network_directory(
 - A builder is found by its folder `builders/<model>/` with a `main(argv=None)`; there is no list to edit. `microcircuit-lab generate` with no name lists what it found.
 - `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
+- `write_network_directory` writes every value, defaults included (`bound_mode: redraw`, `rule`, `distribution: normal`), so the files keep their meaning if a default of the core changes.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 

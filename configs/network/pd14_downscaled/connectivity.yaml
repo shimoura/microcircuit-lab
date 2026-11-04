@@ -1,3 +1,4 @@
+bound_mode: redraw
 connections:
 - {source: L23_E, target: L23_E, rule: fixed_total_number, n_synapses: 454998, weight: {mean: 277.67483746045554, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 1.5, rel_std: 0.5, distribution: normal}}
 - {source: L23_I, target: L23_E, rule: fixed_total_number, n_synapses: 223236, weight: {mean: -1110.6993498418221, rel_std: 0.1, distribution: normal, unit: pA}, delay: {mean: 0.75, rel_std: 0.5, distribution: normal}}

@@ -61,7 +61,7 @@ def write_network_directory(
     poisson_background
         ``{population name: {"rate": ..., "indegree": ..., "weight": ..., "delay": ...}}``.
     bound_mode
-        ``"redraw"`` or ``"clip"``; written only when ``"clip"``.
+        ``"redraw"`` or ``"clip"``; always written, so the file states it.
     scaling
         The record of a scaled network (``scaling.yaml``), which
         :func:`write_network` passes on; ``None`` writes none.
@@ -108,9 +108,7 @@ def write_network_directory(
 
     table = flow_records if compact else (lambda records: records)
 
-    connectivity_payload: dict[str, Any] = {}
-    if bound_mode != "redraw":
-        connectivity_payload["bound_mode"] = bound_mode
+    connectivity_payload: dict[str, Any] = {"bound_mode": bound_mode}
     if isinstance(connections, ConnectionTable):
         # A large network: the table goes to a CSV file, named in connectivity.yaml.
         connections.write_csv(directory / "connections.csv")

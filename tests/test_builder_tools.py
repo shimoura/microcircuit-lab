@@ -5,10 +5,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import yaml
 
 from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.config.connection_table import ConnectionTable
 
 NEURON = {
     "C_m": 250.0,
@@ -104,6 +106,18 @@ def test_compact_false_writes_block_style_with_the_same_content(tmp_path: Path) 
     assert "- name:" in (tmp_path / "block" / "net" / "populations.yaml").read_text()
     assert "- {source:" in (tmp_path / "block" / "net" / "connectivity.yaml").read_text()
     assert block == compact
+
+
+def test_a_connection_table_is_written_with_its_default_values(tmp_path: Path) -> None:
+    parts = _parts(tmp_path)
+    parts["connections"] = ConnectionTable.from_yaml_rows(parts["connections"])
+    network = write_network_directory(**parts)
+
+    columns = set(pd.read_csv(parts["path"] / "connections.csv", nrows=0).columns)
+    assert {"rule", "weight.distribution", "delay.distribution"} <= columns
+    # a column no row sets is left out
+    assert "synapse" not in columns
+    assert network.connections == parts["connections"]
 
 
 def test_an_invalid_part_raises_with_the_field_named(tmp_path: Path) -> None:
