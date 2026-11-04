@@ -160,8 +160,8 @@ class Brian2Backend:
                 f"Unknown Brian2 codegen_target {codegen_target!r}; use 'auto', 'cython' or 'numpy'."
             )
 
-        self._network = network
-        self._simulation_config = simulation_config
+        self.network = network
+        self.simulation_config = simulation_config
         self._device = device
         self._codegen_target = codegen_target
         self._standalone_directory = standalone_directory
@@ -169,12 +169,12 @@ class Brian2Backend:
         self._rng = np.random.default_rng(simulation_config.rng_seed)
         self._standalone_dir: tempfile.TemporaryDirectory | None = None
         self._neuron_models: dict[str, models.NeuronModel] = {}
-        self._synapse_models: dict[str, models.SynapseModel] = {}
+        self.synapse_models: dict[str, models.SynapseModel] = {}
         self._connection_rules: dict[str, models.ConnectionRule] = {}
         self._distributions: dict[str, models.Distribution] = {}
         self._checked = False
-        self._groups: list[_Group] = []
-        self._group_of: dict[str, _Group] = {}
+        self.groups: list[_Group] = []
+        self.group_of: dict[str, _Group] = {}
 
         #: Each population as a Brian2 subgroup of its NeuronGroup.
         self.populations: dict[str, b2.Subgroup] = {}
@@ -184,7 +184,7 @@ class Brian2Backend:
         self.spike_recorders: list[tuple[_Group, b2.SpikeMonitor]] = []
         #: The monitors of each recorded variable: one per group.
         self.multimeters: dict[str, list[tuple[_Group, b2.StateMonitor]]] = {}
-        self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
+        self.cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
     def version(self) -> str:
         return b2.__version__
@@ -220,20 +220,20 @@ class Brian2Backend:
                 self._standalone_dir = tempfile.TemporaryDirectory(prefix="brian2_standalone_")
                 directory = self._standalone_dir.name
             b2.set_device("cpp_standalone", directory=str(directory), build_on_run=True)
-            b2.prefs.devices.cpp_standalone.openmp_threads = self._simulation_config.local_num_threads
+            b2.prefs.devices.cpp_standalone.openmp_threads = self.simulation_config.local_num_threads
         else:
-            if self._simulation_config.local_num_threads > 1:
+            if self.simulation_config.local_num_threads > 1:
                 logger.warning(
                     "Brian2's runtime device runs on one thread; local_num_threads=%d is used "
                     "only with the cpp_standalone device.",
-                    self._simulation_config.local_num_threads,
+                    self.simulation_config.local_num_threads,
                 )
             b2.set_device("runtime")
             b2.prefs.codegen.target = self._codegen_target
 
-        b2.defaultclock.dt = self._simulation_config.resolution * b2.ms
-        b2.seed(self._simulation_config.rng_seed)
-        self._rng = np.random.default_rng(self._simulation_config.rng_seed)
+        b2.defaultclock.dt = self.simulation_config.resolution * b2.ms
+        b2.seed(self.simulation_config.rng_seed)
+        self._rng = np.random.default_rng(self.simulation_config.rng_seed)
 
     def check(self) -> None:
         """
@@ -247,15 +247,15 @@ class Brian2Backend:
 
         found = models.load_models(self._extensions)
         self._neuron_models = found[models.NeuronModel]
-        self._synapse_models = found[models.SynapseModel]
+        self.synapse_models = found[models.SynapseModel]
         self._connection_rules = found[models.ConnectionRule]
         self._distributions = found[models.Distribution]
-        for population in self._network.populations:
+        for population in self.network.populations:
             self.neuron_model(population)
-        for synapse in self._network.synapses:
+        for synapse in self.network.synapses:
             self.synapse_model(synapse)
 
-        table = self._network.connections
+        table = self.network.connections
         for column, kind, known in (
             ("rule", "rule", self._connection_rules),
             ("weight.distribution", "distribution", self._distributions),
@@ -265,7 +265,7 @@ class Brian2Backend:
             for name in sorted(set(table[column][~np.isin(table[column], shared)].tolist())):
                 if name not in known:
                     raise models.missing_model_error(kind, name, known)
-                if kind == "distribution" and self._network.bound_mode == "redraw" and known[name].redraw_rounds is None:
+                if kind == "distribution" and self.network.bound_mode == "redraw" and known[name].redraw_rounds is None:
                     raise ValueError(
                         f"Distribution {name!r} has no redraw_rounds, which bound_mode: redraw needs: "
                         "set how many times a value past its bound is drawn again (0: clip at once), "
@@ -287,7 +287,7 @@ class Brian2Backend:
         # A fixed delay rounds to a whole number of steps. NEST refuses one that
         # rounds to 0 (below half a step); Brian2 would deliver the spike in the
         # same step. (A drawn delay is kept at the minimum, half a step or more.)
-        shortest = 0.5 * self._simulation_config.resolution
+        shortest = 0.5 * self.simulation_config.resolution
         # A synapse model without on_pre (a gap junction) has no spikes to delay.
         delayed = {name: bool(self.synapse_model(name).on_pre) for name in set(table["synapse"].tolist())}
         has_delay = np.asarray([delayed[name] for name in table["synapse"].tolist()], dtype=bool)
@@ -302,10 +302,10 @@ class Brian2Backend:
                 f"{table['delay.mean'][row]} ms is below half the resolution ({shortest} ms), so it "
                 f"rounds to 0; use at least {shortest} ms."
             )
-        delays = [(f"background input of {name!r}", b.delay) for name, b in self._network.poisson_background.items()]
+        delays = [(f"background input of {name!r}", b.delay) for name, b in self.network.poisson_background.items()]
         delays += [
             (f"stimulus onto {target!r}", stimulus.delay)
-            for stimulus in self._network.stimuli
+            for stimulus in self.network.stimuli
             if not isinstance(stimulus, DcStimulusConfig)
             for target in stimulus.targets
         ]
@@ -325,17 +325,17 @@ class Brian2Backend:
                    (table["weight.mean"] >= 0).tolist(), table["weight.unit"].tolist())
         for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
             users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
-        for name, background in self._network.poisson_background.items():
+        for name, background in self.network.poisson_background.items():
             key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
             users.setdefault(key, f"background input of {name!r}")
-        for stimulus in self._network.stimuli:
+        for stimulus in self.network.stimuli:
             if not isinstance(stimulus, DcStimulusConfig):
                 for target in stimulus.targets:
                     key = (target, stimulus.synapse, stimulus.weight.mean >= 0, stimulus.weight.unit)
                     users.setdefault(key, f"stimulus onto {target!r}")
         for (target, synapse, positive, unit), user in users.items():
-            variable = self._target_variable(target, synapse, 1.0 if positive else -1.0)
-            expected = self._weight_units(target, variable)[1]
+            variable = self.target_variable(target, synapse, 1.0 if positive else -1.0)
+            expected = self.weight_units(target, variable)[1]
             if unit != expected:
                 raise ValueError(
                     f"{user}: the weight is in {unit}, but it adds to {variable!r} of the Brian2 model "
@@ -356,15 +356,15 @@ class Brian2Backend:
 
         self.create_populations()
 
-        if self._simulation_config.recording.spike_recording:
+        if self.simulation_config.recording.spike_recording:
             self.create_spike_recorders()
 
-        if self._simulation_config.recording.variables:
+        if self.simulation_config.recording.variables:
             self.create_multimeters()
 
         self.create_poisson_background()
 
-        if self._network.stimuli:
+        if self.network.stimuli:
             self.create_stimuli()
 
         self.create_connections()
@@ -372,7 +372,7 @@ class Brian2Backend:
     def neuron_model(self, population: str) -> models.NeuronModel:
         """The Brian2 model of a population."""
 
-        name = self._network.populations[population].neuron.model
+        name = self.network.populations[population].neuron.model
         if name not in self._neuron_models:
             raise models.missing_model_error("neuron", name, self._neuron_models)
         return self._neuron_models[name]
@@ -383,16 +383,16 @@ class Brian2Backend:
 
         model = self.neuron_model(population)
         if callable(model.equations):
-            return model.equations(dict(self._network.populations[population].neuron.parameters))
+            return model.equations(dict(self.network.populations[population].neuron.parameters))
         return model.equations
 
     def synapse_model(self, synapse: str | None) -> models.SynapseModel:
         """The Brian2 model of a synapses.yaml entry (None: static_synapse)."""
 
-        name = models.STATIC_SYNAPSE.name if synapse is None else self._network.synapses[synapse].model
-        if name not in self._synapse_models:
-            raise models.missing_model_error("synapse", name, self._synapse_models)
-        return self._synapse_models[name]
+        name = models.STATIC_SYNAPSE.name if synapse is None else self.network.synapses[synapse].model
+        if name not in self.synapse_models:
+            raise models.missing_model_error("synapse", name, self.synapse_models)
+        return self.synapse_models[name]
 
     def create_populations(self) -> None:
         """
@@ -409,7 +409,7 @@ class Brian2Backend:
 
         by_equations: dict[tuple[str, str], _Group] = {}
         values: dict[str, dict] = {}
-        for pop_name, pop_cfg in self._network.populations.items():
+        for pop_name, pop_cfg in self.network.populations.items():
             model = self.neuron_model(pop_name)
             parameters = dict(pop_cfg.neuron.parameters)
             equations = b2.Equations(self._equations_text(pop_name))
@@ -434,16 +434,16 @@ class Brian2Backend:
             group.populations.append(pop_name)
             group.starts.append(group.size)
             group.size += pop_cfg.size
-            self._group_of[pop_name] = group
-        self._groups = list(by_equations.values())
+            self.group_of[pop_name] = group
+        self.groups = list(by_equations.values())
 
         first_id = 1
-        for pop_name, pop_cfg in self._network.populations.items():
+        for pop_name, pop_cfg in self.network.populations.items():
             self.first_ids[pop_name] = first_id
             first_id += pop_cfg.size
 
         dc_curves, dc_index = inputs.dc_curves(self)
-        for group in self._groups:
+        for group in self.groups:
             logger.info(
                 "Creating %s (%d neurons, model %s)", ", ".join(group.populations), group.size, group.model.name
             )
@@ -473,20 +473,20 @@ class Brian2Backend:
                 refractory=group.model.refractory,
                 method=group.model.method,
                 namespace=namespace,
-                name=f"group_{self._groups.index(group)}",
+                name=f"group_{self.groups.index(group)}",
             )
             group.neurons = neurons
             self._set_group_values(group, values)
-            sizes = [self._network.populations[pop].size for pop in group.populations]
+            sizes = [self.network.populations[pop].size for pop in group.populations]
             neurons.population_index = np.repeat(np.arange(len(group.populations)), sizes)
             neurons.index = np.concatenate([np.arange(size) for size in sizes])
             if has_dc:
                 neurons.dc_index = np.repeat(
                     [dc_index[pop] for pop in group.populations],
-                    [self._network.populations[pop].size for pop in group.populations],
+                    [self.network.populations[pop].size for pop in group.populations],
                 )
             for pop_name, start in zip(group.populations, group.starts):
-                self.populations[pop_name] = neurons[start:start + self._network.populations[pop_name].size]
+                self.populations[pop_name] = neurons[start:start + self.network.populations[pop_name].size]
 
     def _set_group_values(self, group: _Group, values: dict[str, dict]) -> None:
         """Set the parameters and initial state of a group's neurons, given in
@@ -497,7 +497,7 @@ class Brian2Backend:
             array = np.zeros(group.size)
             for pop_name, start in zip(group.populations, group.starts):
                 if name in values[pop_name]:
-                    size = self._network.populations[pop_name].size
+                    size = self.network.populations[pop_name].size
                     array[start:start + size] = distributions.per_neuron_value(
                         values[pop_name][name], size, self._rng
                     )
@@ -517,7 +517,7 @@ class Brian2Backend:
                 raise ValueError(f"{where}: {name!r} must be a number in the Brian2 backend.")
             setattr(target, name, value * getattr(b2, unit, 1))
 
-    def _target_variable(self, target: str, synapse: str | None, weight_mean: float) -> str:
+    def target_variable(self, target: str, synapse: str | None, weight_mean: float) -> str:
         """
         The variable of the target population that a connection adds to: the
         one of its synapse's receptor port (a port name is the variable), or
@@ -526,7 +526,7 @@ class Brian2Backend:
         """
 
         model = self.neuron_model(target)
-        port = self._network.receptor_port(synapse)
+        port = self.network.receptor_port(synapse)
         if isinstance(port, str):
             names = _equations(self._equations_text(target)).names
             if port not in names:
@@ -552,7 +552,7 @@ class Brian2Backend:
             )
         return variable
 
-    def _weight_units(self, target: str, variable: str) -> tuple[str, str]:
+    def weight_units(self, target: str, variable: str) -> tuple[str, str]:
         """The units of the weights onto ``variable`` of ``target``: its name in
         equations and the package's unit (pA for a current, nS for a
         conductance, mV for a voltage)."""
@@ -565,7 +565,7 @@ class Brian2Backend:
             )
         return _units(equations[variable].dim, f"{variable!r} of {target!r}")
 
-    def _make_synapses(
+    def make_synapses(
         self,
         source: b2.Group,
         target: _Group,
@@ -591,7 +591,7 @@ class Brian2Backend:
 
         projects = projects or {"weight": {}, "delay": {}}
 
-        si_unit, unit = self._weight_units(target.populations[0], variable)
+        si_unit, unit = self.weight_units(target.populations[0], variable)
         model = self.synapse_model(synapse)
 
         def code(on):
@@ -630,14 +630,14 @@ class Brian2Backend:
 
         if si_unit == "siemens":
             weights = {k: (abs(mean), *rest) for k, (mean, *rest) in weights.items()}
-        bound_mode = self._network.bound_mode
+        bound_mode = self.network.bound_mode
         distributions.set_weights(synapses, "w_syn", index, weights, unit, bound_mode, projects["weight"])
         if "pre" in pathways:  # a gap junction has no pathway of spikes to delay
             distributions.set_delays(
-                synapses, index, delays, bound_mode, self._simulation_config.resolution, projects["delay"]
+                synapses, index, delays, bound_mode, self.simulation_config.resolution, projects["delay"]
             )
 
-        parameters = {} if synapse is None else self._network.synapses[synapse].parameters
+        parameters = {} if synapse is None else self.network.synapses[synapse].parameters
         self._set_values(
             synapses,
             b2.Equations(model.model),
@@ -659,29 +659,29 @@ class Brian2Backend:
 
         logger.info("Creating recurrent connections:")
 
-        table = self._network.connections
+        table = self.network.connections
         column = {name: table[name].tolist() for name in COLUMNS}
         objects: dict[tuple, list[int]] = defaultdict(list)
         seen: dict[tuple, int] = defaultdict(int)
         for row in range(len(table)):
             source, target, synapse = column["source"][row], column["target"][row], column["synapse"][row]
-            variable = self._target_variable(target, synapse, column["weight.mean"][row])
-            key = (id(self._group_of[source]), id(self._group_of[target]), synapse, variable)
+            variable = self.target_variable(target, synapse, column["weight.mean"][row])
+            key = (id(self.group_of[source]), id(self.group_of[target]), synapse, variable)
             pair = (*key, source, target)
             objects[(*key, seen[pair])].append(row)
             seen[pair] += 1
 
         for (_, _, synapse, variable, _), rows in objects.items():
-            source = self._group_of[column["source"][rows[0]]]
-            target = self._group_of[column["target"][rows[0]]]
+            source = self.group_of[column["source"][rows[0]]]
+            target = self.group_of[column["target"][rows[0]]]
             placed = [
                 connections.Row(
                     rule=column["rule"][row],
                     number=column["number"][row],
                     source_start=source.start(column["source"][row]),
-                    source_size=self._network.populations[column["source"][row]].size,
+                    source_size=self.network.populations[column["source"][row]].size,
                     target_start=target.start(column["target"][row]),
-                    target_size=self._network.populations[column["target"][row]].size,
+                    target_size=self.network.populations[column["target"][row]].size,
                     autapses=True if column["allow_autapses"][row] is None else bool(column["allow_autapses"][row]),
                     multapses=True if column["allow_multapses"][row] is None else bool(column["allow_multapses"][row]),
                     same_population=column["source"][row] == column["target"][row],
@@ -713,7 +713,7 @@ class Brian2Backend:
                     column["delay.mean"][row], column["delay.rel_std"][row],
                     column["delay.distribution"][row], column["delay.minimum"][row], number,
                 )
-            self._make_synapses(
+            self.make_synapses(
                 source.neurons, target, synapse, variable, calls, name,
                 f"population_index_pre*{n_target} + population_index_post", weights, delays, projects,
             )
@@ -724,7 +724,7 @@ class Brian2Backend:
         """
 
         first_id = self.first_ids[name]
-        return np.arange(first_id, first_id + self._network.populations[name].size)
+        return np.arange(first_id, first_id + self.network.populations[name].size)
 
     def create_spike_recorders(self) -> None:
         """
@@ -764,14 +764,14 @@ class Brian2Backend:
         """
 
         network = b2.Network(
-            *(group.neurons for group in self._groups),
+            *(group.neurons for group in self.groups),
             *self.stimulus_generators,
             *self.synapses,
             *(monitor for _, monitor in self.spike_recorders),
             *(monitor for monitors in self.multimeters.values() for _, monitor in monitors),
         )
-        network.run(self._simulation_config.t_sim * b2.ms)
-        self._cached_spikes = None
+        network.run(self.simulation_config.t_sim * b2.ms)
+        self.cached_spikes = None
 
     def print_statistics(self) -> None:
         """
@@ -788,8 +788,8 @@ class Brian2Backend:
         log_firing_rates(
             logger,
             self.get_spike_events,
-            {name: pop.size for name, pop in self._network.populations.items()},
-            self._simulation_config.t_sim,
+            {name: pop.size for name, pop in self.network.populations.items()},
+            self.simulation_config.t_sim,
         )
 
 

@@ -35,7 +35,7 @@ def create_spike_recorders(backend: Brian2Backend) -> None:
     Create one spike monitor per group.
     """
 
-    for group in backend._groups:
+    for group in backend.groups:
         backend.spike_recorders.append((group, b2.SpikeMonitor(group.neurons, name=f"{group.neurons.name}_spikes")))
 
 def create_multimeters(backend: Brian2Backend) -> None:
@@ -45,15 +45,15 @@ def create_multimeters(backend: Brian2Backend) -> None:
     the populations the variable is recorded from.
     """
 
-    recording = backend._simulation_config.recording
+    recording = backend.simulation_config.recording
     for name, variable in recording.variables.items():
         recorded = recording.recorded_populations(name, backend.populations)
         backend.multimeters[name] = []
-        for group in backend._groups:
+        for group in backend.groups:
             record = []
             for pop, start in zip(group.populations, group.starts):
                 if pop in recorded:
-                    size = backend._network.populations[pop].size
+                    size = backend.network.populations[pop].size
                     record.append(start + np.arange(min(variable.sample_size or size, size)))
             if record:
                 monitor = b2.StateMonitor(
@@ -76,20 +76,20 @@ def load_spikes(backend: Brian2Backend) -> tuple[np.ndarray, np.ndarray]:
     times as NEST gives them. Kept until the next simulate().
     """
 
-    if backend._cached_spikes is not None:
-        return backend._cached_spikes
+    if backend.cached_spikes is not None:
+        return backend.cached_spikes
 
     if not backend.spike_recorders:
-        backend._cached_spikes = spikes.empty_spikes()
-        return backend._cached_spikes
+        backend.cached_spikes = spikes.empty_spikes()
+        return backend.cached_spikes
 
     senders = [node_ids(backend, group, np.asarray(monitor.i[:], dtype=int)) for group, monitor in backend.spike_recorders]
     # Brian2 gives a spike the time at the start of the step in which the
     # threshold is crossed, NEST the time at its end: one step later.
-    step = backend._simulation_config.resolution
+    step = backend.simulation_config.resolution
     times = [np.asarray(monitor.t / b2.ms, dtype=float) + step for _, monitor in backend.spike_recorders]
-    backend._cached_spikes = spikes.sort_by_sender(np.concatenate(senders), np.concatenate(times))
-    return backend._cached_spikes
+    backend.cached_spikes = spikes.sort_by_sender(np.concatenate(senders), np.concatenate(times))
+    return backend.cached_spikes
 
 def save_recordings(backend: Brian2Backend, run_dir: Path) -> list[Path]:
     """

@@ -53,8 +53,8 @@ class NestBackend:
             time.
         """
 
-        self._network = network
-        self._simulation_config = simulation_config
+        self.network = network
+        self.simulation_config = simulation_config
         self._nest_modules = nest_modules
         self._recordings_dir: Path | None = None
         self._receptor_types: dict[str, dict] = {}
@@ -70,7 +70,7 @@ class NestBackend:
         #: One multimeter per recorded variable.
         self.multimeters: dict[str, nest.NodeCollection] = {}
         self.stimulus_generators: list[tuple] = []
-        self._cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
+        self.cached_spikes: tuple[np.ndarray, np.ndarray] | None = None
 
     def version(self) -> str:
         return nest.__version__
@@ -109,10 +109,10 @@ class NestBackend:
             nest.Install(module)
 
         nest.set(
-            resolution=self._simulation_config.resolution,
-            local_num_threads=self._simulation_config.local_num_threads,
-            rng_seed=self._simulation_config.rng_seed,
-            print_time=self._simulation_config.print_time,
+            resolution=self.simulation_config.resolution,
+            local_num_threads=self.simulation_config.local_num_threads,
+            rng_seed=self.simulation_config.rng_seed,
+            print_time=self.simulation_config.print_time,
         )
 
         if self._recordings_dir is not None:
@@ -133,7 +133,7 @@ class NestBackend:
         """
 
         for what in ("weight", "delay"):
-            names = self._network.connections[f"{what}.distribution"]
+            names = self.network.connections[f"{what}.distribution"]
             project = np.flatnonzero(~np.isin(names, SHARED_DISTRIBUTIONS))
             if project.size:
                 raise ValueError(
@@ -151,18 +151,18 @@ class NestBackend:
         self.create_synapse_models()
         self.create_populations()
 
-        if self._simulation_config.recording.spike_recording:
+        if self.simulation_config.recording.spike_recording:
             self.create_spike_recorders()
             self.connect_spike_recorders()
 
-        if self._simulation_config.recording.variables:
+        if self.simulation_config.recording.variables:
             self.create_multimeters()
             self.connect_multimeters()
 
         self.create_poisson_background()
         self.connect_poisson_background()
 
-        if self._network.stimuli:
+        if self.network.stimuli:
             self.create_stimuli()
             self.connect_stimuli()
 
@@ -173,7 +173,7 @@ class NestBackend:
         Create all neuron populations.
         """
 
-        for pop_name, pop_cfg in self._network.populations.items():
+        for pop_name, pop_cfg in self.network.populations.items():
             logger.info(
                 "Creating %s (%d neurons)",
                 pop_name,
@@ -215,7 +215,7 @@ class NestBackend:
         a copy of its ``model`` with its ``parameters``.
         """
 
-        for name, entry in self._network.synapses.items():
+        for name, entry in self.network.synapses.items():
             nest.CopyModel(entry.model, name, entry.parameters)
 
     def synapse_spec(self, weight, delay, synapse: str | None, target: str) -> dict:
@@ -229,9 +229,9 @@ class NestBackend:
         spec = {"weight": weight, "delay": delay}
         if synapse is not None:
             spec["synapse_model"] = synapse
-            receptor_port = self._network.receptor_port(synapse)
+            receptor_port = self.network.receptor_port(synapse)
             if isinstance(receptor_port, str):
-                model = self._network.populations[target].neuron.model
+                model = self.network.populations[target].neuron.model
                 if model not in self._receptor_types:
                     self._receptor_types[model] = nest.GetDefaults(model).get("receptor_types", {})
                 names = self._receptor_types[model]
@@ -250,7 +250,7 @@ class NestBackend:
         """The NEST weight and delay of a background input or stimulus, from its
         ``weight`` and ``delay`` as written in the config files."""
 
-        bound_mode = self._network.bound_mode
+        bound_mode = self.network.bound_mode
         return (
             distributions.create_weight_spec(weight.mean, weight.rel_std, weight.distribution, bound_mode),
             distributions.create_delay_parameter(
@@ -274,8 +274,8 @@ class NestBackend:
             "pairwise_bernoulli": "p",
         }
 
-        table = self._network.connections
-        bound_mode = self._network.bound_mode
+        table = self.network.connections
+        bound_mode = self.network.bound_mode
         resolution = nest.resolution
         rows_per_piece = 100_000
 
@@ -373,7 +373,7 @@ class NestBackend:
         NEST's default in-memory mode.
         """
 
-        for name, variable in self._simulation_config.recording.variables.items():
+        for name, variable in self.simulation_config.recording.variables.items():
             params = {"record_from": [name], "interval": variable.interval}
             if self._recordings_dir is not None:
                 params.update({"record_to": "ascii", "label": name})
@@ -385,7 +385,7 @@ class NestBackend:
         not set) of the populations its variable is recorded from.
         """
 
-        recording = self._simulation_config.recording
+        recording = self.simulation_config.recording
         for name, multimeter in self.multimeters.items():
             sample_size = recording.variables[name].sample_size
             for pop_name in recording.recorded_populations(name, self.populations):
@@ -405,7 +405,7 @@ class NestBackend:
         # Populations with the same ``generator`` name share one generator
         # (each neuron still gets its own spike train); the others get their own.
         shared: dict[str, nest.NodeCollection] = {}
-        for pop_name, input_cfg in self._network.poisson_background.items():
+        for pop_name, input_cfg in self.network.poisson_background.items():
             logger.info(
                 "Creating background Poisson input for %s (rate=%g Hz, generator=%s)",
                 pop_name,
@@ -428,7 +428,7 @@ class NestBackend:
         """
 
         for pop_name in self.background_generators:
-            input_cfg = self._network.poisson_background[pop_name]
+            input_cfg = self.network.poisson_background[pop_name]
             weight, delay = self.weight_and_delay(input_cfg.weight, input_cfg.delay)
             nest.Connect(
                 self.background_generators[pop_name],
@@ -444,7 +444,7 @@ class NestBackend:
 
         logger.info("Creating stimulus devices:")
 
-        for stimulus in self._network.stimuli:
+        for stimulus in self.network.stimuli:
             logger.info(
                 "Creating %s stimulus for %s (start=%g, stop=%s)",
                 stimulus.type,
@@ -497,8 +497,8 @@ class NestBackend:
         Run the simulation, discarding any spike events cached from before it.
         """
 
-        nest.Simulate(self._simulation_config.t_sim)
-        self._cached_spikes = None
+        nest.Simulate(self.simulation_config.t_sim)
+        self.cached_spikes = None
 
     def print_statistics(self) -> None:
         """
@@ -515,8 +515,8 @@ class NestBackend:
         log_firing_rates(
             logger,
             self.get_spike_events,
-            {name: pop.size for name, pop in self._network.populations.items()},
-            self._simulation_config.t_sim,
+            {name: pop.size for name, pop in self.network.populations.items()},
+            self.simulation_config.t_sim,
         )
 
     def _load_spikes(self) -> tuple[np.ndarray, np.ndarray]:
@@ -526,18 +526,18 @@ class NestBackend:
         Kept until the next simulate().
         """
 
-        if self._cached_spikes is not None:
-            return self._cached_spikes
+        if self.cached_spikes is not None:
+            return self.cached_spikes
 
         if self.spike_recorder is None:
-            self._cached_spikes = spikes.empty_spikes()
+            self.cached_spikes = spikes.empty_spikes()
         elif self.spike_recorder.get("record_to") == "ascii":
             paths = spike_files.ascii_spike_files(self._recordings_dir)
-            self._cached_spikes = spike_files.read_ascii_spikes(paths)
+            self.cached_spikes = spike_files.read_ascii_spikes(paths)
         else:
-            self._cached_spikes = self._memory_spikes()
+            self.cached_spikes = self._memory_spikes()
 
-        return self._cached_spikes
+        return self.cached_spikes
 
     def _memory_spikes(self) -> tuple[np.ndarray, np.ndarray]:
         """The spikes the recorder kept in memory, sorted by sender."""
