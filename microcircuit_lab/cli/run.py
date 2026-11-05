@@ -112,8 +112,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--area",
         default=None,
-        help="Area to plot for multi-area networks, or 'all' for one set of plots per "
-        "area (plots/<area>/). Overrides the analysis file.",
+        help="Multi-area networks: plot this area only (plots/<area>/), or 'together' for one set "
+        "with every population (plots/). Omitted: one set of plots per area. Overrides the analysis file.",
     )
     parser.add_argument(
         "--reference",
@@ -154,6 +154,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         )
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
+    if args.area == "all":
+        parser.error("--area all was removed: omit --area for one set of plots per area.")
     if args.run_dir is not None:
         simulation_flags = {
             "--simulation": args.simulation,
@@ -244,14 +246,15 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"Run directory: {run.folder}")
 
-    if area == "all":
+    # An area's plots always go to plots/<area>/: without an area, one set per area (none for a
+    # network without areas); "together", one set with every population (the plots' area None).
+    if area == "together":
+        areas, area = [], None
+    elif area is None:
         areas = list_areas(run)
-        if not areas:
-            raise SystemExit("--area all needs a multi-area network (<area>__<population> names).")
-        plot_targets = [(a, run.folder / "plots" / a) for a in areas]
-        area = None
     else:
-        plot_targets = [(area, run.folder / "plots")]
+        areas = [area]
+    plot_targets = [(a, run.folder / "plots" / a) for a in areas] or [(None, run.folder / "plots")]
 
     spike_recording = run.simulation.recording.spike_recording
     if not spike_recording:

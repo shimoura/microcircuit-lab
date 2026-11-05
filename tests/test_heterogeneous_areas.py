@@ -74,6 +74,14 @@ def test_area_selection_finds_each_area():
     assert len(select_populations(run, None, "B")) == 12
 
 
+def test_a_population_without_an_area_is_an_area_of_its_own():
+    run = SimpleNamespace(populations=["V1__E", "TC", "V1__I", "V2__E"])
+
+    assert list_areas(run) == ["V1", "TC", "V2"]
+    assert select_populations(run, None, "TC") == ["TC"]
+    assert select_populations(run, None, "V1") == ["V1__E", "V1__I"]
+
+
 def test_a_single_area_network_has_no_areas():
     run = SimpleNamespace(populations=list(assemble_network(read_network_files("configs/network/toy")).populations))
 

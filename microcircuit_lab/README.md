@@ -617,6 +617,8 @@ microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 
 Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
 
+A multi-area network (populations named `<area>__<population>`, e.g. `V1__L23_E`) gets one set of plots per area, in `plots/<area>/`; a population without `__` next to them (`TC`) is an area of its own. `--area V1` (or `area: V1` in the analysis file) plots that area only, also in `plots/V1/`, and `--area together` one set with every population, in `plots/`, for a small network.
+
 ### Use the bundled functions
 
 ```python
@@ -682,7 +684,7 @@ register_plot("rate_bars", rate_bars)
 microcircuit-lab run --run-dir output/toy/<timestamp> --rate-bars
 ```
 
-The figure is saved in `plots/`, one per area with `--area all`, and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
+The figure is saved in `plots/` (for a multi-area network, one per area in `plots/<area>/`), and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
 
 | Parameter | What you get |
 |---|---|

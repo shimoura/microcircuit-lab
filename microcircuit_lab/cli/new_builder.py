@@ -61,7 +61,8 @@ def main(argv: list[str] | None = None) -> None:
 
     # populations.yaml: one entry per population. initial_state: each neuron's
     # starting membrane potential (mV), drawn from a normal distribution.
-    # All fields: docs/config_files.md.
+    # Several areas: name the populations <area>__<population> (V1__E), and the
+    # plots come one set per area. All fields: docs/config_files.md.
     initial_state = {"V_m": {"distribution": "normal", "mean": -65.0, "std": 5.0}}
     populations = [
         {"name": "E", "size": 800, "neuron": "lif",

@@ -1,4 +1,4 @@
-"""`microcircuit-lab run --area all`: one set of plots per area."""
+"""`microcircuit-lab run`: one set of plots per area of a multi-area network, or one area with --area."""
 
 import importlib
 import json
@@ -64,30 +64,49 @@ def _recording_registry(calls):
     }
 
 
-def test_area_all_on_single_area_network_exits(script, toy_run, monkeypatch):
+def test_area_all_was_removed(script, toy_run, monkeypatch):
     monkeypatch.setattr(sys, "argv", _argv(toy_run, "all"))
-    with pytest.raises(SystemExit, match="multi-area"):
+    with pytest.raises(SystemExit):
         script.main()
 
 
-def test_area_all_plots_each_area_into_its_own_folder(script, toy_run, monkeypatch):
+def test_without_area_each_area_gets_its_own_folder(script, toy_run, monkeypatch):
     calls = []
     monkeypatch.setattr(script, "PLOT_REGISTRY", _recording_registry(calls))
     monkeypatch.setattr(script, "list_areas", lambda simulation: ["A", "B"])
-    monkeypatch.setattr(sys, "argv", _argv(toy_run, "all"))
+    monkeypatch.setattr(sys, "argv", ["microcircuit-lab run", "--run-dir", str(toy_run)])
     script.main()
 
     plots = toy_run / "plots"
     assert calls == [("A", plots / "A" / "raster.png"), ("B", plots / "B" / "raster.png")]
 
 
-def test_single_area_plots_into_plots_dir(script, toy_run, monkeypatch):
+def test_together_plots_every_population_in_one_set(script, toy_run, monkeypatch):
+    calls = []
+    monkeypatch.setattr(script, "PLOT_REGISTRY", _recording_registry(calls))
+    monkeypatch.setattr(script, "list_areas", lambda simulation: ["A", "B"])
+    monkeypatch.setattr(sys, "argv", _argv(toy_run, "together"))
+    script.main()
+
+    assert calls == [(None, toy_run / "plots" / "raster.png")]
+
+
+def test_a_network_without_areas_gets_one_set(script, toy_run, monkeypatch):
+    calls = []
+    monkeypatch.setattr(script, "PLOT_REGISTRY", _recording_registry(calls))
+    monkeypatch.setattr(sys, "argv", ["microcircuit-lab run", "--run-dir", str(toy_run)])
+    script.main()
+
+    assert calls == [(None, toy_run / "plots" / "raster.png")]
+
+
+def test_one_area_plots_into_its_own_folder(script, toy_run, monkeypatch):
     calls = []
     monkeypatch.setattr(script, "PLOT_REGISTRY", _recording_registry(calls))
     monkeypatch.setattr(sys, "argv", _argv(toy_run, "A"))
     script.main()
 
-    assert calls == [("A", toy_run / "plots" / "raster.png")]
+    assert calls == [("A", toy_run / "plots" / "A" / "raster.png")]
 
 
 def test_a_plot_from_the_project_analyses_folder_runs(
