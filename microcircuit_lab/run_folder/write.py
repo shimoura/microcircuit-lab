@@ -334,8 +334,9 @@ def write_final_connections(run_dir: Path, network: NetworkConfig, synapse_lists
     the run) to ``run_dir/final_connections/``: one CSV file per row in
     ``synapses/``, named ``<source>_to_<target>[_<synapse>].csv``, and a
     ``connectivity.yaml`` with those rows as ``rule: from_file``. Copied into
-    a network folder, they run the network again from this state. Returns the
-    files written.
+    a network folder, they run the network again with these weights and
+    delays (a synapse's other variables, e.g. plasticity traces, start
+    again). Returns the files written.
     """
 
     folder = run_dir / "final_connections"
@@ -351,8 +352,9 @@ def write_final_connections(run_dir: Path, network: NetworkConfig, synapse_lists
     write_yaml(
         folder / "connectivity.yaml",
         {"connections": flow_records(rows)},
-        header_comment="The synapses at the end of the run, as rows with rule: from_file. Copy them, with\n"
-        "synapses/, into a network folder to run it again from this state.",
+        header_comment="The weight and delay of each synapse at the end of the run, as rows with rule:\n"
+        "from_file. Copy them, with synapses/, into a network folder to run it again with these\n"
+        "weights and delays (a synapse's other variables, e.g. plasticity traces, start again).",
     )
     return [folder / "connectivity.yaml", *paths]
 

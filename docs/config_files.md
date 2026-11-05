@@ -398,10 +398,11 @@ recording:
       #   least one); omit it to record all
       populations: [E, I]
   # optional, default false · save the weight and delay of every synapse at the end of
-  #   the run, in final_connections/ of the run folder, as rows with rule: from_file
-  #   (e.g. after plasticity): true for every connection, or a list of projections
-  #   ({source: E, target: E}). Off by default: reading them back takes time and memory
-  #   for a large network
+  #   the run (not a synapse's other variables, e.g. plasticity traces), in
+  #   final_connections/ of the run folder, as rows with rule: from_file (e.g. after
+  #   plasticity): true for every connection, or a list of projections ({source: E,
+  #   target: E}). Off by default: reading them back takes time and memory for a large
+  #   network
   final_connections: false
 # optional · where and what to save
 output:

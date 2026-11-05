@@ -67,7 +67,8 @@ class RecordingConfig(FrozenConfig):
     )
     final_connections: bool | list[Projection] = Field(
         default=False,
-        description="save the weight and delay of every synapse at the end of the run, in "
+        description="save the weight and delay of every synapse at the end of the run (not a synapse's "
+        "other variables, e.g. plasticity traces), in "
         "final_connections/ of the run folder, as rows with rule: from_file (e.g. after "
         "plasticity): true for every connection, or a list of projections ({source: E, target: E}). "
         "Off by default: reading them back takes time and memory for a large network",

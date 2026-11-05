@@ -614,7 +614,7 @@ output/<network>/<timestamp>/
   └── synapses/E_to_E_stdp.csv   one file per row: <source>_to_<target>[_<synapse>].csv
   ```
 
-  Copied into a network folder, they run the network again from that state ([Connections from a file](#connections-from-a-file)). It is off by default: NEST takes about 4 µs per synapse to read them back (3 min for pd14's largest projection, 45 M synapses), and it is not supported with several MPI processes yet.
+  Copied into a network folder, they run the network again with those weights and delays ([Connections from a file](#connections-from-a-file)). Only the weight and delay of each synapse are saved: a synapse's other variables (STDP traces, the `u` and `x` of short-term plasticity) start again from their initial values. It is off by default: NEST takes about 4 µs per synapse to read them back (3 min for pd14's largest projection, 45 M synapses), and it is not supported with several MPI processes yet.
 
 ### Reading a run
 
