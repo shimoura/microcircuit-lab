@@ -18,7 +18,6 @@ import brian2 as b2
 import numpy as np
 
 from microcircuit_lab.backends.brian2 import distributions
-from microcircuit_lab.config.connectivity import DelayDistribution
 from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
     InhomogeneousPoissonStimulusConfig,
@@ -29,11 +28,6 @@ if TYPE_CHECKING:
     from microcircuit_lab.backends.brian2.simulator import Brian2Backend, _Group
 
 logger = logging.getLogger(__name__)
-
-
-def _fields(entry) -> dict:
-    """The fields of a weight or delay entry, as distributions.set_drawn takes them."""
-    return {name: getattr(entry, name) for name in DelayDistribution.model_fields}
 
 
 def _background_variables(backend: Brian2Backend, group: _Group) -> dict[str, list[str]]:
@@ -93,7 +87,7 @@ def create_poisson_background(backend: Brian2Backend) -> None:
                     )
                 start, size = group.start(pop_name), backend.network.populations[pop_name].size
                 rates[start:start + size] = background.generator_rate * backend.simulation_config.resolution / 1000.0
-                fields = _fields(background.weight)
+                fields = background.weight.fields
                 # A weight onto a conductance is its size, as in NEST.
                 if backend.weight_units(pop_name, variable)[0] == "siemens" and background.weight.expected < 0:
                     fields = distributions.negated(fields)
@@ -195,6 +189,6 @@ def create_stimuli(backend: Brian2Backend) -> None:
                 [({"j": f"i + {group.start(target)}"}, {})],
                 f"{name}_synapses",
                 "0",
-                {0: (_fields(weight), size)},
-                {0: (_fields(delay), size)},
+                {0: (weight.fields, size)},
+                {0: (delay.fields, size)},
             )

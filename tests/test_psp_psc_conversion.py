@@ -8,7 +8,7 @@ from microcircuit_lab.builder_tools import (
     psc_to_psp,
     psp_to_psc_iaf_psc_exp,
 )
-from microcircuit_lab.config.connectivity import WeightDistribution
+from microcircuit_lab.config.distributions import WeightDistribution
 from microcircuit_lab.config.neurons import NeuronEntry
 
 

@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
+from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.distributions import SHARED_DISTRIBUTIONS
 from microcircuit_lab.project_code import find_definitions
 
 EXTENSIONS_FOLDER = Path("extensions") / "brian2"
@@ -135,7 +136,8 @@ class ConnectionRule:
         As for ``brian2.Synapses.connect``: which pairs may connect, the
         probability that such a pair does, and how many synapses it then
         gets. Brian2 expressions, which can use the connection's
-        ``parameters`` (as constants), the variables of the pre- and
+        arguments (``{rule: my_rule, width: 10}``: ``width``, as a
+        constant), the variables of the pre- and
         post-synaptic neurons (``V_m_pre``, ``V_m_post``), and
         ``index_pre`` / ``index_post``: each neuron's index within its
         population. A neuron is not connected to itself when the connection
@@ -151,20 +153,23 @@ class ConnectionRule:
 @dataclass(frozen=True)
 class Distribution:
     """
-    A distribution of the project, for the weights or delays of connections.
+    A distribution of the project, for the weights or delays of connections
+    and for values drawn per neuron.
 
     Parameters
     ----------
     name
-        The name ``connectivity.yaml`` gives as a weight's or delay's
+        The name a weight, delay or neuron value gives as its
         ``distribution``.
     expression
-        A Brian2 expression for each synapse's value, as a number in the
-        package's units (pA or nS for a weight, ms for a delay). It can use
+        A Brian2 expression for each value, as a number in the package's
+        units (pA or nS for a weight, ms for a delay, the variable's for a
+        neuron value). It can use
         the fields the entry gives (``mean``, ``std``, ``min``, ``max``), its
-        ``parameters``, the variables of the pre- and post-synaptic neurons
-        (``V_m_pre``), and ``index_pre`` / ``index_post`` (see
-        :class:`ConnectionRule`).
+        arguments (``{distribution: my_distribution, length: 20, ...}``:
+        ``length``), and for a weight or delay the variables of the pre- and
+        post-synaptic neurons (``V_m_pre``) and ``index_pre`` /
+        ``index_post`` (see :class:`ConnectionRule`).
     redraw_rounds
         For an entry with ``bound_mode: redraw``, how many times a value
         past its ``lower_bound`` or ``upper_bound`` is drawn again before it
@@ -204,16 +209,17 @@ def load_models(extensions: Sequence[str] = ()) -> dict[type, dict[str, Any]]:
     return found
 
 
-def missing_model_error(kind: str, name: str, known: dict) -> ValueError:
+def missing_model_error(kind: str, name: str, known: dict, where: str | None = None) -> ValueError:
     """The error for a model that ``neurons.yaml`` or ``synapses.yaml`` names,
-    or a rule that ``connectivity.yaml`` names, but the project does not
+    a rule that ``connectivity.yaml`` names, or a distribution that a weight,
+    delay or neuron value names (``where``), but the project does not
     define, saying where to define it."""
 
     what, file, cls = {
         "neuron": ("neuron model", "neurons.yaml", "NeuronModel"),
         "synapse": ("synapse model", "synapses.yaml", "SynapseModel"),
         "rule": ("connection rule", "connectivity.yaml", "ConnectionRule"),
-        "distribution": ("distribution", "connectivity.yaml", "Distribution"),
+        "distribution": ("distribution", where, "Distribution"),
     }[kind]
     return ValueError(
         f"Brian2 has no {what} {name!r} (named in {file}). Define it as a {cls} in a file of "

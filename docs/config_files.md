@@ -12,7 +12,7 @@ One folder per network, one file per part. A population is named once, in `popul
 
 What this means for a model:
 
-- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in `nest.random` works, with its arguments as keys.
+- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, as weights and delays are, e.g. `{distribution: normal, mean: -58, std: 10}`, with bounds if needed; another name is looked up by the simulator (e.g. NEST's `exponential`, with `beta`) or the project (`extensions/`).
 - **Connections are set per pair of populations**: an entry for each source and target, with a rule and its number (`n_synapses` in total, an `indegree`, an `outdegree` or a probability `p`) and the distributions the weights and delays are drawn from. A pair can have several entries, one per synapse in `synapses.yaml` (e.g. AMPA and NMDA on their own receptor ports). PSP weights and the scaling compensation are only computed for the default receptor port.
 - **So, for neurons with another model or other parameters, or wired differently, make a separate population.** In `configs/network/toy_stimulated/`, `E` (`iaf_psc_exp`) and `E_adex` (`aeif_cond_exp`) are two populations, each with its own connections.
 - **Several populations can share one neuron entry**, e.g. one `excitatory` entry for the excitatory populations of every layer.
@@ -133,7 +133,7 @@ connections:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
     #   all_to_all, with no number; or another rule, which the simulator looks up, with
-    #   parameters
+    #   its arguments as keys of their own (e.g. pairwise_avg_num_conns: 0.3)
     rule: fixed_total_number
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
@@ -145,9 +145,6 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
-    # optional · mapping · only for a rule that is not shared: its parameters, e.g.
-    #   {width: 10, p0: 0.5}
-    parameters:
     # optional · true or false · whether a neuron may connect to itself; omit for the
     #   simulator's default
     allow_autapses:
@@ -159,24 +156,25 @@ connections:
     # required · weight of each synapse
     weight:
       # optional · text · how each weight is drawn: normal or lognormal, with mean and
-      #   std; uniform, with min and max; or the name of a project distribution, which
-      #   the backend defines, with parameters. Omit it for a fixed weight
+      #   std; uniform, with min and max; or another name, which the simulator looks up
+      #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
+      #   keys of their own (e.g. beta: 20) and the mean of the distribution. Omit it
+      #   for a fixed weight
       distribution: normal
       # optional · number · a fixed weight, the same for every synapse
       value:
-      # optional · number · mean of the drawn weights (normal, lognormal); a negative
+      # optional · number · mean of the distribution the weights are drawn from, before
+      #   any bound (normal, lognormal: of the weights, not of their log); a negative
       #   weight is inhibitory
       mean: 87.8
-      # optional · number ≥ 0 · standard deviation of the drawn weights (normal,
-      #   lognormal)
+      # optional · number ≥ 0 · standard deviation of the distribution the weights are
+      #   drawn from, before any bound (normal, lognormal: of the weights, not of their
+      #   log)
       std: 8.78
       # optional · number · smallest weight a uniform draw gives
       min:
       # optional · number · largest weight a uniform draw gives
       max:
-      # optional · mapping · only for a project distribution: the values its expression
-      #   uses, e.g. {length: 20}
-      parameters:
       # optional · number · smallest allowed drawn weight (e.g. 0, so that an excitatory
       #   weight stays positive); omit for none
       lower_bound: 0.0
@@ -192,22 +190,23 @@ connections:
     # required · delay of each synapse
     delay:
       # optional · text · how each delay is drawn: normal or lognormal, with mean and
-      #   std; uniform, with min and max; or the name of a project distribution, with
-      #   parameters. Omit it for a fixed delay
+      #   std; uniform, with min and max; or another name, which the simulator looks up
+      #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
+      #   keys of their own. Omit it for a fixed delay
       distribution: normal
       # optional · number · a fixed delay (ms), the same for every synapse
       value:
-      # optional · number · mean of the drawn delays (ms)
+      # optional · number · mean (ms) of the distribution the delays are drawn from,
+      #   before any bound (normal, lognormal: of the delays, not of their log)
       mean: 1.5
-      # optional · number ≥ 0 · standard deviation of the drawn delays (ms)
+      # optional · number ≥ 0 · standard deviation (ms) of the distribution the delays
+      #   are drawn from, before any bound (normal, lognormal: of the delays, not of
+      #   their log)
       std: 0.75
       # optional · number · shortest delay (ms) a uniform draw gives
       min:
       # optional · number · longest delay (ms) a uniform draw gives
       max:
-      # optional · mapping · only for a project distribution: the values its expression
-      #   uses
-      parameters:
       # optional · number · shortest allowed drawn delay (ms), needed for a drawn delay;
       #   e.g. the simulation step (a delay below half a step rounds to 0)
       lower_bound: 0.1

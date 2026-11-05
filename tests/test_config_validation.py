@@ -76,7 +76,7 @@ def test_unknown_stimulus_type_points_to_where_new_ones_are_added(network_dir: P
     assert "stimuli.yaml: stimuli.0" in str(error.value)
 
 
-def test_unknown_distribution_is_a_project_one_that_nest_rejects(network_dir: Path) -> None:
+def test_a_distribution_nest_and_the_project_do_not_have_is_an_error(network_dir: Path) -> None:
     from microcircuit_lab.backends.nest.simulator import NestBackend
     from microcircuit_lab.config.simulation import SimulationConfig
 
@@ -85,7 +85,7 @@ def test_unknown_distribution_is_a_project_one_that_nest_rejects(network_dir: Pa
         lambda d: d["connections"][0]["delay"].__setitem__("distribution", "gamma"),
     )
     network = read_network(network_dir)
-    with pytest.raises(ValueError, match="NEST has no delay distribution 'gamma'.*not project distributions"):
+    with pytest.raises(ValueError, match=r"connections.0.delay: NEST has no distribution 'gamma'.*nest.random has"):
         NestBackend(network, SimulationConfig()).check()
 
 

@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from microcircuit_lab.config.connectivity import (
+from microcircuit_lab.config.distributions import (
     SHARED_DISTRIBUTIONS,
     DelayDistribution,
     WeightDistribution,
@@ -21,25 +21,26 @@ def _drawn(
     mean: float,
     rel_std: float,
     distribution: str | None,
-    parameters: Mapping[str, Any] | None,
+    arguments: Mapping[str, Any],
 ) -> dict[str, Any]:
     """The fields of a value with mean ``mean`` and standard deviation
     ``|mean| * rel_std``: ``value`` without spread (whatever the shared
     distribution); else ``mean`` and ``std`` (normal, by default, or
     lognormal), or the ``min`` and ``max`` of a uniform draw with that mean
-    and standard deviation (mean ± sqrt(3) std). A project distribution gets
-    ``mean`` and its ``parameters``."""
+    and standard deviation (mean ± sqrt(3) std). Another distribution gets
+    ``mean`` and its ``arguments``; they are written for the others too, so
+    that the checks refuse them (e.g. a misspelled ``rel_sd=0.1``)."""
 
     if rel_std == 0.0 and distribution in (None, *SHARED_DISTRIBUTIONS):
-        return {"value": mean}
+        return {"value": mean, **arguments}
     distribution = distribution or "normal"
     std = abs(mean * rel_std)
     if distribution == "uniform":
         half_width = np.sqrt(3.0) * std
-        return {"distribution": distribution, "min": mean - half_width, "max": mean + half_width}
+        return {"distribution": distribution, "min": mean - half_width, "max": mean + half_width, **arguments}
     if distribution in ("normal", "lognormal"):
-        return {"distribution": distribution, "mean": mean, "std": std}
-    return {"distribution": distribution, "mean": mean, "parameters": parameters}
+        return {"distribution": distribution, "mean": mean, "std": std, **arguments}
+    return {"distribution": distribution, "mean": mean, **arguments}
 
 
 def _bounds(drawn: dict[str, Any], lower_bound, upper_bound, bound_mode) -> dict[str, Any]:
@@ -67,10 +68,10 @@ def weight(
     unit: str,
     rel_std: float = 0.0,
     distribution: str | None = None,
-    parameters: Mapping[str, Any] | None = None,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
     bound_mode: str | None = None,
+    **arguments: float,
 ) -> dict[str, Any]:
     """
     A ``weight`` entry for a connection, background input or stimulus, from
@@ -90,9 +91,10 @@ def weight(
         ``"normal"`` (the default with a spread) or ``"lognormal"``, written
         with ``mean`` and ``std = |mean| * rel_std``; ``"uniform"``, written as
         the ``min`` and ``max`` with that mean and standard deviation; or a
-        project distribution (connections only), written with ``mean``.
-    parameters
-        A project distribution's parameters.
+        distribution that is not shared (connections only; the simulator's own or
+        the project's), written with ``mean``.
+    **arguments
+        The arguments of a distribution that is not shared, e.g. ``beta=20``.
     lower_bound, upper_bound, bound_mode
         Bounds of a drawn weight, and what to do past them (``"redraw"`` or
         ``"clip"``); see :func:`zero_bound` to keep the weight's sign. A fixed
@@ -102,10 +104,10 @@ def weight(
     -------
     dict
         The entry as written in the YAML file. It is checked against
-        :class:`~microcircuit_lab.config.connectivity.WeightDistribution`, so a bad value
+        :class:`~microcircuit_lab.config.distributions.WeightDistribution`, so a bad value
         raises here.
     """
-    drawn = _drawn(mean, rel_std, distribution, parameters)
+    drawn = _drawn(mean, rel_std, distribution, arguments)
     return WeightDistribution(
         **drawn, **_bounds(drawn, lower_bound, upper_bound, bound_mode), unit=unit
     ).model_dump(exclude_none=True)
@@ -116,10 +118,10 @@ def delay(
     *,
     rel_std: float = 0.0,
     distribution: str | None = None,
-    parameters: Mapping[str, Any] | None = None,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
     bound_mode: str | None = None,
+    **arguments: float,
 ) -> dict[str, Any]:
     """
     A ``delay`` entry for a connection, background input or stimulus, as
@@ -131,7 +133,7 @@ def delay(
         Mean delay in ms.
     rel_std
         Standard deviation divided by ``mean``; 0 for a fixed delay.
-    distribution, parameters
+    distribution, **arguments
         As in :func:`weight`.
     lower_bound, upper_bound, bound_mode
         Bounds (ms) of a drawn delay, which needs a ``lower_bound``, and what
@@ -141,9 +143,9 @@ def delay(
     -------
     dict
         The entry as written in the YAML file, checked against
-        :class:`~microcircuit_lab.config.connectivity.DelayDistribution`.
+        :class:`~microcircuit_lab.config.distributions.DelayDistribution`.
     """
-    drawn = _drawn(mean, rel_std, distribution, parameters)
+    drawn = _drawn(mean, rel_std, distribution, arguments)
     return DelayDistribution(**drawn, **_bounds(drawn, lower_bound, upper_bound, bound_mode)).model_dump(
         exclude_none=True
     )

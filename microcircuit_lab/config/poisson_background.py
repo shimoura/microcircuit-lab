@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
 

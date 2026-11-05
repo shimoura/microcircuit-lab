@@ -8,6 +8,7 @@ analysis all use it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
@@ -23,9 +24,11 @@ from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
 )
-from microcircuit_lab.config.connectivity import (
+from microcircuit_lab.config.connectivity import ConnectivityFile
+from microcircuit_lab.config.distributions import (
     SHARED_DISTRIBUTIONS,
-    ConnectivityFile,
+    DrawnNeuronValue,
+    not_shared_rows,
 )
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
@@ -42,6 +45,27 @@ from microcircuit_lab.config.stimuli import (
     StimulusConfig,
 )
 from microcircuit_lab.config.synapses import SynapseEntry, SynapsesFile
+
+
+@dataclass(frozen=True)
+class DistributionUse:
+    """
+    A distribution that is not shared, where the network uses it: its
+    ``name``, the keys (numbers and arguments) every entry there gives, the
+    keys any of them gives that the distribution must take, and whether one
+    redraws past a bound. A backend checks these against what it knows
+    before it builds anything.
+
+    The keys to take are the arguments and ``std``, ``min``, ``max`` or
+    ``mean`` if given (not a weight's ``mean``, which the core needs): a
+    number the distribution does not take would be ignored.
+    """
+
+    where: str
+    name: str
+    given: frozenset[str]
+    arguments: frozenset[str]
+    redraw: bool
 
 
 class NetworkManifest(FrozenConfig):
@@ -160,7 +184,7 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
-    def _check_project_distributions_on_connections_only(self) -> NetworkConfig:
+    def _check_inputs_use_shared_distributions(self) -> NetworkConfig:
         users = [(f"background input of {name}", b) for name, b in self.poisson_background.items()]
         users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
         for user, item in users:
@@ -168,7 +192,7 @@ class NetworkConfig(FrozenConfig):
                 distribution = getattr(item, what).distribution
                 if distribution is not None and distribution not in SHARED_DISTRIBUTIONS:
                     raise ValueError(
-                        f"The {user} has a {what} from project distribution {distribution!r}; "
+                        f"The {user} has a {what} from distribution {distribution!r}, which is not shared; "
                         f"background inputs and stimuli take a fixed value or {', '.join(SHARED_DISTRIBUTIONS)} only."
                     )
         return self
@@ -244,6 +268,47 @@ class NetworkConfig(FrozenConfig):
                     "synapses.yaml."
                 )
         return self
+
+    def distributions_not_shared(self) -> list[DistributionUse]:
+        """Every use of a distribution that is not shared: in the weights and
+        delays of the connections (one per name and column), and in the
+        neuron values (one per value)."""
+
+        numbers = ("value", "mean", "std", "min", "max")
+        uses = []
+        table = self.connections
+        for group in ("weight", "delay"):
+            names = table[f"{group}.distribution"]
+            keys = {name: table[f"{group}.{name}"] for name in numbers} | table.arguments(group)
+            for name in sorted(set(names[not_shared_rows(names)].tolist())):
+                rows = names == name
+                given = {key: ~np.isnan(values[rows]) for key, values in keys.items()}
+                # The first row that leaves out a key another row gives, else the first row.
+                complete = np.logical_and.reduce([where for where in given.values() if where.any()])
+                first = int(np.flatnonzero(rows)[np.argmin(complete)])
+                uses.append(DistributionUse(
+                    where=f"connections.{first}.{group}",
+                    name=name,
+                    given=frozenset(key for key, where in given.items() if where.all()),
+                    arguments=frozenset(key for key, where in given.items()
+                                        if where.any() and not (group == "weight" and key == "mean")),
+                    redraw=bool((table[f"{group}.bound_mode"][rows] == "redraw").any()),
+                ))
+        for population in self.populations.values():
+            for file, values in (("neurons.yaml", dict(population.neuron.parameters)),
+                                 ("populations.yaml", population.initial_state)):
+                for variable, value in values.items():
+                    if isinstance(value, DrawnNeuronValue) and value.distribution not in SHARED_DISTRIBUTIONS:
+                        given = frozenset(key for key in [*numbers, *value.model_extra]
+                                          if value.fields[key] is not None)
+                        uses.append(DistributionUse(
+                            where=f"{variable} of {population.name} ({file})",
+                            name=value.distribution,
+                            given=given,
+                            arguments=given,
+                            redraw=value.bound_mode == "redraw",
+                        ))
+        return uses
 
     def receptor_port(self, synapse: str | None) -> int | str | None:
         """The receptor port of a synapse name (``None``: the default port)."""

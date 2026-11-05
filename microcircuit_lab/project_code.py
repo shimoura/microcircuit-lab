@@ -5,7 +5,9 @@ definitions (models and the like, which the config files name).
 :func:`discover_builders` finds what ``microcircuit-lab generate`` can run;
 :func:`microcircuit_lab.analysis.run_command_plots.discover_plots` finds the plots in
 ``analyses/``; :func:`find_definitions` finds the objects a backend looks up by
-name, such as the Brian2 models in ``extensions/brian2/``. All import a folder of the
+name, such as the Brian2 models in ``extensions/brian2/``, and
+:func:`find_functions` the functions, such as NEST distributions in
+``extensions/nest/``. All import a folder of the
 project with :func:`import_folder_modules`.
 
 A builder is any package with a callable ``main(argv=None)``. That is all the
@@ -31,6 +33,7 @@ entry point.
 from __future__ import annotations
 
 import importlib
+import inspect
 import pkgutil
 import sys
 from collections.abc import Callable, Sequence
@@ -110,6 +113,36 @@ def find_definitions(
                     f"{module.__name__}."
                 )
             found[kind][item.name] = item
+    return found
+
+
+def find_functions(folder: str | Path, package: str, module_names: Sequence[str]) -> dict[str, Callable]:
+    """
+    The functions defined at the top level of the files in ``folder``
+    (imported as ``package``) and of the modules ``module_names``, by name. A
+    name that starts with ``_`` is a helper, left out; so is a function a
+    file imports from elsewhere.
+
+    A config file names one (``distribution: erlang2``); the backend looks
+    it up here. A module that fails to import raises.
+
+    Raises
+    ------
+    ValueError
+        If two modules define a function of the same name.
+    """
+
+    modules = list(import_folder_modules(folder, package=package).values())
+    modules += [importlib.import_module(name) for name in module_names]
+
+    found: dict[str, Callable] = {}
+    for module in modules:
+        for name, item in vars(module).items():
+            if not inspect.isfunction(item) or item.__module__ != module.__name__ or name.startswith("_"):
+                continue
+            if found.get(name, item) is not item:
+                raise ValueError(f"Two functions are named {name!r}; the second is in {module.__name__}.")
+            found[name] = item
     return found
 
 

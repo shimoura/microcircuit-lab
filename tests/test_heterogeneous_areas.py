@@ -15,7 +15,7 @@ import pytest
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
 from microcircuit_lab.builder_tools import scale_network
-from microcircuit_lab.config.connectivity import WeightDistribution
+from microcircuit_lab.config.distributions import WeightDistribution
 from microcircuit_lab.network.load import assemble_network, read_network_files
 
 NETWORK = "configs/network/toy_two_areas"

@@ -19,11 +19,8 @@ from microcircuit_lab.backends.brian2.models import (
     NeuronModel,
     SynapseModel,
 )
-from microcircuit_lab.config.connectivity import (
-    ConnectionConfig,
-    DelayDistribution,
-    WeightDistribution,
-)
+from microcircuit_lab.config.connectivity import ConnectionConfig
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
@@ -113,6 +110,8 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 by_target = Distribution(name="by_target", expression="mean * (1 + index_post) * step", redraw_rounds=0)
 alternating = Distribution(name="alternating", expression="mean * (1 - 2*(index_post % 2))", redraw_rounds=0)
 no_rounds = Distribution(name="no_rounds", expression="mean")
+# Negative by its own argument, not by mean.
+negative = Distribution(name="negative", expression="-size", redraw_rounds=0)
 same_index_twice = ConnectionRule(name="same_index_twice", condition="index_pre == index_post", n="2")
 
 
@@ -251,7 +250,7 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
         source="T",
         target="T",
         rule="ring",
-        parameters={"width": 1},
+        width=1,
         allow_autapses=False,
         weight=WeightDistribution(value=10.0, unit="pA"),
         delay=DelayDistribution(value=1.0),
@@ -264,6 +263,17 @@ def test_a_project_rule_connects_the_pairs_its_expressions_choose() -> None:
     assert pairs == {(a, b) for a in range(100, 150) for b in range(100, 150) if abs(a - b) == 1}
 
 
+def test_an_argument_no_expression_uses_is_an_error() -> None:
+    # e.g. a typo: width written widht
+    for rule, arguments in (("ring", {"width": 1, "widht": 1}), ("all_to_all", {"width": 1})):
+        connection = ConnectionConfig(
+            source="T", target="T", rule=rule, **arguments,
+            weight=WeightDistribution(value=10.0, unit="pA"), delay=DelayDistribution(value=1.0),
+        )
+        with pytest.raises(ValueError, match=f"is given to rule '{rule}', which does not use it"):
+            _backend(_network("iaf_psc_exp", connections=[connection]), extensions=[__name__]).build()
+
+
 def _row(source, target, weight, delay, **fields):
     return ConnectionConfig(source=source, target=target, rule="all_to_all", weight=weight, delay=delay, **fields)
 
@@ -272,9 +282,9 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
     fixed_delay = DelayDistribution(value=1.0)
     project = _row(
         "S", "T",
-        WeightDistribution(mean=2.0, unit="pA", distribution="by_target", parameters={"step": 0.5}),
+        WeightDistribution(mean=2.0, unit="pA", distribution="by_target", step=0.5),
         DelayDistribution(
-            mean=1.0, distribution="by_target", parameters={"step": 0.1}, lower_bound=0.05, bound_mode="clip"
+            mean=1.0, distribution="by_target", step=0.1, lower_bound=0.05, bound_mode="clip"
         ),
     )
     shared = _row("T", "T", WeightDistribution(value=7.0, unit="pA"), fixed_delay)
@@ -305,6 +315,21 @@ def test_a_project_weight_past_its_bound_is_clipped() -> None:
     w = backend.synapses[0].w_syn[:] / b2.pA
     odd = (backend.synapses[0].j[:] - 100) % 2 == 1
     assert np.all(w[odd] == 0.0) and np.allclose(w[~odd], 3.0)
+
+
+def test_an_inhibitory_conductance_weight_of_a_project_distribution_is_its_size() -> None:
+    # As in NEST, Brian2 adds the size of an inhibitory conductance weight: the
+    # draw is negated with its bound, not only the bound (which would clip it to 0).
+    weight = WeightDistribution(
+        distribution="negative", size=2.0, mean=-2.0, upper_bound=0.0, bound_mode="clip", unit="nS"
+    )
+    connection = _row("S", "T", weight, DelayDistribution(value=1.0))
+    backend = _backend(_network("aeif_cond_exp", connections=[connection]), extensions=[__name__])
+    backend.build()
+
+    import brian2 as b2
+
+    assert np.allclose(backend.synapses[0].w_syn[:] / b2.nS, 2.0)
 
 
 def test_redraw_needs_the_distributions_redraw_rounds() -> None:

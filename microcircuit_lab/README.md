@@ -169,14 +169,14 @@ configs/
   ```
   `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
-- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a project distribution before):
+- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a distribution before):
 
   | Field | Shared | Any other name |
   |---|---|---|
   | `neurons.yaml` `model` | none | NEST: its own models and NESTML modules; Brian2: a `NeuronModel` in `extensions/brian2/` |
   | `synapses.yaml` `model` | `static_synapse` | NEST: its own models; Brian2: a `SynapseModel` in `extensions/brian2/` |
-  | `rule` of a connection | `fixed_total_number`, `fixed_indegree`, `fixed_outdegree`, `pairwise_bernoulli`, `one_to_one`, `all_to_all` | with `parameters`; Brian2: a `ConnectionRule` in `extensions/brian2/` ([Connection rules of your own](#connection-rules-of-your-own)) |
-  | `distribution` of a connection's weight or delay | `normal`, `uniform`, `lognormal`, `fixed` | with `parameters`; Brian2: a `Distribution` in `extensions/brian2/` ([Distributions of your own](#distributions-of-your-own)) |
+  | `rule` of a connection | `fixed_total_number`, `fixed_indegree`, `fixed_outdegree`, `pairwise_bernoulli`, `one_to_one`, `all_to_all` | with its arguments as keys of their own; NEST: its own rules; Brian2: a `ConnectionRule` in `extensions/brian2/` ([Connection rules of your own](#connection-rules-of-your-own)) |
+  | `distribution` of a weight, delay or neuron value | `normal`, `uniform`, `lognormal` | with its arguments as keys of their own; NEST: its own (`nest.random`, e.g. `exponential`) and functions in `extensions/nest/`; Brian2: a `Distribution` in `extensions/brian2/` ([Distributions of your own](#distributions-of-your-own)) |
   | `receptor_port` of a synapse | a number | NEST: a name in the target model's `receptor_types`; Brian2: the variable the connection adds to |
 
   A network that uses names of one simulator runs on that simulator only. What the core can't know about a name of your own, it doesn't guess: scaling a network with such a rule, or with weights from such a distribution, stops with an error.
@@ -234,11 +234,13 @@ weight: {distribution: lognormal, mean: -351.2, std: 35.1, unit: pA}            
 delay:  {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}
 ```
 
+A neuron parameter (`neurons.yaml`) or initial state (`populations.yaml`) drawn for each neuron is written the same way, without `unit` (a fixed one is a plain number): `V_m: {distribution: normal, mean: -58, std: 10, upper_bound: -50, bound_mode: redraw}`.
+
 | Field | What it is |
 |---|---|
 | `value` | a fixed weight or delay |
-| `distribution` | `normal` or `lognormal` (with `mean`, `std`), `uniform` (with `min`, `max`), or one of your own |
-| `mean`, `std` | the mean and standard deviation of the drawn values, for every distribution: a lognormal value has them too, and the sign of `mean` |
+| `distribution` | `normal` or `lognormal` (with `mean`, `std`), `uniform` (with `min`, `max`), or another name (below) |
+| `mean`, `std` | the mean and standard deviation of the distribution the values are drawn from, before any bound. For `lognormal` too: the mean and std of the values, not of their log (the simulator gets the log-space numbers, and the values take the sign of `mean`) |
 | `lower_bound`, `upper_bound` | optional: a drawn value past one is drawn again or set to it; a drawn delay needs `lower_bound` |
 | `bound_mode` | with a bound: `redraw` draws again, `clip` sets the value to the bound |
 | `unit` | weights only (below) |
@@ -267,7 +269,23 @@ The formula holds for current-based LIF neurons with exponential synaptic curren
 - **A relative spread** (a paper's "10 % of the mean") is converted in the builder: `weight(87.8, unit="pA", rel_std=0.1)` writes `std: 8.78`, and `distribution="uniform"` the `min` and `max` with that mean and standard deviation.
 - **Bounds change the mean.** Values drawn again or clipped no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`std` a tenth of the mean), noticeable when `std` is about the mean.
 - **Excitatory or inhibitory** input is told by the sign of the weight (its mean), never by a population's name.
-- **Distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is a distribution of your own, with `parameters`, for the weights and delays of connections; for now Brian2 only (see [Distributions of your own](#distributions-of-your-own)).
+- **Other distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is looked up by the simulator, with its arguments as keys of their own: NEST's own (`{distribution: exponential, beta: 2}`), or one of your own. A weight from one also needs `mean`, the mean of the distribution, since the core can't know it: its sign tells excitatory from inhibitory, so the distribution must draw values of that sign (NEST's `exponential` draws positive ones; the core can't check this). Background inputs and stimuli take the shared distributions only.
+
+With NEST, a distribution of your own is a function in a file of `extensions/nest/` (or of a module given with `--extensions`) that returns a NEST parameter. It gets the keys of the entry it names, and the entry gives all of them:
+
+```python
+# extensions/nest/distributions.py
+import nest
+
+def erlang2(beta):
+    return nest.random.exponential(beta=beta) + nest.random.exponential(beta=beta)
+```
+
+```yaml
+weight: {distribution: erlang2, beta: 20, mean: 40, unit: pA}
+```
+
+NEST combines its parameters with `+ - * /`, `nest.math` (`exp`, `sin`, `cos`, `min`, `max`, `redraw`) and `nest.logic.conditional`; it has no `log`, `pow` or `abs`, and can't use the neurons' variables or indices. With Brian2, see [Distributions of your own](#distributions-of-your-own).
 
 ### Connection rules and synapses
 
@@ -282,7 +300,7 @@ Each connection has a `rule` and the number that rule takes:
 | `one_to_one` | none | the k-th source neuron to the k-th target neuron (populations of the same size) |
 | `all_to_all` | none | every pair |
 
-These rules run on every simulator. Any other name, with `parameters` instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, parameters: {pairwise_avg_num_conns: 2}`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
+These rules run on every simulator. Any other name, with its arguments as keys of their own instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, pairwise_avg_num_conns: 2`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
 
 Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
 
@@ -332,7 +350,7 @@ source,target,rule,p,weight.distribution,weight.mean,weight.std,weight.lower_bou
 E,I,pairwise_bernoulli,0.1,normal,87.8,8.78,0.0,redraw,pA,normal,1.5,0.75,0.1,redraw
 ```
 
-The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. `parameters` is written as JSON text, e.g. `"{""a"": 1.0}"`. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
+The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. An argument of a rule or distribution of your own is a column of its own (`pairwise_avg_num_conns`, `weight.beta`), empty in the rows that don't use it. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 
@@ -805,7 +823,7 @@ stdp = SynapseModel(
 
 #### Connection rules of your own
 
-A `rule` that is not one of the shared rules is a `ConnectionRule` in `extensions/brian2/` (or in a module given with `--extensions`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's `parameters`, the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
+A `rule` that is not one of the shared rules is a `ConnectionRule` in `extensions/brian2/` (or in a module given with `--extensions`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's arguments (`width`, `p0` below), the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
 
 ```python
 # extensions/brian2/rules.py
@@ -816,32 +834,34 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 
 ```yaml
 # connectivity.yaml
-- {source: E, target: E, rule: ring, parameters: {width: 10, p0: 0.5}, allow_autapses: false, weight: {...}, delay: {...}}
+- {source: E, target: E, rule: ring, width: 10, p0: 0.5, allow_autapses: false, weight: {...}, delay: {...}}
 ```
 
-In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). Scaling a network with such a rule stops with an error, since the core can't know how the rule scales (scale it in its builder instead).
+In a CSV connection table, each argument is a column (`width`, `p0`). On Brian2, an argument no expression uses stops the run (a misspelled name); a shared rule takes none. Scaling a network with such a rule stops with an error, since the core can't know how the rule scales (scale it in its builder instead).
 
 #### Distributions of your own
 
-A weight or delay `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the fields the entry gives (`mean`, `std`, `min`, `max`), its `parameters`, the neurons' variables and `index_pre` / `index_post`:
+A `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each value, in the package's units (pA or nS for a weight, ms for a delay, the variable's unit for a neuron value). It can use the fields the entry gives (`mean`, `std`, `min`, `max`), its arguments (`length` below), and for a weight or delay the neurons' variables and `index_pre` / `index_post`. `extensions/brian2/distributions.py` has NEST's `exponential` this way:
 
 ```python
 # extensions/brian2/distributions.py
 from microcircuit_lab.backends.brian2.models import Distribution
 
+exponential = Distribution(name="exponential", expression="-beta*log(1 - rand())")
 decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index_post) / length)", redraw_rounds=0)
 ```
 
 ```yaml
 # connectivity.yaml
 - {source: E, target: E, rule: fixed_indegree, indegree: 100,
-   weight: {distribution: decay, mean: 87.8, parameters: {length: 20}, lower_bound: 0, bound_mode: redraw, unit: pA},
+   weight: {distribution: decay, mean: 87.8, length: 20, lower_bound: 0, bound_mode: redraw, unit: pA},
    delay: {...}}
 ```
 
-- A weight needs `mean`: its sign says whether the weight is excitatory or inhibitory, and the expression can use it.
+- A weight needs `mean`: its sign says whether the weight is excitatory or inhibitory, so the expression must give values of that sign (the core can't check this), and it can use `mean`.
+- An argument the expression doesn't use stops the run (a misspelled name).
 - How often an expression crosses a bound can't be known, so the definition says what to do with `bound_mode: redraw`: the value is drawn again `redraw_rounds` times and then set to the bound (0 sets it at once). A definition without `redraw_rounds` stops the run before the build when an entry uses `redraw`; `clip` needs none.
-- Scaling a network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
+- Scaling a network's synapses (`K_scaling` other than 1) with weights from such a distribution stops with an error: the core can't divide its arguments, and the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
 #### Performance
 
