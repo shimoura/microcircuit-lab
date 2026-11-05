@@ -6,3 +6,5 @@ microcircuit_lab.egg-info/*
 .venv/
 build/
 dist/
+environment.yml
+.micromamba
