@@ -102,9 +102,13 @@ class ConnectionConfig(FrozenConfig):
 
     @model_validator(mode="before")
     @classmethod
-    def _refuse_parameters(cls, data):
+    def _refuse_parameters_and_number(cls, data):
         if isinstance(data, dict) and "parameters" in data:
             raise ValueError(old_field_message("parameters"))
+        # "number" is the table's column for the rule's number, not an argument.
+        if isinstance(data, dict) and "number" in data:
+            raise ValueError(f"number is not a key of a connection: write the rule's number under its name, "
+                             f"one of {list(RULE_NUMBER.values())}")
         return data
 
     @model_validator(mode="after")

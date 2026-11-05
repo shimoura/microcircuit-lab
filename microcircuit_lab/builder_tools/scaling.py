@@ -21,6 +21,7 @@ from microcircuit_lab.config.connectivity import SHARED_RULES
 from microcircuit_lab.config.distributions import (
     DelayDistribution,
     is_number_field,
+    is_unset,
     not_shared_rows,
 )
 from microcircuit_lab.config.network import NetworkConfig
@@ -171,8 +172,10 @@ def scale_weights(network: NetworkConfig, K_scaling: float, preserve_variance: b
     # all of them are scaled.
     numbers = [name for name in DelayDistribution.model_fields if is_number_field(name)]
     table = network.connections
+    # Only the columns some row sets: each changed column is checked again.
     connections = table.with_columns(copy=False, **{
         f"weight.{name}": table[f"weight.{name}"] / divisor for name in numbers
+        if not is_unset(table[f"weight.{name}"]).all()
     })
 
     # Background Poisson input.

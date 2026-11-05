@@ -241,7 +241,7 @@ def expected_values(fields: dict[str, np.ndarray]) -> np.ndarray:
     """
 
     distribution = fields["distribution"]
-    fixed = ~~is_unset(distribution)
+    fixed = is_unset(distribution)
     middle = (fields["min"] + fields["max"]) / 2
     return np.where(fixed, fields["value"], np.where(distribution == "uniform", middle, fields["mean"]))
 

@@ -534,23 +534,22 @@ class Brian2Backend:
         neuron is drawn by Brian2 (distributions.set_drawn), as weights are,
         from the entry of each neuron's population."""
 
+        sizes = [self.network.populations[pop].size for pop in group.populations]
         for name in sorted({name for pop in group.populations for name in values[pop]}):
             unit = _units(group.neurons.variables[name].dim, f"{name!r} of {group.model.name!r}")[1]
-            given = {k: values[pop][name] for k, pop in enumerate(group.populations) if name in values[pop]}
-            if any(isinstance(value, DrawnNeuronValue) for value in given.values()):
+            # A population that does not set the variable keeps 0, where Brian2 starts it (the
+            # values cannot be read before the run in C++ standalone mode).
+            given = [values[pop].get(name, 0.0) for pop in group.populations]
+            if any(isinstance(value, DrawnNeuronValue) for value in given):
                 entries = {
-                    k: (value.fields if isinstance(value, DrawnNeuronValue) else distributions.fixed(value),
-                        self.network.populations[group.populations[k]].size)
-                    for k, value in given.items()
+                    k: (value.fields if isinstance(value, DrawnNeuronValue) else distributions.fixed(value), sizes[k])
+                    for k, value in enumerate(given)
                 }
                 projects = {k: self._distributions[fields["distribution"]] for k, (fields, _) in entries.items()
                             if fields["distribution"] in self._distributions}
                 distributions.set_drawn(group.neurons, name, "population_index", entries, unit, projects)
                 continue
-            array = np.zeros(group.size)
-            for k, value in given.items():
-                start = group.starts[k]
-                array[start:start + self.network.populations[group.populations[k]].size] = value
+            array = np.repeat(given, sizes)
             setattr(group.neurons, name, array * getattr(b2, unit, 1))
 
     def _set_values(self, target, equations: b2.Equations, values: dict, where: str) -> None:
@@ -677,10 +676,12 @@ class Brian2Backend:
             synapses.connect(**arguments, namespace=namespace)
 
         if si_unit == "siemens":
-            weights = {
-                k: (distributions.negated(fields) if expected_value(fields) < 0 else fields, number)
-                for k, (fields, number) in weights.items()
-            }
+            for k, (fields, number) in weights.items():
+                if expected_value(fields) < 0:
+                    weights[k] = (distributions.negated(fields), number)
+                    # A project distribution's own draw is negated, with the fields as given.
+                    if k in projects["weight"]:
+                        projects["weight"][k] = distributions.negated_draw(projects["weight"][k], fields)
         distributions.set_drawn(synapses, "w_syn", index, weights, unit, projects["weight"])
         if "pre" in pathways:  # a gap junction has no pathway of spikes to delay
             distributions.set_drawn(synapses, "delay", index, delays, "ms", projects["delay"])

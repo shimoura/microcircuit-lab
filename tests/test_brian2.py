@@ -110,6 +110,8 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 by_target = Distribution(name="by_target", expression="mean * (1 + index_post) * step", redraw_rounds=0)
 alternating = Distribution(name="alternating", expression="mean * (1 - 2*(index_post % 2))", redraw_rounds=0)
 no_rounds = Distribution(name="no_rounds", expression="mean")
+# Negative by its own argument, not by mean.
+negative = Distribution(name="negative", expression="-size", redraw_rounds=0)
 same_index_twice = ConnectionRule(name="same_index_twice", condition="index_pre == index_post", n="2")
 
 
@@ -313,6 +315,21 @@ def test_a_project_weight_past_its_bound_is_clipped() -> None:
     w = backend.synapses[0].w_syn[:] / b2.pA
     odd = (backend.synapses[0].j[:] - 100) % 2 == 1
     assert np.all(w[odd] == 0.0) and np.allclose(w[~odd], 3.0)
+
+
+def test_an_inhibitory_conductance_weight_of_a_project_distribution_is_its_size() -> None:
+    # As in NEST, Brian2 adds the size of an inhibitory conductance weight: the
+    # draw is negated with its bound, not only the bound (which would clip it to 0).
+    weight = WeightDistribution(
+        distribution="negative", size=2.0, mean=-2.0, upper_bound=0.0, bound_mode="clip", unit="nS"
+    )
+    connection = _row("S", "T", weight, DelayDistribution(value=1.0))
+    backend = _backend(_network("aeif_cond_exp", connections=[connection]), extensions=[__name__])
+    backend.build()
+
+    import brian2 as b2
+
+    assert np.allclose(backend.synapses[0].w_syn[:] / b2.nS, 2.0)
 
 
 def test_redraw_needs_the_distributions_redraw_rounds() -> None:

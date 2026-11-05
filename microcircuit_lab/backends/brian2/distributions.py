@@ -13,6 +13,7 @@ Brian2 generates one piece of code for all of them.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import math
 import re
@@ -107,6 +108,13 @@ def chance_out_of_bounds(fields: dict) -> float:
     if not is_unset(fields["upper_bound"]):
         chance += _chance_past(fields["upper_bound"], fields, below=False)
     return chance
+
+
+def negated_draw(distribution: Distribution, fields: dict) -> Distribution:
+    """A project distribution that draws the negative of what
+    ``distribution`` draws with ``fields`` (written in as numbers), with the
+    bounds of :func:`negated`: e.g. an inhibitory weight onto a conductance."""
+    return dataclasses.replace(distribution, expression=f"-({_project_expression(distribution, fields)})")
 
 
 def negated(fields: dict) -> dict:
