@@ -240,7 +240,7 @@ A neuron parameter (`neurons.yaml`) or initial state (`populations.yaml`) drawn 
 |---|---|
 | `value` | a fixed weight or delay |
 | `distribution` | `normal` or `lognormal` (with `mean`, `std`), `uniform` (with `min`, `max`), or another name (below) |
-| `mean`, `std` | the mean and standard deviation of the drawn values, for every distribution: a lognormal value has them too, and the sign of `mean` |
+| `mean`, `std` | the mean and standard deviation of the distribution the values are drawn from, before any bound. For `lognormal` too: the mean and std of the values, not of their log (the simulator gets the log-space numbers, and the values take the sign of `mean`) |
 | `lower_bound`, `upper_bound` | optional: a drawn value past one is drawn again or set to it; a drawn delay needs `lower_bound` |
 | `bound_mode` | with a bound: `redraw` draws again, `clip` sets the value to the bound |
 | `unit` | weights only (below) |
@@ -269,7 +269,7 @@ The formula holds for current-based LIF neurons with exponential synaptic curren
 - **A relative spread** (a paper's "10 % of the mean") is converted in the builder: `weight(87.8, unit="pA", rel_std=0.1)` writes `std: 8.78`, and `distribution="uniform"` the `min` and `max` with that mean and standard deviation.
 - **Bounds change the mean.** Values drawn again or clipped no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`std` a tenth of the mean), noticeable when `std` is about the mean.
 - **Excitatory or inhibitory** input is told by the sign of the weight (its mean), never by a population's name.
-- **Other distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is looked up by the simulator, with its arguments as keys of their own: NEST's own (`{distribution: exponential, beta: 2}`), or one of your own. A weight from one also needs `mean`, the mean of its values, since the core can't know it: its sign tells excitatory from inhibitory, so the distribution must draw values of that sign (NEST's `exponential` draws positive ones; the core can't check this). Background inputs and stimuli take the shared distributions only.
+- **Other distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is looked up by the simulator, with its arguments as keys of their own: NEST's own (`{distribution: exponential, beta: 2}`), or one of your own. A weight from one also needs `mean`, the mean of the distribution, since the core can't know it: its sign tells excitatory from inhibitory, so the distribution must draw values of that sign (NEST's `exponential` draws positive ones; the core can't check this). Background inputs and stimuli take the shared distributions only.
 
 With NEST, a distribution of your own is a function in a file of `extensions/nest/` (or of a module given with `--extensions`) that returns a NEST parameter. It gets the keys of the entry it names, and the entry gives all of them:
 

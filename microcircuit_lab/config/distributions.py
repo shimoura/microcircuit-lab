@@ -273,15 +273,16 @@ class WeightDistribution(DrawnValue):
         description="how each weight is drawn: normal or lognormal, with mean and std; uniform, "
         "with min and max; or another name, which the simulator looks up (its own, e.g. NEST's "
         "exponential, or the project's), with its arguments as keys of their own (e.g. beta: 20) and "
-        "the mean of its values. Omit it for a fixed weight",
+        "the mean of the distribution. Omit it for a fixed weight",
     )
     value: float | None = Field(default=None, description="a fixed weight, the same for every synapse")
     mean: float | None = Field(
-        default=None, examples=[87.8], description="mean of the drawn weights (normal, lognormal); "
-        "a negative weight is inhibitory"
+        default=None, examples=[87.8], description="mean of the distribution the weights are drawn from, "
+        "before any bound (normal, lognormal: of the weights, not of their log); a negative weight is inhibitory"
     )
     std: float | None = Field(
-        default=None, ge=0.0, examples=[8.78], description="standard deviation of the drawn weights (normal, lognormal)"
+        default=None, ge=0.0, examples=[8.78], description="standard deviation of the distribution the weights are drawn from, before any bound "
+        "(normal, lognormal: of the weights, not of their log)"
     )
     min: float | None = Field(default=None, description="smallest weight a uniform draw gives")
     max: float | None = Field(default=None, description="largest weight a uniform draw gives")
@@ -320,9 +321,13 @@ class DelayDistribution(DrawnValue):
         "or the project's), with its arguments as keys of their own. Omit it for a fixed delay",
     )
     value: float | None = Field(default=None, description="a fixed delay (ms), the same for every synapse")
-    mean: float | None = Field(default=None, examples=[1.5], description="mean of the drawn delays (ms)")
+    mean: float | None = Field(
+        default=None, examples=[1.5], description="mean (ms) of the distribution the delays are drawn from, "
+        "before any bound (normal, lognormal: of the delays, not of their log)"
+    )
     std: float | None = Field(
-        default=None, ge=0.0, examples=[0.75], description="standard deviation of the drawn delays (ms)"
+        default=None, ge=0.0, examples=[0.75], description="standard deviation (ms) of the distribution the "
+        "delays are drawn from, before any bound (normal, lognormal: of the delays, not of their log)"
     )
     min: float | None = Field(default=None, description="shortest delay (ms) a uniform draw gives")
     max: float | None = Field(default=None, description="longest delay (ms) a uniform draw gives")
@@ -356,9 +361,13 @@ class DrawnNeuronValue(DrawnValue):
         "with min and max; or another name, which the simulator looks up (its own, e.g. NEST's "
         "exponential, or the project's), with its arguments as keys of their own (e.g. beta: 2)",
     )
-    mean: float | None = Field(default=None, examples=[-58.0], description="mean of the drawn values (normal, lognormal)")
+    mean: float | None = Field(
+        default=None, examples=[-58.0], description="mean of the distribution the values are drawn from, "
+        "before any bound (normal, lognormal: of the values, not of their log)"
+    )
     std: float | None = Field(
-        default=None, ge=0.0, examples=[10.0], description="standard deviation of the drawn values (normal, lognormal)"
+        default=None, ge=0.0, examples=[10.0], description="standard deviation of the distribution the values "
+        "are drawn from, before any bound (normal, lognormal: of the values, not of their log)"
     )
     min: float | None = Field(default=None, description="smallest value a uniform draw gives")
     max: float | None = Field(default=None, description="largest value a uniform draw gives")

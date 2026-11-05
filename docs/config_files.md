@@ -158,16 +158,18 @@ connections:
       # optional · text · how each weight is drawn: normal or lognormal, with mean and
       #   std; uniform, with min and max; or another name, which the simulator looks up
       #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
-      #   keys of their own (e.g. beta: 20) and the mean of its values. Omit it for a
-      #   fixed weight
+      #   keys of their own (e.g. beta: 20) and the mean of the distribution. Omit it
+      #   for a fixed weight
       distribution: normal
       # optional · number · a fixed weight, the same for every synapse
       value:
-      # optional · number · mean of the drawn weights (normal, lognormal); a negative
+      # optional · number · mean of the distribution the weights are drawn from, before
+      #   any bound (normal, lognormal: of the weights, not of their log); a negative
       #   weight is inhibitory
       mean: 87.8
-      # optional · number ≥ 0 · standard deviation of the drawn weights (normal,
-      #   lognormal)
+      # optional · number ≥ 0 · standard deviation of the distribution the weights are
+      #   drawn from, before any bound (normal, lognormal: of the weights, not of their
+      #   log)
       std: 8.78
       # optional · number · smallest weight a uniform draw gives
       min:
@@ -194,9 +196,12 @@ connections:
       distribution: normal
       # optional · number · a fixed delay (ms), the same for every synapse
       value:
-      # optional · number · mean of the drawn delays (ms)
+      # optional · number · mean (ms) of the distribution the delays are drawn from,
+      #   before any bound (normal, lognormal: of the delays, not of their log)
       mean: 1.5
-      # optional · number ≥ 0 · standard deviation of the drawn delays (ms)
+      # optional · number ≥ 0 · standard deviation (ms) of the distribution the delays
+      #   are drawn from, before any bound (normal, lognormal: of the delays, not of
+      #   their log)
       std: 0.75
       # optional · number · shortest delay (ms) a uniform draw gives
       min:
