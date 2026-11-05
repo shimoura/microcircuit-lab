@@ -27,6 +27,7 @@ from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.synapse_files import read_synapse_lists
 from microcircuit_lab.config.yaml_files import read_yaml
 
 
@@ -94,6 +95,8 @@ class Run:
                         f"no file {csv_path}."
                     )
                 saved["connections"] = ConnectionTable.read_csv(csv_path)
+            # The synapses of each connection with rule from_file, next to config.yaml.
+            saved["synapse_lists"] = read_synapse_lists(self.folder, saved["connections"], "config.yaml")
             self._network = self._config(NetworkConfig, saved, "network")
         return self._network
 

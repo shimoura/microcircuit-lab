@@ -11,6 +11,7 @@ from microcircuit_lab.builder_tools import (
     scale_network,
 )
 from microcircuit_lab.builder_tools.mean_input import expected_synapses, num_synapses
+from microcircuit_lab.builder_tools.write import write_network
 from microcircuit_lab.config.connection_table import ConnectionTable
 from microcircuit_lab.config.connectivity import ConnectionConfig
 from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
@@ -20,6 +21,7 @@ from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.synapse_files import SynapseList
 from microcircuit_lab.config.synapses import SynapseEntry
 
 SIZES = {"S": 100, "T": 50}
@@ -203,6 +205,59 @@ def test_csv_keeps_project_rules_and_their_arguments(tmp_path):
     ring, mine = table.to_yaml_rows()[2:]
     assert (ring["width"], ring["p0"], mine["weight"]["a"]) == (2, 0.5, 1.5) and "width" not in mine
     assert "n_synapses" not in table.to_yaml_rows()[1]
+
+
+def _from_file_network(synapse_list):
+    row = ConnectionConfig(source="S", target="T", rule="from_file", file="synapses/S_to_T.csv",
+                           weight=WeightDistribution(unit="pA"))
+    return _network([_connection(n_synapses=10)]).model_copy(update={
+        "connections": ConnectionTable.from_yaml_rows([row]),
+        "synapse_lists": {"synapses/S_to_T.csv": synapse_list},
+    })
+
+
+def test_connections_from_a_file_are_written_read_and_built_as_given(tmp_path):
+    synapses = SynapseList(np.array([0, 0, 99]), np.array([1, 2, 49]), np.array([5.0, -2.0, 7.5]), np.array([1.0, 1.5, 2.0]))
+    network = write_network(_from_file_network(synapses), tmp_path / "net")
+    assert (tmp_path / "net" / "synapses" / "S_to_T.csv").is_file()
+
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    source, target = backend.get_population("S"), backend.get_population("T")
+    built = nest.GetConnections(source, target).get(["source", "target", "weight", "delay"], output="pandas")
+    built = built.sort_values(["source", "target"])
+    assert np.array_equal(built["source"] - source[0].global_id, synapses.source_index)
+    assert np.array_equal(built["target"] - target[0].global_id, synapses.target_index)
+    assert np.allclose(built["weight"], synapses.weight) and np.allclose(built["delay"], synapses.delay)
+    nest.ResetKernel()
+
+    past = SynapseList(np.array([0, 100]), np.array([1, 2]), np.array([5.0, 5.0]), np.array([1.0, 1.0]))
+    with pytest.raises(ValueError, match="line 3, source_index: must be from 0 to 99"):
+        write_network(_from_file_network(past), tmp_path / "past")
+
+
+def test_final_connections_are_written_as_rows_from_files(tmp_path):
+    from microcircuit_lab.network.load import read_network
+    from microcircuit_lab.run_folder.write import write_final_connections
+
+    network = _network([_connection(rule="fixed_indegree", indegree=5, weight=-7.0)])
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    (synapses,) = backend.final_connections([0]).values()
+    assert len(synapses) == 5 * SIZES["T"] and set(synapses.weight) == {-7.0} and set(synapses.delay) == {1.0}
+    assert set(np.bincount(synapses.target_index)) == {5} and synapses.source_index.max() < SIZES["S"]
+    nest.ResetKernel()
+
+    # Copied into a network folder, the rows run again with these synapses.
+    write_final_connections(tmp_path, network, {0: synapses})
+    folder = tmp_path / "final_connections"
+    write_network(network, tmp_path / "again")
+    (tmp_path / "again" / "connectivity.yaml").write_text((folder / "connectivity.yaml").read_text())
+    (tmp_path / "again" / "synapses").mkdir()
+    (tmp_path / "again" / "synapses" / "S_to_T.csv").write_text((folder / "synapses" / "S_to_T.csv").read_text())
+    again = read_network(tmp_path / "again")
+    assert again.connections["rule"].tolist() == ["from_file"]
+    assert np.array_equal(again.synapse_lists["synapses/S_to_T.csv"].target_index, synapses.target_index)
 
 
 def test_scaling_keeps_each_rule_at_the_same_expected_synapses():

@@ -28,6 +28,7 @@ from microcircuit_lab.config.network import (
 )
 from microcircuit_lab.config.neurons import NeuronConfig
 from microcircuit_lab.config.populations import PopulationConfig
+from microcircuit_lab.config.synapse_files import read_synapse_lists
 from microcircuit_lab.config.yaml_files import read_yaml
 
 # Shown under an error about an unknown stimulus type, so whoever wants to add
@@ -102,6 +103,9 @@ def read_network_files(folder: str | Path) -> NetworkDirectory:
                 f"'{connectivity['connections_file']}', but there is no file {csv_path}."
             )
         parts["connection_table"] = ConnectionTable.read_csv(csv_path)
+    parts["synapse_lists"] = read_synapse_lists(
+        folder, parts.get("connection_table", connectivity.get("connections") or []), manifest.connectivity
+    )
 
     try:
         return NetworkDirectory.model_validate(parts)
@@ -212,6 +216,7 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
             scaling=directory.scaling,
             reference=directory.reference,
             synapses=dict(directory.synapses.synapses),
+            synapse_lists=directory.synapse_lists,
         )
     except ValidationError as error:
         # These are the checks across files, each with its own message;

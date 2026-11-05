@@ -332,6 +332,41 @@ def test_an_inhibitory_conductance_weight_of_a_project_distribution_is_its_size(
     assert np.allclose(backend.synapses[0].w_syn[:] / b2.nS, 2.0)
 
 
+def test_connections_from_a_file_are_built_as_given() -> None:
+    from microcircuit_lab.config.connection_table import ConnectionTable
+    from microcircuit_lab.config.synapse_files import SynapseList
+
+    synapses = SynapseList(np.array([0, 0, 99]), np.array([1, 2, 49]), np.array([-5.0, -2.0, -7.5]), np.array([1.0, 1.5, 2.0]))
+    row = ConnectionConfig(source="S", target="T", rule="from_file", file="synapses/S_to_T.csv",
+                           weight=WeightDistribution(unit="pA"))
+    network = _network("iaf_psc_exp").model_copy(update={
+        "connections": ConnectionTable.from_yaml_rows([row]), "synapse_lists": {"synapses/S_to_T.csv": synapses},
+    })
+    backend = _backend(network)
+    backend.build()
+
+    import brian2 as b2
+
+    (built,) = backend.synapses
+    assert np.array_equal(built.i[:], synapses.source_index)  # S is neurons 0-99 of the group
+    assert np.array_equal(built.j[:] - 100, synapses.target_index)
+    assert np.allclose(built.w_syn[:] / b2.pA, synapses.weight) and np.allclose(built.delay[:] / b2.ms, synapses.delay)
+
+
+def test_final_connections_give_each_row_its_synapses_as_written() -> None:
+    # Two rows in one Synapses (S -> T and T -> T); an inhibitory conductance,
+    # which Brian2 holds as its size, comes back negative, as written.
+    rows = [_row(source, "T", WeightDistribution(value=weight, unit="nS"), DelayDistribution(value=delay))
+            for source, weight, delay in (("S", -2.0, 1.0), ("T", -3.0, 1.5))]
+    backend = _backend(_network("aeif_cond_exp", connections=rows))
+    backend.build()
+
+    from_s, from_t = backend.final_connections([0, 1]).values()
+    assert len(from_s) == 100 * 50 and set(from_s.weight) == {-2.0} and set(from_s.delay) == {1.0}
+    assert len(from_t) == 50 * 50 and set(from_t.weight) == {-3.0} and set(from_t.delay) == {1.5}
+    assert from_s.source_index.max() == 99 and from_t.source_index.max() == 49
+
+
 def test_redraw_needs_the_distributions_redraw_rounds() -> None:
     redraw = WeightDistribution(
         mean=3.0, unit="pA", distribution="no_rounds", lower_bound=0.0, bound_mode="redraw"

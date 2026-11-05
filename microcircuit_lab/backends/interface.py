@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.synapse_files import SynapseList
 
 
 class SimulationBackend(Protocol):
@@ -61,4 +62,10 @@ class SimulationBackend(Protocol):
 
     def save_recordings(self, run_dir: Path) -> list[Path]:
         """Save the recordings under ``run_dir`` and return the files."""
+        ...
+
+    def final_connections(self, rows: list[int]) -> dict[int, SynapseList]:
+        """The synapses of these rows of the connection table at the end of
+        the run, by row: indices in their populations, weights in the row's
+        unit (an inhibitory one negative, as written), delays in ms."""
         ...

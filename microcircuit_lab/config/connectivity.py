@@ -25,7 +25,7 @@ RULE_NUMBER = {
 
 #: The rules every backend implements. Any other name is looked up by the
 #: backend: a rule of the simulator or of the project.
-SHARED_RULES = (*RULE_NUMBER, "one_to_one", "all_to_all")
+SHARED_RULES = (*RULE_NUMBER, "one_to_one", "all_to_all", "from_file")
 
 
 class ConnectionConfig(FrozenConfig):
@@ -41,7 +41,10 @@ class ConnectionConfig(FrozenConfig):
       probability ``p``.
 
     Two take none: ``one_to_one`` (the k-th source neuron to the k-th target
-    neuron; the populations have the same size) and ``all_to_all``. Any other
+    neuron; the populations have the same size) and ``all_to_all``.
+    ``from_file`` takes every synapse from the CSV ``file`` (see
+    ``config/synapse_files.py``): the entry gives only the weight's unit
+    (``weight: {unit: pA}``) and no delay. Any other
     name is looked up by the backend (see ``SHARED_RULES``) and takes its
     arguments as keys of their own instead of a number
     (``{rule: pairwise_poisson, pairwise_avg_num_conns: 0.3}``). Any rule passes such
@@ -63,8 +66,15 @@ class ConnectionConfig(FrozenConfig):
         default="fixed_total_number",
         description="how the synapses are placed: fixed_total_number, fixed_indegree, "
         "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
-        "outdegree or p); one_to_one or all_to_all, with no number; or another rule, which the "
-        "simulator looks up, with its arguments as keys of their own (e.g. pairwise_avg_num_conns: 0.3)",
+        "outdegree or p); one_to_one or all_to_all, with no number; from_file, with its file; or another "
+        "rule, which the simulator looks up, with its arguments as keys of their own (e.g. "
+        "pairwise_avg_num_conns: 0.3)",
+    )
+    file: str | None = Field(
+        default=None,
+        description="from_file: CSV file, relative to the network folder (e.g. synapses/E_to_I.csv), with one row per synapse: "
+        "source_index and target_index (from 0 in each population), weight (in the weight's unit) and "
+        "delay (ms)",
     )
     n_synapses: int | None = Field(
         default=None,
@@ -97,8 +107,13 @@ class ConnectionConfig(FrozenConfig):
         examples=["depressing"],
         description="name of an entry in synapses.yaml; omit for the default synapse",
     )
-    weight: WeightDistribution = Field(description="weight of each synapse")
-    delay: DelayDistribution = Field(description="delay of each synapse")
+    weight: WeightDistribution = Field(
+        description="weight of each synapse; with rule: from_file, only its unit (the file gives the weights)"
+    )
+    delay: DelayDistribution = Field(
+        default_factory=DelayDistribution,
+        description="delay of each synapse; required, except with rule: from_file (the file gives the delays)",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -124,6 +139,20 @@ class ConnectionConfig(FrozenConfig):
             )
         if needed is None and others:
             raise ValueError(f"rule {self.rule!r} takes no number; remove {others}")
+        return self
+
+    @model_validator(mode="after")
+    def _check_file_matches_rule(self) -> ConnectionConfig:
+        from_file = self.rule == "from_file"
+        if from_file != (self.file is not None):
+            raise ValueError("rule from_file needs file (the CSV file of its synapses); no other rule takes file")
+        if from_file and (self.model_extra or self.allow_autapses is not None or self.allow_multapses is not None):
+            raise ValueError("rule from_file: the file gives every synapse; remove allow_autapses, "
+                             "allow_multapses and any argument")
+        problems = [f"{what}.{problem}" for what in ("weight", "delay")
+                    for problem in getattr(self, what).problems(from_file=from_file)]
+        if problems:
+            raise ValueError("; ".join(problems))
         return self
 
     @property

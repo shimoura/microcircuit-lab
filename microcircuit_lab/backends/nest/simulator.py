@@ -27,6 +27,7 @@ from microcircuit_lab.config.stimuli import (
     InhomogeneousPoissonStimulusConfig,
     PoissonStimulusConfig,
 )
+from microcircuit_lab.config.synapse_files import SynapseList
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,11 @@ class NestBackend:
         are installed.
         """
 
+        if self.simulation_config.recording.final_connections and self.num_processes() > 1:
+            raise ValueError(
+                "recording.final_connections is not supported with several MPI processes: each holds "
+                "only its own synapses."
+            )
         self._functions = distributions.load_functions(self._extensions)
         for use in self.network.distributions_not_shared():
             try:
@@ -307,6 +313,16 @@ class NestBackend:
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
+                if rule == "from_file":
+                    # Every synapse of the file: its k-th source neuron to its k-th target neuron.
+                    synapses = self.network.synapse_lists[column["file"][i]]
+                    nest.Connect(
+                        synapses.source_index + self.populations[source][0].global_id,
+                        synapses.target_index + self.populations[target][0].global_id,
+                        conn_spec="one_to_one",
+                        syn_spec=self.synapse_spec(synapses.weight, synapses.delay, column["synapse"][i], target),
+                    )
+                    continue
                 # Its arguments go to NEST as they are, which checks them.
                 conn_spec = {
                     "rule": rule,
@@ -339,6 +355,36 @@ class NestBackend:
                     conn_spec=conn_spec,
                     syn_spec=self.synapse_spec(weight, delay, synapse, target),
                 )
+
+    def final_connections(self, rows: list[int]) -> dict[int, SynapseList]:
+        """
+        The synapses of these rows of the connection table at the end of the
+        run (see SimulationBackend.final_connections), read from NEST.
+        """
+
+        table = self.network.connections
+        synapse_lists = {}
+        for row in rows:
+            source, target = self.populations[table["source"][row]], self.populations[table["target"][row]]
+            model = table["synapse"][row] or "static_synapse"
+            pieces = []
+            # A few source neurons at a time: GetConnections holds about 2.6 GB
+            # per million synapses at once.
+            for start in range(0, len(source), 2000):
+                found = nest.GetConnections(source[start:min(start + 2000, len(source))], target, synapse_model=model)
+                if len(found):
+                    values = found.get(["source", "target", "weight", "delay"])
+                    pieces.append({name: np.atleast_1d(values[name]) for name in values})
+            values = {name: np.concatenate([piece[name] for piece in pieces]) if pieces else np.array([])
+                      for name in ("source", "target", "weight", "delay")}
+            order = np.lexsort((values["target"], values["source"]))
+            synapse_lists[row] = SynapseList(
+                source_index=values["source"][order].astype(np.int64) - source[0].global_id,
+                target_index=values["target"][order].astype(np.int64) - target[0].global_id,
+                weight=values["weight"][order].astype(float),
+                delay=values["delay"][order].astype(float),
+            )
+        return synapse_lists
 
     def get_population(
         self,

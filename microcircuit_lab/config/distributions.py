@@ -95,7 +95,9 @@ def is_unset(values):
     return np.array([value is None or value != value for value in values], dtype=bool)
 
 
-def drawn_value_problems(fields: dict[str, np.ndarray], kind: str) -> list[tuple[str, np.ndarray, str]]:
+def drawn_value_problems(
+    fields: dict[str, np.ndarray], kind: str, from_file: np.ndarray | None = None
+) -> list[tuple[str, np.ndarray, str]]:
     """
     Where the fields of weights, delays or neuron values (``kind``:
     ``"weight"``, ``"delay"`` or ``"neuron"``) do not fit together, as
@@ -106,11 +108,18 @@ def drawn_value_problems(fields: dict[str, np.ndarray], kind: str) -> list[tuple
     an array with one entry per value, so the same checks serve one entry of
     a file and the millions of rows of a connection table. A field's own
     limits (e.g. ``std`` >= 0) are checked by pydantic with its ``Field``.
+
+    ``from_file`` marks the values a file gives (a connection with ``rule:
+    from_file``): they have no field set. None leaves an entry with no field
+    set unchecked, for whoever knows where it is used (see
+    :meth:`DrawnValue.problems`).
     """
 
     distribution = fields["distribution"]
     arguments = [name for name in fields if name not in DelayDistribution.model_fields]
     given = {name: ~is_unset(values) for name, values in fields.items()}
+    empty = ~np.logical_or.reduce(list(given.values()))
+    from_file = empty if from_file is None else np.asarray(from_file, dtype=bool)
     fixed = ~given["distribution"]
     kinds = {name: distribution == name for name in SHARED_DISTRIBUTIONS}
     bounded = given["lower_bound"] | given["upper_bound"]
@@ -118,7 +127,10 @@ def drawn_value_problems(fields: dict[str, np.ndarray], kind: str) -> list[tuple
         checks = [
             ("distribution", distribution == "fixed",
              "fixed was removed: write a fixed value as value: (e.g. {value: 87.8})"),
-            ("value", fixed & ~given["value"], "a fixed value needs value; a drawn one, a distribution"),
+            ("value", ~from_file & empty,
+             "needed: a value, or a distribution (only a connection with rule: from_file leaves it out)"),
+            ("value", ~from_file & ~empty & fixed & ~given["value"],
+             "a fixed value needs value; a drawn one, a distribution"),
             ("value", ~fixed & given["value"], "value is a fixed value: with a distribution, remove it"),
             ("lower_bound", fixed & bounded, "a fixed value is not drawn: remove its bounds"),
             ("bound_mode", bounded & ~given["bound_mode"],
@@ -135,7 +147,10 @@ def drawn_value_problems(fields: dict[str, np.ndarray], kind: str) -> list[tuple
                 if field not in takes:
                     checks.append((field, kinds[name] & given[field], f"{name} takes {' and '.join(takes)}, not {field}"))
         for field in ("mean", "std", "min", "max", *arguments):
-            checks.append((field, fixed & given[field], f"a fixed value takes value, not {field}"))
+            checks.append((field, ~from_file & fixed & given[field], f"a fixed value takes value, not {field}"))
+        for field in fields:
+            checks.append((field, from_file & given[field], "with rule: from_file, the file gives every value: "
+                           "write only the weight's unit, and no delay"))
         if kind == "weight":
             other = ~fixed & ~np.logical_or.reduce(list(kinds.values()))
             checks.append(("mean", other & ~given["mean"],
@@ -196,15 +211,27 @@ class DrawnValue(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_fields_fit(self):
+        for problem in self.problems(from_file=None):
+            raise ValueError(problem)
+        return self
+
+    def problems(self, from_file: bool | None) -> list[str]:
+        """
+        What does not fit together in this entry (see
+        :func:`drawn_value_problems`), e.g. ``["std: normal needs mean and
+        std"]``. ``from_file``: whether a file gives the values (a connection
+        with ``rule: from_file``, whose entry sets no field); None while that
+        is not known (an entry checked on its own).
+        """
+
         # The fields as columns of one row, as a connection table holds them.
         columns = {
             name: np.array([value], dtype=float if name not in DelayDistribution.model_fields or is_number_field(name)
                            else object)
             for name, value in self.fields.items()
         }
-        for field, _, message in drawn_value_problems(columns, self.kind):
-            raise ValueError(f"{field}: {message}")
-        return self
+        rows = None if from_file is None else np.array([from_file])
+        return [f"{field}: {message}" for field, _, message in drawn_value_problems(columns, self.kind, rows)]
 
     @property
     def expected(self) -> float:
