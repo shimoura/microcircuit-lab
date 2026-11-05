@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.yaml_files import read_yaml
@@ -194,15 +194,23 @@ class AnalysisConfig(FrozenConfig):
     )
     area: str | None = Field(
         default=None,
-        examples=["all"],
-        description="multi-area networks: one area's name, or all for one set of plots per "
-        "area; omit to plot every population together",
+        examples=["A"],
+        description="multi-area networks: plot this area only (its populations <area>__...), or together "
+        "for one set with every population, in plots/; omit for one set of plots per area. An area's plots "
+        "go to plots/<area>/; a network without areas gets one set, in plots/",
     )
     show_reference: bool = Field(
         default=False, description="mark the reference rates on the firing-rate plot (as --reference)"
     )
 
     style: PlotStyle = Field(default=PlotStyle(), description="colors, labels and sizes of every plot")
+
+    @field_validator("area")
+    @classmethod
+    def _refuse_all(cls, area):
+        if area == "all":
+            raise ValueError("area: all was removed: omit area for one set of plots per area")
+        return area
 
     def plot_config(
         self, name: str, config_cls: type[FrozenConfig] | None

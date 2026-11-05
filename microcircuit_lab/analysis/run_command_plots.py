@@ -64,9 +64,9 @@ class PlotSpec:
     The first parameter of plot_fn is the run (see ``read_run``): the finished
     run folder, read from disk. Every other parameter
     it names from PLOT_ARGUMENTS is filled in by call_plot; a plot function
-    asks only for what it needs. ``area`` is one area name or None
-    (``--area all`` calls the function once per area), and the plot is
-    saved to ``save_path``. ``config`` is an instance of config_cls, or
+    asks only for what it needs. ``area`` is one area name (without
+    ``--area``, a multi-area network calls the function once per area), or
+    None for a network without areas; the plot is saved to ``save_path``. ``config`` is an instance of config_cls, or
     the plain dict from the plot's YAML section when config_cls is None.
     Anything plot-specific belongs in that config, not as an extra argument,
     so that ``microcircuit-lab run`` can call every plot the same way.

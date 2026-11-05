@@ -415,9 +415,11 @@ Which plots to make and how they look. Each bundled plot has its own section; a 
 begin: 0.0
 # optional · number · end of the analysed time (ms); omit for the end of the run
 end: 1000.0
-# optional · text · multi-area networks: one area's name, or all for one set of plots
-#   per area; omit to plot every population together
-area: all
+# optional · text · multi-area networks: plot this area only (its populations
+#   <area>__...), or together for one set with every population, in plots/; omit for one
+#   set of plots per area. An area's plots go to plots/<area>/; a network without areas
+#   gets one set, in plots/
+area: A
 # optional, default false · true or false · mark the reference rates on the firing-rate
 #   plot (as --reference)
 show_reference: false
