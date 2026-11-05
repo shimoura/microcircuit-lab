@@ -23,7 +23,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from microcircuit_lab.builder_tools import mean_current, scale_network, write_network
+from microcircuit_lab.builder_tools import (
+    delay,
+    mean_current,
+    scale_network,
+    weight,
+    write_network,
+    zero_bound,
+)
 from microcircuit_lab.builder_tools.write import POISSON_BACKGROUND_HEADER
 from microcircuit_lab.config.yaml_files import flow_records, read_yaml, write_yaml
 from microcircuit_lab.network.load import read_network
@@ -222,18 +229,16 @@ def _build_connections(
                     "source": src_label,
                     "target": tgt_label,
                     "n_synapses": n_synapses,
-                    "weight": {
-                        "mean": mean_psc,
-                        "rel_std": abs(sd_psc / mean_psc),
-                        "distribution": "normal",
-                        "unit": "pA",
-                    },
-                    "delay": {
-                        "mean": delay_mean,
-                        "rel_std": delay_rel,
-                        "distribution": DELAY_DISTRIBUTIONS[delay_distribution],
-                        "minimum": delay_min,
-                    },
+                    "weight": weight(
+                        mean_psc, unit="pA", rel_std=abs(sd_psc / mean_psc), **zero_bound(mean_psc, "clip")
+                    ),
+                    "delay": delay(
+                        delay_mean,
+                        rel_std=delay_rel,
+                        distribution=DELAY_DISTRIBUTIONS[delay_distribution],
+                        lower_bound=delay_min,
+                        bound_mode="clip",
+                    ),
                 }
             )
 
@@ -344,17 +349,13 @@ def _build_poisson_background(
         poisson_background[label] = {
             "rate": float(rate_ext.loc[idx]),
             "indegree": float(synapses_external.loc[idx]) / float(sizes[label]),
-            "weight": {
-                "mean": ext_mean_psc,
-                "rel_std": abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0,
-                "distribution": "normal",
-                "unit": "pA",
-            },
-            "delay": {
-                "mean": RESOLUTION,
-                "rel_std": 0.0,
-                "distribution": "fixed",
-            },
+            "weight": weight(
+                ext_mean_psc,
+                unit="pA",
+                rel_std=abs(ext_sd_psc / ext_mean_psc) if ext_mean_psc != 0.0 else 0.0,
+                **zero_bound(ext_mean_psc, "clip"),
+            ),
+            "delay": delay(RESOLUTION),
         }
 
     return poisson_background
@@ -542,7 +543,7 @@ def generate_humam_configs(
         "network.yaml": network_manifest,
         "populations.yaml": {"populations": population_entries},
         "neurons.yaml": neurons,
-        "connectivity.yaml": {"bound_mode": "clip", "connections": connections},
+        "connectivity.yaml": {"connections": connections},
         "poisson_background.yaml": {"poisson_background": poisson_background},
         "reference.yaml": reference,
     }

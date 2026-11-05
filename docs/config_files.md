@@ -12,7 +12,7 @@ One folder per network, one file per part. A population is named once, in `popul
 
 What this means for a model:
 
-- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in `nest.random` works, with its arguments as keys.
+- **A population has one neuron entry.** Every neuron in it gets the same model and parameters, except values written as a distribution (a neuron parameter in `neurons.yaml`, a starting value in `initial_state`): those are drawn for each neuron, as weights and delays are, e.g. `{distribution: normal, mean: -58, std: 10}`, with bounds if needed; another name is looked up by the simulator (e.g. NEST's `exponential`, with `beta`) or the project (`extensions/`).
 - **Connections are set per pair of populations**: an entry for each source and target, with a rule and its number (`n_synapses` in total, an `indegree`, an `outdegree` or a probability `p`) and the distributions the weights and delays are drawn from. A pair can have several entries, one per synapse in `synapses.yaml` (e.g. AMPA and NMDA on their own receptor ports). PSP weights and the scaling compensation are only computed for the default receptor port.
 - **So, for neurons with another model or other parameters, or wired differently, make a separate population.** In `configs/network/toy_stimulated/`, `E` (`iaf_psc_exp`) and `E_adex` (`aeif_cond_exp`) are two populations, each with its own connections.
 - **Several populations can share one neuron entry**, e.g. one `excitatory` entry for the excitatory populations of every layer.
@@ -132,9 +132,14 @@ connections:
     # optional, default fixed_total_number · text · how the synapses are placed:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
-    #   all_to_all, with no number; or another rule, which the simulator looks up, with
-    #   parameters
+    #   all_to_all, with no number; from_file, with its file; or another rule, which the
+    #   simulator looks up, with its arguments as keys of their own (e.g.
+    #   pairwise_avg_num_conns: 0.3)
     rule: fixed_total_number
+    # optional · text · from_file: CSV file, relative to the network folder (e.g.
+    #   synapses/E_to_I.csv), with one row per synapse: source_index and target_index
+    #   (from 0 in each population), weight (in the weight's unit) and delay (ms)
+    file:
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
     n_synapses: 1440000
@@ -145,9 +150,6 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
-    # optional · mapping · only for a rule that is not shared: its parameters, e.g.
-    #   {width: 10, p0: 0.5}
-    parameters:
     # optional · true or false · whether a neuron may connect to itself; omit for the
     #   simulator's default
     allow_autapses:
@@ -156,46 +158,73 @@ connections:
     allow_multapses:
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
-    # required · weight of each synapse
+    # required · weight of each synapse; with rule: from_file, only its unit (the file
+    #   gives the weights)
     weight:
-      # required · number · amplitude, in the unit set by `unit`; a negative weight is
-      #   inhibitory
-      mean: 0.15
-      # required · number ≥ 0 · standard deviation / |mean|
-      rel_std: 0.1
-      # optional, default normal · text · how each weight is drawn, with that mean and
-      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
-      #   project distribution, which the backend defines, with parameters
+      # optional · text · how each weight is drawn: normal or lognormal, with mean and
+      #   std; uniform, with min and max; or another name, which the simulator looks up
+      #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
+      #   keys of their own (e.g. beta: 20) and the mean of the distribution. Omit it
+      #   for a fixed weight
       distribution: normal
-      # optional · mapping · only for a project distribution: the values its expression
-      #   uses, e.g. {length: 20}
-      parameters:
+      # optional · number · a fixed weight, the same for every synapse
+      value:
+      # optional · number · mean of the distribution the weights are drawn from, before
+      #   any bound (normal, lognormal: of the weights, not of their log); a negative
+      #   weight is inhibitory
+      mean: 87.8
+      # optional · number ≥ 0 · standard deviation of the distribution the weights are
+      #   drawn from, before any bound (normal, lognormal: of the weights, not of their
+      #   log)
+      std: 8.78
+      # optional · number · smallest weight a uniform draw gives
+      min:
+      # optional · number · largest weight a uniform draw gives
+      max:
+      # optional · number · smallest allowed drawn weight (e.g. 0, so that an excitatory
+      #   weight stays positive); omit for none
+      lower_bound: 0.0
+      # optional · number · largest allowed drawn weight (e.g. 0 for an inhibitory one);
+      #   omit for none
+      upper_bound:
+      # optional · one of redraw | clip · with a bound: what to do with a drawn weight
+      #   past it: redraw draws it again, clip sets it to the bound
+      bound_mode: redraw
       # required · one of pA | nS | mV · the unit of the weight: pA (a current), nS (a
       #   conductance) or mV (a jump of the membrane potential); nothing is converted
       unit: pA
-    # required · delay of each synapse
+    # optional · delay of each synapse; required, except with rule: from_file (the file
+    #   gives the delays)
     delay:
-      # required · number > 0 · mean delay (ms)
-      mean: 1.5
-      # required · number ≥ 0 · standard deviation / mean
-      rel_std: 0.5
-      # optional, default normal · text · how each delay is drawn, with that mean and
-      #   standard deviation: normal, uniform, lognormal or fixed; or the name of a
-      #   project distribution, with parameters
+      # optional · text · how each delay is drawn: normal or lognormal, with mean and
+      #   std; uniform, with min and max; or another name, which the simulator looks up
+      #   (its own, e.g. NEST's exponential, or the project's), with its arguments as
+      #   keys of their own. Omit it for a fixed delay
       distribution: normal
-      # optional · mapping · only for a project distribution: the values its expression
-      #   uses
-      parameters:
-      # optional · number > 0 · smallest allowed delay (ms) of a drawn delay, never
-      #   below half the simulation step; omit for half the simulation step
-      minimum: 0.1
+      # optional · number · a fixed delay (ms), the same for every synapse
+      value:
+      # optional · number · mean (ms) of the distribution the delays are drawn from,
+      #   before any bound (normal, lognormal: of the delays, not of their log)
+      mean: 1.5
+      # optional · number ≥ 0 · standard deviation (ms) of the distribution the delays
+      #   are drawn from, before any bound (normal, lognormal: of the delays, not of
+      #   their log)
+      std: 0.75
+      # optional · number · shortest delay (ms) a uniform draw gives
+      min:
+      # optional · number · longest delay (ms) a uniform draw gives
+      max:
+      # optional · number · shortest allowed drawn delay (ms), needed for a drawn delay;
+      #   e.g. the simulation step (a delay below half a step rounds to 0)
+      lower_bound: 0.1
+      # optional · number · longest allowed drawn delay (ms); omit for none
+      upper_bound:
+      # optional · one of redraw | clip · what to do with a drawn delay past a bound:
+      #   redraw draws it again, clip sets it to the bound
+      bound_mode: redraw
 # optional · text · instead of connections: a CSV file, relative to the network folder,
 #   with one row per connection (e.g. connections.csv), for a large network
 connections_file:
-# optional, default redraw · one of redraw | clip · what to do with a drawn weight or
-#   delay outside its allowed range: 'redraw' draws again, 'clip' replaces it by the
-#   limit; applies to all weights and delays of the network, background inputs included
-bound_mode: redraw
 ```
 
 ### poisson_background.yaml
@@ -211,10 +240,13 @@ poisson_background:
     rate: 8.0
     # required · number ≥ 0 · Poisson synapses per neuron
     indegree: 1600
-    # required · weight of each Poisson synapse
-    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    # required · weight of each Poisson synapse. The simulators make one generator at
+    #   rate x indegree and one connection per neuron, as the reference codes do, so a
+    #   drawn weight is drawn once per neuron, not per synapse: the same mean input, a
+    #   larger spread across neurons
+    weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each Poisson synapse
-    delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
     # optional · text · a name for the population's Poisson generator: populations that
@@ -260,9 +292,9 @@ stimuli:
     # required · number ≥ 0 · spike rate (spikes/s)
     rate: 50.0
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
-    delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
   # Poisson spike train with a piecewise-constant rate profile.
@@ -282,9 +314,9 @@ stimuli:
     #   (spikes/s), one per time
     rate_values: [20.0, 0.0]
     # required · weight of each stimulus connection
-    weight: {mean: 0.15, rel_std: 0.1, unit: pA}   # all fields as in connectivity.yaml
+    weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}   # all fields as in connectivity.yaml
     # required · delay of each stimulus connection
-    delay: {mean: 1.5, rel_std: 0.5}   # all fields as in connectivity.yaml
+    delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}   # all fields as in connectivity.yaml
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
 ```
@@ -365,6 +397,13 @@ recording:
       # optional · list of names, at least 1 · names of the populations to record (at
       #   least one); omit it to record all
       populations: [E, I]
+  # optional, default false · save the weight and delay of every synapse at the end of
+  #   the run (not a synapse's other variables, e.g. plasticity traces), in
+  #   final_connections/ of the run folder, as rows with rule: from_file (e.g. after
+  #   plasticity): true for every connection, or a list of projections ({source: E,
+  #   target: E}). Off by default: reading them back takes time and memory for a large
+  #   network
+  final_connections: false
 # optional · where and what to save
 output:
   # optional · path · folder for the runs; omit for output/<network name>
@@ -390,9 +429,11 @@ Which plots to make and how they look. Each bundled plot has its own section; a 
 begin: 0.0
 # optional · number · end of the analysed time (ms); omit for the end of the run
 end: 1000.0
-# optional · text · multi-area networks: one area's name, or all for one set of plots
-#   per area; omit to plot every population together
-area: all
+# optional · text · multi-area networks: plot this area only (its populations
+#   <area>__...), or together for one set with every population, in plots/; omit for one
+#   set of plots per area. An area's plots go to plots/<area>/; a network without areas
+#   gets one set, in plots/
+area: A
 # optional, default false · true or false · mark the reference rates on the firing-rate
 #   plot (as --reference)
 show_reference: false

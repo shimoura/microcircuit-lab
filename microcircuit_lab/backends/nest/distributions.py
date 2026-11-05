@@ -2,142 +2,128 @@
 Weights, delays and per-neuron values drawn from their distributions in NEST.
 
 A value given as a distribution becomes a NEST parameter that draws one value
-per neuron or synapse; a plain number is passed on as it is.
+per neuron or synapse; a fixed value is passed on as it is. A name is looked
+up in this order: a shared distribution (normal, lognormal, uniform), NEST's
+own (``nest.random``, e.g. ``exponential``), then a function of the project,
+in a file of ``extensions/nest/`` (or a module given as ``extensions``) that
+returns a NEST parameter:
+
+    def erlang2(beta):
+        return nest.random.exponential(beta=beta) + nest.random.exponential(beta=beta)
+
+The function gets the keys of the entry it names (``{distribution: erlang2,
+beta: 20, ...}``), as NEST's own do. A lognormal value's ``mean`` and ``std``
+are those of the values (see ``config/distributions.py``).
 """
 
 from __future__ import annotations
 
+import functools
 import inspect
+from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import nest
-import numpy as np
 
-from microcircuit_lab.config.distributions import DrawnValue
+from microcircuit_lab.config.connection_table import given_arguments
+from microcircuit_lab.config.distributions import (
+    SHARED_DISTRIBUTIONS,
+    is_unset,
+    lognormal_parameters,
+)
+from microcircuit_lab.project_code import find_functions
+
+EXTENSIONS_FOLDER = Path("extensions") / "nest"
 
 
-def per_neuron_value(value):
+@functools.cache
+def _nest_distributions() -> dict[str, Callable]:
+    """NEST's own distributions, by name."""
+    return {name: item for name, item in vars(nest.random).items() if inspect.isfunction(item)}
+
+
+def load_functions(extensions: Sequence[str] = ()) -> dict[str, Callable]:
     """
-    A number as given, or a NEST parameter drawing one value per neuron.
+    The project's distributions: every function in the files of
+    ``extensions/nest/`` (of the folder you run from) and of the modules
+    ``extensions`` (see :func:`microcircuit_lab.project_code.find_functions`).
+    None may take a name that is shared or NEST's own.
     """
 
-    if not isinstance(value, DrawnValue):
-        return value
-
-    draw = getattr(nest.random, value.distribution, None)
-    if not inspect.isfunction(draw):
-        available = [name for name, item in vars(nest.random).items() if inspect.isfunction(item)]
+    found = find_functions(EXTENSIONS_FOLDER, "extensions.nest", extensions)
+    taken = {**dict.fromkeys(SHARED_DISTRIBUTIONS, "a shared distribution"),
+             **dict.fromkeys(_nest_distributions(), "NEST's own (nest.random)")}
+    clashes = sorted(set(found) & set(taken))
+    if clashes:
         raise ValueError(
-            f"NEST has no distribution '{value.distribution}'; nest.random has {available}."
+            f"The project defines a function named {clashes[0]!r}, which is {taken[clashes[0]]}; "
+            "give it another name."
         )
-    # NEST would fill in a left-out argument with its default.
-    missing = [name for name in inspect.signature(draw).parameters if name not in value.model_extra]
-    if missing:
-        raise ValueError(f"Distribution '{value.distribution}' needs {missing}.")
-    return draw(**value.model_extra)
+    return found
 
 
-def create_weight_spec(mean: float, rel_std: float, distribution: str, bound_mode: str):
+def lookup(name: str, functions: dict[str, Callable]) -> Callable:
+    """The function that draws from the distribution ``name``: NEST's own
+    or the project's (``functions``, see :func:`load_functions`)."""
+
+    draw = _nest_distributions().get(name) or functions.get(name)
+    if draw is None:
+        raise ValueError(
+            f"NEST has no distribution {name!r}: nest.random has {sorted(_nest_distributions())}, and "
+            f"{EXTENSIONS_FOLDER}/ (or --extensions) defines {sorted(functions)}."
+        )
+    return draw
+
+
+@functools.cache
+def arguments(draw: Callable) -> tuple[str, ...]:
+    """The names of the arguments a distribution's function takes, all of
+    which the entry gives: a NEST default left out would not show in the
+    files."""
+    return tuple(inspect.signature(draw).parameters)
+
+
+def drawn_parameter(fields: dict, functions: dict[str, Callable]):
     """
-    Create a NEST weight parameter from a weight's ``mean``, ``rel_std`` and
-    ``distribution`` (the fields of a weight in the config files).
+    A NEST value from the ``fields`` of a weight, delay or neuron value in
+    the config files (``config/distributions.py``; a number left out is None
+    or NaN) and its arguments: a fixed ``value`` as it is, or a NEST
+    parameter that draws one value per synapse or neuron from
+    ``distribution``, within its bounds.
 
-    A weight without spread (fixed, or ``rel_std`` 0) is returned as
-    given. Every distribution has the given mean and standard deviation;
-    a uniform one spans mean ± sqrt(3) * std. A lognormal weight has the
-    sign of its mean. A normal or uniform weight of the other sign is
-    redrawn or clipped to 0, as set by the network's ``bound_mode``.
-    """
-
-    if distribution == "fixed" or rel_std == 0.0:
-        return mean
-
-    std = abs(mean * rel_std)
-
-    if distribution in ("normal", "uniform"):
-        if distribution == "normal":
-            drawn = nest.random.normal(mean=mean, std=std)
-        else:
-            half_width = np.sqrt(3.0) * std
-            drawn = nest.random.uniform(
-                min=mean - half_width, max=mean + half_width
-            )
-        clip = bound_mode == "clip"
-
-        if mean >= 0:
-            if clip:
-                return nest.math.max(drawn, 0.0)
-            return nest.math.redraw(drawn, min=0.0, max=float("inf"))
-
-        if clip:
-            return nest.math.min(drawn, 0.0)
-        return nest.math.redraw(drawn, min=-float("inf"), max=0.0)
-
-    if distribution == "lognormal":
-        variance = (mean * rel_std) ** 2
-        sigma2 = np.log(1.0 + variance / mean**2)
-        sigma = np.sqrt(sigma2)
-        mu = np.log(abs(mean)) - sigma2 / 2.0
-
-        drawn = nest.random.lognormal(mean=mu, std=sigma)
-        return drawn if mean > 0 else -1.0 * drawn
-
-    raise NotImplementedError(f"Unsupported distribution: {distribution}")
-
-
-def create_delay_parameter(
-    mean: float,
-    rel_std: float,
-    distribution: str,
-    minimum: float | None,
-    bound_mode: str,
-    resolution: float | None = None,
-):
-    """
-    Create a NEST delay parameter from a delay's ``mean``, ``rel_std``,
-    ``distribution`` and ``minimum`` (the fields of a delay in the config
-    files; a ``minimum`` of None or NaN is not set).
-
-    A drawn delay below the minimum (``minimum``, or half the
-    simulation step if not set) is redrawn or clipped to the minimum,
-    as set by the network's ``bound_mode``. The minimum is never below
-    half the simulation step, which NEST would round to a delay of 0.
-    A fixed delay is returned as given; a uniform one is drawn from
-    mean ± sqrt(3) * std, which has that mean and standard deviation.
-
-    ``resolution`` is the simulation step (ms); give it when creating many
-    delays, since reading ``nest.resolution`` asks NEST for its whole status
-    each time.
+    ``mean`` and ``std`` are those of the drawn values: a lognormal value is
+    drawn with the log-space numbers that give them, and has the sign of
+    ``mean``. A value past ``lower_bound`` or ``upper_bound`` is drawn again
+    (``bound_mode`` "redraw") or set to the bound ("clip").
     """
 
-    if distribution == "fixed" or rel_std == 0.0:
-        return mean
-
-    std = mean * rel_std
-    min_delay = 0.5 * (nest.resolution if resolution is None else resolution)
-    if minimum is not None and minimum == minimum:  # NaN is "not set" too
-        min_delay = max(minimum, min_delay)
-
+    distribution, mean = fields["distribution"], fields["mean"]
+    if distribution is None:
+        return fields["value"]
     if distribution == "normal":
-        drawn = nest.random.normal(mean=mean, std=std)
-
+        drawn = nest.random.normal(mean=mean, std=fields["std"])
     elif distribution == "uniform":
-        half_width = np.sqrt(3.0) * std
-        drawn = nest.random.uniform(
-            min=mean - half_width, max=mean + half_width
-        )
-
+        drawn = nest.random.uniform(min=fields["min"], max=fields["max"])
     elif distribution == "lognormal":
-        variance = std**2
-        sigma_squared = np.log1p(variance / mean**2)
-        sigma = np.sqrt(sigma_squared)
-        mu = np.log(mean) - 0.5 * sigma_squared
-
+        mu, sigma = lognormal_parameters(mean, fields["std"])
         drawn = nest.random.lognormal(mean=mu, std=sigma)
-
+        if mean < 0:
+            drawn = -1.0 * drawn
     else:
-        raise ValueError(f"Unsupported delay distribution: {distribution!r}")
+        draw = lookup(distribution, functions)
+        # A whole number as an int: uniform_int's max: 10 is read as 10.0.
+        drawn = draw(**given_arguments({name: fields[name] for name in arguments(draw)}))
 
-    if bound_mode == "clip":
-        return nest.math.max(drawn, min_delay)
-
-    return nest.math.redraw(drawn, min=min_delay, max=float("inf"))
+    lower = None if is_unset(fields["lower_bound"]) else fields["lower_bound"]
+    upper = None if is_unset(fields["upper_bound"]) else fields["upper_bound"]
+    if fields["bound_mode"] == "clip":
+        if lower is not None:
+            drawn = nest.math.max(drawn, lower)
+        if upper is not None:
+            drawn = nest.math.min(drawn, upper)
+        return drawn
+    if fields["bound_mode"] == "redraw":
+        low = -float("inf") if lower is None else lower
+        high = float("inf") if upper is None else upper
+        return nest.math.redraw(drawn, min=low, max=high)
+    return drawn

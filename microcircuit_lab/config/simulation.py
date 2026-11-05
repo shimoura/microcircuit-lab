@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
+import numpy as np
 from pydantic import Field, model_validator
 
 from microcircuit_lab.config.frozen_config import FrozenConfig
@@ -46,6 +47,13 @@ class VariableRecording(FrozenConfig):
     )
 
 
+class Projection(FrozenConfig):
+    """The connections from one population to another (all their synapses)."""
+
+    source: str = Field(examples=["E"], description="source population name")
+    target: str = Field(examples=["E"], description="target population name")
+
+
 class RecordingConfig(FrozenConfig):
     """What to record. The backend decides how."""
 
@@ -56,6 +64,14 @@ class RecordingConfig(FrozenConfig):
         description="neuron variables to record, keyed by the name the simulator gives them "
         "(V_m, or the synaptic input I_syn_ex / I_syn_in or g_ex / g_in, depending on the "
         "model); none by default. The simulator reports a name the model does not have",
+    )
+    final_connections: bool | list[Projection] = Field(
+        default=False,
+        description="save the weight and delay of every synapse at the end of the run (not a synapse's "
+        "other variables, e.g. plasticity traces), in "
+        "final_connections/ of the run folder, as rows with rule: from_file (e.g. after "
+        "plasticity): true for every connection, or a list of projections ({source: E, target: E}). "
+        "Off by default: reading them back takes time and memory for a large network",
     )
 
     @model_validator(mode="before")
@@ -86,6 +102,29 @@ class RecordingConfig(FrozenConfig):
                 f"recording.variables[{variable!r}].populations names unknown population(s): {unknown}."
             )
         return [name for name in network_populations if name in names]
+
+    def final_connection_rows(self, connections) -> list[int]:
+        """
+        The rows of the connection table (``connections``) whose final
+        synapses are saved (see ``final_connections``). Raises if a projection
+        listed there has no connection.
+        """
+
+        if self.final_connections is False:
+            return []
+        source, target = connections["source"], connections["target"]
+        if self.final_connections is True:
+            return list(range(len(connections)))
+        rows = []
+        for projection in self.final_connections:
+            here = (source == projection.source) & (target == projection.target)
+            if not here.any():
+                raise ValueError(
+                    f"recording.final_connections names {projection.source} -> {projection.target}, "
+                    "which no connection has."
+                )
+            rows += np.flatnonzero(here).tolist()
+        return sorted(set(rows))
 
 
 class OutputConfig(FrozenConfig):

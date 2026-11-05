@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.frozen_config import FrozenConfig
 
 
@@ -25,7 +25,11 @@ class PoissonBackgroundConfig(FrozenConfig):
     indegree: float = Field(
         ge=0.0, examples=[1600], description="Poisson synapses per neuron"
     )
-    weight: WeightDistribution = Field(description="weight of each Poisson synapse")
+    weight: WeightDistribution = Field(
+        description="weight of each Poisson synapse. The simulators make one generator at rate x "
+        "indegree and one connection per neuron, as the reference codes do, so a drawn weight is "
+        "drawn once per neuron, not per synapse: the same mean input, a larger spread across neurons"
+    )
     delay: DelayDistribution = Field(description="delay of each Poisson synapse")
     synapse: str | None = Field(
         default=None,

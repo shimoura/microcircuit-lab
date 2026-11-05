@@ -15,6 +15,7 @@ import pytest
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
 from microcircuit_lab.builder_tools import scale_network
+from microcircuit_lab.config.distributions import WeightDistribution
 from microcircuit_lab.network.load import assemble_network, read_network_files
 
 NETWORK = "configs/network/toy_two_areas"
@@ -37,13 +38,13 @@ def _mean_input(network) -> dict[str, float]:
     for name, population in network.populations.items():
         parameters = population.neuron.parameters
         background = network.poisson_background[name]
-        total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.mean * background.generator_rate
+        total = parameters.I_e + 0.001 * parameters.tau_syn_ex * background.weight.expected * background.generator_rate
         current[name] = total
 
     for connection in network.connections.to_yaml_rows():
         target = network.populations[connection["target"]]
         parameters = target.neuron.parameters
-        weight = connection["weight"]["mean"]
+        weight = WeightDistribution(**connection["weight"]).expected
         tau = parameters.tau_syn_ex if weight > 0 else parameters.tau_syn_in
         indegree = connection["n_synapses"] / target.size
         current[connection["target"]] += (
@@ -71,6 +72,14 @@ def test_area_selection_finds_each_area():
     assert list_areas(run) == ["A", "B"]
     assert len(select_populations(run, None, "A")) == 12
     assert len(select_populations(run, None, "B")) == 12
+
+
+def test_a_population_without_an_area_is_an_area_of_its_own():
+    run = SimpleNamespace(populations=["V1__E", "TC", "V1__I", "V2__E"])
+
+    assert list_areas(run) == ["V1", "TC", "V2"]
+    assert select_populations(run, None, "TC") == ["TC"]
+    assert select_populations(run, None, "V1") == ["V1__E", "V1__I"]
 
 
 def test_a_single_area_network_has_no_areas():

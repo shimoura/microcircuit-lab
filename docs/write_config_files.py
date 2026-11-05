@@ -240,7 +240,10 @@ class _Writer:
             return [f"{indent}{name}:", *(f"{inner}{key}: {_value(v)}" for key, v in values.items())]
         if model := _model_of(annotation):
             if model in self.seen:
-                example = {key: _example(key, f) for key, f in model.model_fields.items() if f.is_required()}
+                # The fields with an example (and the required ones), so that the
+                # short form is a valid entry too.
+                example = {key: _example(key, f) for key, f in model.model_fields.items()
+                           if f.is_required() or f.examples}
                 return [f"{indent}{name}: {_value(example)}   # all fields as in {self.seen[model]}"]
             self.seen[model] = self.file
             return [f"{indent}{name}:", *self.model(model, inner)]
@@ -367,8 +370,9 @@ def render() -> str:
             "- **A population has one neuron entry.** Every neuron in it gets the same model and "
             "parameters, except values written as a distribution (a neuron parameter in "
             "`neurons.yaml`, a starting value in `initial_state`): those are drawn for each "
-            "neuron, e.g. `{distribution: normal, mean: -58, std: 10}`; any distribution in "
-            "`nest.random` works, with its arguments as keys.",
+            "neuron, as weights and delays are, e.g. `{distribution: normal, mean: -58, std: 10}`, "
+            "with bounds if needed; another name is looked up by the simulator (e.g. NEST's "
+            "`exponential`, with `beta`) or the project (`extensions/`).",
             "- **Connections are set per pair of populations**: an entry for each source and "
             "target, with a rule and its number (`n_synapses` in total, an `indegree`, an "
             "`outdegree` or a probability `p`) and the distributions the weights and delays are "

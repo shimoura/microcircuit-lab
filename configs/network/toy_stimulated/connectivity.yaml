@@ -1,9 +1,14 @@
-# Each weight.mean is what the simulator gets, in weight.unit: pA (a
-# current, as iaf_psc_exp takes), nS (a conductance) or mV. Nothing is
-# converted. The weights here were chosen as PSP amplitudes (the comment
-# after each value) and converted to pA once, with
-# builder_tools.psp_to_psc_iaf_psc_exp and the target's C_m, tau_m and
-# tau_syn. A distribution is optional (default: normal).
+# Each weight is what the simulator gets, in weight.unit: pA (a current, as
+# iaf_psc_exp takes), nS (a conductance) or mV. Nothing is converted. The
+# weights here were chosen as PSP amplitudes (the comment after each value)
+# and converted to pA once, with builder_tools.psp_to_psc_iaf_psc_exp and the
+# target's C_m, tau_m and tau_syn.
+#
+# A weight or delay is a fixed `value`, or drawn from a `distribution` with
+# the mean and std of the drawn values. Here the weights keep their sign
+# (lower_bound or upper_bound 0) and the delays stay at 0.05 ms (half the
+# 0.1 ms step) or more: a value past its bound is drawn again
+# (bound_mode: redraw; clip would set it to the bound).
 # All fields: the core's docs/config_files.md.
 connections:
 
@@ -11,53 +16,69 @@ connections:
     target: E
     n_synapses: 64000
     weight:
-      mean: 87.80849352920843  # a 0.15 mV PSP
-      rel_std: 0.1
       distribution: normal
+      mean: 87.80849352920843  # a 0.15 mV PSP
+      std: 8.780849352920844
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.5
       distribution: normal
+      mean: 1.5
+      std: 0.75
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: I
     target: E
     n_synapses: 16000
     weight:
-      mean: -351.23397411683374  # a -0.6 mV PSP
-      rel_std: 0.1
       distribution: normal
+      mean: -351.23397411683374  # a -0.6 mV PSP
+      std: 35.12339741168338
+      upper_bound: 0.0
+      bound_mode: redraw
       unit: pA
     delay:
-      mean: 0.75
-      rel_std: 0.5
       distribution: normal
+      mean: 0.75
+      std: 0.375
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: E
     target: I
     n_synapses: 16000
     weight:
-      mean: 87.80849352920843  # a 0.15 mV PSP
-      rel_std: 0.1
       distribution: normal
+      mean: 87.80849352920843  # a 0.15 mV PSP
+      std: 8.780849352920844
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: pA
     delay:
-      mean: 1.5
-      rel_std: 0.5
       distribution: normal
+      mean: 1.5
+      std: 0.75
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: I
     target: I
     n_synapses: 4000
     weight:
-      mean: -351.23397411683374  # a -0.6 mV PSP
-      rel_std: 0.1
       distribution: normal
+      mean: -351.23397411683374  # a -0.6 mV PSP
+      std: 35.12339741168338
+      upper_bound: 0.0
+      bound_mode: redraw
       unit: pA
     delay:
-      mean: 0.75
-      rel_std: 0.5
       distribution: normal
+      mean: 0.75
+      std: 0.375
+      lower_bound: 0.05
+      bound_mode: redraw
 
   # E_adex/I_adex use aeif_cond_exp, a conductance-based model, so their
   # weights are synaptic conductances (unit: nS). The sign still selects
@@ -78,59 +99,75 @@ connections:
     target: E_adex
     n_synapses: 64000
     weight:
-      mean: 0.6
-      rel_std: 0.1
       distribution: normal
+      mean: 0.6
+      std: 0.06
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: nS
     delay:
-      mean: 1.5
-      rel_std: 0.5
       distribution: normal
+      mean: 1.5
+      std: 0.75
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: I_adex
     target: E_adex
     n_synapses: 16000
     weight:
-      mean: -2.4
-      rel_std: 0.1
       distribution: normal
+      mean: -2.4
+      std: 0.24
+      upper_bound: 0.0
+      bound_mode: redraw
       unit: nS
     delay:
-      mean: 0.75
-      rel_std: 0.5
       distribution: normal
+      mean: 0.75
+      std: 0.375
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: E_adex
     target: I_adex
     n_synapses: 16000
     weight:
-      mean: 0.6
-      rel_std: 0.1
       distribution: normal
+      mean: 0.6
+      std: 0.06
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: nS
     delay:
-      mean: 1.5
-      rel_std: 0.5
       distribution: normal
+      mean: 1.5
+      std: 0.75
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: I_adex
     target: I_adex
     n_synapses: 4000
     weight:
-      mean: -2.4
-      rel_std: 0.1
       distribution: normal
+      mean: -2.4
+      std: 0.24
+      upper_bound: 0.0
+      bound_mode: redraw
       unit: nS
     delay:
-      mean: 0.75
-      rel_std: 0.5
       distribution: normal
+      mean: 0.75
+      std: 0.375
+      lower_bound: 0.05
+      bound_mode: redraw
 
   # Reciprocal coupling between the two circuits, through their
   # excitatory populations only, weaker and sparser than the intra-circuit
   # connections above (n_synapses=8000 vs. 64000, giving an indegree of
   # 10 rather than 80) and with a longer delay, as a stand-in for a
-  # long-range projection. Per-synapse weight.mean matches the intra-
+  # long-range projection. Per-synapse weight (mean) matches the intra-
   # circuit excitatory weight for the target's own model (0.6 nS
   # into E_adex/I_adex; see the derivation above), so the weakening comes
   # entirely from the lower indegree, the same convention used
@@ -140,50 +177,66 @@ connections:
     target: E_adex
     n_synapses: 8000
     weight:
-      mean: 0.6
-      rel_std: 0.1
       distribution: normal
+      mean: 0.6
+      std: 0.06
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: nS
     delay:
-      mean: 3.0
-      rel_std: 0.5
       distribution: normal
+      mean: 3.0
+      std: 1.5
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: E
     target: I_adex
     n_synapses: 8000
     weight:
-      mean: 0.6
-      rel_std: 0.1
       distribution: normal
+      mean: 0.6
+      std: 0.06
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: nS
     delay:
-      mean: 3.0
-      rel_std: 0.5
       distribution: normal
+      mean: 3.0
+      std: 1.5
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: E_adex
     target: E
     n_synapses: 8000
     weight:
-      mean: 58.53899568613896  # a 0.1 mV PSP
-      rel_std: 0.1
       distribution: normal
+      mean: 58.53899568613896  # a 0.1 mV PSP
+      std: 5.853899568613897
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: pA
     delay:
-      mean: 3.0
-      rel_std: 0.5
       distribution: normal
+      mean: 3.0
+      std: 1.5
+      lower_bound: 0.05
+      bound_mode: redraw
 
   - source: E_adex
     target: I
     n_synapses: 8000
     weight:
-      mean: 58.53899568613896  # a 0.1 mV PSP
-      rel_std: 0.1
       distribution: normal
+      mean: 58.53899568613896  # a 0.1 mV PSP
+      std: 5.853899568613897
+      lower_bound: 0.0
+      bound_mode: redraw
       unit: pA
     delay:
-      mean: 3.0
-      rel_std: 0.5
       distribution: normal
+      mean: 3.0
+      std: 1.5
+      lower_bound: 0.05
+      bound_mode: redraw

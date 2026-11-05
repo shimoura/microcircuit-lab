@@ -24,7 +24,7 @@ from microcircuit_lab.builder_tools.mean_input import (
     background_weights,
     tau_syn_ex,
 )
-from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
@@ -62,8 +62,8 @@ def _background(rate: float = 8.0, mean: float = 50.0, indegree: float = 100.0) 
     return PoissonBackgroundConfig(
         rate=rate,
         indegree=indegree,
-        weight=WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit="pA"),
-        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+        weight=WeightDistribution(value=mean, unit="pA"),
+        delay=DelayDistribution(value=1.0),
     )
 
 

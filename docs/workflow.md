@@ -38,7 +38,7 @@ Each file is checked against its own module (`connectivity.yaml` → `config/con
 
 ```text
 Invalid network config in configs/network/toy:
-  connectivity.yaml: connections.0.weight.rel_std: Input should be greater than or equal to 0
+  connectivity.yaml: connections.0.weight.std: Input should be greater than or equal to 0
 ```
 
 What each field accepts: [config_files.md](config_files.md).
@@ -69,7 +69,7 @@ flowchart LR
 
 **Code:** `backends/nest/simulator.py` (`build`: the order), `backends/nest/distributions.py` (drawn weights, delays and values)
 
-Before building, the simulator runs `check()`. Brian2 stops on a model, rule or distribution it doesn't have, and on a weight whose `unit` doesn't fit; NEST stops on a project distribution, and reports the other names itself when building. With `--backend brian2` the same parts become Brian2 objects (`backends/brian2/`: `simulator.py`, `connections.py`, `inputs.py`, `recording.py`); the neuron and synapse models, and any project rules and distributions, come from the project's `extensions/brian2/` (see "Running with Brian2" in the [README](../microcircuit_lab/README.md#running-with-brian2)).
+Before building, the simulator runs `check()`. Brian2 stops on a model, rule or distribution it doesn't have, and on a weight whose `unit` doesn't fit; NEST stops on a distribution that neither it (`nest.random`) nor `extensions/nest/` has, or one given the wrong arguments, and reports the other names itself when building. With `--backend brian2` the same parts become Brian2 objects (`backends/brian2/`: `simulator.py`, `connections.py`, `inputs.py`, `recording.py`); the neuron and synapse models, and any project rules and distributions, come from the project's `extensions/brian2/` (see "Running with Brian2" in the [README](../microcircuit_lab/README.md#running-with-brian2)).
 
 ## 3 · Save
 
@@ -106,7 +106,7 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | a file is refused | the module named after the file, in `config/` |
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
 | Brian2 "has no" model, rule or distribution | its `check()`, in `backends/brian2/simulator.py`, and `extensions/brian2/` |
-| NEST "has no" model, rule or receptor | NEST's own message when building; `check()` in `backends/nest/simulator.py` covers project distributions only |
+| NEST "has no" model, rule or receptor | NEST's own message when building; `check()` in `backends/nest/simulator.py` covers distributions only (`extensions/nest/`) |
 | a background generator fires at a different rate than the files | step 2: the rate is `rate × indegree` (`generator_rate`, `config/poisson_background.py`) |
 | rates drop in a scaled run | `builder_tools/scaling.py`, `builder_tools/constant_current.py`; full-scale rates in `reference.yaml` |
 | something looks wrong in NEST | step 2: the `create_...` method for that part, in `backends/nest/simulator.py` |

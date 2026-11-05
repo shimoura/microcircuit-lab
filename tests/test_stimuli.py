@@ -7,7 +7,7 @@ import yaml
 from pydantic import ValidationError
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
-from microcircuit_lab.config.connectivity import DelayDistribution, WeightDistribution
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
@@ -47,11 +47,11 @@ def _population(name: str, neuron: NeuronConfig, size: int = 10) -> PopulationCo
 
 
 def _weight(mean: float = 100.0, unit: str = "pA") -> WeightDistribution:
-    return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
+    return WeightDistribution(value=mean, unit=unit)
 
 
 def _delay(mean: float = 1.0) -> DelayDistribution:
-    return DelayDistribution(mean=mean, rel_std=0.0, distribution="fixed")
+    return DelayDistribution(value=mean)
 
 
 # -----------------------------------------------------------------------------

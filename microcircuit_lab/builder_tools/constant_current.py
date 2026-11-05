@@ -98,7 +98,7 @@ def _recurrent_compensation(original: NetworkConfig, K_scaling: float) -> np.nda
 
     # Excitatory and inhibitory input have different synaptic time
     # constants, so each kind is compensated with its own.
-    weight = table["weight.mean"]
+    weight = original.expected_weights()
     excitatory = known & (weight > 0)
     inhibitory = known & (weight < 0)
     names = list(original.populations)

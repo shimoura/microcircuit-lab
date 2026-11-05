@@ -11,18 +11,17 @@ from microcircuit_lab.builder_tools import (
     scale_network,
 )
 from microcircuit_lab.builder_tools.mean_input import expected_synapses, num_synapses
+from microcircuit_lab.builder_tools.write import write_network
 from microcircuit_lab.config.connection_table import ConnectionTable
-from microcircuit_lab.config.connectivity import (
-    ConnectionConfig,
-    DelayDistribution,
-    WeightDistribution,
-)
+from microcircuit_lab.config.connectivity import ConnectionConfig
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import SimulationConfig
+from microcircuit_lab.config.synapse_files import SynapseList
 from microcircuit_lab.config.synapses import SynapseEntry
 
 SIZES = {"S": 100, "T": 50}
@@ -33,8 +32,8 @@ def _connection(rule="fixed_total_number", weight=10.0, unit="pA", source="S", t
         source=source,
         target=target,
         rule=rule,
-        weight=WeightDistribution(mean=weight, rel_std=0.0, distribution="fixed", unit=unit),
-        delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+        weight=WeightDistribution(value=weight, unit=unit),
+        delay=DelayDistribution(value=1.0),
         **fields,
     )
 
@@ -57,8 +56,8 @@ def _network(connections, synapses=None, background_synapse=None, target_neuron=
         name: PoissonBackgroundConfig(
             rate=8.0,
             indegree=100,
-            weight=WeightDistribution(mean=10.0, rel_std=0.0, distribution="fixed", unit="pA"),
-            delay=DelayDistribution(mean=1.0, rel_std=0.0, distribution="fixed"),
+            weight=WeightDistribution(value=10.0, unit="pA"),
+            delay=DelayDistribution(value=1.0),
             synapse=background_synapse if name == "T" else None,
         )
         for name in SIZES
@@ -108,8 +107,8 @@ def test_a_rule_takes_its_own_number_only():
         _connection(rule="one_to_one", n_synapses=10)
     with pytest.raises(ValueError, match="'my_rule' takes no number"):
         _connection(rule="my_rule", p=0.1)
-    with pytest.raises(ValueError, match="takes no parameters"):
-        _connection(rule="all_to_all", parameters={"width": 1})
+    with pytest.raises(ValueError, match="parameters was removed: write each argument as a key of its own"):
+        _connection(rule="ring", parameters={"width": 1})
 
 
 def test_one_to_one_and_all_to_all_in_nest():
@@ -129,8 +128,8 @@ def test_one_to_one_needs_populations_of_the_same_size():
         _network([_connection(rule="one_to_one")])
 
 
-def test_nest_runs_its_own_rule_with_its_parameters():
-    network = _network([_connection(rule="pairwise_poisson", parameters={"pairwise_avg_num_conns": 2.0})])
+def test_nest_runs_its_own_rule_with_its_arguments():
+    network = _network([_connection(rule="pairwise_poisson", pairwise_avg_num_conns=2.0)])
     _, connections = _built_connections(network)
     expected = 2.0 * SIZES["S"] * SIZES["T"]
     assert abs(len(connections) - expected) < 5 * np.sqrt(expected)
@@ -142,7 +141,7 @@ def test_nest_runs_its_own_rule_with_its_parameters():
     [
         (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
         (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
-        (dict(rule="ring", parameters={"width": 2}), dict(N_scaling=0.5), "rule 'ring' is not a shared one, and how it scales is not known"),
+        (dict(rule="ring", width=2), dict(N_scaling=0.5), "rule 'ring' is not a shared one, and how it scales is not known"),
     ],
 )
 def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):
@@ -158,44 +157,107 @@ def test_the_new_rules_scale_where_they_can():
 
 
 def test_project_distributions_are_for_connections_only_and_scale_their_delays_only():
-    with pytest.raises(ValueError, match="takes no parameters"):
-        WeightDistribution(mean=1.0, rel_std=0.0, unit="pA", distribution="normal", parameters={"a": 1})
+    with pytest.raises(ValueError, match="normal takes mean and std, not a"):
+        WeightDistribution(mean=1.0, std=0.1, unit="pA", distribution="normal", a=1)
 
-    def connection(weight="fixed", delay="fixed"):
-        params = {"weight": {"a": 1} if weight != "fixed" else None, "delay": {"a": 1} if delay != "fixed" else None}
+    def connection(weight=None, delay=None):
+        weight_fields = {"value": 10.0}
+        delay_fields = {"value": 1.0}
+        if weight:
+            weight_fields = {"mean": 10.0, "distribution": weight, "a": 1}
+        if delay:
+            delay_fields = {
+                "mean": 1.0, "distribution": delay, "a": 1, "lower_bound": 0.05, "bound_mode": "clip",
+            }
         return _connection(n_synapses=100).model_copy(update={
-            "weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution=weight, parameters=params["weight"]),
-            "delay": DelayDistribution(mean=1.0, rel_std=0.0, distribution=delay, parameters=params["delay"]),
+            "weight": WeightDistribution(unit="pA", **weight_fields),
+            "delay": DelayDistribution(**delay_fields),
         })
 
-    with pytest.raises(ValueError, match="real mean of weights from a project distribution"):
-        _scaled(_network([connection(weight="mine")]), 0.5, 0.5)
-    _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=False)
+    # Scaling would divide the weight's mean but not its arguments (a).
+    for preserve_mean_input in (True, False):
+        with pytest.raises(ValueError, match="weights from distribution 'mine' are drawn with its arguments"):
+            _scaled(_network([connection(weight="mine")]), 0.5, 0.5, preserve_mean_input=preserve_mean_input)
+    _scaled(_network([connection(weight="mine")]), 0.5, 1.0, preserve_mean_input=False)
     _scaled(_network([connection(delay="mine")]), 0.5, 0.5, preserve_mean_input=False)
 
     network = _network([connection()])
     background = network.poisson_background["S"].model_copy(
-        update={"weight": WeightDistribution(mean=10.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1})}
+        update={"weight": WeightDistribution(mean=10.0, unit="pA", distribution="mine", a=1)}
     )
-    with pytest.raises(ValueError, match="background input of S has a weight from project distribution 'mine'"):
+    with pytest.raises(ValueError, match="background input of S has a weight from distribution 'mine', which is not shared"):
         NetworkConfig.model_validate({**network.model_dump(), "poisson_background": {**network.poisson_background, "S": background}})
 
 
-def test_csv_keeps_project_rules_and_their_parameters(tmp_path):
+def test_csv_keeps_project_rules_and_their_arguments(tmp_path):
     rows = [
         _connection(n_synapses=300),
         _connection(rule="one_to_one", source="S", target="S"),
-        _connection(rule="ring", source="T", target="T", parameters={"width": 2, "p0": 0.5}),
+        _connection(rule="ring", source="T", target="T", width=2, p0=0.5),
         _connection(source="T", target="S", n_synapses=10).model_copy(update={
-            "weight": WeightDistribution(mean=1.0, rel_std=0.0, unit="pA", distribution="mine", parameters={"a": 1.5}),
+            "weight": WeightDistribution(mean=1.0, unit="pA", distribution="mine", a=1.5),
         }),
     ]
     table = ConnectionTable.from_yaml_rows(rows)
     table.write_csv(tmp_path / "connections.csv")
 
     assert ConnectionTable.read_csv(tmp_path / "connections.csv") == table
-    assert table.to_yaml_rows()[2]["parameters"] == {"width": 2, "p0": 0.5}
+    ring, mine = table.to_yaml_rows()[2:]
+    assert (ring["width"], ring["p0"], mine["weight"]["a"]) == (2, 0.5, 1.5) and "width" not in mine
     assert "n_synapses" not in table.to_yaml_rows()[1]
+
+
+def _from_file_network(synapse_list):
+    row = ConnectionConfig(source="S", target="T", rule="from_file", file="synapses/S_to_T.csv",
+                           weight=WeightDistribution(unit="pA"))
+    return _network([_connection(n_synapses=10)]).model_copy(update={
+        "connections": ConnectionTable.from_yaml_rows([row]),
+        "synapse_lists": {"synapses/S_to_T.csv": synapse_list},
+    })
+
+
+def test_connections_from_a_file_are_written_read_and_built_as_given(tmp_path):
+    synapses = SynapseList(np.array([0, 0, 99]), np.array([1, 2, 49]), np.array([5.0, -2.0, 7.5]), np.array([1.0, 1.5, 2.0]))
+    network = write_network(_from_file_network(synapses), tmp_path / "net")
+    assert (tmp_path / "net" / "synapses" / "S_to_T.csv").is_file()
+
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    source, target = backend.get_population("S"), backend.get_population("T")
+    built = nest.GetConnections(source, target).get(["source", "target", "weight", "delay"], output="pandas")
+    built = built.sort_values(["source", "target"])
+    assert np.array_equal(built["source"] - source[0].global_id, synapses.source_index)
+    assert np.array_equal(built["target"] - target[0].global_id, synapses.target_index)
+    assert np.allclose(built["weight"], synapses.weight) and np.allclose(built["delay"], synapses.delay)
+    nest.ResetKernel()
+
+    past = SynapseList(np.array([0, 100]), np.array([1, 2]), np.array([5.0, 5.0]), np.array([1.0, 1.0]))
+    with pytest.raises(ValueError, match="line 3, source_index: must be from 0 to 99"):
+        write_network(_from_file_network(past), tmp_path / "past")
+
+
+def test_final_connections_are_written_as_rows_from_files(tmp_path):
+    from microcircuit_lab.network.load import read_network
+    from microcircuit_lab.run_folder.write import write_final_connections
+
+    network = _network([_connection(rule="fixed_indegree", indegree=5, weight=-7.0)])
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    (synapses,) = backend.final_connections([0]).values()
+    assert len(synapses) == 5 * SIZES["T"] and set(synapses.weight) == {-7.0} and set(synapses.delay) == {1.0}
+    assert set(np.bincount(synapses.target_index)) == {5} and synapses.source_index.max() < SIZES["S"]
+    nest.ResetKernel()
+
+    # Copied into a network folder, the rows run again with these synapses.
+    write_final_connections(tmp_path, network, {0: synapses})
+    folder = tmp_path / "final_connections"
+    write_network(network, tmp_path / "again")
+    (tmp_path / "again" / "connectivity.yaml").write_text((folder / "connectivity.yaml").read_text())
+    (tmp_path / "again" / "synapses").mkdir()
+    (tmp_path / "again" / "synapses" / "S_to_T.csv").write_text((folder / "synapses" / "S_to_T.csv").read_text())
+    again = read_network(tmp_path / "again")
+    assert again.connections["rule"].tolist() == ["from_file"]
+    assert np.array_equal(again.synapse_lists["synapses/S_to_T.csv"].target_index, synapses.target_index)
 
 
 def test_scaling_keeps_each_rule_at_the_same_expected_synapses():

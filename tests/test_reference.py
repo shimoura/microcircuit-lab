@@ -103,5 +103,5 @@ def test_background_weights():
 
     assert weights.shape == (len(network.populations),)
 
-    expected = [network.poisson_background[name].weight.mean for name in network.populations]
+    expected = [network.poisson_background[name].weight.expected for name in network.populations]
     assert np.allclose(weights, expected)

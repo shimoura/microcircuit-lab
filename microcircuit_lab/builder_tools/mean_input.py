@@ -38,7 +38,8 @@ def expected_synapses(rule, number, n_source, n_target):
 
     ``number`` is the number the rule takes (NaN for a rule that takes none);
     every argument may be a single value or one value per connection. A
-    project rule's count is not known here: NaN.
+    project rule's count is not known here: NaN; nor is that of from_file,
+    whose file :func:`expected_synapses_per_connection` counts.
     """
 
     rule, number = np.asarray(rule), np.asarray(number, dtype=float)
@@ -58,12 +59,16 @@ def expected_synapses_per_connection(network: NetworkConfig) -> np.ndarray:
     table = network.connections
     names = list(network.populations)
     sizes = np.asarray([pop.size for pop in network.populations.values()], dtype=float)
-    return expected_synapses(
+    synapses = expected_synapses(
         table["rule"],
         table["number"],
         n_source=sizes[table.population_index("source", names)],
         n_target=sizes[table.population_index("target", names)],
     )
+    # A connection from a file has the synapses of its file.
+    for i in np.flatnonzero(table["rule"] == "from_file"):
+        synapses[i] = len(network.synapse_lists[table["file"][i]])
+    return synapses
 
 
 def num_synapses(network: NetworkConfig) -> np.ndarray:
@@ -133,7 +138,7 @@ def background_weights(network: NetworkConfig) -> np.ndarray:
     """The background weight of each population, 0 for one without background input."""
     return np.asarray(
         [
-            network.poisson_background[name].weight.mean if name in network.poisson_background else 0.0
+            network.poisson_background[name].weight.expected if name in network.poisson_background else 0.0
             for name in network.populations
         ],
         dtype=float,
@@ -165,7 +170,7 @@ def mean_psc_matrix(
     n = len(pop_names)
     table = network.connections
 
-    weight = table["weight.mean"]
+    weight = network.expected_weights()
     synapses = expected_synapses_per_connection(network)
     pair = (table.population_index("target", pop_names), table.population_index("source", pop_names))
 

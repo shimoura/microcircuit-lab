@@ -169,14 +169,14 @@ configs/
   ```
   `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
-- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a project distribution before):
+- **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a distribution before):
 
   | Field | Shared | Any other name |
   |---|---|---|
   | `neurons.yaml` `model` | none | NEST: its own models and NESTML modules; Brian2: a `NeuronModel` in `extensions/brian2/` |
   | `synapses.yaml` `model` | `static_synapse` | NEST: its own models; Brian2: a `SynapseModel` in `extensions/brian2/` |
-  | `rule` of a connection | `fixed_total_number`, `fixed_indegree`, `fixed_outdegree`, `pairwise_bernoulli`, `one_to_one`, `all_to_all` | with `parameters`; Brian2: a `ConnectionRule` in `extensions/brian2/` ([Connection rules of your own](#connection-rules-of-your-own)) |
-  | `distribution` of a connection's weight or delay | `normal`, `uniform`, `lognormal`, `fixed` | with `parameters`; Brian2: a `Distribution` in `extensions/brian2/` ([Distributions of your own](#distributions-of-your-own)) |
+  | `rule` of a connection | `fixed_total_number`, `fixed_indegree`, `fixed_outdegree`, `pairwise_bernoulli`, `one_to_one`, `all_to_all` | with its arguments as keys of their own; NEST: its own rules; Brian2: a `ConnectionRule` in `extensions/brian2/` ([Connection rules of your own](#connection-rules-of-your-own)) |
+  | `distribution` of a weight, delay or neuron value | `normal`, `uniform`, `lognormal` | with its arguments as keys of their own; NEST: its own (`nest.random`, e.g. `exponential`) and functions in `extensions/nest/`; Brian2: a `Distribution` in `extensions/brian2/` ([Distributions of your own](#distributions-of-your-own)) |
   | `receptor_port` of a synapse | a number | NEST: a name in the target model's `receptor_types`; Brian2: the variable the connection adds to |
 
   A network that uses names of one simulator runs on that simulator only. What the core can't know about a name of your own, it doesn't guess: scaling a network with such a rule, or with weights from such a distribution, stops with an error.
@@ -197,8 +197,8 @@ stimuli:
     rate: 50.0               # spikes/s
     start: 200.0
     stop: 400.0
-    weight: {mean: 87.8, rel_std: 0.0, distribution: fixed, unit: pA}
-    delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}
+    weight: {value: 87.8, unit: pA}
+    delay: {value: 1.5}
 ```
 
 - Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). [docs/config_files.md](../docs/config_files.md#stimuliyaml) lists their fields.
@@ -212,18 +212,40 @@ stimuli:
 
 ```yaml
 poisson_background:
-  E: {rate: 8.0, indegree: 1600, weight: {mean: 87.8, rel_std: 0.0, distribution: fixed, unit: pA}, delay: {mean: 1.5, rel_std: 0.0, distribution: fixed}}
+  E: {rate: 8.0, indegree: 1600, weight: {value: 87.8, unit: pA}, delay: {value: 1.5}}
 ```
 
 Other always-on inputs (a constant current, a Poisson train, an inhomogeneous Poisson input) are `stimuli.yaml` entries without `start` and `stop`.
 
 - **A mean current instead of the Poisson input**: the builder step `replace_background_by_mean_current` (`microcircuit_lab.builder_tools`) adds the mean of that input to `I_e` and removes the input from the files (`poisson_background` empty): the same average drive, without the fluctuations, as in Potjans & Diesmann (2014), Fig. 5. It applies to every population, and needs weights in pA on the default receptor port. Apply it after `scale_network` and before `write_network`. Example: `microcircuit-lab generate pd14 --network-name pd14_mean_current --background mean_current`.
 - **A constant current of your own** adds to whichever background you use. For the whole run, set `I_e` in a neuron entry (every population using that entry); for chosen populations or times, add `dc` stimuli (above).
+- **A drawn background weight is drawn once per neuron**, not per synapse: the simulators make one generator at `rate × indegree` and one connection per neuron, as the reference codes do. The mean input is the same; its spread across neurons is larger.
 - **`generator: <name>`** in an entry: populations that give the same name share one Poisson generator. Each neuron still gets its own independent spike train; only the number of generators changes, which saves memory when many populations have the same input. They need the same `rate`, `indegree` and `synapse`. The random draws differ from one generator each, so the spikes are statistically the same, not identical.
 
 ### Weights and delays
 
-A weight's `mean` is what the simulator gets, and its `unit` (required) says what it is. Nothing is converted:
+A weight or delay is a fixed `value`, or drawn for each synapse from a `distribution`. The numbers are what the simulator gets, and what the drawn values have:
+
+```yaml
+weight: {value: 87.8, unit: pA}                                                         # fixed
+weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0, bound_mode: redraw, unit: pA}
+weight: {distribution: uniform, min: 72.6, max: 103.0, unit: pA}
+weight: {distribution: lognormal, mean: -351.2, std: 35.1, unit: pA}                   # negative: inhibitory
+delay:  {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}
+```
+
+A neuron parameter (`neurons.yaml`) or initial state (`populations.yaml`) drawn for each neuron is written the same way, without `unit` (a fixed one is a plain number): `V_m: {distribution: normal, mean: -58, std: 10, upper_bound: -50, bound_mode: redraw}`.
+
+| Field | What it is |
+|---|---|
+| `value` | a fixed weight or delay |
+| `distribution` | `normal` or `lognormal` (with `mean`, `std`), `uniform` (with `min`, `max`), or another name (below) |
+| `mean`, `std` | the mean and standard deviation of the distribution the values are drawn from, before any bound. For `lognormal` too: the mean and std of the values, not of their log (the simulator gets the log-space numbers, and the values take the sign of `mean`) |
+| `lower_bound`, `upper_bound` | optional: a drawn value past one is drawn again or set to it; a drawn delay needs `lower_bound` |
+| `bound_mode` | with a bound: `redraw` draws again, `clip` sets the value to the bound |
+| `unit` | weights only (below) |
+
+A weight's `unit` (required) says what it is. Nothing is converted:
 
 | `unit` | Meaning | Example model |
 |---|---|---|
@@ -234,17 +256,36 @@ A weight's `mean` is what the simulator gets, and its `unit` (required) says wha
 NEST can't check the unit; Brian2 checks it against the variable the weight adds to. A model that gives its weights as PSP amplitudes converts them in its builder, with the target's neuron parameters:
 
 ```python
-from microcircuit_lab.builder_tools import psp_to_psc_iaf_psc_exp, weight
+from microcircuit_lab.builder_tools import psp_to_psc_iaf_psc_exp, weight, zero_bound
 
 current = psp_to_psc_iaf_psc_exp(0.15, C_m=250.0, tau_m=10.0, tau_syn=0.5)   # 87.8 pA
-weight(current, unit="pA", rel_std=0.1)
+weight(current, unit="pA", rel_std=0.1, **zero_bound(current, "redraw"))
+# {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA}
 ```
 
 The formula holds for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants); for an inhibitory weight, pass `tau_syn=<tau_syn_in>`. Keep the PSP in a comment next to the value if you write the file by hand, as `configs/network/toy/` does.
 
-- **Out-of-range draws.** `bound_mode` at the top of `connectivity.yaml`: `redraw` (default) draws again a weight with the wrong sign or a delay below the minimum; `clip` sets it to the limit. The minimum delay is half the time step, or the delay's own `minimum`. Either way the drawn values no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`rel_std` 0.1), noticeable around `rel_std` 1.
-- **Excitatory or inhibitory** input is told by the sign of the weight, never by a population's name.
-- **Distributions.** A weight or delay is drawn from `normal` (default), `uniform`, `lognormal` or `fixed`, with its `mean` and `rel_std`, on every simulator. Any other name is a distribution of your own, with `parameters`, for the weights and delays of connections; for now Brian2 only (see [Distributions of your own](#distributions-of-your-own)).
+- **Nothing is bounded unless the file says so.** An excitatory normal weight can turn negative without `lower_bound: 0`; `zero_bound(mean, mode)` writes the bound that keeps a weight's sign. A delay below half the time step rounds to 0, so a drawn delay needs a `lower_bound` (e.g. the time step).
+- **A relative spread** (a paper's "10 % of the mean") is converted in the builder: `weight(87.8, unit="pA", rel_std=0.1)` writes `std: 8.78`, and `distribution="uniform"` the `min` and `max` with that mean and standard deviation.
+- **Bounds change the mean.** Values drawn again or clipped no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`std` a tenth of the mean), noticeable when `std` is about the mean.
+- **Excitatory or inhibitory** input is told by the sign of the weight (its mean), never by a population's name.
+- **Other distributions.** `normal`, `uniform` and `lognormal` work on every simulator. Any other name is looked up by the simulator, with its arguments as keys of their own: NEST's own (`{distribution: exponential, beta: 2}`), or one of your own. A weight from one also needs `mean`, the mean of the distribution, since the core can't know it: its sign tells excitatory from inhibitory, so the distribution must draw values of that sign (NEST's `exponential` draws positive ones; the core can't check this). Background inputs and stimuli take the shared distributions only.
+
+With NEST, a distribution of your own is a function in a file of `extensions/nest/` (or of a module given with `--extensions`) that returns a NEST parameter. It gets the keys of the entry it names, and the entry gives all of them:
+
+```python
+# extensions/nest/distributions.py
+import nest
+
+def erlang2(beta):
+    return nest.random.exponential(beta=beta) + nest.random.exponential(beta=beta)
+```
+
+```yaml
+weight: {distribution: erlang2, beta: 20, mean: 40, unit: pA}
+```
+
+NEST combines its parameters with `+ - * /`, `nest.math` (`exp`, `sin`, `cos`, `min`, `max`, `redraw`) and `nest.logic.conditional`; it has no `log`, `pow` or `abs`, and can't use the neurons' variables or indices. With Brian2, see [Distributions of your own](#distributions-of-your-own).
 
 ### Connection rules and synapses
 
@@ -258,10 +299,11 @@ Each connection has a `rule` and the number that rule takes:
 | `pairwise_bernoulli` | `p` | each pair connected with probability `p` |
 | `one_to_one` | none | the k-th source neuron to the k-th target neuron (populations of the same size) |
 | `all_to_all` | none | every pair |
+| `from_file` | `file` | every synapse as listed in a CSV file ([below](#connections-from-a-file)) |
 
-These rules run on every simulator. Any other name, with `parameters` instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, parameters: {pairwise_avg_num_conns: 2}`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
+These rules run on every simulator. Any other name, with its arguments as keys of their own instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, pairwise_avg_num_conns: 2`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
 
-Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Some cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), `from_file` with either factor other than 1 (the file lists every synapse), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
 
 A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses the simulator's `static_synapse` on the default port:
 
@@ -284,6 +326,39 @@ connections:
 - With a plastic synapse, the scaling compensation uses the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a weight converted from a PSP gives that PSP at u·x = 1: with U = 0.5 the first spike gives half of it.
 - A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
 
+#### Connections from a file
+
+For synapses no rule can make (a trained network, a connectome), `rule: from_file` takes every synapse from a CSV file in the network folder:
+
+```yaml
+- {source: E, target: I, rule: from_file, file: synapses/E_to_I.csv, weight: {unit: pA}}
+```
+
+```
+# synapses/E_to_I.csv: one row per synapse
+source_index,target_index,weight,delay
+0,3,87.2,1.4
+0,10,91.0,0.9
+```
+
+| Column | What it is |
+|---|---|
+| `source_index`, `target_index` | the neuron in its population, from 0 (the first neuron of `E` is 0) |
+| `weight` | in the entry's `weight.unit` (pA, nS or mV): the entry gives only the unit |
+| `delay` | in ms: the entry has no `delay` |
+
+- One file per connection, its path relative to the network folder; `synapses/` keeps them apart from the YAML files. `write_network_directory(..., synapse_lists={"synapses/E_to_I.csv": SynapseList(...)})` writes them (`config/synapse_files.py`).
+- The core checks each file when the network is read: the four columns, indices within the populations, delays above 0, at least one synapse. A run keeps a copy of the files in its folder, so it still shows what was simulated.
+- On Brian2, a file's weights must all have one sign: its synapses add to the excitatory or the inhibitory variable.
+- Several connections in one file? Split it once, e.g. in the builder:
+
+```python
+import pandas as pd
+table = pd.read_csv("all_synapses.csv")   # source,target,source_index,target_index,weight,delay
+for (source, target), rows in table.groupby(["source", "target"]):
+    rows.drop(columns=["source", "target"]).to_csv(f"synapses/{source}_to_{target}.csv", index=False)
+```
+
 ### Large files
 
 A builder writes long tables (`connectivity.yaml` of a multi-area model) one record per line, `- {source: ..., target: ..., weight: {...}, ...}`: one line per connection instead of about 13. It is plain YAML and loads like any other. `write_network_directory` does this for you.
@@ -291,26 +366,25 @@ A builder writes long tables (`connectivity.yaml` of a multi-area model) one rec
 For millions of connections, YAML gets slow to write and read. `connectivity.yaml` can then name a CSV file instead of listing the rows:
 
 ```yaml
-bound_mode: redraw
 connections_file: connections.csv
 ```
 
-The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.rel_std`). This entry of `connectivity.yaml`
+The CSV has one row per connection and the same fields, with nested names joined by a dot (`weight.mean`, `delay.lower_bound`). This entry of `connectivity.yaml`
 
 ```yaml
 - {source: E, target: I, rule: pairwise_bernoulli, p: 0.1,
-   weight: {mean: 87.8, rel_std: 0.1, distribution: normal, unit: pA},
-   delay: {mean: 1.5, rel_std: 0.5, distribution: normal}}
+   weight: {distribution: normal, mean: 87.8, std: 8.78, lower_bound: 0.0, bound_mode: redraw, unit: pA},
+   delay: {distribution: normal, mean: 1.5, std: 0.75, lower_bound: 0.1, bound_mode: redraw}}
 ```
 
 is this row of `connections.csv`:
 
 ```
-source,target,rule,p,weight.mean,weight.rel_std,weight.distribution,weight.unit,delay.mean,delay.rel_std,delay.distribution
-E,I,pairwise_bernoulli,0.1,87.8,0.1,normal,pA,1.5,0.5,normal
+source,target,rule,p,weight.distribution,weight.mean,weight.std,weight.lower_bound,weight.bound_mode,weight.unit,delay.distribution,delay.mean,delay.std,delay.lower_bound,delay.bound_mode
+E,I,pairwise_bernoulli,0.1,normal,87.8,8.78,0.0,redraw,pA,normal,1.5,0.75,0.1,redraw
 ```
 
-The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. `parameters` is written as JSON text, e.g. `"{""a"": 1.0}"`. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
+The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. An argument of a rule or distribution of your own is a column of its own (`pairwise_avg_num_conns`, `weight.beta`), empty in the rows that don't use it. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 
@@ -403,15 +477,15 @@ microcircuit-lab generate my_model      # runs it: writes configs/network/my_mod
 Replace the example values with your model's. The builder hands its parts to `write_network_directory`, which writes and checks every file:
 
 ```python
-from microcircuit_lab.builder_tools import delay, weight, write_network_directory
+from microcircuit_lab.builder_tools import delay, weight, write_network_directory, zero_bound
 
 write_network_directory(
     "configs/network/my_model",
     populations=[...],
     neurons={...},
     connections=[{"source": "E", "target": "I", "n_synapses": 5000,
-                  "weight": weight(87.8, unit="pA", rel_std=0.1),
-                  "delay": delay(1.5, rel_std=0.5)}, ...],
+                  "weight": weight(87.8, unit="pA", rel_std=0.1, **zero_bound(87.8, "redraw")),
+                  "delay": delay(1.5, rel_std=0.5, lower_bound=0.1, bound_mode="redraw")}, ...],
     poisson_background={...},
 )
 ```
@@ -419,7 +493,7 @@ write_network_directory(
 - A builder is found by its folder `builders/<model>/` with a `main(argv=None)`; there is no list to edit. `microcircuit-lab generate` with no name lists what it found.
 - `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
-- `write_network_directory` writes every value, defaults included (`bound_mode: redraw`, `rule`, `distribution: normal`), so the files keep their meaning if a default of the core changes.
+- `write_network_directory` writes every value, defaults included (e.g. `rule`), so the files keep their meaning if a default of the core changes.
 - Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
@@ -501,10 +575,11 @@ Runs in one script go one after another. For runs in parallel, start several scr
 
 ```text
 output/<network>/<timestamp>/
-├── recordings/     spikes (and recorded variables), written by the simulator
-├── plots/          made by microcircuit-lab run
-├── config.yaml     the network and the simulation settings used
-└── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
+├── recordings/          spikes (and recorded variables), written by the simulator
+├── plots/               made by microcircuit-lab run
+├── final_connections/   only if asked: every synapse at the end of the run (below)
+├── config.yaml          the network and the simulation settings used
+└── metadata.json        versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying its `recordings/` folder.
@@ -526,6 +601,20 @@ output/<network>/<timestamp>/
 
 - A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
 - To read a finished run without the simulator: `read_run(run_dir).recording("V_m")` returns `senders`, `times` (ms) and `values`, sorted by sender, then time.
+- The synapses at the end of the run (e.g. after plasticity) are saved when asked, for every connection or some projections:
+
+  ```yaml
+  recording:
+    final_connections: true                       # or [{source: E, target: E}]
+  ```
+
+  ```text
+  final_connections/
+  ├── connectivity.yaml          the rows as rule: from_file
+  └── synapses/E_to_E_stdp.csv   one file per row: <source>_to_<target>[_<synapse>].csv
+  ```
+
+  Copied into a network folder, they run the network again with those weights and delays ([Connections from a file](#connections-from-a-file)). Only the weight and delay of each synapse are saved: a synapse's other variables (STDP traces, the `u` and `x` of short-term plasticity) start again from their initial values. It is off by default: NEST takes about 4 µs per synapse to read them back (3 min for pd14's largest projection, 45 M synapses), and it is not supported with several MPI processes yet.
 
 ### Reading a run
 
@@ -576,6 +665,8 @@ microcircuit-lab run --run-dir output/toy/<timestamp> --begin 200 --end 400
 `--run-dir` takes the analysis flags (`--begin`, `--end`, `--area`, `--<plot>`, ...) but not the simulation ones (`--simulation`, `--backend`, `--nest-modules`, `--extensions`, `--brian2-...`), which it refuses: the run is already simulated. The plots go back into the run's `plots/`.
 
 Which plots are made, and how they look, is set in `configs/analysis/<name>.yaml`; every setting is in [docs/config_files.md](../docs/config_files.md#analysisnameyaml).
+
+A multi-area network (populations named `<area>__<population>`, e.g. `V1__L23_E`) gets one set of plots per area, in `plots/<area>/`; a population without `__` next to them (`TC`) is an area of its own. `--area V1` (or `area: V1` in the analysis file) plots that area only, also in `plots/V1/`, and `--area together` one set with every population, in `plots/`, for a small network.
 
 ### Use the bundled functions
 
@@ -642,7 +733,7 @@ register_plot("rate_bars", rate_bars)
 microcircuit-lab run --run-dir output/toy/<timestamp> --rate-bars
 ```
 
-The figure is saved in `plots/`, one per area with `--area all`, and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
+The figure is saved in `plots/` (for a multi-area network, one per area in `plots/<area>/`), and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
 
 | Parameter | What you get |
 |---|---|
@@ -783,7 +874,7 @@ stdp = SynapseModel(
 
 #### Connection rules of your own
 
-A `rule` that is not one of the shared rules is a `ConnectionRule` in `extensions/brian2/` (or in a module given with `--extensions`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's `parameters`, the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
+A `rule` that is not one of the shared rules is a `ConnectionRule` in `extensions/brian2/` (or in a module given with `--extensions`). Its `condition`, `p` and `n` are the arguments of Brian2's `Synapses.connect`, as Brian2 expressions: which pairs may connect, the probability that such a pair does, and how many synapses it gets. They can use the connection's arguments (`width`, `p0` below), the neurons' variables (`V_m_pre`, `V_m_post`), and `index_pre` / `index_post`, each neuron's index within its population:
 
 ```python
 # extensions/brian2/rules.py
@@ -794,31 +885,34 @@ ring = ConnectionRule(name="ring", condition="abs(index_pre - index_post) <= wid
 
 ```yaml
 # connectivity.yaml
-- {source: E, target: E, rule: ring, parameters: {width: 10, p0: 0.5}, allow_autapses: false, weight: {...}, delay: {...}}
+- {source: E, target: E, rule: ring, width: 10, p0: 0.5, allow_autapses: false, weight: {...}, delay: {...}}
 ```
 
-In a CSV connection table, `parameters` is a column of JSON text (`"{""width"": 10, ""p0"": 0.5}"`). Scaling a network with such a rule stops with an error, since the core can't know how the rule scales (scale it in its builder instead).
+In a CSV connection table, each argument is a column (`width`, `p0`). On Brian2, an argument no expression uses stops the run (a misspelled name); a shared rule takes none. Scaling a network with such a rule stops with an error, since the core can't know how the rule scales (scale it in its builder instead).
 
 #### Distributions of your own
 
-A weight or delay `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each synapse's value, in the package's units (pA or nS for a weight, ms for a delay). It can use the connection's `mean` and `rel_std`, its `parameters`, the neurons' variables and `index_pre` / `index_post`:
+A `distribution` that is not a shared one is a `Distribution` in `extensions/brian2/`: a Brian2 `expression` for each value, in the package's units (pA or nS for a weight, ms for a delay, the variable's unit for a neuron value). It can use the fields the entry gives (`mean`, `std`, `min`, `max`), its arguments (`length` below), and for a weight or delay the neurons' variables and `index_pre` / `index_post`. `extensions/brian2/distributions.py` has NEST's `exponential` this way:
 
 ```python
 # extensions/brian2/distributions.py
 from microcircuit_lab.backends.brian2.models import Distribution
 
+exponential = Distribution(name="exponential", expression="-beta*log(1 - rand())")
 decay = Distribution(name="decay", expression="mean * exp(-abs(index_pre - index_post) / length)", redraw_rounds=0)
 ```
 
 ```yaml
 # connectivity.yaml
 - {source: E, target: E, rule: fixed_indegree, indegree: 100,
-   weight: {mean: 87.8, rel_std: 0, unit: pA, distribution: decay, parameters: {length: 20}}, delay: {...}}
+   weight: {distribution: decay, mean: 87.8, length: 20, lower_bound: 0, bound_mode: redraw, unit: pA},
+   delay: {...}}
 ```
 
-- `mean` is still required: its sign says whether the weight is excitatory or inhibitory, and the expression gets it.
-- A weight of the other sign than `mean`, or a delay below the minimum, is past its bound. How often it crosses it can't be known from an expression, so the definition says what to do: with `bound_mode: redraw` (the default), the value is drawn again `redraw_rounds` times and then clipped to the bound (0 clips at once); a definition without `redraw_rounds` stops the run before the build, unless `bound_mode: clip`.
-- Scaling a network with weights from such a distribution stops with an error: the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
+- A weight needs `mean`: its sign says whether the weight is excitatory or inhibitory, so the expression must give values of that sign (the core can't check this), and it can use `mean`.
+- An argument the expression doesn't use stops the run (a misspelled name).
+- How often an expression crosses a bound can't be known, so the definition says what to do with `bound_mode: redraw`: the value is drawn again `redraw_rounds` times and then set to the bound (0 sets it at once). A definition without `redraw_rounds` stops the run before the build when an entry uses `redraw`; `clip` needs none.
+- Scaling a network's synapses (`K_scaling` other than 1) with weights from such a distribution stops with an error: the core can't divide its arguments, and the compensation needs the weights' real mean, which the core can't know. Delays are fine, since scaling leaves them alone. Background inputs and stimuli take the shared distributions only.
 
 #### Performance
 

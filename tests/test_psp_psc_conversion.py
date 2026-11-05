@@ -8,7 +8,7 @@ from microcircuit_lab.builder_tools import (
     psc_to_psp,
     psp_to_psc_iaf_psc_exp,
 )
-from microcircuit_lab.config.connectivity import WeightDistribution
+from microcircuit_lab.config.distributions import WeightDistribution
 from microcircuit_lab.config.neurons import NeuronEntry
 
 
@@ -32,7 +32,7 @@ def test_psp_to_psc_known_value():
 )
 def test_an_old_unit_fails_with_the_new_form(unit, message):
     with pytest.raises(ValueError, match=message):
-        WeightDistribution(mean=0.15, rel_std=0.0, unit=unit)
+        WeightDistribution(value=0.15, unit=unit)
 
 
 def test_psp_conversion_aliases_fail_with_the_new_form():

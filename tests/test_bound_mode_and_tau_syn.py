@@ -1,6 +1,6 @@
 """The synaptic time constant of inhibitory input in the DC compensation,
 and what to do with a weight or delay drawn outside its allowed range
-(bound_mode, DelayDistribution.minimum)."""
+(the bounds and bound_mode of each weight and delay)."""
 
 from __future__ import annotations
 
@@ -15,12 +15,10 @@ from microcircuit_lab.builder_tools import (
     scale_network,
     weight,
     write_network_directory,
+    zero_bound,
 )
-from microcircuit_lab.config.connectivity import (
-    ConnectionConfig,
-    DelayDistribution,
-    WeightDistribution,
-)
+from microcircuit_lab.config.connectivity import ConnectionConfig
+from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
@@ -37,7 +35,6 @@ def _network(
     tau_syn_in: float,
     connections: list[ConnectionConfig] | None = None,
     reference: ReferenceConfig | None = None,
-    bound_mode: str = "redraw",
 ) -> NetworkConfig:
     neuron = NeuronConfig(
         name="neuron",
@@ -58,16 +55,15 @@ def _network(
         connections=connections or [],
         poisson_background={},
         reference=reference,
-        bound_mode=bound_mode,
     )
 
 
 def _psc(mean: float, unit: str = "pA") -> WeightDistribution:
-    return WeightDistribution(mean=mean, rel_std=0.0, distribution="fixed", unit=unit)
+    return WeightDistribution(value=mean, unit=unit)
 
 
 def _fixed_delay() -> DelayDistribution:
-    return DelayDistribution(mean=1.5, rel_std=0.0, distribution="fixed")
+    return DelayDistribution(value=1.5)
 
 
 # -----------------------------------------------------------------------------
@@ -137,7 +133,7 @@ def test_background_compensation_uses_the_inhibitory_time_constant_for_inhibitor
 
 
 # -----------------------------------------------------------------------------
-# bound_mode and the minimum delay in the files
+# bounds and bound_mode in the files
 # -----------------------------------------------------------------------------
 NEURON = {
     "C_m": 250.0, "tau_m": 10.0, "tau_syn_ex": 0.5, "tau_syn_in": 0.5,
@@ -145,7 +141,7 @@ NEURON = {
 }
 
 
-def _write(tmp_path: Path, **overrides) -> Path:
+def _write(tmp_path: Path, bound_mode: str = "redraw") -> Path:
     parts = dict(
         path=tmp_path / "net",
         populations=[
@@ -154,33 +150,38 @@ def _write(tmp_path: Path, **overrides) -> Path:
         neurons={"n": {"model": "iaf_psc_exp", "parameters": NEURON}},
         connections=[
             {"source": "E", "target": "E", "n_synapses": 20,
-             "weight": weight(87.8, unit="pA", rel_std=0.1),
-             "delay": delay(1.5, rel_std=0.5, minimum=0.1)},
+             "weight": weight(87.8, unit="pA", rel_std=0.1, **zero_bound(87.8, bound_mode)),
+             "delay": delay(1.5, rel_std=0.5, lower_bound=0.1, bound_mode=bound_mode)},
         ],
         poisson_background={"E": {"rate": 8.0, "indegree": 10, "weight": weight(87.8, unit="pA"), "delay": delay(1.5)}},
     )
-    parts.update(overrides)
     write_network_directory(**parts)
     return tmp_path / "net"
 
 
-def test_bound_mode_and_minimum_delay_round_trip_through_the_files(tmp_path: Path) -> None:
+def test_bounds_and_bound_mode_round_trip_through_the_files(tmp_path: Path) -> None:
     config = read_network(_write(tmp_path, bound_mode="clip"))
 
-    assert config.bound_mode == "clip"
-    assert config.connections["delay.minimum"][0] == 0.1
+    assert config.connections["weight.lower_bound"][0] == 0.0
+    assert config.connections["weight.bound_mode"][0] == "clip"
+    assert config.connections["delay.lower_bound"][0] == 0.1
+    assert config.connections["delay.bound_mode"][0] == "clip"
 
 
-def test_bound_mode_defaults_to_redraw_and_is_written(tmp_path: Path) -> None:
+def test_the_bound_mode_is_written_in_each_entry(tmp_path: Path) -> None:
     network_dir = _write(tmp_path)
 
-    assert read_network(network_dir).bound_mode == "redraw"
-    assert "bound_mode: redraw" in (network_dir / "connectivity.yaml").read_text()
+    assert (network_dir / "connectivity.yaml").read_text().count("bound_mode: redraw") == 2
 
 
-def test_a_delay_without_a_minimum_leaves_it_out_of_the_file() -> None:
-    assert "minimum" not in delay(1.5, rel_std=0.5)
-    assert delay(1.5, rel_std=0.5, minimum=0.1)["minimum"] == 0.1
+def test_a_fixed_weight_or_delay_has_no_bounds() -> None:
+    assert delay(1.5, lower_bound=0.1, bound_mode="clip") == {"value": 1.5}
+    assert weight(1.0, unit="pA", lower_bound=0.0, bound_mode="clip") == {"value": 1.0, "unit": "pA"}
+
+
+def test_a_drawn_delay_needs_a_lower_bound() -> None:
+    with pytest.raises(ValueError, match="needs lower_bound"):
+        delay(1.5, rel_std=0.5)
 
 
 # -----------------------------------------------------------------------------
@@ -190,7 +191,7 @@ def _draw_synapses(
     bound_mode: str,
     *,
     weight_mean: float,
-    minimum: float,
+    lower_delay: float,
     rel_std: float = 2.0,
     distribution: str = "normal",
 ):
@@ -198,14 +199,17 @@ def _draw_synapses(
     enough that many draws fall outside their range; return both lists."""
     import nest
 
-    wide_weight = WeightDistribution(mean=weight_mean, rel_std=rel_std, distribution=distribution, unit="pA")
-    wide_delay = DelayDistribution(mean=1.0, rel_std=rel_std, distribution=distribution, minimum=minimum)
+    wide_weight = weight(
+        weight_mean, unit="pA", rel_std=rel_std, distribution=distribution, **zero_bound(weight_mean, bound_mode)
+    )
+    wide_delay = delay(
+        1.0, rel_std=rel_std, distribution=distribution, lower_bound=lower_delay, bound_mode=bound_mode
+    )
     config = _network(
         tau_syn_in=TAU_SYN_EX,
         connections=[
             ConnectionConfig(source="E", target="E", n_synapses=4000, weight=wide_weight, delay=wide_delay),
         ],
-        bound_mode=bound_mode,
     )
     network = config
     backend = NestBackend(
@@ -223,8 +227,8 @@ def _draw_synapses(
 
 @pytest.mark.parametrize("weight_mean", [10.0, -10.0])
 def test_clip_sets_out_of_range_weights_to_zero_and_redraw_does_not(weight_mean: float) -> None:
-    clipped, _ = _draw_synapses("clip", weight_mean=weight_mean, minimum=0.5)
-    redrawn, _ = _draw_synapses("redraw", weight_mean=weight_mean, minimum=0.5)
+    clipped, _ = _draw_synapses("clip", weight_mean=weight_mean, lower_delay=0.5)
+    redrawn, _ = _draw_synapses("redraw", weight_mean=weight_mean, lower_delay=0.5)
 
     sign = np.sign(weight_mean)
     assert np.all(clipped * sign >= 0.0)
@@ -233,8 +237,8 @@ def test_clip_sets_out_of_range_weights_to_zero_and_redraw_does_not(weight_mean:
 
 
 def test_clip_sets_short_delays_to_the_minimum_and_redraw_does_not() -> None:
-    _, clipped = _draw_synapses("clip", weight_mean=10.0, minimum=0.5)
-    _, redrawn = _draw_synapses("redraw", weight_mean=10.0, minimum=0.5)
+    _, clipped = _draw_synapses("clip", weight_mean=10.0, lower_delay=0.5)
+    _, redrawn = _draw_synapses("redraw", weight_mean=10.0, lower_delay=0.5)
 
     assert np.all(clipped >= 0.5)
     assert np.mean(clipped == 0.5) > 0.3
@@ -243,7 +247,7 @@ def test_clip_sets_short_delays_to_the_minimum_and_redraw_does_not() -> None:
 
 
 def test_clip_leaves_values_inside_their_range_unchanged() -> None:
-    weights, delays = _draw_synapses("clip", weight_mean=10.0, minimum=0.5, rel_std=0.05)
+    weights, delays = _draw_synapses("clip", weight_mean=10.0, lower_delay=0.5, rel_std=0.05)
 
     assert np.all(weights > 0.0)
     assert np.mean(weights == 10.0) < 0.01
@@ -253,7 +257,7 @@ def test_clip_leaves_values_inside_their_range_unchanged() -> None:
 @pytest.mark.parametrize("weight_mean", [10.0, -10.0])
 def test_uniform_draws_have_the_given_mean_and_spread(weight_mean: float) -> None:
     weights, delays = _draw_synapses(
-        "redraw", weight_mean=weight_mean, minimum=0.1, rel_std=0.2, distribution="uniform"
+        "redraw", weight_mean=weight_mean, lower_delay=0.1, rel_std=0.2, distribution="uniform"
     )
 
     half_width = np.sqrt(3.0) * 2.0
@@ -266,7 +270,7 @@ def test_uniform_draws_have_the_given_mean_and_spread(weight_mean: float) -> Non
 @pytest.mark.parametrize("weight_mean", [10.0, -10.0])
 def test_lognormal_weights_have_the_sign_and_mean_of_their_mean(weight_mean: float) -> None:
     weights, _ = _draw_synapses(
-        "redraw", weight_mean=weight_mean, minimum=0.1, rel_std=0.2, distribution="lognormal"
+        "redraw", weight_mean=weight_mean, lower_delay=0.1, rel_std=0.2, distribution="lognormal"
     )
 
     assert np.all(weights * np.sign(weight_mean) > 0.0)
@@ -275,14 +279,14 @@ def test_lognormal_weights_have_the_sign_and_mean_of_their_mean(weight_mean: flo
 
 
 def test_uniform_weights_keep_their_sign() -> None:
-    clipped, _ = _draw_synapses("clip", weight_mean=10.0, minimum=0.5, distribution="uniform")
+    clipped, _ = _draw_synapses("clip", weight_mean=10.0, lower_delay=0.5, distribution="uniform")
     assert np.all(clipped >= 0.0)
     assert np.mean(clipped == 0.0) > 0.2
 
 
 @pytest.mark.parametrize("bound_mode", ["clip", "redraw"])
-def test_a_minimum_delay_below_half_a_step_is_raised_not_rejected(bound_mode: str) -> None:
-    """NEST rounds a delay below half a step to 0 and refuses it."""
-    _, delays = _draw_synapses(bound_mode, weight_mean=10.0, minimum=0.01)
+def test_a_lower_bound_of_half_a_step_gives_delays_of_one_step(bound_mode: str) -> None:
+    """NEST rounds a delay of half a step up to one step; below, it refuses it."""
+    _, delays = _draw_synapses(bound_mode, weight_mean=10.0, lower_delay=0.05)
 
     assert np.all(delays >= 0.1)

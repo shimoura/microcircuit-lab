@@ -68,6 +68,11 @@ weight_rel_std = 0.1
 delay_exc_mean = 1.5
 delay_inh_mean = 0.75
 delay_rel_std = 0.5
+# Drawn weights keep their sign and drawn delays stay at delay_min (ms) or more,
+# both drawn again past the bound. delay_min is half the 0.1 ms time step:
+# a shorter delay would round to 0 steps.
+bound_mode = "redraw"
+delay_min = 0.05
 
 # Background (cortico-cortical) input: Poisson rate per synapse in spikes/s,
 # indegree per population, delay in ms.

@@ -89,8 +89,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--extensions",
         nargs="+",
         default=None,
-        help="With Brian2: Python modules that define models, besides the files in "
-        "extensions/brian2/.",
+        help="Python modules that define models or distributions for the simulator, besides "
+        "the files in extensions/<simulator>/ (extensions/nest/, extensions/brian2/).",
     )
     # Removed: split into --nest-modules and --extensions.
     parser.add_argument("--extension-modules", nargs="+", default=None, help=argparse.SUPPRESS)
@@ -112,8 +112,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--area",
         default=None,
-        help="Area to plot for multi-area networks, or 'all' for one set of plots per "
-        "area (plots/<area>/). Overrides the analysis file.",
+        help="Multi-area networks: plot this area only (plots/<area>/), or 'together' for one set "
+        "with every population (plots/). Omitted: one set of plots per area. Overrides the analysis file.",
     )
     parser.add_argument(
         "--reference",
@@ -150,10 +150,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     if args.extension_modules is not None:
         parser.error(
             "--extension-modules was split in two: --nest-modules for compiled NEST modules "
-            "(e.g. from NESTML), --extensions for Python modules with Brian2 models."
+            "(e.g. from NESTML), --extensions for Python modules with models or distributions."
         )
     if bool(args.network) == bool(args.run_dir):
         parser.error("Pass exactly one of --network or --run-dir.")
+    if args.area == "all":
+        parser.error("--area all was removed: omit --area for one set of plots per area.")
     if args.run_dir is not None:
         simulation_flags = {
             "--simulation": args.simulation,
@@ -186,10 +188,11 @@ def main(argv: list[str] | None = None) -> None:
         backend_options: dict[str, Any] = {}
         if args.nest_modules:
             backend_options["nest_modules"] = args.nest_modules
+        if args.extensions:
+            backend_options["extensions"] = args.extensions
         brian2_options = {
             "device": args.brian2_device,
             "codegen_target": args.brian2_codegen_target,
-            "extensions": args.extensions,
         }
         brian2_options = {name: value for name, value in brian2_options.items() if value is not None}
         backend_options.update(brian2_options)
@@ -208,7 +211,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(str(error))
         if brian2_options and simulation.backend_name != "brian2":
             sys.exit(
-                "--brian2-device, --brian2-codegen-target and --extensions need the brian2 "
+                "--brian2-device and --brian2-codegen-target need the brian2 "
                 f"backend (this run uses {simulation.backend_name})."
             )
         if args.nest_modules and simulation.backend_name != "nest":
@@ -243,14 +246,15 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"Run directory: {run.folder}")
 
-    if area == "all":
+    # An area's plots always go to plots/<area>/: without an area, one set per area (none for a
+    # network without areas); "together", one set with every population (the plots' area None).
+    if area == "together":
+        areas, area = [], None
+    elif area is None:
         areas = list_areas(run)
-        if not areas:
-            raise SystemExit("--area all needs a multi-area network (<area>__<population> names).")
-        plot_targets = [(a, run.folder / "plots" / a) for a in areas]
-        area = None
     else:
-        plot_targets = [(area, run.folder / "plots")]
+        areas = [area]
+    plot_targets = [(a, run.folder / "plots" / a) for a in areas] or [(None, run.folder / "plots")]
 
     spike_recording = run.simulation.recording.spike_recording
     if not spike_recording:

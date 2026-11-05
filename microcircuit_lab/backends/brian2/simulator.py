@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import re
 import tempfile
 from collections import defaultdict
 from collections.abc import Sequence
@@ -43,16 +44,27 @@ from microcircuit_lab.backends.brian2 import (
     recording,
 )
 from microcircuit_lab.backends.statistics import log_firing_rates
-from microcircuit_lab.config.connection_table import COLUMNS
-from microcircuit_lab.config.connectivity import SHARED_DISTRIBUTIONS, SHARED_RULES
-from microcircuit_lab.config.distributions import DrawnValue
+from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
+from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.distributions import (
+    DelayDistribution,
+    DrawnNeuronValue,
+    expected_value,
+)
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
 from microcircuit_lab.config.stimuli import (
     DcStimulusConfig,
 )
+from microcircuit_lab.config.synapse_files import SynapseList
 
 logger = logging.getLogger(__name__)
+
+
+def _names(*expressions: str) -> set[str]:
+    """The names the Brian2 expressions use."""
+    return set(re.findall(r"[A-Za-z_]\w*", " ".join(expressions)))
+
 
 #: For each dimension: its name in Brian2 equations, and NEST's unit, which is
 #: the unit of the numbers in the config files.
@@ -186,6 +198,11 @@ class Brian2Backend:
         self.first_ids: dict[str, int] = {}
         self.stimulus_generators: list[b2.PoissonGroup] = []
         self.synapses: list[b2.Synapses] = []
+        #: For each row of the connection table, where its synapses are: their
+        #: Synapses, the first and the number of its source and target neurons
+        #: there, and the factor that gives the weight as written (-1 for an
+        #: inhibitory conductance, which Brian2 holds as its size).
+        self._synapses_of_row: dict[int, tuple] = {}
         self.spike_recorders: list[tuple[_Group, b2.SpikeMonitor]] = []
         #: The monitors of each recorded variable: one per group.
         self.multimeters: dict[str, list[tuple[_Group, b2.StateMonitor]]] = {}
@@ -251,9 +268,10 @@ class Brian2Backend:
         Find the project's models, connection rules and distributions, and
         raise if a population, a ``synapses.yaml`` entry or a connection names
         one that is not defined, if a distribution's ``redraw_rounds`` is
-        needed but not set, if a project rule with several synapses per
-        pair is used without multapses, or if a weight's ``unit`` is not that
-        of the variable it adds to.
+        needed but not set, if a rule or distribution is given an argument
+        its expressions do not use (a shared rule uses none), if a project
+        rule with several synapses per pair is used without multapses, or if
+        a weight's ``unit`` is not that of the variable it adds to.
         """
 
         found = models.load_models(self._extensions)
@@ -267,20 +285,35 @@ class Brian2Backend:
             self.synapse_model(synapse)
 
         table = self.network.connections
-        for column, kind, known in (
-            ("rule", "rule", self._connection_rules),
-            ("weight.distribution", "distribution", self._distributions),
-            ("delay.distribution", "distribution", self._distributions),
-        ):
-            shared = SHARED_RULES if kind == "rule" else SHARED_DISTRIBUTIONS
-            for name in sorted(set(table[column][~np.isin(table[column], shared)].tolist())):
-                if name not in known:
-                    raise models.missing_model_error(kind, name, known)
-                if kind == "distribution" and self.network.bound_mode == "redraw" and known[name].redraw_rounds is None:
+        for name in sorted(set(table["rule"][~np.isin(table["rule"], SHARED_RULES)].tolist())):
+            if name not in self._connection_rules:
+                raise models.missing_model_error("rule", name, self._connection_rules)
+        for use in self.network.distributions_not_shared():
+            if use.name not in self._distributions:
+                raise models.missing_model_error("distribution", use.name, self._distributions, where=use.where)
+            distribution = self._distributions[use.name]
+            if use.redraw and distribution.redraw_rounds is None:
+                raise ValueError(
+                    f"Distribution {use.name!r} has no redraw_rounds, which bound_mode: redraw needs: "
+                    "set how many times a value past its bound is drawn again (0: clip at once), "
+                    f"or write bound_mode: clip ({use.where})."
+                )
+            # A key that the expression does not use would be ignored: most likely a typo.
+            unused = sorted(use.arguments - _names(distribution.expression))
+            if unused:
+                raise ValueError(
+                    f"{use.where}: {unused[0]} is given to distribution {use.name!r}, which does not use it."
+                )
+        names = table["rule"]
+        for argument, values in table.arguments("rule").items():
+            rows = ~np.isnan(values)
+            for name in sorted(set(names[rows].tolist())):
+                rule = self._connection_rules.get(name)
+                if rule is None or argument not in _names(rule.condition, rule.p, rule.n):
+                    first = int(np.flatnonzero(rows & (names == name))[0])
                     raise ValueError(
-                        f"Distribution {name!r} has no redraw_rounds, which bound_mode: redraw needs: "
-                        "set how many times a value past its bound is drawn again (0: clip at once), "
-                        "or set bound_mode: clip in connectivity.yaml."
+                        f"connections.{first}: {argument} is given to rule {name!r}, which does not use "
+                        "it in Brian2 (a shared rule takes no arguments)."
                     )
 
         # Brian2 makes n synapses for each pair a project rule picks, so such a
@@ -297,20 +330,23 @@ class Brian2Backend:
 
         # A fixed delay rounds to a whole number of steps. NEST refuses one that
         # rounds to 0 (below half a step); Brian2 would deliver the spike in the
-        # same step. (A drawn delay is kept at the minimum, half a step or more.)
+        # same step. A drawn delay is kept at its lower_bound or more.
         shortest = 0.5 * self.simulation_config.resolution
         # A synapse model without on_pre (a gap junction) has no spikes to delay.
         delayed = {name: bool(self.synapse_model(name).on_pre) for name in set(table["synapse"].tolist())}
         has_delay = np.asarray([delayed[name] for name in table["synapse"].tolist()], dtype=bool)
-        fixed = (table["delay.distribution"] == "fixed") | (table["delay.rel_std"] == 0.0)
-        too_short = has_delay & fixed & (table["delay.mean"] < shortest) & np.isin(
-            table["delay.distribution"], SHARED_DISTRIBUTIONS
-        )
+        fixed = np.asarray([name is None for name in table["delay.distribution"]], dtype=bool)
+        smallest = np.where(fixed, table["delay.value"], table["delay.lower_bound"])
+        from_file = table["rule"] == "from_file"
+        for row in np.flatnonzero(from_file):
+            smallest[row] = self.network.synapse_lists[table["file"][row]].delay.min()
+        too_short = has_delay & (smallest < shortest)
         if too_short.any():
             row = int(np.flatnonzero(too_short)[0])
+            what = "shortest delay in its file" if from_file[row] else "fixed delay" if fixed[row] else "delay's lower_bound"
             raise ValueError(
-                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the fixed delay "
-                f"{table['delay.mean'][row]} ms is below half the resolution ({shortest} ms), so it "
+                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the {what} "
+                f"{smallest[row]} ms is below half the resolution ({shortest} ms), so a delay "
                 f"rounds to 0; use at least {shortest} ms."
             )
         delays = [(f"background input of {name!r}", b.delay) for name, b in self.network.poisson_background.items()]
@@ -321,11 +357,23 @@ class Brian2Backend:
             for target in stimulus.targets
         ]
         for user, delay in delays:
-            fixed = delay.distribution == "fixed" or delay.rel_std == 0.0
-            if fixed and delay.mean < shortest and delay.distribution in SHARED_DISTRIBUTIONS:
+            smallest = delay.value if delay.distribution is None else delay.lower_bound
+            if smallest < shortest:
                 raise ValueError(
-                    f"{user}: the fixed delay {delay.mean} ms is below half the resolution "
-                    f"({shortest} ms), so it rounds to 0; use at least {shortest} ms."
+                    f"{user}: the delay {'' if delay.distribution is None else 'lower_bound '}{smallest} ms "
+                    f"is below half the resolution ({shortest} ms), so a delay rounds to 0; use at least "
+                    f"{shortest} ms."
+                )
+
+        # A connection's synapses add to one variable, the excitatory or the
+        # inhibitory one, picked by the sign of its weight.
+        for row in np.flatnonzero(from_file):
+            weight = self.network.synapse_lists[table["file"][row]].weight
+            if (weight > 0).any() and (weight < 0).any():
+                raise ValueError(
+                    f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the weights "
+                    f"of {table['file'][row]} have both signs; Brian2 adds a connection's synapses to "
+                    "the excitatory or the inhibitory variable, so a file needs weights of one sign."
                 )
 
         # A weight's unit must be that of the variable it adds to (which also
@@ -333,16 +381,16 @@ class Brian2Backend:
         # per target, synapse, sign and unit.
         users = {}
         columns = (table["target"].tolist(), table["synapse"].tolist(),
-                   (table["weight.mean"] >= 0).tolist(), table["weight.unit"].tolist())
+                   (self.network.expected_weights() >= 0).tolist(), table["weight.unit"].tolist())
         for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
             users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
         for name, background in self.network.poisson_background.items():
-            key = (name, background.synapse, background.weight.mean >= 0, background.weight.unit)
+            key = (name, background.synapse, background.weight.expected >= 0, background.weight.unit)
             users.setdefault(key, f"background input of {name!r}")
         for stimulus in self.network.stimuli:
             if not isinstance(stimulus, DcStimulusConfig):
                 for target in stimulus.targets:
-                    key = (target, stimulus.synapse, stimulus.weight.mean >= 0, stimulus.weight.unit)
+                    key = (target, stimulus.synapse, stimulus.weight.expected >= 0, stimulus.weight.unit)
                     users.setdefault(key, f"stimulus onto {target!r}")
         for (target, synapse, positive, unit), user in users.items():
             variable = self.target_variable(target, synapse, 1.0 if positive else -1.0)
@@ -487,10 +535,10 @@ class Brian2Backend:
                 name=f"group_{self.groups.index(group)}",
             )
             group.neurons = neurons
-            self._set_group_values(group, values)
             sizes = [self.network.populations[pop].size for pop in group.populations]
             neurons.population_index = np.repeat(np.arange(len(group.populations)), sizes)
             neurons.index = np.concatenate([np.arange(size) for size in sizes])
+            self._set_group_values(group, values)
             if has_dc:
                 neurons.dc_index = np.repeat(
                     [dc_index[pop] for pop in group.populations],
@@ -501,17 +549,27 @@ class Brian2Backend:
 
     def _set_group_values(self, group: _Group, values: dict[str, dict]) -> None:
         """Set the parameters and initial state of a group's neurons, given in
-        the package's units: one array per variable, for all its populations."""
+        the package's units, one variable at a time for all its populations:
+        numbers as one array; a variable that some population draws per
+        neuron is drawn by Brian2 (distributions.set_drawn), as weights are,
+        from the entry of each neuron's population."""
 
+        sizes = [self.network.populations[pop].size for pop in group.populations]
         for name in sorted({name for pop in group.populations for name in values[pop]}):
             unit = _units(group.neurons.variables[name].dim, f"{name!r} of {group.model.name!r}")[1]
-            array = np.zeros(group.size)
-            for pop_name, start in zip(group.populations, group.starts):
-                if name in values[pop_name]:
-                    size = self.network.populations[pop_name].size
-                    array[start:start + size] = distributions.per_neuron_value(
-                        values[pop_name][name], size, self._rng
-                    )
+            # A population that does not set the variable keeps 0, where Brian2 starts it (the
+            # values cannot be read before the run in C++ standalone mode).
+            given = [values[pop].get(name, 0.0) for pop in group.populations]
+            if any(isinstance(value, DrawnNeuronValue) for value in given):
+                entries = {
+                    k: (value.fields if isinstance(value, DrawnNeuronValue) else distributions.fixed(value), sizes[k])
+                    for k, value in enumerate(given)
+                }
+                projects = {k: self._distributions[fields["distribution"]] for k, (fields, _) in entries.items()
+                            if fields["distribution"] in self._distributions}
+                distributions.set_drawn(group.neurons, name, "population_index", entries, unit, projects)
+                continue
+            array = np.repeat(given, sizes)
             setattr(group.neurons, name, array * getattr(b2, unit, 1))
 
     def _set_values(self, target, equations: b2.Equations, values: dict, where: str) -> None:
@@ -524,11 +582,9 @@ class Brian2Backend:
                     f"it has {sorted(equations.names)}."
                 )
             unit = _units(target.variables[name].dim, f"{name!r} of {where}")[1]
-            if isinstance(value, DrawnValue):
-                raise ValueError(f"{where}: {name!r} must be a number in the Brian2 backend.")
             setattr(target, name, value * getattr(b2, unit, 1))
 
-    def target_variable(self, target: str, synapse: str | None, weight_mean: float) -> str:
+    def target_variable(self, target: str, synapse: str | None, weight: float) -> str:
         """
         The variable of the target population that a connection adds to: the
         one of its synapse's receptor port (a port name is the variable), or
@@ -555,7 +611,7 @@ class Brian2Backend:
                 )
             return model.receptor_port.format(port=port)
 
-        variable = model.excitatory if weight_mean >= 0 else model.inhibitory
+        variable = model.excitatory if weight >= 0 else model.inhibitory
         if variable is None:
             raise ValueError(
                 f"The Brian2 model {model.name!r} of {target!r} needs a receptor_port in "
@@ -588,6 +644,7 @@ class Brian2Backend:
         weights: dict[int, tuple],
         delays: dict[int, tuple],
         projects: dict[str, dict] | None = None,
+        synapse_list: SynapseList | None = None,
     ) -> None:
         """
         One Brian2 ``Synapses`` from ``source`` to the group ``target``, onto
@@ -596,7 +653,9 @@ class Brian2Backend:
         ``name``, with the
         weights and delays of each entry by ``index`` (see
         distributions.set_drawn), from a project distribution for the entries
-        in ``projects["weight"]`` / ``projects["delay"]``. A weight onto a
+        in ``projects["weight"]`` / ``projects["delay"]``; or, with
+        ``synapse_list`` (a connection from a file, made by one call), the
+        weight and delay of each synapse in its file. A weight onto a
         conductance is its size, as in NEST.
         """
 
@@ -639,14 +698,22 @@ class Brian2Backend:
         for arguments, namespace in calls:
             synapses.connect(**arguments, namespace=namespace)
 
-        if si_unit == "siemens":
-            weights = {k: (abs(mean), *rest) for k, (mean, *rest) in weights.items()}
-        bound_mode = self.network.bound_mode
-        distributions.set_weights(synapses, "w_syn", index, weights, unit, bound_mode, projects["weight"])
-        if "pre" in pathways:  # a gap junction has no pathway of spikes to delay
-            distributions.set_delays(
-                synapses, index, delays, bound_mode, self.simulation_config.resolution, projects["delay"]
-            )
+        if synapse_list is not None:
+            weight = np.abs(synapse_list.weight) if si_unit == "siemens" else synapse_list.weight
+            synapses.w_syn[:] = weight * getattr(b2, unit, 1)
+            if "pre" in pathways:
+                synapses.delay[:] = synapse_list.delay * b2.ms
+        if si_unit == "siemens" and synapse_list is None:
+            for k, (fields, number) in weights.items():
+                if expected_value(fields) < 0:
+                    weights[k] = (distributions.negated(fields), number)
+                    # A project distribution's own draw is negated, with the fields as given.
+                    if k in projects["weight"]:
+                        projects["weight"][k] = distributions.negated_draw(projects["weight"][k], fields)
+        if synapse_list is None:
+            distributions.set_drawn(synapses, "w_syn", index, weights, unit, projects["weight"])
+            if "pre" in pathways:  # a gap junction has no pathway of spikes to delay
+                distributions.set_drawn(synapses, "delay", index, delays, "ms", projects["delay"])
 
         parameters = {} if synapse is None else self.network.synapses[synapse].parameters
         self._set_values(
@@ -672,12 +739,25 @@ class Brian2Backend:
 
         table = self.network.connections
         column = {name: table[name].tolist() for name in COLUMNS}
+        arguments = {
+            group: {name: values.tolist() for name, values in table.arguments(group).items()}
+            for group in ("rule", "weight", "delay")
+        }
+
+        def given(group: str, row: int) -> dict:
+            return given_arguments({name: values[row] for name, values in arguments[group].items()})
+
+        weight = self.network.expected_weights().tolist()
         objects: dict[tuple, list[int]] = defaultdict(list)
         seen: dict[tuple, int] = defaultdict(int)
         for row in range(len(table)):
             source, target, synapse = column["source"][row], column["target"][row], column["synapse"][row]
-            variable = self.target_variable(target, synapse, column["weight.mean"][row])
+            variable = self.target_variable(target, synapse, weight[row])
             key = (id(self.group_of[source]), id(self.group_of[target]), synapse, variable)
+            if column["rule"][row] == "from_file":
+                # A Synapses of its own, whose synapses are those of the file, in its order.
+                objects[(*key, ("from_file", row))].append(row)
+                continue
             pair = (*key, source, target)
             objects[(*key, seen[pair])].append(row)
             seen[pair] += 1
@@ -685,6 +765,17 @@ class Brian2Backend:
         for (_, _, synapse, variable, _), rows in objects.items():
             source = self.group_of[column["source"][rows[0]]]
             target = self.group_of[column["target"][rows[0]]]
+            if column["rule"][rows[0]] == "from_file":
+                row = rows[0]
+                synapse_list = self.network.synapse_lists[column["file"][row]]
+                calls = [({"i": synapse_list.source_index + source.start(column["source"][row]),
+                           "j": synapse_list.target_index + target.start(column["target"][row])}, {})]
+                self.make_synapses(
+                    source.neurons, target, synapse, variable, calls, f"synapses_{len(self.synapses)}",
+                    "0", {}, {}, synapse_list=synapse_list,
+                )
+                self._remember_rows(rows, column, source, target, variable, weight)
+                continue
             placed = [
                 connections.Row(
                     rule=column["rule"][row],
@@ -696,7 +787,7 @@ class Brian2Backend:
                     autapses=True if column["allow_autapses"][row] is None else bool(column["allow_autapses"][row]),
                     multapses=True if column["allow_multapses"][row] is None else bool(column["allow_multapses"][row]),
                     same_population=column["source"][row] == column["target"][row],
-                    parameters=column["parameters"][row] or {},
+                    arguments=given("rule", row),
                     definition=self._connection_rules.get(column["rule"][row]),
                 )
                 for row in rows
@@ -712,22 +803,58 @@ class Brian2Backend:
                     source.populations.index(column["source"][row]) * n_target
                     + target.populations.index(column["target"][row])
                 )
-                for what in projects:
-                    distribution = self._distributions.get(column[f"{what}.distribution"][row])
+                for what, entries in (("weight", weights), ("delay", delays)):
+                    fields = {name: column[f"{what}.{name}"][row] for name in DelayDistribution.model_fields}
+                    fields |= given(what, row)
+                    entries[pair] = (fields, number)
+                    distribution = self._distributions.get(fields["distribution"])
                     if distribution is not None:
-                        projects[what][pair] = (distribution, column[f"{what}.parameters"][row] or {})
-                weights[pair] = (
-                    column["weight.mean"][row], column["weight.rel_std"][row],
-                    column["weight.distribution"][row], number,
-                )
-                delays[pair] = (
-                    column["delay.mean"][row], column["delay.rel_std"][row],
-                    column["delay.distribution"][row], column["delay.minimum"][row], number,
-                )
+                        projects[what][pair] = distribution
             self.make_synapses(
                 source.neurons, target, synapse, variable, calls, name,
                 f"population_index_pre*{n_target} + population_index_post", weights, delays, projects,
             )
+            self._remember_rows(rows, column, source, target, variable, weight)
+
+    def _remember_rows(self, rows, column, source, target, variable, weight) -> None:
+        """Where the synapses of ``rows`` are, in the Synapses just made (see
+        ``_synapses_of_row``)."""
+
+        conductance = self.weight_units(target.populations[0], variable)[0] == "siemens"
+        for row in rows:
+            source_name, target_name = column["source"][row], column["target"][row]
+            self._synapses_of_row[row] = (
+                self.synapses[-1],
+                source.start(source_name), self.network.populations[source_name].size,
+                target.start(target_name), self.network.populations[target_name].size,
+                -1.0 if conductance and weight[row] < 0 else 1.0,
+            )
+
+    def final_connections(self, rows: list[int]) -> dict[int, SynapseList]:
+        """
+        The synapses of these rows of the connection table at the end of the
+        run (see SimulationBackend.final_connections), read from Brian2.
+        """
+
+        table = self.network.connections
+        synapse_lists = {}
+        for row in rows:
+            synapses, source_start, n_source, target_start, n_target, sign = self._synapses_of_row[row]
+            if not hasattr(synapses, "pre"):
+                raise ValueError(
+                    f"recording.final_connections: connection {table['source'][row]} -> {table['target'][row]} "
+                    "has no delays (its synapse model has no on_pre), which a row with rule from_file needs."
+                )
+            i, j = np.asarray(synapses.i[:]), np.asarray(synapses.j[:])
+            here = (i >= source_start) & (i < source_start + n_source) & (j >= target_start) & (j < target_start + n_target)
+            unit = getattr(b2, table["weight.unit"][row])
+            synapse_lists[row] = SynapseList(
+                source_index=i[here].astype(np.int64) - source_start,
+                target_index=j[here].astype(np.int64) - target_start,
+                weight=sign * np.asarray(synapses.w_syn[:][here] / unit),
+                delay=np.asarray(synapses.delay[:][here] / b2.ms),
+            )
+        return synapse_lists
 
     def get_population(self, name: str) -> np.ndarray:
         """

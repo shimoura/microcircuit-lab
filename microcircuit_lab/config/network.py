@@ -8,6 +8,7 @@ analysis all use it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Annotated
 
 import numpy as np
@@ -23,10 +24,11 @@ from microcircuit_lab.config.connection_table import (
     ConnectionTable,
     to_connection_table,
 )
-from microcircuit_lab.config.connectivity import (
+from microcircuit_lab.config.connectivity import ConnectivityFile
+from microcircuit_lab.config.distributions import (
     SHARED_DISTRIBUTIONS,
-    BoundMode,
-    ConnectivityFile,
+    DrawnNeuronValue,
+    not_shared_rows,
 )
 from microcircuit_lab.config.frozen_config import FrozenConfig
 from microcircuit_lab.config.neurons import NeuronsFile
@@ -42,7 +44,29 @@ from microcircuit_lab.config.stimuli import (
     StimuliFile,
     StimulusConfig,
 )
+from microcircuit_lab.config.synapse_files import SynapseList
 from microcircuit_lab.config.synapses import SynapseEntry, SynapsesFile
+
+
+@dataclass(frozen=True)
+class DistributionUse:
+    """
+    A distribution that is not shared, where the network uses it: its
+    ``name``, the keys (numbers and arguments) every entry there gives, the
+    keys any of them gives that the distribution must take, and whether one
+    redraws past a bound. A backend checks these against what it knows
+    before it builds anything.
+
+    The keys to take are the arguments and ``std``, ``min``, ``max`` or
+    ``mean`` if given (not a weight's ``mean``, which the core needs): a
+    number the distribution does not take would be ignored.
+    """
+
+    where: str
+    name: str
+    given: frozenset[str]
+    arguments: frozenset[str]
+    redraw: bool
 
 
 class NetworkManifest(FrozenConfig):
@@ -111,17 +135,13 @@ class NetworkDirectory(FrozenConfig):
     synapses: SynapsesFile = Field(default_factory=SynapsesFile)
     # The rows of connectivity.yaml's connections_file, read from the CSV file.
     connection_table: ConnectionTable | None = None
+    # The synapses of each connection with rule from_file, by its file.
+    synapse_lists: dict[str, SynapseList] = Field(default_factory=dict)
 
 
 class NetworkConfig(FrozenConfig):
     """
     The whole network, read from the YAML files in ``configs/network/``.
-
-    bound_mode:
-        What to do with a drawn weight or delay that falls outside its
-        allowed range (a weight of the wrong sign, a delay below its
-        minimum). "redraw" (default): draw again until the value is
-        allowed. "clip": replace the value by the limit. Applies to all weights and delays of the network.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -137,13 +157,33 @@ class NetworkConfig(FrozenConfig):
     ]
 
     poisson_background: dict[str, PoissonBackgroundConfig]
-    bound_mode: BoundMode = "redraw"
     stimuli: list[StimulusConfig] = Field(default_factory=list)
     # How the network was scaled, if it was; never applied (see config/scaling.py).
     scaling: ScalingRecord | None = None
 
     reference: ReferenceConfig | None = None
     synapses: dict[str, SynapseEntry] = Field(default_factory=dict)
+    # The synapses of each connection with rule from_file, by its file (as
+    # connectivity.yaml names it); written as those CSV files, not in the YAML.
+    synapse_lists: dict[str, SynapseList] = Field(default_factory=dict, exclude=True)
+
+    @model_validator(mode="after")
+    def _check_synapse_lists(self) -> NetworkConfig:
+        table = self.connections
+        for i in np.flatnonzero(table["rule"] == "from_file"):
+            file = table["file"][i]
+            if file not in self.synapse_lists:
+                raise ValueError(f"connections.{i}: the synapses of its file {file!r} were not read.")
+            if (table["file"] == file).sum() > 1:
+                raise ValueError(f"connections.{i}: file {file!r} is named by more than one connection; "
+                                 "give each connection its own file.")
+            source, target = table["source"][i], table["target"][i]
+            problems = self.synapse_lists[file].problems(
+                self.populations[source].size, self.populations[target].size
+            )
+            if problems:
+                raise ValueError(f"{file} (connection {source} -> {target}): " + "; ".join(problems))
+        return self
 
     @model_validator(mode="after")
     def _check_stimulus_targets_exist(self) -> NetworkConfig:
@@ -168,16 +208,20 @@ class NetworkConfig(FrozenConfig):
         return self
 
     @model_validator(mode="after")
-    def _check_project_distributions_on_connections_only(self) -> NetworkConfig:
+    def _check_inputs_use_shared_distributions(self) -> NetworkConfig:
         users = [(f"background input of {name}", b) for name, b in self.poisson_background.items()]
         users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
         for user, item in users:
             for what in ("weight", "delay"):
+                # Only a connection's values can come from a file.
+                problems = getattr(item, what).problems(from_file=False)
+                if problems:
+                    raise ValueError(f"The {user}: {what}.{problems[0]}")
                 distribution = getattr(item, what).distribution
-                if distribution not in SHARED_DISTRIBUTIONS:
+                if distribution is not None and distribution not in SHARED_DISTRIBUTIONS:
                     raise ValueError(
-                        f"The {user} has a {what} from project distribution {distribution!r}; "
-                        f"background inputs and stimuli take {', '.join(SHARED_DISTRIBUTIONS)} only."
+                        f"The {user} has a {what} from distribution {distribution!r}, which is not shared; "
+                        f"background inputs and stimuli take a fixed value or {', '.join(SHARED_DISTRIBUTIONS)} only."
                     )
         return self
 
@@ -252,6 +296,58 @@ class NetworkConfig(FrozenConfig):
                     "synapses.yaml."
                 )
         return self
+
+    def distributions_not_shared(self) -> list[DistributionUse]:
+        """Every use of a distribution that is not shared: in the weights and
+        delays of the connections (one per name and column), and in the
+        neuron values (one per value)."""
+
+        numbers = ("value", "mean", "std", "min", "max")
+        uses = []
+        table = self.connections
+        for group in ("weight", "delay"):
+            names = table[f"{group}.distribution"]
+            keys = {name: table[f"{group}.{name}"] for name in numbers} | table.arguments(group)
+            for name in sorted(set(names[not_shared_rows(names)].tolist())):
+                rows = names == name
+                given = {key: ~np.isnan(values[rows]) for key, values in keys.items()}
+                # The first row that leaves out a key another row gives, else the first row.
+                complete = np.logical_and.reduce([where for where in given.values() if where.any()])
+                first = int(np.flatnonzero(rows)[np.argmin(complete)])
+                uses.append(DistributionUse(
+                    where=f"connections.{first}.{group}",
+                    name=name,
+                    given=frozenset(key for key, where in given.items() if where.all()),
+                    arguments=frozenset(key for key, where in given.items()
+                                        if where.any() and not (group == "weight" and key == "mean")),
+                    redraw=bool((table[f"{group}.bound_mode"][rows] == "redraw").any()),
+                ))
+        for population in self.populations.values():
+            for file, values in (("neurons.yaml", dict(population.neuron.parameters)),
+                                 ("populations.yaml", population.initial_state)):
+                for variable, value in values.items():
+                    if isinstance(value, DrawnNeuronValue) and value.distribution not in SHARED_DISTRIBUTIONS:
+                        given = frozenset(key for key in [*numbers, *value.model_extra]
+                                          if value.fields[key] is not None)
+                        uses.append(DistributionUse(
+                            where=f"{variable} of {population.name} ({file})",
+                            name=value.distribution,
+                            given=given,
+                            arguments=given,
+                            redraw=value.bound_mode == "redraw",
+                        ))
+        return uses
+
+    def expected_weights(self) -> np.ndarray:
+        """The mean weight of each connection, before any bound (see
+        ``ConnectionTable.expected``); for rule from_file, the mean of its
+        file's weights."""
+
+        weight = self.connections.expected("weight")
+        table = self.connections
+        for i in np.flatnonzero(table["rule"] == "from_file"):
+            weight[i] = self.synapse_lists[table["file"][i]].weight.mean()
+        return weight
 
     def receptor_port(self, synapse: str | None) -> int | str | None:
         """The receptor port of a synapse name (``None``: the default port)."""
