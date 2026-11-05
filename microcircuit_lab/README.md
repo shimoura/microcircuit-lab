@@ -299,10 +299,11 @@ Each connection has a `rule` and the number that rule takes:
 | `pairwise_bernoulli` | `p` | each pair connected with probability `p` |
 | `one_to_one` | none | the k-th source neuron to the k-th target neuron (populations of the same size) |
 | `all_to_all` | none | every pair |
+| `from_file` | `file` | every synapse as listed in a CSV file ([below](#connections-from-a-file)) |
 
 These rules run on every simulator. Any other name, with its arguments as keys of their own instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, pairwise_avg_num_conns: 2`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
 
-Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Three cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
+Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Some cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), `from_file` with either factor other than 1 (the file lists every synapse), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
 
 A connection, background input or Poisson stimulus can name a synapse from `synapses.yaml` (add `synapses: synapses.yaml` to `network.yaml`); without one it uses the simulator's `static_synapse` on the default port:
 
@@ -324,6 +325,39 @@ connections:
 - The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). The input lost by scaling is compensated only for weights in pA on the default port; with other units (e.g. conductances) or ports, scaling stops with an error (see [Scaling a network](#scaling-a-network)). A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
 - With a plastic synapse, the scaling compensation uses the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a weight converted from a PSP gives that PSP at u·x = 1: with U = 0.5 the first spike gives half of it.
 - A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([builders/toy_two_areas](../builders/toy_two_areas/README.md#advanced-variant)).
+
+#### Connections from a file
+
+For synapses no rule can make (a trained network, a connectome), `rule: from_file` takes every synapse from a CSV file in the network folder:
+
+```yaml
+- {source: E, target: I, rule: from_file, file: synapses/E_to_I.csv, weight: {unit: pA}}
+```
+
+```
+# synapses/E_to_I.csv: one row per synapse
+source_index,target_index,weight,delay
+0,3,87.2,1.4
+0,10,91.0,0.9
+```
+
+| Column | What it is |
+|---|---|
+| `source_index`, `target_index` | the neuron in its population, from 0 (the first neuron of `E` is 0) |
+| `weight` | in the entry's `weight.unit` (pA, nS or mV): the entry gives only the unit |
+| `delay` | in ms: the entry has no `delay` |
+
+- One file per connection, its path relative to the network folder; `synapses/` keeps them apart from the YAML files. `write_network_directory(..., synapse_lists={"synapses/E_to_I.csv": SynapseList(...)})` writes them (`config/synapse_files.py`).
+- The core checks each file when the network is read: the four columns, indices within the populations, delays above 0, at least one synapse. A run keeps a copy of the files in its folder, so it still shows what was simulated.
+- On Brian2, a file's weights must all have one sign: its synapses add to the excitatory or the inhibitory variable.
+- Several connections in one file? Split it once, e.g. in the builder:
+
+```python
+import pandas as pd
+table = pd.read_csv("all_synapses.csv")   # source,target,source_index,target_index,weight,delay
+for (source, target), rows in table.groupby(["source", "target"]):
+    rows.drop(columns=["source", "target"]).to_csv(f"synapses/{source}_to_{target}.csv", index=False)
+```
 
 ### Large files
 

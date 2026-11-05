@@ -65,6 +65,7 @@ COLUMNS = {
     "allow_autapses": "yes/no",
     "allow_multapses": "yes/no",
     "synapse": "text",
+    "file": "text",
     # Every field of a weight (with its unit) and of a delay: text or a number.
     **{f"weight.{name}": _drawn_kind(name) for name in DelayDistribution.model_fields},
     "weight.unit": "text",
@@ -412,14 +413,14 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
             rows = np.flatnonzero(columns["rule"] == rule)
             if rows.size:
                 problems += _problems(name, columns["number"][rows], _checker(name, required=True), rows)
-    if {"rule", "number"} & set(which):
+    if {"rule", "number", "file"} & set(which):
         problems += _rule_problems(columns)
     for group in ("weight", "delay"):
         if any(column.startswith(f"{group}.") for column in which):
             fields = {name: columns[f"{group}.{name}"] for name in DelayDistribution.model_fields}
             fields |= {column.partition(".")[2]: values for column, values in columns.items()
                        if column not in COLUMNS and column.startswith(f"{group}.")}
-            for field, rows, message in drawn_value_problems(fields, group):
+            for field, rows, message in drawn_value_problems(fields, group, columns["rule"] == "from_file"):
                 i = int(np.flatnonzero(rows)[0])
                 more = f" (and {rows.sum() - 1} more rows)" if rows.sum() > 1 else ""
                 problems.append(f"connections.{i}.{group}.{field}: {message}{more}")
@@ -428,13 +429,26 @@ def _check_columns(columns: dict[str, np.ndarray], which: Iterable[str]) -> None
 
 
 def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
-    """A number for a rule that takes none."""
+    """A number for a rule that takes none; a file without rule from_file,
+    or the other way round (see ConnectionConfig)."""
 
+    problems = []
     rows = ~np.isin(columns["rule"], list(RULE_NUMBER)) & ~np.isnan(columns["number"])
     if rows.any():
         i = int(np.flatnonzero(rows)[0])
-        return [f"connections.{i}.rule: {columns['rule'][i]!r} takes no number"]
-    return []
+        problems.append(f"connections.{i}.rule: {columns['rule'][i]!r} takes no number")
+    rows = (columns["rule"] == "from_file") != ~is_unset(columns["file"])
+    if rows.any():
+        i = int(np.flatnonzero(rows)[0])
+        problems.append(f"connections.{i}.file: rule from_file needs file (the CSV file of its synapses); "
+                        "no other rule takes file")
+    rule_arguments = [column for column in columns if column not in COLUMNS and "." not in column]
+    for column in ("allow_autapses", "allow_multapses", *rule_arguments):
+        rows = (columns["rule"] == "from_file") & ~is_unset(columns[column])
+        if rows.any():
+            i = int(np.flatnonzero(rows)[0])
+            problems.append(f"connections.{i}.{column}: rule from_file: the file gives every synapse; remove it")
+    return problems
 
 
 @functools.cache

@@ -307,6 +307,16 @@ class NestBackend:
 
             for i in range(stop - start):
                 source, target, rule = column["source"][i], column["target"][i], column["rule"][i]
+                if rule == "from_file":
+                    # Every synapse of the file: its k-th source neuron to its k-th target neuron.
+                    synapses = self.network.synapse_lists[column["file"][i]]
+                    nest.Connect(
+                        synapses.source_index + self.populations[source][0].global_id,
+                        synapses.target_index + self.populations[target][0].global_id,
+                        conn_spec="one_to_one",
+                        syn_spec=self.synapse_spec(synapses.weight, synapses.delay, column["synapse"][i], target),
+                    )
+                    continue
                 # Its arguments go to NEST as they are, which checks them.
                 conn_spec = {
                     "rule": rule,

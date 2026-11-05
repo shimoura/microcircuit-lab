@@ -44,6 +44,7 @@ from microcircuit_lab.config.stimuli import (
     StimuliFile,
     StimulusConfig,
 )
+from microcircuit_lab.config.synapse_files import SynapseList
 from microcircuit_lab.config.synapses import SynapseEntry, SynapsesFile
 
 
@@ -134,6 +135,8 @@ class NetworkDirectory(FrozenConfig):
     synapses: SynapsesFile = Field(default_factory=SynapsesFile)
     # The rows of connectivity.yaml's connections_file, read from the CSV file.
     connection_table: ConnectionTable | None = None
+    # The synapses of each connection with rule from_file, by its file.
+    synapse_lists: dict[str, SynapseList] = Field(default_factory=dict)
 
 
 class NetworkConfig(FrozenConfig):
@@ -160,6 +163,27 @@ class NetworkConfig(FrozenConfig):
 
     reference: ReferenceConfig | None = None
     synapses: dict[str, SynapseEntry] = Field(default_factory=dict)
+    # The synapses of each connection with rule from_file, by its file (as
+    # connectivity.yaml names it); written as those CSV files, not in the YAML.
+    synapse_lists: dict[str, SynapseList] = Field(default_factory=dict, exclude=True)
+
+    @model_validator(mode="after")
+    def _check_synapse_lists(self) -> NetworkConfig:
+        table = self.connections
+        for i in np.flatnonzero(table["rule"] == "from_file"):
+            file = table["file"][i]
+            if file not in self.synapse_lists:
+                raise ValueError(f"connections.{i}: the synapses of its file {file!r} were not read.")
+            if (table["file"] == file).sum() > 1:
+                raise ValueError(f"connections.{i}: file {file!r} is named by more than one connection; "
+                                 "give each connection its own file.")
+            source, target = table["source"][i], table["target"][i]
+            problems = self.synapse_lists[file].problems(
+                self.populations[source].size, self.populations[target].size
+            )
+            if problems:
+                raise ValueError(f"{file} (connection {source} -> {target}): " + "; ".join(problems))
+        return self
 
     @model_validator(mode="after")
     def _check_stimulus_targets_exist(self) -> NetworkConfig:
@@ -189,6 +213,10 @@ class NetworkConfig(FrozenConfig):
         users += [(f"stimulus of {s.targets}", s) for s in self.stimuli if not isinstance(s, DcStimulusConfig)]
         for user, item in users:
             for what in ("weight", "delay"):
+                # Only a connection's values can come from a file.
+                problems = getattr(item, what).problems(from_file=False)
+                if problems:
+                    raise ValueError(f"The {user}: {what}.{problems[0]}")
                 distribution = getattr(item, what).distribution
                 if distribution is not None and distribution not in SHARED_DISTRIBUTIONS:
                     raise ValueError(
@@ -309,6 +337,17 @@ class NetworkConfig(FrozenConfig):
                             redraw=value.bound_mode == "redraw",
                         ))
         return uses
+
+    def expected_weights(self) -> np.ndarray:
+        """The mean weight of each connection, before any bound (see
+        ``ConnectionTable.expected``); for rule from_file, the mean of its
+        file's weights."""
+
+        weight = self.connections.expected("weight")
+        table = self.connections
+        for i in np.flatnonzero(table["rule"] == "from_file"):
+            weight[i] = self.synapse_lists[table["file"][i]].weight.mean()
+        return weight
 
     def receptor_port(self, synapse: str | None) -> int | str | None:
         """The receptor port of a synapse name (``None``: the default port)."""

@@ -164,7 +164,8 @@ def save_run_config(
     (see config.yaml_files.flow_records) since a full-scale network can have
     thousands of connection entries. Above 20,000 connections,
     they go to ``connections.csv`` instead, named by ``connections_file`` in
-    ``config.yaml``.
+    ``config.yaml``. The synapses of a connection with ``rule: from_file``
+    go to its ``file``, in the run folder, as in the network folder.
     """
 
     network_payload = network.model_dump(mode="json", exclude={"connections"})
@@ -176,6 +177,8 @@ def save_run_config(
         network_payload["connections"] = flow_records(network.connections.to_yaml_rows())
     for field in ("populations", "poisson_background"):
         network_payload[field] = flow_records(network_payload[field])
+    for file, synapse_list in network.synapse_lists.items():
+        synapse_list.write_csv(run_dir / file)
 
     payload = {
         "network": network_payload,

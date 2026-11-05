@@ -263,8 +263,9 @@ def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> N
     Raise for a connection that scaling cannot keep at the full-scale input.
     Its rule cannot keep each neuron's inputs at ``K_scaling`` times the
     full-scale number: ``one_to_one`` always gives one input, ``all_to_all``
-    gives ``n_source``, which shrinks with ``N_scaling``, and a rule that is not
-    shared says nothing about its scaling. Or, with ``K_scaling`` not 1, its
+    gives ``n_source``, which shrinks with ``N_scaling``, ``from_file`` gives
+    the synapses of its file, and a rule that is not shared says nothing about
+    its scaling. Or, with ``K_scaling`` not 1, its
     weights come from a distribution that is not shared: dividing its
     ``mean`` would not change the weights its arguments draw (e.g. ``beta``),
     and the compensation needs their real mean, which is not known here.
@@ -280,6 +281,9 @@ def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> N
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
          "rule {rule} is not a shared one, and how it scales is not known"),
+        ((rule == "from_file") & ((N_scaling != 1.0) | (K_scaling != 1.0)),
+         "rule from_file: its file gives every synapse, which scaling cannot change, so N_scaling and "
+         "K_scaling must be 1 (scale the file in the builder)"),
         ((K_scaling != 1.0) & not_shared_rows(table["weight.distribution"]),
          "weights from distribution {weight} are drawn with its arguments, which scaling "
          "cannot divide, so K_scaling must be 1 (scale them in the builder)"),

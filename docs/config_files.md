@@ -132,9 +132,14 @@ connections:
     # optional, default fixed_total_number · text · how the synapses are placed:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
-    #   all_to_all, with no number; or another rule, which the simulator looks up, with
-    #   its arguments as keys of their own (e.g. pairwise_avg_num_conns: 0.3)
+    #   all_to_all, with no number; from_file, with its file; or another rule, which the
+    #   simulator looks up, with its arguments as keys of their own (e.g.
+    #   pairwise_avg_num_conns: 0.3)
     rule: fixed_total_number
+    # optional · text · from_file: CSV file, relative to the network folder (e.g.
+    #   synapses/E_to_I.csv), with one row per synapse: source_index and target_index
+    #   (from 0 in each population), weight (in the weight's unit) and delay (ms)
+    file:
     # optional · integer ≥ 0 · fixed_total_number: total number of synapses in the
     #   projection
     n_synapses: 1440000
@@ -153,7 +158,8 @@ connections:
     allow_multapses:
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing
-    # required · weight of each synapse
+    # required · weight of each synapse; with rule: from_file, only its unit (the file
+    #   gives the weights)
     weight:
       # optional · text · how each weight is drawn: normal or lognormal, with mean and
       #   std; uniform, with min and max; or another name, which the simulator looks up
@@ -187,7 +193,8 @@ connections:
       # required · one of pA | nS | mV · the unit of the weight: pA (a current), nS (a
       #   conductance) or mV (a jump of the membrane potential); nothing is converted
       unit: pA
-    # required · delay of each synapse
+    # optional · delay of each synapse; required, except with rule: from_file (the file
+    #   gives the delays)
     delay:
       # optional · text · how each delay is drawn: normal or lognormal, with mean and
       #   std; uniform, with min and max; or another name, which the simulator looks up
