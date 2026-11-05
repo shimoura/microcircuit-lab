@@ -353,6 +353,20 @@ def test_connections_from_a_file_are_built_as_given() -> None:
     assert np.allclose(built.w_syn[:] / b2.pA, synapses.weight) and np.allclose(built.delay[:] / b2.ms, synapses.delay)
 
 
+def test_final_connections_give_each_row_its_synapses_as_written() -> None:
+    # Two rows in one Synapses (S -> T and T -> T); an inhibitory conductance,
+    # which Brian2 holds as its size, comes back negative, as written.
+    rows = [_row(source, "T", WeightDistribution(value=weight, unit="nS"), DelayDistribution(value=delay))
+            for source, weight, delay in (("S", -2.0, 1.0), ("T", -3.0, 1.5))]
+    backend = _backend(_network("aeif_cond_exp", connections=rows))
+    backend.build()
+
+    from_s, from_t = backend.final_connections([0, 1]).values()
+    assert len(from_s) == 100 * 50 and set(from_s.weight) == {-2.0} and set(from_s.delay) == {1.0}
+    assert len(from_t) == 50 * 50 and set(from_t.weight) == {-3.0} and set(from_t.delay) == {1.5}
+    assert from_s.source_index.max() == 99 and from_t.source_index.max() == 49
+
+
 def test_redraw_needs_the_distributions_redraw_rounds() -> None:
     redraw = WeightDistribution(
         mean=3.0, unit="pA", distribution="no_rounds", lower_bound=0.0, bound_mode="redraw"

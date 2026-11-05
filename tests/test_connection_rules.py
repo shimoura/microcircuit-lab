@@ -236,6 +236,30 @@ def test_connections_from_a_file_are_written_read_and_built_as_given(tmp_path):
         write_network(_from_file_network(past), tmp_path / "past")
 
 
+def test_final_connections_are_written_as_rows_from_files(tmp_path):
+    from microcircuit_lab.network.load import read_network
+    from microcircuit_lab.run_folder.write import write_final_connections
+
+    network = _network([_connection(rule="fixed_indegree", indegree=5, weight=-7.0)])
+    backend = NestBackend(network, SimulationConfig(print_time=False))
+    backend.build()
+    (synapses,) = backend.final_connections([0]).values()
+    assert len(synapses) == 5 * SIZES["T"] and set(synapses.weight) == {-7.0} and set(synapses.delay) == {1.0}
+    assert set(np.bincount(synapses.target_index)) == {5} and synapses.source_index.max() < SIZES["S"]
+    nest.ResetKernel()
+
+    # Copied into a network folder, the rows run again with these synapses.
+    write_final_connections(tmp_path, network, {0: synapses})
+    folder = tmp_path / "final_connections"
+    write_network(network, tmp_path / "again")
+    (tmp_path / "again" / "connectivity.yaml").write_text((folder / "connectivity.yaml").read_text())
+    (tmp_path / "again" / "synapses").mkdir()
+    (tmp_path / "again" / "synapses" / "S_to_T.csv").write_text((folder / "synapses" / "S_to_T.csv").read_text())
+    again = read_network(tmp_path / "again")
+    assert again.connections["rule"].tolist() == ["from_file"]
+    assert np.array_equal(again.synapse_lists["synapses/S_to_T.csv"].target_index, synapses.target_index)
+
+
 def test_scaling_keeps_each_rule_at_the_same_expected_synapses():
     rules = [
         {"n_synapses": 1000},

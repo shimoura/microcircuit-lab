@@ -198,6 +198,11 @@ class Brian2Backend:
         self.first_ids: dict[str, int] = {}
         self.stimulus_generators: list[b2.PoissonGroup] = []
         self.synapses: list[b2.Synapses] = []
+        #: For each row of the connection table, where its synapses are: their
+        #: Synapses, the first and the number of its source and target neurons
+        #: there, and the factor that gives the weight as written (-1 for an
+        #: inhibitory conductance, which Brian2 holds as its size).
+        self._synapses_of_row: dict[int, tuple] = {}
         self.spike_recorders: list[tuple[_Group, b2.SpikeMonitor]] = []
         #: The monitors of each recorded variable: one per group.
         self.multimeters: dict[str, list[tuple[_Group, b2.StateMonitor]]] = {}
@@ -769,6 +774,7 @@ class Brian2Backend:
                     source.neurons, target, synapse, variable, calls, f"synapses_{len(self.synapses)}",
                     "0", {}, {}, synapse_list=synapse_list,
                 )
+                self._remember_rows(rows, column, source, target, variable, weight)
                 continue
             placed = [
                 connections.Row(
@@ -808,6 +814,47 @@ class Brian2Backend:
                 source.neurons, target, synapse, variable, calls, name,
                 f"population_index_pre*{n_target} + population_index_post", weights, delays, projects,
             )
+            self._remember_rows(rows, column, source, target, variable, weight)
+
+    def _remember_rows(self, rows, column, source, target, variable, weight) -> None:
+        """Where the synapses of ``rows`` are, in the Synapses just made (see
+        ``_synapses_of_row``)."""
+
+        conductance = self.weight_units(target.populations[0], variable)[0] == "siemens"
+        for row in rows:
+            source_name, target_name = column["source"][row], column["target"][row]
+            self._synapses_of_row[row] = (
+                self.synapses[-1],
+                source.start(source_name), self.network.populations[source_name].size,
+                target.start(target_name), self.network.populations[target_name].size,
+                -1.0 if conductance and weight[row] < 0 else 1.0,
+            )
+
+    def final_connections(self, rows: list[int]) -> dict[int, SynapseList]:
+        """
+        The synapses of these rows of the connection table at the end of the
+        run (see SimulationBackend.final_connections), read from Brian2.
+        """
+
+        table = self.network.connections
+        synapse_lists = {}
+        for row in rows:
+            synapses, source_start, n_source, target_start, n_target, sign = self._synapses_of_row[row]
+            if not hasattr(synapses, "pre"):
+                raise ValueError(
+                    f"recording.final_connections: connection {table['source'][row]} -> {table['target'][row]} "
+                    "has no delays (its synapse model has no on_pre), which a row with rule from_file needs."
+                )
+            i, j = np.asarray(synapses.i[:]), np.asarray(synapses.j[:])
+            here = (i >= source_start) & (i < source_start + n_source) & (j >= target_start) & (j < target_start + n_target)
+            unit = getattr(b2, table["weight.unit"][row])
+            synapse_lists[row] = SynapseList(
+                source_index=i[here].astype(np.int64) - source_start,
+                target_index=j[here].astype(np.int64) - target_start,
+                weight=sign * np.asarray(synapses.w_syn[:][here] / unit),
+                delay=np.asarray(synapses.delay[:][here] / b2.ms),
+            )
+        return synapse_lists
 
     def get_population(self, name: str) -> np.ndarray:
         """

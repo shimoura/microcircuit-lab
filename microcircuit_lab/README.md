@@ -575,10 +575,11 @@ Runs in one script go one after another. For runs in parallel, start several scr
 
 ```text
 output/<network>/<timestamp>/
-├── recordings/     spikes (and recorded variables), written by the simulator
-├── plots/          made by microcircuit-lab run
-├── config.yaml     the network and the simulation settings used
-└── metadata.json   versions (core, simulator), git commits, MPI processes, spike counts, list of files
+├── recordings/          spikes (and recorded variables), written by the simulator
+├── plots/               made by microcircuit-lab run
+├── final_connections/   only if asked: every synapse at the end of the run (below)
+├── config.yaml          the network and the simulation settings used
+└── metadata.json        versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying its `recordings/` folder.
@@ -600,6 +601,20 @@ output/<network>/<timestamp>/
 
 - A name the model does not have fails in the simulator. Brian2 saves mV, ms, pA, nS and Hz; other dimensions in SI base units.
 - To read a finished run without the simulator: `read_run(run_dir).recording("V_m")` returns `senders`, `times` (ms) and `values`, sorted by sender, then time.
+- The synapses at the end of the run (e.g. after plasticity) are saved when asked, for every connection or some projections:
+
+  ```yaml
+  recording:
+    final_connections: true                       # or [{source: E, target: E}]
+  ```
+
+  ```text
+  final_connections/
+  ├── connectivity.yaml          the rows as rule: from_file
+  └── synapses/E_to_E_stdp.csv   one file per row: <source>_to_<target>[_<synapse>].csv
+  ```
+
+  Copied into a network folder, they run the network again from that state ([Connections from a file](#connections-from-a-file)). It is off by default: NEST takes about 4 µs per synapse to read them back (3 min for pd14's largest projection, 45 M synapses), and it is not supported with several MPI processes yet.
 
 ### Reading a run
 

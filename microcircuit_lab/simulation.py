@@ -135,6 +135,8 @@ class Simulation:
             **self.backend_options,
         )
         self.backend.check()
+        # A projection in recording.final_connections that no connection has fails here, before the run.
+        self.simulation_config.recording.final_connection_rows(self.network.connections)
         self.is_main_process = self.backend.rank() == 0
         self.output_dir = share_run_directory(
             self.simulation_config.output,

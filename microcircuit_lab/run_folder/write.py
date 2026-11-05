@@ -327,6 +327,36 @@ def register_artifact(run_dir: Path, category: str, path: str | Path) -> None:
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
 
+def write_final_connections(run_dir: Path, network: NetworkConfig, synapse_lists: dict) -> list[Path]:
+    """
+    Write the synapses of each row of the connection table in
+    ``synapse_lists`` (``{row: SynapseList}``, from the backend at the end of
+    the run) to ``run_dir/final_connections/``: one CSV file per row in
+    ``synapses/``, named ``<source>_to_<target>[_<synapse>].csv``, and a
+    ``connectivity.yaml`` with those rows as ``rule: from_file``. Copied into
+    a network folder, they run the network again from this state. Returns the
+    files written.
+    """
+
+    folder = run_dir / "final_connections"
+    table = network.connections
+    rows, paths = [], []
+    for row, synapse_list in synapse_lists.items():
+        source, target, synapse = table["source"][row], table["target"][row], table["synapse"][row]
+        file = f"synapses/{source}_to_{target}" + (f"_{synapse}" if synapse else "") + ".csv"
+        synapse_list.write_csv(folder / file)
+        paths.append(folder / file)
+        rows.append({"source": source, "target": target, "rule": "from_file", "file": file,
+                     **({"synapse": synapse} if synapse else {}), "weight": {"unit": table["weight.unit"][row]}})
+    write_yaml(
+        folder / "connectivity.yaml",
+        {"connections": flow_records(rows)},
+        header_comment="The synapses at the end of the run, as rows with rule: from_file. Copy them, with\n"
+        "synapses/, into a network folder to run it again from this state.",
+    )
+    return [folder / "connectivity.yaml", *paths]
+
+
 def save_run_outputs(
     *,
     run_dir: Path,
@@ -367,3 +397,8 @@ def save_run_outputs(
     if output.save_config:
         config_path = save_run_config(network, simulation_config, run_dir)
         register_artifact(run_dir, "config", config_path)
+
+    rows = recording.final_connection_rows(network.connections)
+    if rows:
+        for path in write_final_connections(run_dir, network, backend.final_connections(rows)):
+            register_artifact(run_dir, "final_connections", path)
