@@ -29,6 +29,7 @@ from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
 from microcircuit_lab.analysis import PLOT_REGISTRY
+from microcircuit_lab.analysis.run_command_plots import PlotSpec
 from microcircuit_lab.config.analysis import AnalysisConfig
 from microcircuit_lab.config.connectivity import ConnectivityFile
 from microcircuit_lab.config.network import NetworkManifest
@@ -319,18 +320,29 @@ def names_svg() -> str:
     )
 
 
+def _bundled_plots() -> dict[str, PlotSpec]:
+    """The plots of the core package. The registry also holds a project's own
+    plots once ``discover_plots`` has run, and those are not part of this page."""
+    return {
+        name: spec
+        for name, spec in PLOT_REGISTRY.items()
+        if spec.plot_fn.__module__.startswith("microcircuit_lab.")
+    }
+
+
 def _analysis_section(writer: _Writer) -> str:
     """The analysis file: its own fields, then one section per bundled plot."""
     file, model, intro = ANALYSIS
     writer.file = file
     lines = writer.model(model, "")
-    for name, spec in PLOT_REGISTRY.items():
+    plots = _bundled_plots()
+    for name, spec in plots.items():
         lines += _comment_lines(f"optional · the {name} plot, saved as {spec.filename}", "")
         lines += [f"{name}:", *writer.model(spec.config_cls, "  ")]
     body = "\n".join(lines)
     # The example must itself be a valid file, each plot section included.
     config = model.model_validate(yaml.safe_load(body))
-    for name, spec in PLOT_REGISTRY.items():
+    for name, spec in plots.items():
         config.plot_config(name, spec.config_cls)
     return f"### {file}\n\n{intro}\n\n```yaml\n{body}\n```"
 
