@@ -6,8 +6,7 @@ Sources:
   microcircuit model of somatosensory cortex with three interneuron types and
   cell-type-specific short-term plasticity. Cerebral Cortex 34(9):bhae378.
   https://doi.org/10.1093/cercor/bhae378
-* The official code, https://zenodo.org/doi/10.5281/zenodo.10069507. Where the
-  publication rounds a value, the value here is the one the code uses.
+* The official code, https://zenodo.org/doi/10.5281/zenodo.10069507. 
 
 Populations are ordered as in the publication, with E for its Exc. Matrices are
 indexed [target, source].
