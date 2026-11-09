@@ -54,7 +54,7 @@ t_ref = 2.0
 V0_mean = -62.0
 V0_std = 5.0
 
-# Connection probabilities (Fig. 3; code: conn/conn.csv with the missing entries
+# Connection probabilities (Fig. 3; originalcode: conn/conn.csv with the missing entries
 # filled in by Helper.hybrid_conn, which replaces conn_probs in model/net_dict.json).
 connection_probabilities = [
     [0.0673, 0.2705, 0.2795, 0.0426, 0.1100, 0.0203, 0.0455, 0.0239, 0.0015, 0.0147, 0.0000, 0.0000, 0.0000],
@@ -88,7 +88,7 @@ analysis_begin = 10000.0
 analysis_end = 15000.0
 
 # Experimental firing rates (spikes/s): first quartile, median and third quartile
-# of the non-whisking state in Yu et al. (2019), Table 1 (Table 5; code:
+# of the non-whisking state in Yu et al. (2019), Table 1 (Table 5; original code:
 # populations.csv, which also has the median of L4_E that Table 5 leaves out).
 experiment_rates = {
     "L23_E": [0.5, 0.6, 4.5],
@@ -106,7 +106,7 @@ experiment_rates = {
     "L6_SOM": [0.5, 1.7, 6.9],
 }
 
-# The colors of the publication's figures (code: populations.csv).
+# The colors of the publication's figures (original code: populations.csv).
 cell_type_colors = {"E": "#004488", "PV": "#994455", "SOM": "#997700", "VIP": "#EE99AA"}
 
 # Synapses: lognormal weights given as mean PSPs in mV, with a standard deviation
@@ -119,11 +119,11 @@ delay_exc_mean = 1.36
 delay_exc_std = 0.51
 delay_inh_mean = 1.43
 delay_inh_std = 1.09
-# Drawn delays below the time step are drawn again, as in the code.
+# Drawn delays below the time step are drawn again, as in the original code.
 delay_min = resolution
 
 # Background input: one Poisson train per neuron at a rate per cell type in spikes/s
-# (Supplementary Material, "Optimization of the Background Input"; code: Ks_static
+# (Supplementary Material, "Optimization of the Background Input"; original code: Ks_static
 # in simulate.py, which replaces K_ext in model/net_dict.json), with a fixed PSP in
 # mV and a delay of the time step in ms.
 bg_rate = {"E": 5000.0, "PV": 6900.0, "SOM": 2500.0, "VIP": 3300.0}
