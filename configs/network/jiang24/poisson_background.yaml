@@ -1,0 +1,109 @@
+# Background: each neuron of a population gets `indegree` independent Poisson
+# synapses, each firing at `rate` (spikes/s). Other always-on inputs (a constant
+# current, a Poisson train, an inhomogeneous Poisson input) are stimuli.yaml
+# entries without start/stop.
+poisson_background:
+  L23_E:
+    rate: 5000.0
+    indegree: 1
+    weight:
+      value: 104.67989328116748
+      unit: pA
+    delay:
+      value: 0.1
+  L23_PV:
+    rate: 6900.0
+    indegree: 1
+    weight:
+      value: 53.24284672470446
+      unit: pA
+    delay:
+      value: 0.1
+  L23_SOM:
+    rate: 2500.0
+    indegree: 1
+    weight:
+      value: 44.80828324097264
+      unit: pA
+    delay:
+      value: 0.1
+  L23_VIP:
+    rate: 3300.0
+    indegree: 1
+    weight:
+      value: 32.049911825133975
+      unit: pA
+    delay:
+      value: 0.1
+  L4_E:
+    rate: 5000.0
+    indegree: 1
+    weight:
+      value: 104.67989328116748
+      unit: pA
+    delay:
+      value: 0.1
+  L4_PV:
+    rate: 6900.0
+    indegree: 1
+    weight:
+      value: 53.24284672470446
+      unit: pA
+    delay:
+      value: 0.1
+  L4_SOM:
+    rate: 2500.0
+    indegree: 1
+    weight:
+      value: 44.80828324097264
+      unit: pA
+    delay:
+      value: 0.1
+  L5_E:
+    rate: 5000.0
+    indegree: 1
+    weight:
+      value: 116.9385347785631
+      unit: pA
+    delay:
+      value: 0.1
+  L5_PV:
+    rate: 6900.0
+    indegree: 1
+    weight:
+      value: 41.28754631872178
+      unit: pA
+    delay:
+      value: 0.1
+  L5_SOM:
+    rate: 2500.0
+    indegree: 1
+    weight:
+      value: 53.45625367827341
+      unit: pA
+    delay:
+      value: 0.1
+  L6_E:
+    rate: 5000.0
+    indegree: 1
+    weight:
+      value: 116.9385347785631
+      unit: pA
+    delay:
+      value: 0.1
+  L6_PV:
+    rate: 6900.0
+    indegree: 1
+    weight:
+      value: 41.28754631872178
+      unit: pA
+    delay:
+      value: 0.1
+  L6_SOM:
+    rate: 2500.0
+    indegree: 1
+    weight:
+      value: 53.45625367827341
+      unit: pA
+    delay:
+      value: 0.1

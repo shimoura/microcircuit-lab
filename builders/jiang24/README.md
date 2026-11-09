@@ -10,11 +10,11 @@ Writes the network files of the layered microcircuit model of mouse somatosensor
 ## Generate and run
 
 ```bash
-microcircuit-lab generate jiang24     # writes configs/network/jiang24/
+microcircuit-lab generate jiang24     # writes configs/network/jiang24/ and configs/simulation/jiang24.yaml
 microcircuit-lab run --network jiang24
 ```
 
-The publication simulates its resting state for 15 s at a 0.1 ms time step and leaves out the first 10 s. The delays depend on that time step (below).
+The simulation file has the publication's 15 s at a 0.1 ms time step, on which the delays depend (below). The publication leaves out the first 10 s when it analyses this run.
 
 ## What follows the official code
 
@@ -41,4 +41,4 @@ Short-term plasticity (Base-STP), the thalamic input, the cell-type-specific sti
 ## Files
 
 - `data.py`: the parameters, each with its source.
-- `build.py`: writes `configs/network/jiang24/` from `data.py`. `main(argv)` is the entry point `microcircuit-lab generate jiang24` calls.
+- `build.py`: writes `configs/network/jiang24/` and `configs/simulation/jiang24.yaml` from `data.py`. `main(argv)` is the entry point `microcircuit-lab generate jiang24` calls.

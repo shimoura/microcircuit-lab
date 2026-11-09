@@ -73,6 +73,13 @@ connection_probabilities = [
     [0.0022, 0.0000, 0.0002, 0.0011, 0.0046, 0.0020, 0.0004, 0.0153, 0.0000, 0.0022, 0.2049, 0.3114, 0.0058],
 ]
 
+# Simulation settings: the publication's resting state runs for 15 s at a 0.1 ms
+# time step (ms; Methods). The seed and threads are this builder's choice.
+t_sim = 15000.0
+resolution = 0.1
+rng_seed = 42
+local_num_threads = 16
+
 # Synapses: lognormal weights given as mean PSPs in mV, with a standard deviation
 # equal to the mean (Table 3; inhibitory PSPs are g times the excitatory one), and
 # lognormal delays in ms (Table 4).
@@ -83,8 +90,8 @@ delay_exc_mean = 1.36
 delay_exc_std = 0.51
 delay_inh_mean = 1.43
 delay_inh_std = 1.09
-# Drawn delays below the 0.1 ms time step are drawn again, as in the code.
-delay_min = 0.1
+# Drawn delays below the time step are drawn again, as in the code.
+delay_min = resolution
 
 # Background input: one Poisson train per neuron at a rate per cell type in spikes/s
 # (Supplementary Material, "Optimization of the Background Input"; code: Ks_static
@@ -93,7 +100,7 @@ delay_min = 0.1
 bg_rate = {"E": 5000.0, "PV": 6900.0, "SOM": 2500.0, "VIP": 3300.0}
 bg_indegree = 1
 bg_psp = 0.5
-bg_delay = 0.1
+bg_delay = resolution
 
 # Mean rates of the Base model in spikes/s, over 20 simulations of the official code
 # (snakes_main.zip, snake_gs-static/results_pop.csv, fr_data_mu); Table 5 gives them
