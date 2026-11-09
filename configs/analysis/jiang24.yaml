@@ -1,0 +1,11 @@
+style:
+  color_mode: cell_type
+  cell_type_colors:
+    E: '#004488'
+    PV: '#994455'
+    SOM: '#997700'
+    VIP: '#EE99AA'
+jiang24_raster:
+  enabled: true
+  begin: 10000.0
+  end: 10200.0

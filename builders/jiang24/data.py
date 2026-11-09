@@ -80,6 +80,13 @@ resolution = 0.1
 rng_seed = 42
 local_num_threads = 16
 
+# The time window of the raster plot in Fig. 6 (ms).
+raster_begin = 10000.0
+raster_end = 10200.0
+
+# The colors of the publication's figures (code: populations.csv).
+cell_type_colors = {"E": "#004488", "PV": "#994455", "SOM": "#997700", "VIP": "#EE99AA"}
+
 # Synapses: lognormal weights given as mean PSPs in mV, with a standard deviation
 # equal to the mean (Table 3; inhibitory PSPs are g times the excitatory one), and
 # lognormal delays in ms (Table 4).

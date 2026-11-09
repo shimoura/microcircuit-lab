@@ -8,7 +8,8 @@ Poisson background train per neuron. The weights are given as PSPs (mV) and
 written as the currents (pA) that give them with each target's neuron.
 
 Also writes ``configs/simulation/jiang24.yaml``, with the publication's duration
-and time step; the delays depend on that time step.
+and time step, on which the delays depend, and ``configs/analysis/jiang24.yaml``,
+which switches on the raster plot of Fig. 6A (``analyses/jiang24_raster.py``).
 """
 
 from __future__ import annotations
@@ -125,7 +126,7 @@ def _build_poisson_background() -> dict[str, dict[str, Any]]:
 
 def generate_jiang24(*, config_dir: str | Path = "configs", network_name: str = "jiang24") -> NetworkConfig:
     """Write ``<config_dir>/network/<network_name>/``, validate it, and write
-    ``<config_dir>/simulation/<network_name>.yaml``."""
+    ``<network_name>.yaml`` in ``<config_dir>/simulation/`` and ``<config_dir>/analysis/``."""
 
     write_yaml(
         Path(config_dir) / "simulation" / f"{network_name}.yaml",
@@ -134,6 +135,13 @@ def generate_jiang24(*, config_dir: str | Path = "configs", network_name: str = 
             "resolution": data.resolution,
             "rng_seed": data.rng_seed,
             "local_num_threads": data.local_num_threads,
+        },
+    )
+    write_yaml(
+        Path(config_dir) / "analysis" / f"{network_name}.yaml",
+        {
+            "style": {"color_mode": "cell_type", "cell_type_colors": data.cell_type_colors},
+            "jiang24_raster": {"enabled": True, "begin": data.raster_begin, "end": data.raster_end},
         },
     )
     return write_network_directory(
@@ -160,6 +168,7 @@ def main(argv: list[str] | None = None) -> None:
     generate_jiang24(config_dir=args.config_dir, network_name=args.network_name)
     print(f"Generated and validated {Path(args.config_dir) / 'network' / args.network_name}")
     print(f"Generated {Path(args.config_dir) / 'simulation' / args.network_name}.yaml")
+    print(f"Generated {Path(args.config_dir) / 'analysis' / args.network_name}.yaml")
 
 
 if __name__ == "__main__":
