@@ -34,7 +34,9 @@ from microcircuit_lab.config.analysis import AnalysisConfig
 
 BOX_WIDTH = 0.24
 LINE_WIDTH = 0.5
-Y_LIMITS = (-5.0, 115.0)
+# The publication's y axis; the top moves up when a rate would not fit.
+Y_BOTTOM = -5.0
+Y_TOP = 115.0
 CELL_TYPE_LABELS = {"E": "Exc", "PV": "PV", "SOM": "SOM", "VIP": "VIP"}
 
 
@@ -67,17 +69,18 @@ def _draw(rates, config, style, save_path):
         _box(ax, x, config["experiment"][population], "k")
 
     ax.set_xlim(-0.5, 12.5)
-    ax.set_ylim(Y_LIMITS)
+    y_top = max(Y_TOP, 1.05 * max(neuron_rates.max() for neuron_rates in rates.values()))
+    ax.set_ylim(Y_BOTTOM, y_top)
     ax.set_xticks([])
-    ax.set_yticks(np.arange(0.0, Y_LIMITS[1], 20.0))
+    ax.set_yticks(np.arange(0.0, y_top, 20.0))
     ax.tick_params(labelsize="xx-small")
 
     # L2/3 and L5 are shaded; each layer is named above the axes.
-    height = Y_LIMITS[1] - Y_LIMITS[0]
-    ax.add_patch(Rectangle((-0.5, Y_LIMITS[0]), 4.0, height, color="lightgray", zorder=0))
-    ax.add_patch(Rectangle((6.5, Y_LIMITS[0]), 3.0, height, color="lightgray", zorder=0))
+    height = y_top - Y_BOTTOM
+    ax.add_patch(Rectangle((-0.5, Y_BOTTOM), 4.0, height, color="lightgray", zorder=0))
+    ax.add_patch(Rectangle((6.5, Y_BOTTOM), 3.0, height, color="lightgray", zorder=0))
     for x, layer in ((1.5, "L2/3"), (5.0, "L4"), (8.0, "L5"), (11.0, "L6")):
-        ax.text(x, Y_LIMITS[1] + 2, layer, ha="center", fontsize="xx-small")
+        ax.text(x, y_top + 2, layer, ha="center", fontsize="xx-small")
 
     for cell_type, label in CELL_TYPE_LABELS.items():
         ax.scatter(
