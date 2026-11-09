@@ -1,6 +1,6 @@
 # Jiang et al. (2024) builder
 
-Writes the network files of the layered microcircuit model of mouse somatosensory cortex of Jiang et al. (2024), with PV, SOM and VIP interneurons. This is the version with static synapses and without thalamic input, the publication's Base model: 13 populations and 6,448 neurons. Everything specific to this model stays here; the core runs the result like any other network. The implementation follows the 
+Writes the network files of the layered microcircuit model of mouse somatosensory cortex of Jiang et al. (2024), with PV, SOM and VIP interneurons. This is the version with static synapses and without thalamic input, the publication's Base model: 13 populations and 6,448 neurons. Everything specific to this model stays here; the core runs the result like any other network.
 
 ## Sources
 
