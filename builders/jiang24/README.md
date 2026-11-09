@@ -34,14 +34,10 @@ python analyses/jiang24_firing_rates.py output/jiang24_seeds/firing_rates.png ou
 
 ## Where the code and the publication differ
 
-The numbers follow the code, which made the published results:
+The current implementation follows the original code, which made the published results:
 
-- The Methods say L5 Exc→SOM, SOM→Exc and SOM→SOM are averages of L2/3 and L4. `Helper.hybrid_conn` averages L5 SOM→PV, PV→SOM and SOM→SOM instead, and the values in Fig. 3 agree with the code.
-- `model/net_dict.json` holds other background rates (`K_ext`), scaled PSPs (`psp_means`, `w_mod_custom`) and 0.3115 instead of 0.3114 for L5 and L6 PV→SOM (`conn_probs`). The code replaces them when it builds the network, so the Base model does not use them; the input columns saved with the published runs (`results_pop.csv` in `snakes_main.zip`) match the values here.
-
-## Not included yet
-
-Short-term plasticity (Base-STP), the thalamic input, the cell-type-specific stimulation, and the TC-adjusted and double-sized versions.
+- In the paper, the Methods say L5 Exc→SOM, SOM→Exc and SOM→SOM are averages of L2/3 and L4. In the original code `Helper.hybrid_conn` averages L5 SOM→PV, PV→SOM and SOM→SOM instead, and the values in Fig. 3 agree with the code.
+- In the original code `model/net_dict.json` holds other background rates (`K_ext`) and scaled PSPs (`psp_means`, `w_mod_custom`). The code replaces them when it builds the network, so the Base model does not use them; the input columns saved with the published runs (`results_pop.csv` in `snakes_main.zip`) match the values here.
 
 ## Files
 
