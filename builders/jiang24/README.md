@@ -18,7 +18,7 @@ The simulation file has the publication's 15 s at a 0.1 ms time step, on which t
 
 ## The plots of Fig. 6A
 
-Two plots have the form of Fig. 6A, `jiang24_raster.png` and `jiang24_firing_rates.png` (`analyses/jiang24_*.py`). They are off by default. The analysis file `jiang24_fig6` switches them on, and gives their time windows and the experimental rates:
+Two plots have the form of Fig. 6A of the original paper, in order to directly compare both versions: `jiang24_raster.png` and `jiang24_firing_rates.png` (`analyses/jiang24_*.py`). They are off by default and implemented via the `analyses/` folder as an example of implementing new plots outside of the core package. The analysis file `jiang24_fig6` switches them on, and gives their time windows and the experimental rates:
 
 ```bash
 microcircuit-lab run --network jiang24 --analysis jiang24_fig6
