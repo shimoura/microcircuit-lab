@@ -3,8 +3,8 @@
 Follows ``plot_fr_median`` in ``plots.py`` of the official code. Each population
 has a box of the rates of its neurons (quartiles and median, whiskers to the
 lowest and highest rate) and a black box of the experimental quartiles. The
-analysis file gives the time window and the experimental data, and switches the
-plot on::
+analysis file ``configs/analysis/jiang24_fig6.yaml`` gives the time window and the
+experimental data, and switches the plot on::
 
     jiang24_firing_rates:
       enabled: true
@@ -107,7 +107,7 @@ register_plot("jiang24_firing_rates", plot_jiang24_firing_rates)
 if __name__ == "__main__":
     # The figure saved at the first argument, with the neurons of all the runs pooled.
     save_path, *run_folders = sys.argv[1:]
-    analysis = AnalysisConfig.from_yaml(network_name="jiang24")
+    analysis = AnalysisConfig.from_yaml(network_name="jiang24", analysis_name="jiang24_fig6")
     config = analysis.plot_config("jiang24_firing_rates", None)
     per_run = [
         compute_neuron_firing_rates(read_run(folder), config["begin"], config["end"]) for folder in run_folders

@@ -2,7 +2,8 @@
 
 The axes follow ``plotraster`` in ``plots.py`` of the official code: every neuron
 has a row, the first population is at the top, and the y axis names the layers.
-The analysis file gives the time window and switches the plot on::
+The analysis file ``configs/analysis/jiang24_fig6.yaml`` gives the time window and
+switches the plot on::
 
     jiang24_raster: {enabled: true, begin: 10000.0, end: 10200.0}
 """

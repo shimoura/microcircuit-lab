@@ -10,11 +10,24 @@ Writes the network files of the layered microcircuit model of mouse somatosensor
 ## Generate and run
 
 ```bash
-microcircuit-lab generate jiang24     # writes configs/network/jiang24/ and jiang24.yaml in configs/simulation/ and configs/analysis/
+microcircuit-lab generate jiang24     # writes configs/network/jiang24/, jiang24.yaml in configs/simulation/ and configs/analysis/, and jiang24_fig6.yaml in configs/analysis/
 microcircuit-lab run --network jiang24
 ```
 
-The simulation file has the publication's 15 s at a 0.1 ms time step, on which the delays depend (below). The publication leaves out the first 10 s when it analyses this run. Besides the bundled plots, which cover the whole run, the analysis file switches on two plots in the form of Fig. 6A, `jiang24_raster.png` and `jiang24_firing_rates.png` (`analyses/jiang24_*.py`). The publication's firing rate panel pools the neurons of 20 simulations, while this plot shows one run. For the pooled panel:
+The simulation file has the publication's 15 s at a 0.1 ms time step, on which the delays depend (below). The publication leaves out the first 10 s when it analyses this run; the bundled plots cover the whole run.
+
+## The plots of Fig. 6A
+
+Two plots have the form of Fig. 6A, `jiang24_raster.png` and `jiang24_firing_rates.png` (`analyses/jiang24_*.py`). They are off by default. The analysis file `jiang24_fig6` switches them on, and gives their time windows and the experimental rates:
+
+```bash
+microcircuit-lab run --network jiang24 --analysis jiang24_fig6
+microcircuit-lab run --run-dir output/jiang24/<timestamp> --analysis jiang24_fig6     # a finished run, without simulating it again
+```
+
+`microcircuit-lab init --with-core` copies this builder and the configs, but not `analyses/` or `experiments/`. In such a project, first copy `analyses/jiang24_raster.py` and `analyses/jiang24_firing_rates.py` from this repository, or `jiang24_fig6` stops with an error about unknown plot sections, after any simulation.
+
+The publication's firing rate panel pools the neurons of 20 simulations, while this plot shows one run. For the pooled panel (in a project, copy `experiments/jiang24/run_seeds.py` too):
 
 ```bash
 python experiments/jiang24/run_seeds.py     # the publication's 20 seeds, in output/jiang24_seeds/
