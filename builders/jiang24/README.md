@@ -14,7 +14,7 @@ microcircuit-lab generate jiang24     # writes configs/network/jiang24/ and jian
 microcircuit-lab run --network jiang24
 ```
 
-The simulation file has the publication's 15 s at a 0.1 ms time step, on which the delays depend (below). The publication leaves out the first 10 s when it analyses this run. Besides the bundled plots, which cover the whole run, the analysis file switches on `jiang24_raster.png`, the raster plot with the axes of Fig. 6A (`analyses/jiang24_raster.py`).
+The simulation file has the publication's 15 s at a 0.1 ms time step, on which the delays depend (below). The publication leaves out the first 10 s when it analyses this run. Besides the bundled plots, which cover the whole run, the analysis file switches on two plots in the form of Fig. 6A, `jiang24_raster.png` and `jiang24_firing_rates.png` (`analyses/jiang24_*.py`). The publication's firing rate panel pools the neurons of 20 simulations, while this plot shows one run.
 
 ## What follows the official code
 

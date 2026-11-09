@@ -9,7 +9,7 @@ written as the currents (pA) that give them with each target's neuron.
 
 Also writes ``configs/simulation/jiang24.yaml``, with the publication's duration
 and time step, on which the delays depend, and ``configs/analysis/jiang24.yaml``,
-which switches on the raster plot of Fig. 6A (``analyses/jiang24_raster.py``).
+which switches on the plots of Fig. 6A (``analyses/jiang24_*.py``).
 """
 
 from __future__ import annotations
@@ -142,6 +142,12 @@ def generate_jiang24(*, config_dir: str | Path = "configs", network_name: str = 
         {
             "style": {"color_mode": "cell_type", "cell_type_colors": data.cell_type_colors},
             "jiang24_raster": {"enabled": True, "begin": data.raster_begin, "end": data.raster_end},
+            "jiang24_firing_rates": {
+                "enabled": True,
+                "begin": data.analysis_begin,
+                "end": data.analysis_end,
+                "experiment": data.experiment_rates,
+            },
         },
     )
     return write_network_directory(

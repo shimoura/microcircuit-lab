@@ -84,6 +84,29 @@ local_num_threads = 16
 raster_begin = 10000.0
 raster_end = 10200.0
 
+# The time window the publication analyses (ms; Methods).
+analysis_begin = 10000.0
+analysis_end = 15000.0
+
+# Experimental firing rates (spikes/s): first quartile, median and third quartile
+# of the non-whisking state in Yu et al. (2019), Table 1 (Table 5; code:
+# populations.csv, which also has the median of L4_E that Table 5 leaves out).
+experiment_rates = {
+    "L23_E": [0.5, 0.6, 4.5],
+    "L23_PV": [7.5, 11.7, 23.3],
+    "L23_SOM": [0.03, 0.4, 4.1],
+    "L23_VIP": [8.5, 11.1, 21.0],
+    "L4_E": [0.0, 0.1, 0.7],
+    "L4_PV": [4.3, 7.8, 14.7],
+    "L4_SOM": [0.3, 0.6, 4.9],
+    "L5_E": [2.7, 5.2, 11.2],
+    "L5_PV": [4.3, 7.6, 8.7],
+    "L5_SOM": [0.2, 0.8, 3.6],
+    "L6_E": [0.4, 2.6, 11.5],
+    "L6_PV": [4.6, 17.2, 22.0],
+    "L6_SOM": [0.5, 1.7, 6.9],
+}
+
 # The colors of the publication's figures (code: populations.csv).
 cell_type_colors = {"E": "#004488", "PV": "#994455", "SOM": "#997700", "VIP": "#EE99AA"}
 
