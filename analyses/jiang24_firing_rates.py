@@ -11,16 +11,26 @@ plot on::
       begin: 10000.0
       end: 15000.0
       experiment: {L23_E: [0.5, 0.6, 4.5], ...}
+
+``microcircuit-lab run`` plots one run. The publication's panel pools the neurons
+of 20 simulations (``experiments/jiang24/run_seeds.py``), which this file does when
+run by itself::
+
+    python analyses/jiang24_firing_rates.py output/jiang24_seeds/firing_rates.png output/jiang24_seeds/seed_*/*
 """
 
 from __future__ import annotations
+
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 
+from microcircuit_lab import read_run
 from microcircuit_lab.analysis import compute_neuron_firing_rates, register_plot
 from microcircuit_lab.analysis.plot_styles import population_color
+from microcircuit_lab.config.analysis import AnalysisConfig
 
 BOX_WIDTH = 0.24
 LINE_WIDTH = 0.5
@@ -44,9 +54,9 @@ def _whisker(ax, center, start, stop, color):
     ax.plot([center - cap, center + cap], [stop, stop], color=color, linewidth=LINE_WIDTH)
 
 
-def plot_jiang24_firing_rates(run, config, style, save_path):
+def _draw(rates, config, style, save_path):
+    """The figure for ``{population: rate of each neuron}``."""
     fig, ax = plt.subplots(figsize=(2, 1.5), dpi=style.dpi)
-    rates = compute_neuron_firing_rates(run, config["begin"], config["end"])
 
     for x, (population, neuron_rates) in enumerate(rates.items()):
         color = population_color(population, x, style)
@@ -84,4 +94,20 @@ def plot_jiang24_firing_rates(run, config, style, save_path):
     fig.savefig(save_path)
 
 
+def plot_jiang24_firing_rates(run, config, style, save_path):
+    _draw(compute_neuron_firing_rates(run, config["begin"], config["end"]), config, style, save_path)
+
+
 register_plot("jiang24_firing_rates", plot_jiang24_firing_rates)
+
+
+if __name__ == "__main__":
+    # The figure saved at the first argument, with the neurons of all the runs pooled.
+    save_path, *run_folders = sys.argv[1:]
+    analysis = AnalysisConfig.from_yaml(network_name="jiang24")
+    config = analysis.plot_config("jiang24_firing_rates", None)
+    per_run = [
+        compute_neuron_firing_rates(read_run(folder), config["begin"], config["end"]) for folder in run_folders
+    ]
+    pooled = {population: np.concatenate([rates[population] for rates in per_run]) for population in per_run[0]}
+    _draw(pooled, config, analysis.style, save_path)
