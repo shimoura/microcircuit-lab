@@ -93,9 +93,10 @@ pip install -e ".[dev,nest]"
 | `toy_two_areas_advanced` | the same network with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
 | `jiang24` | the Jiang et al. (2024) microcircuit of mouse somatosensory cortex, with PV, SOM and VIP interneurons: the publication's Base model, with static synapses |
+| `jiang24_stp` | the same microcircuit with cell-type-specific short-term plasticity: the publication's Base-STP model (NEST only) |
 | `humam_single`, `humam_all` | the human multi-area model (Pronold et al. 2024): one area, or all 34 |
 
-`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, run `pd14_downscaled` (N and K scaled by 0.1; see [Scaling a network](#scaling-a-network)). `jiang24` has 6,448 neurons and simulates 15 s; `builders/jiang24/README.md` shows how to make the plots of the publication's Fig. 6A. Each builder's README in `builders/` gives the model's sources.
+`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, run `pd14_downscaled` (N and K scaled by 0.1; see [Scaling a network](#scaling-a-network)). `jiang24` and `jiang24_stp` have 6,448 neurons and simulate 15 s; `builders/jiang24/README.md` and `builders/jiang24_stp/README.md` show how to make the plots of the publication's Fig. 6A and 6B. Each builder's README in `builders/` gives the model's sources.
 
 ## Starting a project
 

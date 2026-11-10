@@ -20,7 +20,7 @@ cd my_project
 microcircuit-lab run --network toy
 ```
 
-The plots and spikes are saved in `output/toy/<timestamp>/`. `pd14`, `jiang24`, `toy_two_areas` and the HuMAM networks run the same way. NEST can also come from conda-forge or a build from source; see [Installation](microcircuit_lab/README.md#installation).
+The plots and spikes are saved in `output/toy/<timestamp>/`. `pd14`, `jiang24`, `jiang24_stp`, `toy_two_areas` and the HuMAM networks run the same way. NEST can also come from conda-forge or a build from source; see [Installation](microcircuit_lab/README.md#installation).
 
 Next:
 

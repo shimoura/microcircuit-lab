@@ -1,0 +1,6 @@
+populations: populations.yaml
+neurons: neurons.yaml
+connectivity: connectivity.yaml
+poisson_background: poisson_background.yaml
+reference: reference.yaml
+synapses: synapses.yaml

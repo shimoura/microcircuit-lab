@@ -1,0 +1,141 @@
+synapses:
+  stp_E_to_PV:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.2
+      tau_fac: 0.0
+      tau_rec: 120.0
+      tau_psc: 2.0
+  stp_E_to_SOM:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.3
+      tau_fac: 140.0
+      tau_rec: 1.0e-10
+      tau_psc: 2.0
+  stp_L23_E_to_L23_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.3
+      tau_fac: 580.0
+      tau_rec: 120.0
+      tau_psc: 2.0
+  stp_L23_E_to_L4_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.3
+      tau_fac: 40.0
+      tau_rec: 440.0
+      tau_psc: 2.0
+  stp_L23_E_to_L5_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.35
+      tau_fac: 380.0
+      tau_rec: 320.0
+      tau_psc: 2.0
+  stp_L4_E_to_L23_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.4
+      tau_fac: 220.0
+      tau_rec: 640.0
+      tau_psc: 2.0
+  stp_L4_E_to_L4_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.55
+      tau_fac: 320.0
+      tau_rec: 140.0
+      tau_psc: 2.0
+  stp_L4_E_to_L5_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.45
+      tau_fac: 220.0
+      tau_rec: 620.0
+      tau_psc: 2.0
+  stp_L4_E_to_L6_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.4
+      tau_fac: 740.0
+      tau_rec: 340.0
+      tau_psc: 2.0
+  stp_L5_E_to_L23_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.35
+      tau_fac: 60.0
+      tau_rec: 680.0
+      tau_psc: 2.0
+  stp_L5_E_to_L4_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.8
+      tau_fac: 260.0
+      tau_rec: 120.0
+      tau_psc: 2.0
+  stp_L5_E_to_L5_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.45
+      tau_fac: 100.0
+      tau_rec: 940.0
+      tau_psc: 2.0
+  stp_L5_E_to_L6_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.35
+      tau_fac: 480.0
+      tau_rec: 60.0
+      tau_psc: 2.0
+  stp_L6_E_to_L5_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.05
+      tau_fac: 1000.0
+      tau_rec: 1.0e-10
+      tau_psc: 2.0
+  stp_L6_E_to_L6_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.5
+      tau_fac: 640.0
+      tau_rec: 20.0
+      tau_psc: 2.0
+  stp_PV_to_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.55
+      tau_fac: 40.0
+      tau_rec: 200.0
+      tau_psc: 4.0
+  stp_PV_to_PV:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.6
+      tau_fac: 340.0
+      tau_rec: 180.0
+      tau_psc: 4.0
+  stp_PV_to_SOM:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.55
+      tau_fac: 100.0
+      tau_rec: 180.0
+      tau_psc: 4.0
+  stp_SOM_to_E:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.95
+      tau_fac: 0.0
+      tau_rec: 20.0
+      tau_psc: 4.0
+  stp_SOM_to_PV:
+    model: tsodyks_synapse
+    parameters:
+      U: 0.95
+      tau_fac: 0.0
+      tau_rec: 20.0
+      tau_psc: 4.0
