@@ -131,9 +131,9 @@ delay_min = resolution
 # every layer, or a population: the projections between E cells have their own
 # parameters per pair of layers. Projections not listed are static: those from and
 # onto VIP cells, and SOM to SOM (the E to E ones not listed, from L2/3 to L6 and from
-# L6 to L2/3 and L4, have probability 0). tau_fac 0 means no facilitation, and tau_rec 1e-10 is how the code writes no
-# depression. stp.json also has the parameters of the thalamic input ("Eth"), which
-# this model does not have.
+# L6 to L2/3 and L4, have probability 0). tau_fac 0 means no facilitation, and
+# tau_rec 1e-10 is how the code writes no depression. stp.json also has the
+# parameters of the thalamic input ("Eth"), which this model does not have.
 synapse_model = "tsodyks_synapse"
 stp = {
     ("E", "PV"): {"U": 0.2, "tau_fac": 0.0, "tau_rec": 120.0},
@@ -162,7 +162,7 @@ stp = {
 # a factor, so that, with its source firing regularly at that population's rate in a
 # static simulation, the synapse settles at the Base model's PSC (Methods; original
 # code: STP/stpwfit.py). The code fits the factors in each simulation, so they change
-# with the seed (by up to 5 %). These are their means over the publication's 20
+# with the seed (by up to 10 %). These are their means over the publication's 20
 # simulations (snakes_main.zip, snake_gs-stp/results_stpwmod.csv, which writes 0 for
 # a static projection), the values Fig. 5C shows to two decimals, here to six. 1.0
 # for a static projection.
