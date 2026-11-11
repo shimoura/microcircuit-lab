@@ -90,7 +90,7 @@ pip install -e ".[dev,nest]"
 | `toy`, `toy_stimulated` | two populations (E and I), with and without stimuli; the smallest example, written by hand with comments |
 | `toy_from_builder` | the same network as `toy`, written by the builder `builders/toy` |
 | `toy_two_areas` | a made-up two-area network with different layers and cell types (E, PV, SOM, VIP) |
-| `toy_two_areas_advanced` | the same network with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
+| `toy_two_areas_advanced` | the same network as `toy_two_areas` with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
 | `jiang24` | the Jiang et al. (2024) microcircuit of mouse somatosensory cortex, with PV, SOM and VIP interneurons: the publication's Base model, with static synapses |
 | `jiang24_stp` | the Jiang et al. (2024) microcircuit with cell-type-specific short-term plasticity: the publication's Base-STP model (NEST only) |
