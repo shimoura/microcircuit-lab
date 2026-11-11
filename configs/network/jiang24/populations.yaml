@@ -1,0 +1,105 @@
+populations:
+- name: L23_E
+  size: 1691
+  neuron: E_upper
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L23_PV
+  size: 90
+  neuron: PV_upper
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L23_SOM
+  size: 74
+  neuron: SOM_upper
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L23_VIP
+  size: 85
+  neuron: VIP
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L4_E
+  size: 1656
+  neuron: E_upper
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L4_PV
+  size: 85
+  neuron: PV_upper
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L4_SOM
+  size: 48
+  neuron: SOM_upper
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L5_E
+  size: 1095
+  neuron: E_deep
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L5_PV
+  size: 109
+  neuron: PV_deep
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L5_SOM
+  size: 105
+  neuron: SOM_deep
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L6_E
+  size: 1288
+  neuron: E_deep
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L6_PV
+  size: 56
+  neuron: PV_deep
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0
+- name: L6_SOM
+  size: 66
+  neuron: SOM_deep
+  initial_state:
+    V_m:
+      distribution: normal
+      mean: -62.0
+      std: 5.0

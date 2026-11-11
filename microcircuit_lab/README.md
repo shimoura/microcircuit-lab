@@ -92,9 +92,10 @@ pip install -e ".[dev,nest]"
 | `toy_two_areas` | a made-up two-area network with different layers and cell types (E, PV, SOM, VIP) |
 | `toy_two_areas_advanced` | the same network with the optional features on: values drawn per neuron, connection rules, synapse models, receptor ports |
 | `pd14` | the Potjans & Diesmann (2014) microcircuit |
+| `jiang24` | the Jiang et al. (2024) microcircuit of mouse somatosensory cortex, with PV, SOM and VIP interneurons: the publication's Base model, with static synapses |
 | `humam_single`, `humam_all` | the human multi-area model (Pronold et al. 2024): one area, or all 34 |
 
-`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, run `pd14_downscaled` (N and K scaled by 0.1; see [Scaling a network](#scaling-a-network)). Each builder's README in `builders/` gives the model's sources.
+`pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, run `pd14_downscaled` (N and K scaled by 0.1; see [Scaling a network](#scaling-a-network)). `jiang24` has 6,448 neurons and simulates 15 s; `builders/jiang24/README.md` shows how to make the plots of the publication's Fig. 6A. Each builder's README in `builders/` gives the model's sources.
 
 ## Starting a project
 
@@ -494,7 +495,7 @@ write_network_directory(
 - `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
 - `write_network_directory` writes every value, defaults included (e.g. `rule`), so the files keep their meaning if a default of the core changes.
-- Worked examples: `builders/pd14/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
+- Worked examples: `builders/pd14/`, `builders/jiang24/`, `builders/toy_two_areas/`, `builders/humam/`. Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
 ## Running from a script
