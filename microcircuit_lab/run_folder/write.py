@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import platform
 import shutil
 import subprocess
 import time
@@ -260,10 +261,13 @@ def write_run_metadata(
     network_name: str,
     simulation_name: str,
     backend_name: str,
+    build_time: float | None = None,
+    simulate_time: float | None = None,
 ) -> Path:
-    """Write ``metadata.json``: the run's identity, the spike statistics of each
-    population (if spikes were recorded) and a list of the files of the run, to
-    which :func:`register_artifact` adds.
+    """Write ``metadata.json``: the run's identity, the versions used, how
+    long building the network and simulating it took (``build_time`` and
+    ``simulate_time``, in seconds) and the spike statistics of each population
+    (if spikes were recorded; ``mean_rate_hz`` is over the whole run).
 
     ``first_node_id`` and ``last_node_id`` give the node IDs of each population,
     which are one contiguous block. :func:`~microcircuit_lab.run_folder.read.read_run` uses
@@ -296,49 +300,19 @@ def write_run_metadata(
         "num_processes": backend.num_processes(),
         "created_at": datetime.now(UTC).isoformat(),
         "microcircuit_lab_version": _package_version(),
+        "python_version": platform.python_version(),
         "git": _git_provenance(Path.cwd()),
         "core_git": _core_git_provenance(),
         "t_sim_ms": simulation_config.t_sim,
         "rng_seed": simulation_config.rng_seed,
+        "build_time_s": None if build_time is None else round(build_time, 3),
+        "simulate_time_s": None if simulate_time is None else round(simulate_time, 3),
         "populations": populations,
-        "artifacts": {},
     }
 
     path = run_dir / "metadata.json"
     path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     return path
-
-
-def register_artifact(run_dir: Path, category: str, path: str | Path) -> None:
-    """
-    List a file in the run's ``metadata.json``, under a category.
-
-    ``metadata.json`` then lists everything a run folder holds, so nobody has
-    to search the folder for files. Does nothing if the run has no
-    ``metadata.json`` (``save_metadata: false``).
-
-    Parameters
-    ----------
-    run_dir
-        The run folder, e.g. ``simulation.output_dir``.
-    category
-        The kind of file, e.g. ``"plots"``.
-    path
-        The file; stored relative to ``run_dir``.
-    """
-
-    metadata_path = Path(run_dir) / "metadata.json"
-    if not metadata_path.exists():
-        return
-
-    metadata = json.loads(metadata_path.read_text())
-    artifacts = metadata.setdefault("artifacts", {}).setdefault(category, [])
-
-    relative = str(Path(path).resolve().relative_to(Path(run_dir).resolve()))
-    if relative not in artifacts:
-        artifacts.append(relative)
-
-    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
 
 def write_final_connections(run_dir: Path, network: NetworkConfig, synapse_lists: dict) -> list[Path]:
@@ -382,10 +356,13 @@ def save_run_outputs(
     network_name: str,
     simulation_name: str,
     backend_name: str,
+    build_time: float | None = None,
+    simulate_time: float | None = None,
 ) -> None:
     """
     Save what the simulation config asks for (recordings, config, metadata)
-    in ``run_dir``.
+    in ``run_dir``. ``build_time`` and ``simulate_time`` (seconds) go into the
+    metadata.
 
     ``run_dir`` comes from :func:`resolve_run_directory`, which is called before
     ``backend.build()`` so that a backend that records straight to disk (NEST)
@@ -403,18 +380,17 @@ def save_run_outputs(
             network_name=network_name,
             simulation_name=simulation_name,
             backend_name=backend_name,
+            build_time=build_time,
+            simulate_time=simulate_time,
         )
 
     recording = simulation_config.recording
     if recording.spike_recording or recording.variables:
-        for path in backend.save_recordings(run_dir):
-            register_artifact(run_dir, "recordings", path)
+        backend.save_recordings(run_dir)
 
     if output.save_config:
-        config_path = save_run_config(network, simulation_config, run_dir)
-        register_artifact(run_dir, "config", config_path)
+        save_run_config(network, simulation_config, run_dir)
 
     rows = recording.final_connection_rows(network.connections)
     if rows:
-        for path in write_final_connections(run_dir, network, backend.final_connections(rows)):
-            register_artifact(run_dir, "final_connections", path)
+        write_final_connections(run_dir, network, backend.final_connections(rows))

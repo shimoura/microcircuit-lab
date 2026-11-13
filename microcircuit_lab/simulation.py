@@ -8,6 +8,7 @@ It holds no neuroscience maths and no simulator-specific code.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -147,9 +148,11 @@ class Simulation:
         )
         self.backend.prepare_output(self.output_dir)
 
+        started = time.perf_counter()
         self.backend.build()
-
+        built = time.perf_counter()
         self.backend.simulate()
+        simulated = time.perf_counter()
 
         # Each process writes its own recording files; they are complete only
         # once every process has finished simulating.
@@ -167,6 +170,8 @@ class Simulation:
             network_name=self.network_name,
             simulation_name=self.simulation_name,
             backend_name=self.backend_name,
+            build_time=built - started,
+            simulate_time=simulated - built,
         )
 
 

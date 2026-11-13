@@ -16,7 +16,6 @@ from microcircuit_lab.config.simulation import OutputConfig, SimulationConfig
 from microcircuit_lab.network.load import assemble_network, read_network_files
 from microcircuit_lab.run_folder import read_run
 from microcircuit_lab.run_folder.write import (
-    register_artifact,
     resolve_run_directory,
     save_run_outputs,
     share_run_directory,
@@ -205,9 +204,6 @@ def test_variables_gate_covers_configs_without_spikes(tmp_path: Path) -> None:
     )
 
     assert sorted((tmp_path / "recordings").glob("V_m-*.dat"))
-    metadata = json.loads((tmp_path / "metadata.json").read_text())
-    assert any("V_m" in entry for entry in metadata["artifacts"]["recordings"])
-
     senders, times, values = read_run(tmp_path).recording("V_m")
     assert len(senders) == len(times) == len(values) > 0
     assert (np.diff(senders) >= 0).all()
@@ -302,28 +298,6 @@ def test_save_run_outputs_writes_config_and_metadata(tmp_path: Path) -> None:
     assert metadata["network_name"] == "toy"
     assert metadata["populations"]["E"]["size"] == expected_size
     assert metadata["populations"]["E"]["n_spikes"] > 0
-    assert metadata["artifacts"]["recordings"]
-    assert all(
-        entry.startswith("recordings/") for entry in metadata["artifacts"]["recordings"]
-    )
-    assert metadata["artifacts"]["config"] == ["config.yaml"]
-
-
-def test_register_artifact_appends_and_is_noop_without_metadata(tmp_path: Path) -> None:
-    plot_path = tmp_path / "plots" / "raster.png"
-    plot_path.parent.mkdir()
-    plot_path.write_text("not a real png")
-
-    # No metadata.json written for this run -> silently does nothing.
-    register_artifact(tmp_path, "plots", plot_path)
-    assert not (tmp_path / "metadata.json").exists()
-
-    (tmp_path / "metadata.json").write_text(json.dumps({"artifacts": {}}))
-    register_artifact(tmp_path, "plots", plot_path)
-    register_artifact(tmp_path, "plots", plot_path)  # idempotent
-
-    metadata = json.loads((tmp_path / "metadata.json").read_text())
-    assert metadata["artifacts"]["plots"] == ["plots/raster.png"]
 
 
 def test_variable_sample_size_and_populations(tmp_path: Path) -> None:

@@ -580,7 +580,7 @@ output/<network>/<timestamp>/
 ├── plots/               made by microcircuit-lab run
 ├── final_connections/   only if asked: every synapse at the end of the run (below)
 ├── config.yaml          the network and the simulation settings used
-└── metadata.json        versions (core, simulator), git commits, MPI processes, spike counts, list of files
+└── metadata.json        versions (core, simulator, Python), git commits, MPI processes, run times, spike counts
 ```
 
 - Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying what the run writes again: `recordings/`, `measures/`, `final_connections/` (if the run saves them; a warning if not) and, with `microcircuit-lab run`, `plots/`.
@@ -632,7 +632,7 @@ trace = run.recording("V_m")     # trace.senders, trace.times (ms), trace.values
 run.reference                    # the reference rates, or None
 run.network                      # the whole network as simulated (config.yaml), read when first used
 run.simulation                   # the simulation settings (config.yaml), e.g. run.simulation.t_sim
-run.metadata                     # metadata.json as a dict: simulator, seed, spike counts, files
+run.metadata                     # metadata.json as a dict: simulator, seed, run times, spike counts
 run.folder                       # the run folder, a pathlib.Path
 ```
 
@@ -642,7 +642,8 @@ The spike files are read once, at the first `run.spikes(...)`. A run made with a
 
 | File | What it holds |
 |---|---|
-| `metadata.json` → `populations` | per population: `size`, `first_node_id`, `last_node_id` (one block of node IDs), spike counts |
+| `metadata.json` → `populations` | per population: `size`, `first_node_id`, `last_node_id` (one block of node IDs), `n_spikes` and `mean_rate_hz` over the whole run (the plots use the analysis window) |
+| `metadata.json` → `build_time_s`, `simulate_time_s` | seconds spent building the network and simulating it |
 | `recordings/spikes-*.dat` (NEST) | tab-separated `sender`, `time_ms`, after `#` comment lines; one file per thread |
 | `recordings/spikes.csv` (Brian2) | `sender,time_ms` |
 | `recordings/<variable>-*.dat` / `<variable>.csv` | `sender`, `time_ms`, the variable |
@@ -707,7 +708,6 @@ python my_analysis.py output/toy/<timestamp>
 
 - Read data through `run` (`spikes`, `recording`, `network`, `simulation`, `metadata`).
 - Keep the script anywhere, e.g. in `experiments/`. In `analyses/`, put its work under `if __name__ == "__main__":`, because `microcircuit-lab run` imports every file there.
-- To list a file you saved in the run's `metadata.json`: `register_artifact(run.folder, "plots", path)` from `microcircuit_lab.run_folder.write`.
 
 ### Optional: let `microcircuit-lab run` make your plot
 

@@ -3,7 +3,7 @@
 First ask whether the change belongs in the core. Behaviour that only your project needs goes in your project's `builders/` or `analyses/`, which the core finds without edits. Change the core when the fix or feature would help any project.
 
 1. Fork the repository on GitHub and clone your fork.
-2. Install it editable: `pip install -e ".[dev]"`. Tests that run a simulation need NEST, and the Brian2 tests need `.[brian2]` (they are skipped without it); see the installation section of [microcircuit_lab/README.md](microcircuit_lab/README.md#installation) for the ways to get it.
+2. Install it editable: `pip install -e ".[dev]"`. Tests that run a simulation need NEST, and the Brian2 tests need `.[brian2]` (they are skipped without it); see the installation section of [microcircuit_lab/README.md](microcircuit_lab/README.md#installation) for the ways to get it. The version number is set when you install: in a clone, `microcircuit_lab_version` in a run's `metadata.json` stays at that number until you install again, while `core_git` always has the commit that ran.
 3. Create a branch, make the change and add a test for it.
 4. Run `ruff check .` and `pytest`. CI runs both.
 5. Push the branch to your fork and open a pull request into `main`.
