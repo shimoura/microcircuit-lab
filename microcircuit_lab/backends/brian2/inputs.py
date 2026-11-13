@@ -194,50 +194,104 @@ def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
     )
     return table, index
 
+def _poisson_stimuli(backend: Brian2Backend, group: _Group) -> dict[int, list[str]]:
+    """The Poisson stimuli onto the group, by their place in ``stimuli.yaml``,
+    each with its targets in the group."""
+
+    stimuli = {}
+    for number, stimulus in enumerate(backend.network.stimuli):
+        targets = [target for target in stimulus.targets if target in group.populations]
+        if targets and not isinstance(stimulus, DcStimulusConfig):
+            stimuli[number] = targets
+    return stimuli
+
+
+def stimulus_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
+    """The variables of the group's Poisson stimuli: for stimulus ``k``, the
+    weight ``w_stimulus_k`` of each neuron's input and, where the delay is
+    drawn, its delay ``delay_stimulus_k``."""
+
+    lines = []
+    for number, targets in _poisson_stimuli(backend, group).items():
+        stimulus = backend.network.stimuli[number]
+        units = {
+            backend.weight_units(
+                target, backend.target_variable(target, stimulus.synapse, stimulus.weight.expected)
+            )[0]
+            for target in targets
+        }
+        if len(units) > 1:
+            raise ValueError(f"Stimulus {number} adds to variables of different units in {targets}.")
+        lines.append(f"w_stimulus_{number} : {units.pop()} (constant)")
+        if stimulus.delay.distribution is not None:
+            lines.append(f"delay_stimulus_{number} : second (constant)")
+    return b2.Equations("\n".join(lines))
+
+
 def create_stimuli(backend: Brian2Backend) -> None:
     """
-    Create and connect the Poisson stimuli: for each target, one Poisson
-    spike train per neuron, connected with the stimulus's weight, delay and
-    synapse, as from NEST's generators. ``dc`` stimuli are part of their
-    targets' equations (see create_populations).
+    Create the Poisson stimuli: as from NEST's generators, each target neuron
+    gets its own Poisson number of spikes at each step, with the weight and
+    delay drawn for that neuron. The rate is the stimulus's rate one delay
+    earlier, so the spikes arrive after the delay: a fixed delay shifts the
+    table of the rate, which costs nothing at run time; a drawn one is looked
+    up for each neuron. ``dc`` stimuli are part of their targets' equations
+    (see create_populations).
     """
 
     logger.info("Creating stimulus devices:")
-    resolution = backend.simulation_config.resolution * b2.ms
+    resolution = backend.simulation_config.resolution
 
-    for stimulus in backend.network.stimuli:
-        if isinstance(stimulus, DcStimulusConfig):
-            continue
-        logger.info(
-            "Creating %s stimulus for %s (start=%g, stop=%s)",
-            stimulus.type,
-            stimulus.targets,
-            stimulus.start,
-            stimulus.stop,
-        )
-        rate = b2.TimedArray(
-            _stimulus_curve(backend, stimulus) * b2.Hz, dt=resolution,
-            name=f"stimulus_{backend.network.stimuli.index(stimulus)}_rate",
-        )
-
-        for target in stimulus.targets:
-            size = backend.network.populations[target].size
-            group = backend.group_of[target]
-            name = f"stimulus_{len(backend.stimulus_generators)}"
-            generator = b2.PoissonGroup(
-                size, rates="stimulus_rate(t)", namespace={"stimulus_rate": rate}, name=name
+    tables = {}
+    for group in backend.groups:
+        for number, targets in _poisson_stimuli(backend, group).items():
+            stimulus = backend.network.stimuli[number]
+            logger.info(
+                "Creating %s stimulus for %s (start=%g, stop=%s)", stimulus.type, targets, stimulus.start, stimulus.stop
             )
-            backend.stimulus_generators.append(generator)
-            weight, delay = stimulus.weight, stimulus.delay
-            backend.make_synapses(
-                generator,
-                group,
-                stimulus.synapse,
-                backend.target_variable(target, stimulus.synapse, weight.expected),
-                [({"j": f"i + {group.start(target)}"}, {})],
-                f"{name}_synapses",
-                "0",
-                {0: (weight.fields, size)},
-                {0: (delay.fields, size)},
-                by_sign=backend.goes_by_sign(target, stimulus.synapse, backend.weight_of_both_signs(weight.fields)),
-            )
+            if backend.synapse_model(stimulus.synapse) is not backend.synapse_models["static_synapse"]:
+                raise NotImplementedError(
+                    f"The stimulus onto {targets} uses synapse {stimulus.synapse!r}; "
+                    "the Brian2 backend connects stimuli only through static synapses."
+                )
+            drawn_delay = stimulus.delay.distribution is not None
+            if number not in tables:
+                # The mean number of spikes of a neuron at each step.
+                mean_spikes = _stimulus_curve(backend, stimulus) * resolution / 1000.0
+                if not drawn_delay:
+                    steps = round(stimulus.delay.value / resolution)
+                    mean_spikes = np.concatenate([np.zeros(steps), mean_spikes])[: len(mean_spikes)]
+                tables[number] = b2.TimedArray(mean_spikes, dt=resolution * b2.ms, name=f"stimulus_{number}_spikes")
+            group.neurons.namespace[f"stimulus_{number}_spikes"] = tables[number]
+            w, delay = f"w_stimulus_{number}", f"delay_stimulus_{number}"
+            spikes = f"poisson(stimulus_{number}_spikes(t))"
+            if drawn_delay:
+                spikes = f"poisson(stimulus_{number}_spikes(t - {delay})*int(t >= {delay}))"
+            weights, delays = {}, {}
+            for target in targets:
+                start, size = group.start(target), backend.network.populations[target].size
+                variable = backend.target_variable(target, stimulus.synapse, stimulus.weight.expected)
+                si_unit, unit = backend.weight_units(target, variable)
+                fields = stimulus.weight.fields
+                code = f"{variable} += {w}*{spikes}"
+                if backend.goes_by_sign(target, stimulus.synapse, backend.weight_of_both_signs(fields)):
+                    neuron = backend.neuron_model(target)
+                    size_of_w = f"-{w}" if si_unit == "siemens" else w
+                    code = f"""
+                    stimulus_spikes = {spikes}
+                    {neuron.excitatory} += {w}*int({w} >= 0*{si_unit})*stimulus_spikes
+                    {neuron.inhibitory} += {size_of_w}*int({w} < 0*{si_unit})*stimulus_spikes
+                    """
+                # A weight onto a conductance is its size, as in NEST.
+                elif si_unit == "siemens" and stimulus.weight.expected < 0:
+                    fields = distributions.negated(fields)
+                weights[group.populations.index(target)] = (fields, size)
+                delays[group.populations.index(target)] = (stimulus.delay.fields, size)
+                backend.stimulus_generators.append(
+                    group.neurons[start:start + size].run_regularly(
+                        code, when="synapses", name=f"stimulus_{len(backend.stimulus_generators)}",
+                    )
+                )
+            distributions.set_drawn(group.neurons, w, "population_index", weights, unit)
+            if drawn_delay:
+                distributions.set_drawn(group.neurons, delay, "population_index", delays, "ms")

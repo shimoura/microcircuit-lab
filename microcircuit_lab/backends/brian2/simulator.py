@@ -197,7 +197,8 @@ class Brian2Backend:
         #: Each population as a Brian2 subgroup of its NeuronGroup.
         self.populations: dict[str, b2.Subgroup] = {}
         self.first_ids: dict[str, int] = {}
-        self.stimulus_generators: list[b2.PoissonGroup] = []
+        #: The update that gives each Poisson stimulus's spikes to one of its targets.
+        self.stimulus_generators: list[b2.CodeRunner] = []
         self.synapses: list[b2.Synapses] = []
         #: For each row of the connection table, where its synapses are: their
         #: Synapses, the first and the number of its source and target neurons
@@ -530,6 +531,7 @@ class Brian2Backend:
                     f"Brian2 model {group.model.name!r} has no I_stim in its equations."
                 )
             equations += inputs.background_equations(self, group)
+            equations += inputs.stimulus_equations(self, group)
 
             neurons = b2.NeuronGroup(
                 group.size,

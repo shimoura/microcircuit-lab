@@ -26,7 +26,7 @@ from microcircuit_lab.config.neurons import NeuronConfig, NeuronParams
 from microcircuit_lab.config.populations import PopulationConfig
 from microcircuit_lab.config.reference import ReferenceConfig
 from microcircuit_lab.config.simulation import RecordingConfig, SimulationConfig
-from microcircuit_lab.config.stimuli import DcStimulusConfig
+from microcircuit_lab.config.stimuli import DcStimulusConfig, PoissonStimulusConfig
 from microcircuit_lab.config.synapses import SynapseEntry
 
 pytestmark = pytest.mark.skipif(
@@ -545,6 +545,24 @@ def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
     assert len(times) > 0
     assert min(times) >= 50.0
     assert max(times) < 155.0
+
+
+def test_a_poisson_stimulus_gives_several_spikes_per_step() -> None:
+    # 30 kHz is 3 spikes per 0.1 ms step: the mean current is weight x rate x tau_syn.
+    stimulus = PoissonStimulusConfig(
+        targets=["T"], rate=30000.0, weight=WeightDistribution(value=1.0, unit="pA"), delay=DelayDistribution(value=1.0)
+    )
+    backend = _backend(_network("iaf_psc_exp", stimuli=[stimulus]))
+    backend.build()
+    backend.simulate()
+
+    import brian2 as b2
+
+    group = backend.group_of["T"]
+    targets = slice(group.start("T"), group.start("T") + 50)
+    expected = 1.0 * b2.pA * 30000.0 * b2.Hz * group.neurons.tau_syn_ex[targets][0]
+    assert abs(group.neurons.I_syn_ex[targets].mean() / expected - 1) < 0.1
+    assert (group.neurons.I_syn_ex[: group.start("T")] == 0 * b2.pA).all()
 
 
 def test_model_from_a_model_module() -> None:
