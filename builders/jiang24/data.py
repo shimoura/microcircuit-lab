@@ -1,4 +1,5 @@
-"""Jiang et al. (2024) microcircuit parameters, with static synapses (the "Base" model).
+"""Jiang et al. (2024) microcircuit parameters: the "Base" model, with static
+synapses, and the "Base-STP" model, with short-term plasticity (STP).
 
 Sources:
 
@@ -148,4 +149,91 @@ full_mean_rates = {
     "L6_E": 2.988,
     "L6_PV": 38.44,
     "L6_SOM": 5.826,
+}
+
+# --- Only for jiang24_stp (--stp) ---------------------------------------------
+# The Base-STP model is the Base model above with STP on most projections, the mean
+# PSPs of those projections multiplied by weight_factors, and its own background
+# rates.
+
+# Short-term plasticity: NEST's tsodyks_synapse (the Tsodyks model; Methods), with
+# U, and tau_fac (F) and tau_rec (D) in ms, per projection (Fig. 5B; original code:
+# STP/stp.json). A key is (source, target), each a cell type, for that cell type in
+# every layer, or a population: the projections between E cells have their own
+# parameters per pair of layers. Projections not listed are static: those from and
+# onto VIP cells, and SOM to SOM (the E to E ones not listed, from L2/3 to L6 and from
+# L6 to L2/3 and L4, have probability 0). tau_fac 0 means no facilitation, and
+# tau_rec 1e-10 is how the code writes no depression. stp.json also has the
+# parameters of the thalamic input ("Eth"), which this model does not have.
+synapse_model = "tsodyks_synapse"
+stp = {
+    ("E", "PV"): {"U": 0.2, "tau_fac": 0.0, "tau_rec": 120.0},
+    ("E", "SOM"): {"U": 0.3, "tau_fac": 140.0, "tau_rec": 1e-10},
+    ("L23_E", "L23_E"): {"U": 0.3, "tau_fac": 580.0, "tau_rec": 120.0},
+    ("L23_E", "L4_E"): {"U": 0.3, "tau_fac": 40.0, "tau_rec": 440.0},
+    ("L23_E", "L5_E"): {"U": 0.35, "tau_fac": 380.0, "tau_rec": 320.0},
+    ("L4_E", "L23_E"): {"U": 0.4, "tau_fac": 220.0, "tau_rec": 640.0},
+    ("L4_E", "L4_E"): {"U": 0.55, "tau_fac": 320.0, "tau_rec": 140.0},
+    ("L4_E", "L5_E"): {"U": 0.45, "tau_fac": 220.0, "tau_rec": 620.0},
+    ("L4_E", "L6_E"): {"U": 0.4, "tau_fac": 740.0, "tau_rec": 340.0},
+    ("L5_E", "L23_E"): {"U": 0.35, "tau_fac": 60.0, "tau_rec": 680.0},
+    ("L5_E", "L4_E"): {"U": 0.8, "tau_fac": 260.0, "tau_rec": 120.0},
+    ("L5_E", "L5_E"): {"U": 0.45, "tau_fac": 100.0, "tau_rec": 940.0},
+    ("L5_E", "L6_E"): {"U": 0.35, "tau_fac": 480.0, "tau_rec": 60.0},
+    ("L6_E", "L5_E"): {"U": 0.05, "tau_fac": 1000.0, "tau_rec": 1e-10},
+    ("L6_E", "L6_E"): {"U": 0.5, "tau_fac": 640.0, "tau_rec": 20.0},
+    ("PV", "E"): {"U": 0.55, "tau_fac": 40.0, "tau_rec": 200.0},
+    ("PV", "PV"): {"U": 0.6, "tau_fac": 340.0, "tau_rec": 180.0},
+    ("PV", "SOM"): {"U": 0.55, "tau_fac": 100.0, "tau_rec": 180.0},
+    ("SOM", "E"): {"U": 0.95, "tau_fac": 0.0, "tau_rec": 20.0},
+    ("SOM", "PV"): {"U": 0.95, "tau_fac": 0.0, "tau_rec": 20.0},
+}
+
+# Weight factors (Fig. 5C): the mean PSP of each projection with STP is multiplied by
+# a factor, so that, with its source firing regularly at that population's rate in a
+# static simulation, the synapse settles at the Base model's PSC (Methods; original
+# code: STP/stpwfit.py). The code fits the factors in each simulation, so they change
+# with the seed (by up to 10 %). These are their means over the publication's 20
+# simulations (snakes_main.zip, snake_gs-stp/results_stpwmod.csv, which writes 0 for
+# a static projection), the values Fig. 5C shows to two decimals, here to six. 1.0
+# for a static projection. Indexed [target, source], as connection_probabilities.
+weight_factors = [
+    [2.179713, 4.420499, 1.052546, 1.0, 2.549180, 3.208614, 1.052546, 3.897785, 5.193270, 1.052546, 1.0, 8.796834, 1.052772],
+    [5.032965, 3.567779, 1.052126, 1.0, 4.991146, 2.443083, 1.052126, 5.014404, 4.300332, 1.052126, 5.065907, 7.682111, 1.052439],
+    [3.181168, 3.835222, 1.0, 1.0, 3.327625, 2.799437, 1.0, 3.237833, 4.529097, 1.0, 3.093816, 7.816549, 1.0],
+    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    [4.038766, 4.420499, 1.052546, 1.0, 1.815059, 3.208614, 1.052546, 1.230166, 5.193270, 1.052546, 1.0, 8.796834, 1.052772],
+    [5.032965, 3.567779, 1.052126, 1.0, 4.991146, 2.443083, 1.052126, 5.014404, 4.300332, 1.052126, 5.065907, 7.682111, 1.052439],
+    [3.181168, 3.835222, 1.0, 1.0, 3.327625, 2.799437, 1.0, 3.237833, 4.529097, 1.0, 3.093816, 7.816549, 1.0],
+    [2.612927, 4.420643, 1.052405, 1.0, 2.267025, 3.208723, 1.052405, 3.804759, 5.193417, 1.052405, 6.263215, 8.797091, 1.052687],
+    [5.030422, 3.567132, 1.052602, 1.0, 4.988794, 2.442723, 1.052602, 5.012068, 4.299481, 1.052602, 5.063252, 7.680531, 1.052672],
+    [3.182275, 3.835732, 1.0, 1.0, 3.328130, 2.799789, 1.0, 3.238834, 4.529628, 1.0, 3.094733, 7.817667, 1.0],
+    [1.0, 4.420643, 1.052405, 1.0, 2.392124, 3.208723, 1.052405, 2.140991, 5.193417, 1.052405, 1.396910, 8.797091, 1.052687],
+    [5.030422, 3.567132, 1.052602, 1.0, 4.988794, 2.442723, 1.052602, 5.012068, 4.299481, 1.052602, 5.063252, 7.680531, 1.052672],
+    [3.182275, 3.835732, 1.0, 1.0, 3.328130, 2.799789, 1.0, 3.238834, 4.529628, 1.0, 3.094733, 7.817667, 1.0],
+]
+
+# Background rates per cell type in spikes/s, fitted for this model (Supplementary
+# Material, "Optimization of the Background Input"; original code: Ks_stp in
+# simulate.py, which replaces K_ext in model/net_dict.json). The indegree, PSP and
+# delay are those of the Base model, and the synapse is static.
+bg_rate_stp = {"E": 5000.0, "PV": 6800.0, "SOM": 2400.0, "VIP": 3600.0}
+
+# Mean rates of the Base-STP model in spikes/s, over 20 simulations of the official
+# code (snakes_main.zip, snake_gs-stp/results_pop.csv, fr_data_mu); Table 5 gives
+# them rounded to one decimal.
+full_mean_rates_stp = {
+    "L23_E": 2.22,
+    "L23_PV": 16.171,
+    "L23_SOM": 2.668,
+    "L23_VIP": 13.344,
+    "L4_E": 0.558,
+    "L4_PV": 10.523,
+    "L4_SOM": 2.917,
+    "L5_E": 2.313,
+    "L5_PV": 20.954,
+    "L5_SOM": 2.719,
+    "L6_E": 3.864,
+    "L6_PV": 33.236,
+    "L6_SOM": 23.729,
 }
