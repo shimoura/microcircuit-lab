@@ -30,33 +30,61 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _background_variables(backend: Brian2Backend, group: _Group) -> dict[str, list[str]]:
+def _goes_by_sign(backend: Brian2Backend, pop_name: str) -> bool:
+    """Whether the background input of a population adds to the excitatory or
+    the inhibitory variable by the sign of each neuron's weight (see
+    Brian2Backend.goes_by_sign)."""
+
+    background = backend.network.poisson_background[pop_name]
+    both_signs = backend.weight_of_both_signs(background.weight.fields)
+    return backend.goes_by_sign(pop_name, background.synapse, both_signs)
+
+
+def _background_variables(backend: Brian2Backend, group: _Group) -> tuple[dict[str, list[str]], list[str]]:
     """The variables the group's Poisson background inputs add to, each
-    with its populations."""
+    with its populations; and the populations whose input goes by the sign
+    of each neuron's weight."""
 
     variables: dict[str, list[str]] = defaultdict(list)
+    by_sign = []
     for pop_name in group.populations:
         background = backend.network.poisson_background.get(pop_name)
-        if background is not None:
+        if background is None:
+            continue
+        if _goes_by_sign(backend, pop_name):
+            by_sign.append(pop_name)
+        else:
             variable = backend.target_variable(pop_name, background.synapse, background.weight.expected)
             variables[variable].append(pop_name)
-    return variables
+    return variables, by_sign
 
-def background_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
-    """The variables of the group's Poisson background input: the weight
-    ``w_background`` of each neuron's input and, for each variable it adds
-    to, its mean number of spikes per step ``background_<variable>``."""
 
-    variables = _background_variables(backend, group)
-    if not variables:
-        return b2.Equations("")
-    units = {backend.weight_units(pops[0], variable)[0] for variable, pops in variables.items()}
+def _background_units(backend: Brian2Backend, group: _Group) -> tuple[str, str]:
+    """The units of the weights of the group's background inputs (see
+    Brian2Backend.weight_units), which must be the same for all of them."""
+
+    variables, by_sign = _background_variables(backend, group)
+    units = {backend.weight_units(pops[0], variable) for variable, pops in variables.items()}
+    units |= {backend.weight_units(pop_name, backend.neuron_model(pop_name).excitatory) for pop_name in by_sign}
     if len(units) > 1:
         raise ValueError(
             f"The background inputs of {group.populations} add to variables of different units."
         )
-    lines = [f"w_background : {units.pop()} (constant)"]
+    return units.pop()
+
+
+def background_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
+    """The variables of the group's Poisson background input: the weight
+    ``w_background`` of each neuron's input and, for each variable it adds
+    to, its mean number of spikes per step ``background_<variable>``
+    (``background_by_sign`` for the inputs that go by the weight's sign)."""
+
+    variables, by_sign = _background_variables(backend, group)
+    if not variables and not by_sign:
+        return b2.Equations("")
+    lines = [f"w_background : {_background_units(backend, group)[0]} (constant)"]
     lines += [f"background_{variable} : 1 (constant)" for variable in variables]
+    lines += ["background_by_sign : 1 (constant)"] * bool(by_sign)
     return b2.Equations("\n".join(lines))
 
 def create_poisson_background(backend: Brian2Backend) -> None:
@@ -68,15 +96,21 @@ def create_poisson_background(backend: Brian2Backend) -> None:
     also for populations that share a ``generator``, each with the weight
     drawn for that neuron. One update per group and variable does this
     for all of them. The input's delay is left out: it only shifts a
-    stationary Poisson train in time.
+    stationary Poisson train in time. Where the weights have both signs, a
+    neuron with a positive weight gets its input on the excitatory variable
+    and one with a negative weight on the inhibitory one, as in NEST.
     """
 
     for group in backend.groups:
-        variables = _background_variables(backend, group)
-        if not variables:
+        variables, by_sign = _background_variables(backend, group)
+        if not variables and not by_sign:
             continue
+        si_unit, unit = _background_units(backend, group)
         weights = {}
-        for variable, pops in variables.items():
+
+        def rates_of(pops: list[str], negate: bool) -> np.ndarray:
+            """The mean number of spikes per step of each neuron of the group,
+            0 outside ``pops``; also notes the weights of ``pops`` to draw."""
             rates = np.zeros(group.size)
             for pop_name in pops:
                 background = backend.network.poisson_background[pop_name]
@@ -89,15 +123,29 @@ def create_poisson_background(backend: Brian2Backend) -> None:
                 rates[start:start + size] = background.generator_rate * backend.simulation_config.resolution / 1000.0
                 fields = background.weight.fields
                 # A weight onto a conductance is its size, as in NEST.
-                if backend.weight_units(pop_name, variable)[0] == "siemens" and background.weight.expected < 0:
+                if negate and background.weight.expected < 0:
                     fields = distributions.negated(fields)
                 weights[group.populations.index(pop_name)] = (fields, size)
-            setattr(group.neurons, f"background_{variable}", rates)
+            return rates
+
+        for variable, pops in variables.items():
+            setattr(group.neurons, f"background_{variable}", rates_of(pops, negate=si_unit == "siemens"))
             group.neurons.run_regularly(
                 f"{variable} += w_background*poisson(background_{variable})", when="synapses",
                 name=f"{group.neurons.name}_background_{variable}",
             )
-        unit = backend.weight_units(next(iter(variables.values()))[0], next(iter(variables)))[1]
+        if by_sign:
+            group.neurons.background_by_sign = rates_of(by_sign, negate=False)
+            neuron = backend.neuron_model(by_sign[0])
+            size = "-w_background" if si_unit == "siemens" else "w_background"
+            group.neurons.run_regularly(
+                f"""
+                background_spikes = poisson(background_by_sign)
+                {neuron.excitatory} += w_background*int(w_background >= 0*{si_unit})*background_spikes
+                {neuron.inhibitory} += {size}*int(w_background < 0*{si_unit})*background_spikes
+                """,
+                when="synapses", name=f"{group.neurons.name}_background_by_sign",
+            )
         distributions.set_drawn(group.neurons, "w_background", "population_index", weights, unit)
 
 def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
@@ -191,4 +239,5 @@ def create_stimuli(backend: Brian2Backend) -> None:
                 "0",
                 {0: (weight.fields, size)},
                 {0: (delay.fields, size)},
+                by_sign=backend.goes_by_sign(target, stimulus.synapse, backend.weight_of_both_signs(weight.fields)),
             )

@@ -57,6 +57,23 @@ DRAWS = {
 
 
 
+def both_signs(fields: dict[str, np.ndarray]) -> np.ndarray:
+    """
+    Which weights can be positive for one synapse and negative for another,
+    from the arrays of their fields (as config/distributions.py's
+    ``expected_values`` takes them): a drawn weight with no bound at 0
+    (``lower_bound`` >= 0 or ``upper_bound`` <= 0). A lognormal weight keeps
+    the sign of its mean, and a uniform one may span one sign only.
+    """
+
+    distribution = fields["distribution"]
+    drawn = ~is_unset(distribution) & (distribution != "lognormal")
+    # A bound that is not set is NaN, which compares as False.
+    bounded = (fields["lower_bound"] >= 0) | (fields["upper_bound"] <= 0)
+    one_sign = (distribution == "uniform") & ((fields["min"] >= 0) | (fields["max"] <= 0))
+    return drawn & ~bounded & ~one_sign
+
+
 def _numbers(fields: dict) -> tuple[str, float, float, float]:
     """The kind of draw (see DRAWS) and its numbers a, b and s, from the fields
     of a weight or delay (config/distributions.py): a uniform value spans min

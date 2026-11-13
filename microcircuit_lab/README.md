@@ -267,7 +267,7 @@ weight(current, unit="pA", rel_std=0.1, **zero_bound(current, "redraw"))
 
 The formula holds for current-based LIF neurons with exponential synaptic currents (`iaf_psc_exp` and its variants); for an inhibitory weight, pass `tau_syn=<tau_syn_in>`. Keep the PSP in a comment next to the value if you write the file by hand, as `configs/network/toy/` does.
 
-- **Nothing is bounded unless the file says so.** An excitatory normal weight can turn negative without `lower_bound: 0`; `zero_bound(mean, mode)` writes the bound that keeps a weight's sign. A delay below half the time step rounds to 0, so a drawn delay needs a `lower_bound` (e.g. the time step).
+- **Nothing is bounded unless the file says so.** An excitatory normal weight can turn negative without `lower_bound: 0`; `zero_bound(mean, mode)` writes the bound that keeps a weight's sign. Without it, each synapse is excitatory or inhibitory by its own sign (on Brian2, only through a synapse model with the default `on_pre`), so give the weights of an excitatory or inhibitory population the bound. A delay below half the time step rounds to 0, so a drawn delay needs a `lower_bound` (e.g. the time step).
 - **A relative spread** (a paper's "10 % of the mean") is converted in the builder: `weight(87.8, unit="pA", rel_std=0.1)` writes `std: 8.78`, and `distribution="uniform"` the `min` and `max` with that mean and standard deviation.
 - **Bounds change the mean.** Values drawn again or clipped no longer have exactly the `mean` you wrote, while the scaling compensation uses that `mean`: negligible for a small spread (`std` a tenth of the mean), noticeable when `std` is about the mean.
 - **Excitatory or inhibitory** input is told by the sign of the weight (its mean), never by a population's name.
@@ -351,7 +351,6 @@ source_index,target_index,weight,delay
 
 - One file per connection, its path relative to the network folder; `synapses/` keeps them apart from the YAML files. `write_network_directory(..., synapse_lists={"synapses/E_to_I.csv": SynapseList(...)})` writes them (`config/synapse_files.py`).
 - The core checks each file when the network is read: the four columns, indices within the populations, delays above 0, at least one synapse. A run keeps a copy of the files in its folder, so it still shows what was simulated.
-- On Brian2, a file's weights must all have one sign: its synapses add to the excitatory or the inhibitory variable.
 - Several connections in one file? Split it once, e.g. in the builder:
 
 ```python
