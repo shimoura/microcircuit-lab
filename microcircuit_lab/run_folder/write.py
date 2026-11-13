@@ -36,13 +36,18 @@ def share_run_directory(
     network_name: str,
     simulation_name: str,
     backend: SimulationBackend,
+    saves_final_connections: bool = False,
 ) -> Path:
     """
     The run folder, the same on every MPI process.
 
     With ``overwrite: true`` the folder is fixed, so every process resolves it
-    itself; process 0 empties its ``recordings`` folder, so that files of the
-    previous run are not read as part of this one, and the others wait for it.
+    itself; process 0 empties what the run writes again, so that files of the
+    earlier run are not read as part of this one, and the others wait for it:
+    ``recordings`` and ``measures`` (computed from the recordings), and
+    ``final_connections`` if this run saves them (``saves_final_connections``;
+    if not, a warning says that they are those of the earlier run). Anything
+    else in the folder stays.
     Otherwise process 0 resolves it (:func:`resolve_run_directory`) and
     writes its path to ``<output_dir>/.run_dir/path``; the others read it there
     once all processes have met, and process 0 then deletes ``.run_dir``. The
@@ -59,7 +64,16 @@ def share_run_directory(
             output, network_name=network_name, simulation_name=simulation_name
         )
         if backend.rank() == 0:
-            _empty_directory(run_dir / "recordings")
+            empty_directory(run_dir / "recordings")
+            empty_directory(run_dir / "measures")
+            final_connections = run_dir / "final_connections"
+            if saves_final_connections:
+                empty_directory(final_connections)
+            elif final_connections.is_dir() and any(final_connections.iterdir()):
+                logger.warning(
+                    "%s holds the connections saved by an earlier run: this run saves none "
+                    "(recording.final_connections).", final_connections,
+                )
         backend.sync_processes()
         return run_dir
 
@@ -83,7 +97,7 @@ def share_run_directory(
     return run_dir
 
 
-def _empty_directory(folder: Path) -> None:
+def empty_directory(folder: Path) -> None:
     """Delete the files of ``folder``, if it exists; the folder stays."""
 
     if not folder.is_dir():

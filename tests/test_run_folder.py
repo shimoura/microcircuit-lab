@@ -39,7 +39,7 @@ def test_resolve_run_directory_overwrite_reuses_same_dir(tmp_path: Path) -> None
     assert first.is_dir()
 
 
-def test_overwrite_empties_recordings_but_keeps_other_files(tmp_path: Path) -> None:
+def test_overwrite_empties_what_the_run_writes_again_and_keeps_other_files(tmp_path: Path) -> None:
     class OneProcess:
         def num_processes(self) -> int:
             return 1
@@ -52,6 +52,12 @@ def test_overwrite_empties_recordings_but_keeps_other_files(tmp_path: Path) -> N
 
     (tmp_path / "recordings").mkdir()
     (tmp_path / "recordings" / "spikes-1001-1.dat").write_text("old")
+    # Rates computed from the earlier run's spikes would be plotted for this one.
+    (tmp_path / "measures").mkdir()
+    (tmp_path / "measures" / "firing_rates.npz").write_text("old")
+    # This run saves no final connections: those of the earlier run stay.
+    (tmp_path / "final_connections").mkdir()
+    (tmp_path / "final_connections" / "connectivity.yaml").write_text("old")
     (tmp_path / "config.yaml").write_text("old")
     output = OutputConfig(output_dir=tmp_path, overwrite=True)
 
@@ -60,6 +66,8 @@ def test_overwrite_empties_recordings_but_keeps_other_files(tmp_path: Path) -> N
     )
 
     assert list((run_dir / "recordings").iterdir()) == []
+    assert list((run_dir / "measures").iterdir()) == []
+    assert (run_dir / "final_connections" / "connectivity.yaml").exists()
     assert (run_dir / "config.yaml").exists()
 
 

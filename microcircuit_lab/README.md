@@ -583,7 +583,7 @@ output/<network>/<timestamp>/
 └── metadata.json        versions (core, simulator), git commits, MPI processes, spike counts, list of files
 ```
 
-- Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying its `recordings/` folder.
+- Each run gets its own folder. `output.overwrite: true` in the simulation file reuses one, after emptying what the run writes again: `recordings/`, `measures/`, `final_connections/` (if the run saves them; a warning if not) and, with `microcircuit-lab run`, `plots/`.
 - NEST writes the spikes straight to disk; Brian2 keeps them in memory and writes them at the end. `read_run(folder).spikes(population)` reads them back.
 - Any neuron variable can be recorded, not only the membrane potential. Name it as the simulator does, in the simulation file:
 

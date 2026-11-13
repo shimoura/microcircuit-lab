@@ -143,6 +143,7 @@ class Simulation:
             network_name=self.network_name,
             simulation_name=self.simulation_name,
             backend=self.backend,
+            saves_final_connections=self.simulation_config.recording.final_connections is not False,
         )
         self.backend.prepare_output(self.output_dir)
 
