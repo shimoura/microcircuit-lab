@@ -1,6 +1,6 @@
 """Run the jiang24_stp network with the seeds of the publication's 20 simulations.
 
-From the project folder, after ``microcircuit-lab generate jiang24_stp``::
+From the project folder, after ``microcircuit-lab generate jiang24 --stp``::
 
     python experiments/jiang24_stp/run_seeds.py
 
