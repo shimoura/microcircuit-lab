@@ -50,6 +50,7 @@ from microcircuit_lab.config.distributions import (
     DelayDistribution,
     DrawnNeuronValue,
     expected_value,
+    is_number_field,
 )
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
@@ -365,33 +366,39 @@ class Brian2Backend:
                     f"{shortest} ms."
                 )
 
-        # A connection's synapses add to one variable, the excitatory or the
-        # inhibitory one, picked by the sign of its weight.
-        for row in np.flatnonzero(from_file):
-            weight = self.network.synapse_lists[table["file"][row]].weight
-            if (weight > 0).any() and (weight < 0).any():
-                raise ValueError(
-                    f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the weights "
-                    f"of {table['file'][row]} have both signs; Brian2 adds a connection's synapses to "
-                    "the excitatory or the inhibitory variable, so a file needs weights of one sign."
-                )
-
         # A weight's unit must be that of the variable it adds to (which also
         # checks that a port name is a variable of the target's model): once
-        # per target, synapse, sign and unit.
+        # per target, synapse, sign and unit. Weights of both signs add to two
+        # variables, which only the default on_pre does.
         users = {}
-        columns = (table["target"].tolist(), table["synapse"].tolist(),
-                   (self.network.expected_weights() >= 0).tolist(), table["weight.unit"].tolist())
-        for row, (target, synapse, positive, unit) in enumerate(zip(*columns)):
-            users.setdefault((target, synapse, positive, unit), f"connections.{row} ({table['source'][row]} -> {target})")
+
+        def add_user(user: str, target: str, synapse: str | None, weight: float, both_signs: bool, unit: str) -> None:
+            by_sign = self.goes_by_sign(target, synapse, both_signs)
+            if by_sign and self.synapse_model(synapse).on_pre != models.STATIC_SYNAPSE.on_pre:
+                raise ValueError(
+                    f"{user}: the weights can be positive and negative, and the synapse model "
+                    f"{self.synapse_model(synapse).name!r} has its own on_pre, which adds to one variable. "
+                    "Brian2 sends each synapse to the excitatory or the inhibitory variable by its sign "
+                    "only with the default on_pre: give the weight a bound at 0 (lower_bound: 0 or "
+                    "upper_bound: 0), or the synapse a receptor_port."
+                )
+            for positive in (True, False) if by_sign else (weight >= 0,):
+                users.setdefault((target, synapse, positive, unit), user)
+
+        columns = (table["target"].tolist(), table["synapse"].tolist(), self.network.expected_weights().tolist(),
+                   self.weights_of_both_signs().tolist(), table["weight.unit"].tolist())
+        for row, (target, *rest) in enumerate(zip(*columns)):
+            add_user(f"connections.{row} ({table['source'][row]} -> {target})", target, *rest)
         for name, background in self.network.poisson_background.items():
-            key = (name, background.synapse, background.weight.expected >= 0, background.weight.unit)
-            users.setdefault(key, f"background input of {name!r}")
+            weight = background.weight
+            add_user(f"background input of {name!r}", name, background.synapse, weight.expected,
+                     self.weight_of_both_signs(weight.fields), weight.unit)
         for stimulus in self.network.stimuli:
             if not isinstance(stimulus, DcStimulusConfig):
+                weight = stimulus.weight
                 for target in stimulus.targets:
-                    key = (target, stimulus.synapse, stimulus.weight.expected >= 0, stimulus.weight.unit)
-                    users.setdefault(key, f"stimulus onto {target!r}")
+                    add_user(f"stimulus onto {target!r}", target, stimulus.synapse, weight.expected,
+                             self.weight_of_both_signs(weight.fields), weight.unit)
         for (target, synapse, positive, unit), user in users.items():
             variable = self.target_variable(target, synapse, 1.0 if positive else -1.0)
             expected = self.weight_units(target, variable)[1]
@@ -619,6 +626,36 @@ class Brian2Backend:
             )
         return variable
 
+    def weights_of_both_signs(self) -> np.ndarray:
+        """Which connections can have positive and negative weights (see
+        distributions.both_signs); for rule from_file, whether its file has both."""
+
+        table = self.network.connections
+        both = distributions.both_signs({name: table[f"weight.{name}"] for name in DelayDistribution.model_fields})
+        for row in np.flatnonzero(table["rule"] == "from_file"):
+            weight = self.network.synapse_lists[table["file"][row]].weight
+            both[row] = (weight > 0).any() and (weight < 0).any()
+        return both
+
+    def weight_of_both_signs(self, fields: dict) -> bool:
+        """:meth:`weights_of_both_signs` for one weight, from its fields."""
+        return bool(distributions.both_signs({
+            name: np.array([fields[name]], dtype=float if is_number_field(name) else object)
+            for name in DelayDistribution.model_fields
+        })[0])
+
+    def goes_by_sign(self, target: str, synapse: str | None, both_signs: bool) -> bool:
+        """
+        Whether each synapse of a connection adds to the excitatory or the
+        inhibitory variable of ``target`` by its own sign, as in NEST: its
+        weights have both signs, its synapse has no receptor port, and the
+        model has a variable for each. Any other connection adds to one
+        variable (see :meth:`target_variable`).
+        """
+
+        model = self.neuron_model(target)
+        return bool(both_signs) and self.network.receptor_port(synapse) is None and model.excitatory != model.inhibitory
+
     def weight_units(self, target: str, variable: str) -> tuple[str, str]:
         """The units of the weights onto ``variable`` of ``target``: its name in
         equations and the package's unit (pA for a current, nS for a
@@ -645,6 +682,7 @@ class Brian2Backend:
         delays: dict[int, tuple],
         projects: dict[str, dict] | None = None,
         synapse_list: SynapseList | None = None,
+        by_sign: bool = False,
     ) -> None:
         """
         One Brian2 ``Synapses`` from ``source`` to the group ``target``, onto
@@ -656,7 +694,10 @@ class Brian2Backend:
         in ``projects["weight"]`` / ``projects["delay"]``; or, with
         ``synapse_list`` (a connection from a file, made by one call), the
         weight and delay of each synapse in its file. A weight onto a
-        conductance is its size, as in NEST.
+        conductance is its size, as in NEST. With ``by_sign`` (see
+        :meth:`goes_by_sign`), a synapse with a positive weight adds to the
+        excitatory variable and one with a negative weight to the inhibitory
+        one, and the weights keep their sign.
         """
 
         projects = projects or {"weight": {}, "delay": {}}
@@ -668,6 +709,15 @@ class Brian2Backend:
             if isinstance(on, dict):
                 return {k: v.format(target=f"{variable}_post") for k, v in on.items()}
             return on.format(target=f"{variable}_post")
+
+        on_pre = code(model.on_pre)
+        if by_sign:
+            neuron = self.neuron_model(target.populations[0])
+            size = "-w_syn" if si_unit == "siemens" else "w_syn"
+            on_pre = (
+                f"{neuron.excitatory}_post += w_syn*int(w_syn >= 0*{si_unit})\n"
+                f"{neuron.inhibitory}_post += {size}*int(w_syn < 0*{si_unit})"
+            )
 
         pathways = {
             *(model.on_pre if isinstance(model.on_pre, dict) else ["pre"] * bool(model.on_pre)),
@@ -689,7 +739,7 @@ class Brian2Backend:
             source,
             target.neurons,
             model=f"w_syn : {si_unit}\n{model.model}",
-            on_pre=code(model.on_pre),
+            on_pre=on_pre,
             on_post=code(model.on_post) or None,
             namespace={},
             name=name,
@@ -699,11 +749,11 @@ class Brian2Backend:
             synapses.connect(**arguments, namespace=namespace)
 
         if synapse_list is not None:
-            weight = np.abs(synapse_list.weight) if si_unit == "siemens" else synapse_list.weight
+            weight = np.abs(synapse_list.weight) if si_unit == "siemens" and not by_sign else synapse_list.weight
             synapses.w_syn[:] = weight * getattr(b2, unit, 1)
             if "pre" in pathways:
                 synapses.delay[:] = synapse_list.delay * b2.ms
-        if si_unit == "siemens" and synapse_list is None:
+        if si_unit == "siemens" and synapse_list is None and not by_sign:
             for k, (fields, number) in weights.items():
                 if expected_value(fields) < 0:
                     weights[k] = (distributions.negated(fields), number)
@@ -748,12 +798,14 @@ class Brian2Backend:
             return given_arguments({name: values[row] for name, values in arguments[group].items()})
 
         weight = self.network.expected_weights().tolist()
+        both_signs = self.weights_of_both_signs().tolist()
         objects: dict[tuple, list[int]] = defaultdict(list)
         seen: dict[tuple, int] = defaultdict(int)
         for row in range(len(table)):
             source, target, synapse = column["source"][row], column["target"][row], column["synapse"][row]
             variable = self.target_variable(target, synapse, weight[row])
-            key = (id(self.group_of[source]), id(self.group_of[target]), synapse, variable)
+            by_sign = self.goes_by_sign(target, synapse, both_signs[row])
+            key = (id(self.group_of[source]), id(self.group_of[target]), synapse, variable, by_sign)
             if column["rule"][row] == "from_file":
                 # A Synapses of its own, whose synapses are those of the file, in its order.
                 objects[(*key, ("from_file", row))].append(row)
@@ -762,7 +814,7 @@ class Brian2Backend:
             objects[(*key, seen[pair])].append(row)
             seen[pair] += 1
 
-        for (_, _, synapse, variable, _), rows in objects.items():
+        for (_, _, synapse, variable, by_sign, _), rows in objects.items():
             source = self.group_of[column["source"][rows[0]]]
             target = self.group_of[column["target"][rows[0]]]
             if column["rule"][rows[0]] == "from_file":
@@ -772,9 +824,9 @@ class Brian2Backend:
                            "j": synapse_list.target_index + target.start(column["target"][row])}, {})]
                 self.make_synapses(
                     source.neurons, target, synapse, variable, calls, f"synapses_{len(self.synapses)}",
-                    "0", {}, {}, synapse_list=synapse_list,
+                    "0", {}, {}, synapse_list=synapse_list, by_sign=by_sign,
                 )
-                self._remember_rows(rows, column, source, target, variable, weight)
+                self._remember_rows(rows, column, source, target, variable, weight, by_sign)
                 continue
             placed = [
                 connections.Row(
@@ -813,10 +865,11 @@ class Brian2Backend:
             self.make_synapses(
                 source.neurons, target, synapse, variable, calls, name,
                 f"population_index_pre*{n_target} + population_index_post", weights, delays, projects,
+                by_sign=by_sign,
             )
-            self._remember_rows(rows, column, source, target, variable, weight)
+            self._remember_rows(rows, column, source, target, variable, weight, by_sign)
 
-    def _remember_rows(self, rows, column, source, target, variable, weight) -> None:
+    def _remember_rows(self, rows, column, source, target, variable, weight, by_sign) -> None:
         """Where the synapses of ``rows`` are, in the Synapses just made (see
         ``_synapses_of_row``)."""
 
@@ -827,7 +880,7 @@ class Brian2Backend:
                 self.synapses[-1],
                 source.start(source_name), self.network.populations[source_name].size,
                 target.start(target_name), self.network.populations[target_name].size,
-                -1.0 if conductance and weight[row] < 0 else 1.0,
+                -1.0 if conductance and weight[row] < 0 and not by_sign else 1.0,
             )
 
     def final_connections(self, rows: list[int]) -> dict[int, SynapseList]:

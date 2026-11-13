@@ -282,7 +282,9 @@ def test_project_distributions_next_to_shared_ones_in_one_synapses() -> None:
     fixed_delay = DelayDistribution(value=1.0)
     project = _row(
         "S", "T",
-        WeightDistribution(mean=2.0, unit="pA", distribution="by_target", step=0.5),
+        WeightDistribution(
+            mean=2.0, unit="pA", distribution="by_target", step=0.5, lower_bound=0.0, bound_mode="clip"
+        ),
         DelayDistribution(
             mean=1.0, distribution="by_target", step=0.1, lower_bound=0.05, bound_mode="clip"
         ),
@@ -315,6 +317,27 @@ def test_a_project_weight_past_its_bound_is_clipped() -> None:
     w = backend.synapses[0].w_syn[:] / b2.pA
     odd = (backend.synapses[0].j[:] - 100) % 2 == 1
     assert np.all(w[odd] == 0.0) and np.allclose(w[~odd], 3.0)
+
+
+def test_weights_of_both_signs_go_each_to_the_variable_of_its_sign() -> None:
+    # As in NEST: with no bound at 0, the synapses onto an even neuron are
+    # excitatory (+30 pA) and those onto an odd one inhibitory (-30 pA).
+    weight = WeightDistribution(mean=30.0, unit="pA", distribution="alternating")
+    connection = _row("S", "T", weight, DelayDistribution(value=1.0))
+    drive = DcStimulusConfig(targets=["S"], amplitude=2000.0, start=0.0, stop=200.0)
+    backend = _backend(_network("iaf_psc_exp", connections=[connection], stimuli=[drive], size=4), extensions=[__name__])
+    backend.build()
+    backend.simulate()
+
+    import brian2 as b2
+
+    group = backend.group_of["T"]
+    targets = slice(group.start("T"), group.start("T") + 4)
+    excitatory = group.neurons.I_syn_ex[targets] / b2.pA
+    inhibitory = group.neurons.I_syn_in[targets] / b2.pA
+    odd = np.arange(4) % 2 == 1
+    assert (excitatory[~odd] > 0).all() and (inhibitory[~odd] == 0).all()
+    assert (inhibitory[odd] < 0).all() and (excitatory[odd] == 0).all()
 
 
 def test_an_inhibitory_conductance_weight_of_a_project_distribution_is_its_size() -> None:
@@ -416,7 +439,8 @@ def test_redraw_keeps_the_sign_of_the_weights() -> None:
 def test_lognormal_next_to_another_distribution_in_one_synapses() -> None:
     delay = DelayDistribution(value=1.0)
     lognormal = _row("S", "T", WeightDistribution(mean=50.0, std=10.0, unit="pA", distribution="lognormal"), delay)
-    normal = _row("T", "T", WeightDistribution(mean=20.0, std=4.0, unit="pA", distribution="normal"), delay)
+    bounded = {"lower_bound": 0.0, "bound_mode": "clip"}
+    normal = _row("T", "T", WeightDistribution(mean=20.0, std=4.0, unit="pA", distribution="normal", **bounded), delay)
     backend = _backend(_network("iaf_psc_exp", connections=[lognormal, normal]))
     backend.build()
 
