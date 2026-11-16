@@ -244,8 +244,8 @@ def cached_power_spectrum(
     Like :func:`compute_power_spectrum`, but saved in the run folder and read
     back the next time (see :mod:`microcircuit_lab.analysis.measure_files`).
 
-    The saved result does not know which settings it was computed with: pass
-    ``recompute=True`` after changing them.
+    Each area has its own file (``measures/power_spectrum_<area>.npz``); a result
+    saved with other settings is computed again.
 
     Parameters
     ----------
@@ -270,19 +270,21 @@ def cached_power_spectrum(
         ``{population: (frequencies in Hz, power)}``.
     """
 
+    settings = {
+        "begin": begin,
+        "end": end,
+        "populations": populations,
+        "area": area,
+        "bin_size": bin_size,
+        "method": method,
+        "method_kwargs": method_kwargs,
+    }
+
     return load_or_compute(
         run.folder,
-        "power_spectrum",
-        lambda: compute_power_spectrum(
-            run,
-            begin,
-            end,
-            populations=populations,
-            area=area,
-            bin_size=bin_size,
-            method=method,
-            method_kwargs=method_kwargs,
-        ),
+        "power_spectrum" if area is None else f"power_spectrum_{area}",
+        lambda: compute_power_spectrum(run, **settings),
+        settings,
         recompute=recompute,
         save=save,
     )
