@@ -931,7 +931,7 @@ Brian2 spends time on every object it has, so the network is built from few:
 
 The bundled Brian2 `aeif_cond_exp` integrates with Euler, while NEST uses an adaptive RK45 solver, so its spike times can differ slightly at `resolution: 0.1`; a smaller resolution reduces it.
 
-Brian2 runs in one process (no MPI). Background input goes through static synapses only: each neuron gets a Poisson number of input spikes at each step, as from NEST's `poisson_generator`, and the input's delay is left out, since it only shifts a stationary Poisson train.
+Brian2 runs in one process (no MPI). Background input goes through static synapses only: each neuron gets a Poisson number of input spikes at each step, as from NEST's `poisson_generator`, starting one `delay` into the run.
 
 ## Changing the core
 

@@ -73,11 +73,20 @@ def _background_units(backend: Brian2Backend, group: _Group) -> tuple[str, str]:
     return units.pop()
 
 
+def _shared_background_delay(backend: Brian2Backend, group: _Group) -> float | None:
+    """The delay (ms) of the group's background inputs if it is one fixed
+    value for all of them; None if they differ or one is drawn."""
+    backgrounds = [backend.network.poisson_background.get(pop_name) for pop_name in group.populations]
+    delays = {b.delay.value if b.delay.distribution is None else None for b in backgrounds if b is not None}
+    return delays.pop() if len(delays) == 1 else None
+
+
 def background_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
     """The variables of the group's Poisson background input: the weight
     ``w_background`` of each neuron's input and, for each variable it adds
     to, its mean number of spikes per step ``background_<variable>``
-    (``background_by_sign`` for the inputs that go by the weight's sign)."""
+    (``background_by_sign`` for the inputs that go by the weight's sign);
+    and each neuron's ``delay_background`` unless the group shares one."""
 
     variables, by_sign = _background_variables(backend, group)
     if not variables and not by_sign:
@@ -85,6 +94,8 @@ def background_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
     lines = [f"w_background : {_background_units(backend, group)[0]} (constant)"]
     lines += [f"background_{variable} : 1 (constant)" for variable in variables]
     lines += ["background_by_sign : 1 (constant)"] * bool(by_sign)
+    if _shared_background_delay(backend, group) is None:
+        lines += ["delay_background : second (constant)"]
     return b2.Equations("\n".join(lines))
 
 def create_poisson_background(backend: Brian2Backend) -> None:
@@ -95,10 +106,15 @@ def create_poisson_background(backend: Brian2Backend) -> None:
     number of spikes at each step, at rate x indegree,
     also for populations that share a ``generator``, each with the weight
     drawn for that neuron. One update per group and variable does this
-    for all of them. The input's delay is left out: it only shifts a
-    stationary Poisson train in time. Where the weights have both signs, a
+    for all of them. Where the weights have both signs, a
     neuron with a positive weight gets its input on the excitatory variable
     and one with a negative weight on the inhibitory one, as in NEST.
+
+    The delay only shifts a stationary Poisson train in time, so the input
+    starts one delay into the run (a spike of the first step arrives one
+    delay after the end of that step, as in NEST). One fixed delay for the
+    whole group is one comparison per step; delays that differ or are drawn
+    are compared for each neuron, which takes a little longer.
     """
 
     for group in backend.groups:
@@ -106,11 +122,15 @@ def create_poisson_background(backend: Brian2Backend) -> None:
         if not variables and not by_sign:
             continue
         si_unit, unit = _background_units(backend, group)
-        weights = {}
+        weights, delays = {}, {}
+        shared_delay = _shared_background_delay(backend, group)
+        delay = "delay_background" if shared_delay is None else f"{shared_delay!r}*ms"
+        # Half a step more, so that rounding cannot move the start by a step.
+        started = f"int(t > {delay} + 0.5*dt)"
 
         def rates_of(pops: list[str], negate: bool) -> np.ndarray:
             """The mean number of spikes per step of each neuron of the group,
-            0 outside ``pops``; also notes the weights of ``pops`` to draw."""
+            0 outside ``pops``; also notes the weights and delays of ``pops`` to draw."""
             rates = np.zeros(group.size)
             for pop_name in pops:
                 background = backend.network.poisson_background[pop_name]
@@ -121,12 +141,13 @@ def create_poisson_background(backend: Brian2Backend) -> None:
                 if negate and background.weight.expected < 0:
                     fields = distributions.negated(fields)
                 weights[group.populations.index(pop_name)] = (fields, size)
+                delays[group.populations.index(pop_name)] = (background.delay.fields, size)
             return rates
 
         for variable, pops in variables.items():
             setattr(group.neurons, f"background_{variable}", rates_of(pops, negate=si_unit == "siemens"))
             group.neurons.run_regularly(
-                f"{variable} += w_background*poisson(background_{variable})", when="synapses",
+                f"{variable} += w_background*poisson(background_{variable})*{started}", when="synapses",
                 name=f"{group.neurons.name}_background_{variable}",
             )
         if by_sign:
@@ -135,13 +156,15 @@ def create_poisson_background(backend: Brian2Backend) -> None:
             size = "-w_background" if si_unit == "siemens" else "w_background"
             group.neurons.run_regularly(
                 f"""
-                background_spikes = poisson(background_by_sign)
+                background_spikes = poisson(background_by_sign)*{started}
                 {neuron.excitatory} += w_background*int(w_background >= 0*{si_unit})*background_spikes
                 {neuron.inhibitory} += {size}*int(w_background < 0*{si_unit})*background_spikes
                 """,
                 when="synapses", name=f"{group.neurons.name}_background_by_sign",
             )
         distributions.set_drawn(group.neurons, "w_background", "population_index", weights, unit)
+        if shared_delay is None:
+            distributions.set_drawn(group.neurons, "delay_background", "population_index", delays, "ms")
 
 def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
     """
@@ -251,15 +274,16 @@ def create_stimuli(backend: Brian2Backend) -> None:
             if number not in tables:
                 # The mean number of spikes of a neuron at each step.
                 mean_spikes = _stimulus_curve(backend, stimulus) * resolution / 1000.0
+                # A spike of one step arrives one delay after the end of that step, as in NEST.
                 if not drawn_delay:
-                    steps = round(stimulus.delay.value / resolution)
+                    steps = round(stimulus.delay.value / resolution) + 1
                     mean_spikes = np.concatenate([np.zeros(steps), mean_spikes])[: len(mean_spikes)]
                 tables[number] = b2.TimedArray(mean_spikes, dt=resolution * b2.ms, name=f"stimulus_{number}_spikes")
             group.neurons.namespace[f"stimulus_{number}_spikes"] = tables[number]
             w, delay = f"w_stimulus_{number}", f"delay_stimulus_{number}"
             spikes = f"poisson(stimulus_{number}_spikes(t))"
             if drawn_delay:
-                spikes = f"poisson(stimulus_{number}_spikes(t - {delay})*int(t >= {delay}))"
+                spikes = f"poisson(stimulus_{number}_spikes(t - {delay} - dt)*int(t >= {delay} + dt))"
             weights, delays = {}, {}
             for target in targets:
                 start, size = group.start(target), backend.network.populations[target].size

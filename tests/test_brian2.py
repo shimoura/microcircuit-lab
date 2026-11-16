@@ -628,3 +628,27 @@ def test_what_cannot_be_built_or_saved_is_refused_by_the_check() -> None:
     network = _network("pacemaker", stimuli=[stimulus], size=5, synapses={"stdp": SynapseEntry(model="stdp")})
     with pytest.raises(NotImplementedError, match="stimulus onto .'T'. uses synapse 'stdp'"):
         _backend(network, extensions=[__name__]).check()
+
+
+@pytest.mark.parametrize("delays", [(5.0, 5.0), (5.0, 2.0)], ids=["one delay", "delays differ"])
+def test_background_input_starts_one_delay_into_the_run(delays) -> None:
+    import brian2 as b2
+
+    from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
+
+    background = {
+        name: PoissonBackgroundConfig(
+            rate=1000.0, indegree=100, weight=WeightDistribution(value=1.0, unit="pA"),
+            delay=DelayDistribution(value=delay),
+        )
+        for name, delay in zip(("S", "T"), delays)
+    }
+    network = _network("two_inputs", size=5).model_copy(update={"poisson_background": background})
+    backend = _backend(network, extensions=[__name__])
+    backend.build()
+    neurons = backend.groups[0].neurons
+
+    b2.run(4.9 * b2.ms)
+    assert np.all(neurons.I_a[:10] == 0 * b2.amp)  # S, delay 5 ms: nothing yet
+    b2.run(1.0 * b2.ms)
+    assert np.all(neurons.I_a[:10] > 0 * b2.amp)
