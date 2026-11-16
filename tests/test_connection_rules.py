@@ -105,8 +105,8 @@ def test_a_rule_takes_its_own_number_only():
         _connection(rule="fixed_indegree", indegree=5, n_synapses=10)
     with pytest.raises(ValueError, match="'one_to_one' takes no number"):
         _connection(rule="one_to_one", n_synapses=10)
-    with pytest.raises(ValueError, match="'my_rule' takes no number"):
-        _connection(rule="my_rule", p=0.1)
+    with pytest.raises(ValueError, match="'all_to_all' takes no number"):
+        _connection(rule="all_to_all", p=0.1)
     with pytest.raises(ValueError, match="parameters was removed: write each argument as a key of its own"):
         _connection(rule="ring", parameters={"width": 1})
 
@@ -128,12 +128,29 @@ def test_one_to_one_needs_populations_of_the_same_size():
         _network([_connection(rule="one_to_one")])
 
 
-def test_nest_runs_its_own_rule_with_its_arguments():
+def test_nest_runs_its_own_rule_with_its_arguments(tmp_path):
     network = _network([_connection(rule="pairwise_poisson", pairwise_avg_num_conns=2.0)])
     _, connections = _built_connections(network)
     expected = 2.0 * SIZES["S"] * SIZES["T"]
     assert abs(len(connections) - expected) < 5 * np.sqrt(expected)
     nest.ResetKernel()
+
+    # A rule that is not shared may take p, and true / false, as arguments.
+    symmetric = _connection(rule="symmetric_pairwise_bernoulli", source="S", target="S", p=0.1,
+                            make_symmetric=True, allow_autapses=False)
+    backend = NestBackend(_network([symmetric]), SimulationConfig(print_time=False))
+    backend.build()
+    S = backend.get_population("S")
+    pairs = set(zip(*nest.GetConnections(S, S).get(["source", "target"]).values()))
+    assert pairs and all((target, source) in pairs for source, target in pairs)
+    nest.ResetKernel()
+
+    # They keep their kind through the table's YAML rows and CSV file.
+    table = ConnectionTable.from_yaml_rows([symmetric])
+    assert table.to_yaml_rows()[0]["make_symmetric"] is True
+    assert ConnectionTable.from_yaml_rows(table.to_yaml_rows()) == table
+    table.write_csv(tmp_path / "connections.csv")
+    assert ConnectionTable.read_csv(tmp_path / "connections.csv") == table
 
 
 @pytest.mark.parametrize(

@@ -17,16 +17,19 @@ rule's number goes under its own name (``n_synapses``, ``indegree``,
 can be left out.
 
 The arguments of a rule or distribution that is not shared are columns of
-their own, numbers like the fields: ``pairwise_avg_num_conns`` for the rule,
-``weight.beta`` for the weight's distribution. A row that does not use one
-leaves it empty (NaN).
+their own: ``pairwise_avg_num_conns`` for the rule, ``weight.beta`` for the
+weight's distribution. A weight's or delay's argument is a number; a rule's is
+a number or true / false (``make_symmetric``), all of a column the same kind.
+A row that does not use one leaves it empty (NaN for numbers, None for
+true / false). A rule that is not shared may also use ``p``, ``indegree``,
+``outdegree`` or ``n_synapses`` as arguments: they are columns of their own
+too, and ``number`` stays NaN in its rows.
 """
 
 from __future__ import annotations
 
 import functools
 import re
-from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Annotated, Any
@@ -36,7 +39,11 @@ import pandas as pd
 from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
-from microcircuit_lab.config.connectivity import RULE_NUMBER, ConnectionConfig
+from microcircuit_lab.config.connectivity import (
+    RULE_NUMBER,
+    SHARED_RULES,
+    ConnectionConfig,
+)
 from microcircuit_lab.config.distributions import (
     DelayDistribution,
     WeightDistribution,
@@ -56,7 +63,8 @@ def _drawn_kind(name: str) -> str:
 # Column name: how its values are stored. The names are the paths of the
 # fields in a connectivity.yaml row; ``number`` is the number the row's rule
 # takes (n_synapses, indegree, outdegree or p; NaN for a rule that takes none).
-# Any other column is an argument (a number; see the module docstring).
+# Any other column is an argument (a number, or yes/no for a rule's true / false;
+# see the module docstring).
 COLUMNS = {
     "source": "text",
     "target": "text",
@@ -74,7 +82,8 @@ COLUMNS = {
 
 
 def _kind(column: str) -> str:
-    """How a column's values are stored: its entry in COLUMNS, or a number for an argument."""
+    """How a column's values are stored: its entry in COLUMNS, or a number for an argument
+    (an argument of true / false is stored as yes/no, see :func:`_as_column`)."""
     return COLUMNS.get(column, "number")
 
 
@@ -85,17 +94,17 @@ def _argument_problem(column: str) -> str | None:
         return f"unknown connection column {column!r}: an argument is <name>, weight.<name> or delay.<name>"
     if old_field_message(name):
         return f"{column}: {old_field_message(name)}"
-    if not group and name in ConnectionConfig.model_fields:
+    if not group and name in ConnectionConfig.model_fields and name not in RULE_NUMBER.values():
         return f"{column!r} is a field of a connection, not a column (the rule's number is the column 'number')"
     return None
 
 
-def given_arguments(values: Mapping[str, float]) -> dict[str, int | float]:
-    """The arguments of one row that are set (not NaN), a whole number as an
-    int: the table holds them as floats, and a simulator may need an int
-    (e.g. NEST's ``uniform_int``)."""
-    return {name: int(value) if float(value).is_integer() else value
-            for name, value in values.items() if value == value}
+def given_arguments(values: Mapping[str, float | bool | None]) -> dict[str, int | float | bool]:
+    """The arguments of one row that are set (not NaN or None), a whole number
+    as an int: the table holds them as floats, and a simulator may need an int
+    (e.g. NEST's ``uniform_int``). True / false stay as they are."""
+    return {name: value if isinstance(value, bool) or not float(value).is_integer() else int(value)
+            for name, value in values.items() if value is not None and value == value}
 
 
 def _check_every_field_has_a_column() -> None:
@@ -158,7 +167,7 @@ class ConnectionTable:
         arguments = {
             f"{group}.{name}" if group else name: None
             for row in rows
-            for group, extra in (("", row.model_extra), ("weight", row.weight.model_extra),
+            for group, extra in (("", _rule_arguments(row)), ("weight", row.weight.model_extra),
                                  ("delay", row.delay.model_extra))
             for name in extra
         }
@@ -175,9 +184,10 @@ class ConnectionTable:
         # column has the type COLUMNS gives it (text read as categories: one
         # string per distinct name, not one per row; an argument is a number).
         types = {"text": "category", "yes/no": "boolean", "number": "float64"}
-        dtype = defaultdict(lambda: "float64", {column: types[kind] for column, kind in COLUMNS.items()})
         # The header first: a column of earlier versions holds text (parameters: JSON).
         header = pd.read_csv(path, nrows=0).columns
+        # An argument is left for pandas to read as numbers or true / false.
+        dtype = {column: types[COLUMNS[column]] for column in header if column in COLUMNS}
         if "number" in header:
             raise ValueError(f"{path}: no column 'number' in a file; give each rule's number "
                              f"under its name, one of {list(RULE_NUMBER.values())}.")
@@ -188,9 +198,12 @@ class ConnectionTable:
         try:
             frame = pd.read_csv(path, dtype=dtype, keep_default_na=False, na_values=[""])
         except ValueError as error:
-            # e.g. text in an argument's column, which holds numbers
+            # e.g. text in a number's column
             raise ValueError(f"{path}: {error}") from None
         columns = {name: _csv_column(frame[name]) for name in frame.columns}
+        for name in columns:
+            if name not in COLUMNS and columns[name].dtype.kind not in "biuf" and not _holds_bool(columns[name]):
+                raise ValueError(f"{path}: {name}: an argument is a number or true / false.")
 
         # The rule's number, from the column named after the rule.
         rule = columns.get("rule", _field("rule").default)
@@ -199,17 +212,21 @@ class ConnectionTable:
             raise ValueError(f"{path}: no column for the number of the rule; add one of "
                              f"{list(RULE_NUMBER.values())}.")
         number = np.full(len(frame), np.nan)
+        shared = np.broadcast_to(np.isin(rule, SHARED_RULES), number.shape)
         for rule_name, name in RULE_NUMBER.items():
             if name in columns:
                 rows = np.broadcast_to(rule == rule_name, number.shape)
                 values = np.asarray(columns.pop(name), dtype=float)
-                # A number under another rule's name would be lost: refuse it.
-                misplaced = np.flatnonzero(~rows & ~np.isnan(values))
+                # A number under another shared rule's name would be lost: refuse it.
+                misplaced = np.flatnonzero(shared & ~rows & ~np.isnan(values))
                 if misplaced.size:
                     i = misplaced[0]
                     found = rule[i] if isinstance(rule, np.ndarray) else rule
                     raise ValueError(f"{path}: line {i + 2}, {name}: set, but the rule is {found}.")
                 number[rows] = values[rows]
+                # Under a rule that is not shared, it is one of that rule's arguments.
+                if not shared.all() and (~shared & ~np.isnan(values)).any():
+                    columns[name] = np.where(shared, np.nan, values)
         columns["number"] = number
 
         try:
@@ -230,8 +247,12 @@ class ConnectionTable:
             rows = frame["rule"] == rule
             if rows.any():
                 values = frame["number"].where(rows)
+                # A rule that is not shared may have the name as an argument of its own.
+                if name in frame.columns:
+                    values = values.fillna(frame.pop(name))
                 # Next to the rule, as in connectivity.yaml.
-                frame.insert(frame.columns.get_loc("number"), name, values if name == "p" else values.astype("Int64"))
+                frame.insert(frame.columns.get_loc("number"), name,
+                             values if name == "p" or (values.dropna() % 1 != 0).any() else values.astype("Int64"))
         frame = frame.drop(columns="number")
         for column in list(frame.columns):
             field = _field(column) if column in COLUMNS else None
@@ -340,7 +361,7 @@ class ConnectionTable:
         if not isinstance(other, ConnectionTable):
             return NotImplemented
         return len(self) == len(other) and self._columns.keys() == other._columns.keys() and all(
-            np.array_equal(self[c], other[c], equal_nan=_kind(c) == "number") for c in self._columns
+            np.array_equal(self[c], other[c], equal_nan=self[c].dtype.kind == "f") for c in self._columns
         )
 
     def __repr__(self) -> str:
@@ -359,8 +380,19 @@ def _value(row: ConnectionConfig, column: str) -> Any:
     group, _, name = column.rpartition(".")
     entry = getattr(row, group) if group else row
     if column not in COLUMNS:
+        if not group and name in _rule_arguments(row):
+            return _rule_arguments(row)[name]
         return entry.model_extra.get(name, np.nan)
     return getattr(entry, name)
+
+
+def _rule_arguments(row: ConnectionConfig) -> dict[str, int | float | bool]:
+    """The arguments of a row's rule: its extra keys and, for a rule that is
+    not shared, the fields ``p``, ``indegree``, ... when given."""
+    if row.rule in SHARED_RULES:
+        return row.model_extra
+    return row.model_extra | {name: getattr(row, name) for name in RULE_NUMBER.values()
+                              if getattr(row, name) is not None}
 
 
 def _fill_defaults(columns: Mapping[str, Any], copy: bool) -> dict[str, np.ndarray]:
@@ -387,11 +419,24 @@ def _fill_defaults(columns: Mapping[str, Any], copy: bool) -> dict[str, np.ndarr
     return filled
 
 
+def _holds_bool(values: Any) -> bool:
+    """Whether a column's values include a true / false."""
+    if isinstance(values, np.ndarray) and values.dtype.kind != "O":
+        return values.dtype.kind == "b"
+    return any(isinstance(value, (bool, np.bool_)) for value in values)
+
+
 def _as_column(column: str, values: Any, copy: bool) -> np.ndarray:
     """One column as a read-only numpy array: numbers as floats (NaN where
-    not set), text and yes/no as Python objects (None where not set). With
-    ``copy``, never the array given (see :class:`ConnectionTable`)."""
+    not set), text and yes/no as Python objects (None where not set). A rule's
+    argument given as true / false is yes/no too. With ``copy``, never the
+    array given (see :class:`ConnectionTable`)."""
 
+    if column not in COLUMNS and "." not in column and _holds_bool(values):
+        flags = [None if is_unset(value) else value for value in values]
+        if not all(flag is None or isinstance(flag, (bool, np.bool_)) for flag in flags):
+            raise ValueError(f"{column}: a rule's argument is true / false or a number in every row, not both.")
+        return _read_only(np.array([None if flag is None else bool(flag) for flag in flags], dtype=object))
     make = np.array if copy else np.asarray
     return _read_only(make(values, dtype=float if _kind(column) == "number" else object))
 
@@ -443,6 +488,13 @@ def _rule_problems(columns: dict[str, np.ndarray]) -> list[str]:
         problems.append(f"connections.{i}.file: rule from_file needs file (the CSV file of its synapses); "
                         "no other rule takes file")
     rule_arguments = [column for column in columns if column not in COLUMNS and "." not in column]
+    # A shared rule's number is in ``number``, not in an argument of its own.
+    for column in RULE_NUMBER.values():
+        rows = np.isin(columns["rule"], SHARED_RULES) & ~is_unset(columns[column]) if column in columns else []
+        if np.any(rows):
+            i = int(np.flatnonzero(rows)[0])
+            problems.append(f"connections.{i}.{column}: rule {columns['rule'][i]!r} takes its number in "
+                            "the column 'number'")
     for column in ("allow_autapses", "allow_multapses", *rule_arguments):
         rows = (columns["rule"] == "from_file") & ~is_unset(columns[column])
         if rows.any():

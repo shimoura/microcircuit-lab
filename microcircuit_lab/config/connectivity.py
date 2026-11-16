@@ -5,10 +5,16 @@ from __future__ import annotations
 
 import math
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+    model_validator,
+)
 
 from microcircuit_lab.config.distributions import (
-    Arguments,
     DelayDistribution,
     WeightDistribution,
     old_field_message,
@@ -22,6 +28,10 @@ RULE_NUMBER = {
     "fixed_outdegree": "outdegree",
     "pairwise_bernoulli": "p",
 }
+
+#: The arguments of a rule that is not shared, each a key of its own next to
+#: the fields: a number, or true / false (``make_symmetric: true``).
+RuleArguments = dict[str, StrictBool | StrictInt | StrictFloat]
 
 #: The rules every backend implements. Any other name is looked up by the
 #: backend: a rule of the simulator or of the project.
@@ -47,8 +57,10 @@ class ConnectionConfig(FrozenConfig):
     (``weight: {unit: pA}``) and no delay. Any other
     name is looked up by the backend (see ``SHARED_RULES``) and takes its
     arguments as keys of their own instead of a number
-    (``{rule: pairwise_poisson, pairwise_avg_num_conns: 0.3}``). Any rule passes such
-    keys to the simulator, which checks them.
+    (``{rule: pairwise_poisson, pairwise_avg_num_conns: 0.3}``), each a number
+    or true / false (``make_symmetric: true``). Such a rule may also use
+    ``p``, ``indegree``, ``outdegree`` or ``n_synapses`` as one of its own
+    arguments. The backend passes the keys to the simulator, which checks them.
 
     The core computes with the expected number of synapses
     (``builder_tools.mean_input.expected_synapses``), and ``scale_network`` scales
@@ -58,7 +70,7 @@ class ConnectionConfig(FrozenConfig):
 
     # Any other key is an argument of the rule.
     model_config = ConfigDict(frozen=True, extra="allow")
-    __pydantic_extra__: Arguments = Field(init=False)
+    __pydantic_extra__: RuleArguments = Field(init=False)
 
     source: str = Field(examples=["L4_E"], description="source population name")
     target: str = Field(examples=["L23_E"], description="target population name")
@@ -67,8 +79,8 @@ class ConnectionConfig(FrozenConfig):
         description="how the synapses are placed: fixed_total_number, fixed_indegree, "
         "fixed_outdegree or pairwise_bernoulli, each with its own number (n_synapses, indegree, "
         "outdegree or p); one_to_one or all_to_all, with no number; from_file, with its file; or another "
-        "rule, which the simulator looks up, with its arguments as keys of their own (e.g. "
-        "pairwise_avg_num_conns: 0.3)",
+        "rule, which the simulator looks up, with its arguments as keys of their own, each a number or "
+        "true / false (e.g. pairwise_avg_num_conns: 0.3, make_symmetric: true)",
     )
     file: str | None = Field(
         default=None,
@@ -137,7 +149,8 @@ class ConnectionConfig(FrozenConfig):
                 f"rule {self.rule!r} takes the number {needed!r} and no other"
                 + (f"; remove {others}" if others else "")
             )
-        if needed is None and others:
+        # A rule that is not shared takes these names as arguments of its own.
+        if needed is None and others and self.rule in SHARED_RULES:
             raise ValueError(f"rule {self.rule!r} takes no number; remove {others}")
         return self
 

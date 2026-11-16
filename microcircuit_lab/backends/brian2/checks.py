@@ -15,6 +15,7 @@ import numpy as np
 
 from microcircuit_lab.backends.brian2 import models
 from microcircuit_lab.config.connectivity import SHARED_RULES
+from microcircuit_lab.config.distributions import is_unset
 from microcircuit_lab.config.stimuli import DcStimulusConfig
 
 if TYPE_CHECKING:
@@ -72,7 +73,7 @@ def check_rule_arguments(backend: Brian2Backend) -> None:
     table = backend.network.connections
     names = table["rule"]
     for argument, values in table.arguments("rule").items():
-        rows = ~np.isnan(values)
+        rows = ~is_unset(values)
         for name in sorted(set(names[rows].tolist())):
             rule = backend._connection_rules.get(name)
             if rule is None or argument not in _names(rule.condition, rule.p, rule.n):
