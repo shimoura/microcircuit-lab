@@ -98,6 +98,7 @@ def background_equations(backend: Brian2Backend, group: _Group) -> b2.Equations:
         lines += ["delay_background : second (constant)"]
     return b2.Equations("\n".join(lines))
 
+
 def create_poisson_background(backend: Brian2Backend) -> None:
     """
     Give each configured population its background Poisson input.
@@ -166,6 +167,7 @@ def create_poisson_background(backend: Brian2Backend) -> None:
         if shared_delay is None:
             distributions.set_drawn(group.neurons, "delay_background", "population_index", delays, "ms")
 
+
 def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
     """
     The amplitude (pA) of a dc stimulus, or the rate (Hz) of a Poisson one,
@@ -188,6 +190,7 @@ def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
 
     stop = np.inf if stimulus.stop is None else stimulus.stop
     return np.where((t >= stimulus.start) & (t < stop), curve, 0.0)
+
 
 def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
     """
@@ -214,6 +217,7 @@ def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
         np.column_stack(curves) * b2.pA, dt=backend.simulation_config.resolution * b2.ms, name="dc_current"
     )
     return table, index
+
 
 def _poisson_stimuli(backend: Brian2Backend, group: _Group) -> dict[int, list[str]]:
     """The Poisson stimuli onto the group, by their place in ``stimuli.yaml``,

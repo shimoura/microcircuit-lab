@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import functools
 import logging
-import re
 import tempfile
 from collections import defaultdict
 from collections.abc import Sequence
@@ -37,6 +36,7 @@ from brian2.units.fundamentalunits import DIMENSIONLESS
 
 from microcircuit_lab.backends import spikes
 from microcircuit_lab.backends.brian2 import (
+    checks,
     connections,
     distributions,
     inputs,
@@ -45,7 +45,6 @@ from microcircuit_lab.backends.brian2 import (
 )
 from microcircuit_lab.backends.statistics import log_firing_rates
 from microcircuit_lab.config.connection_table import COLUMNS, given_arguments
-from microcircuit_lab.config.connectivity import SHARED_RULES
 from microcircuit_lab.config.distributions import (
     DelayDistribution,
     DrawnNeuronValue,
@@ -54,17 +53,9 @@ from microcircuit_lab.config.distributions import (
 )
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import SimulationConfig
-from microcircuit_lab.config.stimuli import (
-    DcStimulusConfig,
-)
 from microcircuit_lab.config.synapse_files import SynapseList
 
 logger = logging.getLogger(__name__)
-
-
-def _names(*expressions: str) -> set[str]:
-    """The names the Brian2 expressions use."""
-    return set(re.findall(r"[A-Za-z_]\w*", " ".join(expressions)))
 
 
 #: For each dimension: its name in Brian2 equations, and NEST's unit, which is
@@ -284,118 +275,14 @@ class Brian2Backend:
         self.synapse_models = found[models.SynapseModel]
         self._connection_rules = found[models.ConnectionRule]
         self._distributions = found[models.Distribution]
-        for population in self.network.populations:
-            self.neuron_model(population)
-        for synapse in self.network.synapses:
-            self.synapse_model(synapse)
-
-        table = self.network.connections
-        for name in sorted(set(table["rule"][~np.isin(table["rule"], SHARED_RULES)].tolist())):
-            if name not in self._connection_rules:
-                raise models.missing_model_error("rule", name, self._connection_rules)
-        for use in self.network.distributions_not_shared():
-            if use.name not in self._distributions:
-                raise models.missing_model_error("distribution", use.name, self._distributions, where=use.where)
-            distribution = self._distributions[use.name]
-            if use.redraw and distribution.redraw_rounds is None:
-                raise ValueError(
-                    f"Distribution {use.name!r} has no redraw_rounds, which bound_mode: redraw needs: "
-                    "set how many times a value past its bound is drawn again (0: clip at once), "
-                    f"or write bound_mode: clip ({use.where})."
-                )
-            # A key that the expression does not use would be ignored: most likely a typo.
-            unused = sorted(use.arguments - _names(distribution.expression))
-            if unused:
-                raise ValueError(
-                    f"{use.where}: {unused[0]} is given to distribution {use.name!r}, which does not use it."
-                )
-        names = table["rule"]
-        for argument, values in table.arguments("rule").items():
-            rows = ~np.isnan(values)
-            for name in sorted(set(names[rows].tolist())):
-                rule = self._connection_rules.get(name)
-                if rule is None or argument not in _names(rule.condition, rule.p, rule.n):
-                    first = int(np.flatnonzero(rows & (names == name))[0])
-                    raise ValueError(
-                        f"connections.{first}: {argument} is given to rule {name!r}, which does not use "
-                        "it in Brian2 (a shared rule takes no arguments)."
-                    )
-
-        # Brian2 makes n synapses for each pair a project rule picks, so such a
-        # rule cannot keep a connection free of multapses.
-        several = [name for name, rule in self._connection_rules.items() if rule.n != "1"]
-        if several:
-            rows = np.flatnonzero(np.isin(table["rule"], several) & (table["allow_multapses"] == False))  # noqa: E712
-            if rows.size:
-                rule = table["rule"][rows[0]]
-                raise ValueError(
-                    f"connections.{rows[0]}: rule {rule!r} makes n = {self._connection_rules[rule].n} synapses "
-                    "per pair, which allow_multapses: false does not allow."
-                )
-
-        # A synapse model without on_pre (a gap junction) has no spikes to delay.
-        delayed = {name: bool(self.synapse_model(name).on_pre) for name in set(table["synapse"].tolist())}
-        has_delay = np.asarray([delayed[name] for name in table["synapse"].tolist()], dtype=bool)
-        self.network.check_shortest_delays(self.simulation_config.resolution, has_delay)
-
-        # A weight's unit must be that of the variable it adds to (which also
-        # checks that a port name is a variable of the target's model): once
-        # per target, synapse, sign and unit. Weights of both signs add to two
-        # variables, which only the default on_pre does.
-        users = {}
-
-        def refuse_other_than_static(user: str, synapse: str | None) -> None:
-            if self.synapse_model(synapse) is not self.synapse_models["static_synapse"]:
-                raise NotImplementedError(
-                    f"{user} uses synapse {synapse!r}; the Brian2 backend connects background input "
-                    "and stimuli only through static synapses."
-                )
-
-        def add_user(user: str, target: str, synapse: str | None, weight: float, both_signs: bool, unit: str) -> None:
-            by_sign = self.goes_by_sign(target, synapse, both_signs)
-            if by_sign and self.synapse_model(synapse).on_pre != models.STATIC_SYNAPSE.on_pre:
-                raise ValueError(
-                    f"{user}: the weights can be positive and negative, and the synapse model "
-                    f"{self.synapse_model(synapse).name!r} has its own on_pre, which adds to one variable. "
-                    "Brian2 sends each synapse to the excitatory or the inhibitory variable by its sign "
-                    "only with the default on_pre: give the weight a bound at 0 (lower_bound: 0 or "
-                    "upper_bound: 0), or the synapse a receptor_port."
-                )
-            for positive in (True, False) if by_sign else (weight >= 0,):
-                users.setdefault((target, synapse, positive, unit), user)
-
-        columns = (table["target"].tolist(), table["synapse"].tolist(), self.network.expected_weights().tolist(),
-                   self.weights_of_both_signs().tolist(), table["weight.unit"].tolist())
-        for row, (target, *rest) in enumerate(zip(*columns)):
-            add_user(f"connections.{row} ({table['source'][row]} -> {target})", target, *rest)
-        for name, background in self.network.poisson_background.items():
-            weight = background.weight
-            refuse_other_than_static(f"The background input of {name!r}", background.synapse)
-            add_user(f"background input of {name!r}", name, background.synapse, weight.expected,
-                     self.weight_of_both_signs(weight.fields), weight.unit)
-        for stimulus in self.network.stimuli:
-            if not isinstance(stimulus, DcStimulusConfig):
-                weight = stimulus.weight
-                refuse_other_than_static(f"The stimulus onto {stimulus.targets}", stimulus.synapse)
-                for target in stimulus.targets:
-                    add_user(f"stimulus onto {target!r}", target, stimulus.synapse, weight.expected,
-                             self.weight_of_both_signs(weight.fields), weight.unit)
-        for (target, synapse, positive, unit), user in users.items():
-            variable = self.target_variable(target, synapse, 1.0 if positive else -1.0)
-            expected = self.weight_units(target, variable)[1]
-            if unit != expected:
-                raise ValueError(
-                    f"{user}: the weight is in {unit}, but it adds to {variable!r} of the Brian2 model "
-                    f"{self.neuron_model(target).name!r}, which is in {expected}."
-                )
-
-        # Saved connections are read again as a from_file row, which needs delays.
-        for row in self.simulation_config.recording.final_connection_rows(table):
-            if not self.synapse_model(table["synapse"][row]).on_pre:
-                raise ValueError(
-                    f"recording.final_connections: connection {table['source'][row]} -> {table['target'][row]} "
-                    "has no delays (its synapse model has no on_pre), which a row with rule from_file needs."
-                )
+        checks.check_models_exist(self)
+        checks.check_rules_exist(self)
+        checks.check_distributions(self)
+        checks.check_rule_arguments(self)
+        checks.check_multapses(self)
+        checks.check_delays(self)
+        checks.check_weight_units(self)
+        checks.check_final_connections(self)
         self._checked = True
 
     def build(self) -> None:
