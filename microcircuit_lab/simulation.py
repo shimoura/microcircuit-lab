@@ -15,6 +15,7 @@ from typing import Any
 from microcircuit_lab.backends import BackendName, SimulationBackend, get_backend
 from microcircuit_lab.config.network import NetworkConfig
 from microcircuit_lab.config.simulation import BackendConfig, SimulationConfig
+from microcircuit_lab.config.stimuli import check_times_on_time_step
 from microcircuit_lab.config.yaml_files import read_yaml
 from microcircuit_lab.network.load import read_network
 from microcircuit_lab.run_folder.write import save_run_outputs, share_run_directory
@@ -136,6 +137,7 @@ class Simulation:
             **self.backend_options,
         )
         self.backend.check()
+        check_times_on_time_step(self.network.stimuli, self.simulation_config.resolution)
         # A projection in recording.final_connections that no connection has fails here, before the run.
         self.simulation_config.recording.final_connection_rows(self.network.connections)
         self.is_main_process = self.backend.rank() == 0
