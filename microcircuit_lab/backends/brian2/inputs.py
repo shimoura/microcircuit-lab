@@ -114,11 +114,6 @@ def create_poisson_background(backend: Brian2Backend) -> None:
             rates = np.zeros(group.size)
             for pop_name in pops:
                 background = backend.network.poisson_background[pop_name]
-                if backend.synapse_model(background.synapse) is not backend.synapse_models["static_synapse"]:
-                    raise NotImplementedError(
-                        f"The background input of {pop_name!r} uses synapse {background.synapse!r}; "
-                        "the Brian2 backend connects background input only through static synapses."
-                    )
                 start, size = group.start(pop_name), backend.network.populations[pop_name].size
                 rates[start:start + size] = background.generator_rate * backend.simulation_config.resolution / 1000.0
                 fields = background.weight.fields
@@ -249,11 +244,6 @@ def create_stimuli(backend: Brian2Backend) -> None:
             logger.info(
                 "Creating %s stimulus for %s (start=%g, stop=%s)", stimulus.type, targets, stimulus.start, stimulus.stop
             )
-            if backend.synapse_model(stimulus.synapse) is not backend.synapse_models["static_synapse"]:
-                raise NotImplementedError(
-                    f"The stimulus onto {targets} uses synapse {stimulus.synapse!r}; "
-                    "the Brian2 backend connects stimuli only through static synapses."
-                )
             drawn_delay = stimulus.delay.distribution is not None
             if number not in tables:
                 # The mean number of spikes of a neuron at each step.

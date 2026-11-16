@@ -609,3 +609,22 @@ def test_a_second_build_starts_afresh() -> None:
 
     np.testing.assert_array_equal(spikes[0]["senders"], spikes[1]["senders"])
     np.testing.assert_array_equal(spikes[0]["times"], spikes[1]["times"])
+
+
+def test_what_cannot_be_built_or_saved_is_refused_by_the_check() -> None:
+    from microcircuit_lab.backends.brian2.simulator import Brian2Backend
+
+    # A gap junction has no delays to save as final connections.
+    saving = SimulationConfig(t_sim=200.0, print_time=False, recording=RecordingConfig(final_connections=True))
+    backend = Brian2Backend(_synapse_network("gap_neuron", "gap", {}), saving, **NUMPY, extensions=[__name__])
+    with pytest.raises(ValueError, match="final_connections: connection S -> T has no delays"):
+        backend.check()
+
+    # A stimulus goes only through a static synapse.
+    stimulus = PoissonStimulusConfig(
+        targets=["T"], rate=100.0, synapse="stdp",
+        weight=WeightDistribution(value=1.0, unit="mV"), delay=DelayDistribution(value=1.0),
+    )
+    network = _network("pacemaker", stimuli=[stimulus], size=5, synapses={"stdp": SynapseEntry(model="stdp")})
+    with pytest.raises(NotImplementedError, match="stimulus onto .'T'. uses synapse 'stdp'"):
+        _backend(network, extensions=[__name__]).check()

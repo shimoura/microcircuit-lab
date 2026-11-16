@@ -273,7 +273,10 @@ class Brian2Backend:
         needed but not set, if a rule or distribution is given an argument
         its expressions do not use (a shared rule uses none), if a project
         rule with several synapses per pair is used without multapses, or if
-        a weight's ``unit`` is not that of the variable it adds to.
+        a weight's ``unit`` is not that of the variable it adds to. Also if a
+        background input or a stimulus goes through a synapse model other
+        than the static one, or if ``recording.final_connections`` asks for a
+        connection without delays.
         """
 
         found = models.load_models(self._extensions)
@@ -373,6 +376,13 @@ class Brian2Backend:
         # variables, which only the default on_pre does.
         users = {}
 
+        def refuse_other_than_static(user: str, synapse: str | None) -> None:
+            if self.synapse_model(synapse) is not self.synapse_models["static_synapse"]:
+                raise NotImplementedError(
+                    f"{user} uses synapse {synapse!r}; the Brian2 backend connects background input "
+                    "and stimuli only through static synapses."
+                )
+
         def add_user(user: str, target: str, synapse: str | None, weight: float, both_signs: bool, unit: str) -> None:
             by_sign = self.goes_by_sign(target, synapse, both_signs)
             if by_sign and self.synapse_model(synapse).on_pre != models.STATIC_SYNAPSE.on_pre:
@@ -392,11 +402,13 @@ class Brian2Backend:
             add_user(f"connections.{row} ({table['source'][row]} -> {target})", target, *rest)
         for name, background in self.network.poisson_background.items():
             weight = background.weight
+            refuse_other_than_static(f"The background input of {name!r}", background.synapse)
             add_user(f"background input of {name!r}", name, background.synapse, weight.expected,
                      self.weight_of_both_signs(weight.fields), weight.unit)
         for stimulus in self.network.stimuli:
             if not isinstance(stimulus, DcStimulusConfig):
                 weight = stimulus.weight
+                refuse_other_than_static(f"The stimulus onto {stimulus.targets}", stimulus.synapse)
                 for target in stimulus.targets:
                     add_user(f"stimulus onto {target!r}", target, stimulus.synapse, weight.expected,
                              self.weight_of_both_signs(weight.fields), weight.unit)
@@ -407,6 +419,14 @@ class Brian2Backend:
                 raise ValueError(
                     f"{user}: the weight is in {unit}, but it adds to {variable!r} of the Brian2 model "
                     f"{self.neuron_model(target).name!r}, which is in {expected}."
+                )
+
+        # Saved connections are read again as a from_file row, which needs delays.
+        for row in self.simulation_config.recording.final_connection_rows(table):
+            if not self.synapse_model(table["synapse"][row]).on_pre:
+                raise ValueError(
+                    f"recording.final_connections: connection {table['source'][row]} -> {table['target'][row]} "
+                    "has no delays (its synapse model has no on_pre), which a row with rule from_file needs."
                 )
         self._checked = True
 
@@ -895,11 +915,6 @@ class Brian2Backend:
         synapse_lists = {}
         for row in rows:
             synapses, source_start, n_source, target_start, n_target, sign = self._synapses_of_row[row]
-            if not hasattr(synapses, "pre"):
-                raise ValueError(
-                    f"recording.final_connections: connection {table['source'][row]} -> {table['target'][row]} "
-                    "has no delays (its synapse model has no on_pre), which a row with rule from_file needs."
-                )
             i, j = np.asarray(synapses.i[:]), np.asarray(synapses.j[:])
             here = (i >= source_start) & (i < source_start + n_source) & (j >= target_start) & (j < target_start + n_target)
             unit = getattr(b2, table["weight.unit"][row])
