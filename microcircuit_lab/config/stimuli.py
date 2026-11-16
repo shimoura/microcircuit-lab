@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from microcircuit_lab.config.distributions import DelayDistribution, WeightDistribution
 from microcircuit_lab.config.frozen_config import FrozenConfig
@@ -37,6 +37,12 @@ class StimulusBase(FrozenConfig):
         examples=[600.0],
         description="when it stops (ms); omit to keep it on until the end",
     )
+
+    @model_validator(mode="after")
+    def _check_stop_after_start(self) -> StimulusBase:
+        if self.stop is not None and self.stop <= self.start:
+            raise ValueError(f"stop must be after start: got start={self.start}, stop={self.stop}")
+        return self
 
 
 class DcStimulusConfig(StimulusBase):
@@ -83,6 +89,17 @@ class InhomogeneousPoissonStimulusConfig(StimulusBase):
         description="name of an entry in synapses.yaml; omit for the default synapse",
     )
 
+    @model_validator(mode="after")
+    def _check_rate_profile(self) -> InhomogeneousPoissonStimulusConfig:
+        times, values = self.rate_times, self.rate_values
+        if len(times) != len(values):
+            raise ValueError(f"rate_times and rate_values need the same length: got {len(times)} and {len(values)}")
+        if any(later <= earlier for earlier, later in zip(times, times[1:])):
+            raise ValueError(f"rate_times must increase: got {times}")
+        if any(rate < 0 for rate in values):
+            raise ValueError(f"rate_values must be 0 or more: got {values}")
+        return self
+
 
 # The "type" field selects which class a stimulus entry is checked against, so
 # each type requires only its own fields. A new type is a new class in this union.
@@ -103,3 +120,25 @@ class StimuliFile(FrozenConfig):
     stimuli: list[StimulusConfig] = Field(
         default_factory=list, description="one entry per stimulus; `type` selects its fields"
     )
+
+
+def check_times_on_time_step(stimuli: list[StimulusConfig], resolution: float) -> None:
+    """
+    Raise if a stimulus time (``start``, ``stop``, ``rate_times``) is not a
+    multiple of the simulation time step: a simulator would either refuse it
+    while building or round it, each in its own way.
+    """
+    for index, stimulus in enumerate(stimuli):
+        times = {"start": [stimulus.start], "stop": [stimulus.stop]}
+        times["rate_times"] = getattr(stimulus, "rate_times", [])
+
+        for name, values in times.items():
+            for time in values:
+                if time is None:
+                    continue
+                steps = time / resolution
+                if abs(steps - round(steps)) > 1e-6:
+                    raise ValueError(
+                        f"stimuli[{index}] ({stimulus.type}): {name} = {time} ms is not a "
+                        f"multiple of the simulation time step (resolution: {resolution} ms)."
+                    )

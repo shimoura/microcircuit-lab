@@ -206,6 +206,7 @@ stimuli:
 - Types: `dc`, `poisson`, and `inhomogeneous_poisson` (a rate that changes in steps). [docs/config_files.md](../docs/config_files.md#stimuliyaml) lists their fields.
 - Stimuli are applied exactly as written: not scaled, not compensated.
 - They add to the background input and to each other: several entries give several pulses, with their own targets and times. Without `stop`, a stimulus lasts until the end of the run.
+- Times are multiples of the simulation time step (`resolution`); another value is refused before the network is built.
 - Add `stimuli: stimuli.yaml` to `network.yaml`. A runnable example: `microcircuit-lab run --network toy_stimulated`.
 
 ### Background input

@@ -17,6 +17,7 @@ from microcircuit_lab.config.stimuli import (
     InhomogeneousPoissonStimulusConfig,
     PoissonStimulusConfig,
     StimulusConfig,
+    check_times_on_time_step,
 )
 from microcircuit_lab.network.load import assemble_network, read_network_files
 
@@ -79,6 +80,21 @@ def test_inhomogeneous_poisson_requires_rate_times_and_values():
             weight=_weight(),
             delay=_delay(),
         )
+
+
+@pytest.mark.parametrize(
+    "fields, message",
+    [
+        ({"rate_times": [100.0, 50.0], "rate_values": [1.0, 2.0]}, "rate_times must increase"),
+        ({"rate_times": [50.0, 50.0], "rate_values": [1.0, 2.0]}, "rate_times must increase"),
+        ({"rate_times": [50.0, 100.0], "rate_values": [1.0]}, "same length"),
+        ({"rate_times": [50.0], "rate_values": [-1.0]}, "rate_values must be 0 or more"),
+        ({"rate_times": [50.0], "rate_values": [1.0], "start": 300.0, "stop": 200.0}, "stop must be after start"),
+    ],
+)
+def test_inhomogeneous_poisson_bad_timings_raise(fields, message):
+    with pytest.raises(ValidationError, match=message):
+        InhomogeneousPoissonStimulusConfig(targets=["E"], weight=_weight(), delay=_delay(), **fields)
 
 
 def test_dc_stimulus_needs_no_weight_or_delay():
@@ -251,3 +267,12 @@ def test_dc_stimulus_drives_spiking_only_after_start():
     events = backend.get_spike_events("E")
     assert len(events["times"]) > 0, "the DC pulse should have made the population spike"
     assert min(events["times"]) >= 50.0, "no spikes should occur before the pulse starts"
+
+
+def test_a_stimulus_time_off_the_time_step_is_refused():
+    on_step = DcStimulusConfig(targets=["E"], amplitude=100.0, start=100.0, stop=200.0)
+    off_step = DcStimulusConfig(targets=["E"], amplitude=100.0, start=100.05)
+
+    check_times_on_time_step([on_step], resolution=0.1)
+    with pytest.raises(ValueError, match="start = 100.05 ms is not a multiple"):
+        check_times_on_time_step([on_step, off_step], resolution=0.1)
