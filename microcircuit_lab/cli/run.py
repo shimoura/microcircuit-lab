@@ -26,7 +26,7 @@ from microcircuit_lab.analysis import (
 )
 from microcircuit_lab.backends import BackendName, get_backend
 from microcircuit_lab.config.analysis import AnalysisConfig
-from microcircuit_lab.run_folder.write import register_artifact
+from microcircuit_lab.run_folder.write import empty_directory
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -223,6 +223,8 @@ def main(argv: list[str] | None = None) -> None:
         if not simulation.is_main_process:
             return
         run_dir = simulation.output_dir
+        # A run folder used again (output.overwrite) has the plots of the earlier run.
+        empty_directory(run_dir / "plots")
 
     # The plots read the run folder, as your own analyses do.
     try:
@@ -280,7 +282,6 @@ def main(argv: list[str] | None = None) -> None:
                 config=plot_config, save_path=save_path, show=args.show,
                 show_reference=show_reference,
             )
-            register_artifact(run.folder, "plots", save_path)
             if not args.show:
                 plt.close("all")
 

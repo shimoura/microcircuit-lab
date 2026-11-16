@@ -1,7 +1,6 @@
 """`microcircuit-lab run`: one set of plots per area of a multi-area network, or one area with --area."""
 
 import importlib
-import json
 import sys
 from pathlib import Path
 
@@ -141,5 +140,3 @@ def test_a_plot_from_the_project_analyses_folder_runs(
     script.main()
 
     assert (toy_run / "plots" / "e2e_plot.txt").read_text() == "plot"
-    metadata = json.loads((toy_run / "metadata.json").read_text())
-    assert "plots/e2e_plot.txt" in metadata["artifacts"]["plots"]
