@@ -320,8 +320,10 @@ def write_final_connections(run_dir: Path, network: NetworkConfig, synapse_lists
     Write the synapses of each row of the connection table in
     ``synapse_lists`` (``{row: SynapseList}``, from the backend at the end of
     the run) to ``run_dir/final_connections/``: one CSV file per row in
-    ``synapses/``, named ``<source>_to_<target>[_<synapse>].csv``, and a
-    ``connectivity.yaml`` with those rows as ``rule: from_file``. Copied into
+    ``synapses/``, named ``<source>_to_<target>[_<synapse>].csv`` (with
+    ``_row<number>`` if two rows would share a name), and a
+    ``connectivity.yaml`` with those rows as ``rule: from_file``; a row
+    without synapses is left out. Copied into
     a network folder, they run the network again with these weights and
     delays (a synapse's other variables, e.g. plasticity traces, start
     again). Returns the files written.
@@ -331,8 +333,15 @@ def write_final_connections(run_dir: Path, network: NetworkConfig, synapse_lists
     table = network.connections
     rows, paths = [], []
     for row, synapse_list in synapse_lists.items():
+        # A row that made no synapse is left out: a file without synapses cannot be read back.
+        if len(synapse_list) == 0:
+            continue
         source, target, synapse = table["source"][row], table["target"][row], table["synapse"][row]
-        file = f"synapses/{source}_to_{target}" + (f"_{synapse}" if synapse else "") + ".csv"
+        name = f"{source}_to_{target}" + (f"_{synapse}" if synapse else "")
+        # E -> I_x and E -> I through synapse x would share a name.
+        if folder / f"synapses/{name}.csv" in paths:
+            name += f"_row{row}"
+        file = f"synapses/{name}.csv"
         synapse_list.write_csv(folder / file)
         paths.append(folder / file)
         rows.append({"source": source, "target": target, "rule": "from_file", "file": file,

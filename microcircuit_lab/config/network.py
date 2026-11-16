@@ -9,6 +9,7 @@ analysis all use it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated
 
 import numpy as np
@@ -168,12 +169,32 @@ class NetworkConfig(FrozenConfig):
     synapse_lists: dict[str, SynapseList] = Field(default_factory=dict, exclude=True)
 
     @model_validator(mode="after")
+    def _check_populations_exist(self) -> NetworkConfig:
+        for role in ("source", "target"):
+            unknown = sorted(set(self.connections[role].tolist()) - set(self.populations))
+            if unknown:
+                raise ValueError(
+                    f"Connection {role} population '{unknown[0]}' is not defined in populations.yaml."
+                )
+        for name in self.poisson_background:
+            if name not in self.populations:
+                raise ValueError(
+                    f"poisson_background.yaml references population '{name}', "
+                    "which is not defined in populations.yaml."
+                )
+        return self
+
+    @model_validator(mode="after")
     def _check_synapse_lists(self) -> NetworkConfig:
         table = self.connections
         for i in np.flatnonzero(table["rule"] == "from_file"):
             file = table["file"][i]
             if file not in self.synapse_lists:
                 raise ValueError(f"connections.{i}: the synapses of its file {file!r} were not read.")
+            # A run folder keeps a copy of each file under the same path.
+            if Path(file).is_absolute() or ".." in Path(file).parts:
+                raise ValueError(f"connections.{i}: file {file!r} must be inside the network folder "
+                                 "(e.g. synapses/E_to_I.csv).")
             if (table["file"] == file).sum() > 1:
                 raise ValueError(f"connections.{i}: file {file!r} is named by more than one connection; "
                                  "give each connection its own file.")

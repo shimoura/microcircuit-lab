@@ -60,7 +60,7 @@ def _welch(
 
     signal = signal - signal.mean()
     n = len(signal)
-    nperseg = max(8, min(nperseg or min(256, n), n))
+    nperseg = min(nperseg or min(256, n), n)
     step = nperseg - nperseg // 2
     window = np.hanning(nperseg)
     window_power = (window**2).sum()
