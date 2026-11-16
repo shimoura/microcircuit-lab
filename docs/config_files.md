@@ -150,11 +150,11 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
-    # optional · true or false · whether a neuron may connect to itself; omit for the
-    #   simulator's default
+    # optional · true or false · whether a neuron may connect to itself; omit to allow
+    #   it (true)
     allow_autapses:
-    # optional · true or false · whether a pair may have several synapses; omit for the
-    #   simulator's default
+    # optional · true or false · whether a pair may have several synapses; omit to allow
+    #   them (true)
     allow_multapses:
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing

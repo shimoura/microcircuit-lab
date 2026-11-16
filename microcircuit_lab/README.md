@@ -170,6 +170,7 @@ configs/
   populations.yaml: populations.0.size: Input should be greater than 0
   ```
   `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
+- **What is left out.** A parameter that `neurons.yaml` or `synapses.yaml` does not give keeps the value of the simulator's model (NEST: `nest.GetDefaults("iaf_psc_exp")`; Brian2: the model's `defaults` in `extensions/brian2/`), so write every parameter your model depends on. A connection without `allow_autapses` or `allow_multapses` allows both.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
 - **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a distribution before):
 

@@ -96,11 +96,11 @@ class ConnectionConfig(FrozenConfig):
     )
     allow_autapses: bool | None = Field(
         default=None,
-        description="whether a neuron may connect to itself; omit for the simulator's default",
+        description="whether a neuron may connect to itself; omit to allow it (true)",
     )
     allow_multapses: bool | None = Field(
         default=None,
-        description="whether a pair may have several synapses; omit for the simulator's default",
+        description="whether a pair may have several synapses; omit to allow them (true)",
     )
     synapse: str | None = Field(
         default=None,
@@ -185,6 +185,7 @@ class ConnectivityFile(FrozenConfig):
         description="instead of connections: a CSV file, relative to the network folder, "
         "with one row per connection (e.g. connections.csv), for a large network",
     )
+
     @model_validator(mode="before")
     @classmethod
     def _refuse_network_bound_mode(cls, data):
