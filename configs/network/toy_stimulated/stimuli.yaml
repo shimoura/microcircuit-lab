@@ -7,6 +7,7 @@ stimuli:
     amplitude: 200.0   # pA
     start: 500.0        # ms
     stop: 600.0          # ms
+    delay: {value: 1.0}  # ms, from the stimulus to the neurons: the current is on from 501 to 601 ms
 
   - type: poisson
     targets: [I]
@@ -23,3 +24,4 @@ stimuli:
     amplitude: 200.0   # pA
     start: 500.0        # ms
     stop: 600.0          # ms
+    delay: {value: 1.0}

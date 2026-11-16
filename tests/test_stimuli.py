@@ -60,7 +60,7 @@ def _delay(mean: float = 1.0) -> DelayDistribution:
 # -----------------------------------------------------------------------------
 def test_dc_without_amplitude_raises():
     with pytest.raises(ValidationError, match="amplitude"):
-        DcStimulusConfig(targets=["E"])
+        DcStimulusConfig(targets=["E"], delay=_delay())
 
 
 def test_poisson_without_rate_raises():
@@ -97,10 +97,15 @@ def test_inhomogeneous_poisson_bad_timings_raise(fields, message):
         InhomogeneousPoissonStimulusConfig(targets=["E"], weight=_weight(), delay=_delay(), **fields)
 
 
-def test_dc_stimulus_needs_no_weight_or_delay():
-    stimulus = DcStimulusConfig(targets=["E"], amplitude=100.0)
+def test_dc_stimulus_needs_a_fixed_delay_and_no_weight():
+    stimulus = DcStimulusConfig(targets=["E"], amplitude=100.0, delay=_delay())
     assert not hasattr(stimulus, "weight")
-    assert not hasattr(stimulus, "delay")
+
+    with pytest.raises(ValidationError, match="a dc stimulus needs its delay.*delay: {value: 1.0}"):
+        DcStimulusConfig(targets=["E"], amplitude=100.0)
+    drawn = DelayDistribution(distribution="normal", mean=1.0, std=0.5, lower_bound=0.1, bound_mode="redraw")
+    with pytest.raises(ValidationError, match="takes a fixed delay"):
+        DcStimulusConfig(targets=["E"], amplitude=100.0, delay=drawn)
 
 
 # -----------------------------------------------------------------------------
@@ -114,7 +119,7 @@ def test_stimulus_targeting_unknown_population_raises():
             populations={"E": population},
             connections=[],
             poisson_background={},
-            stimuli=[DcStimulusConfig(targets=["nonexistent"], amplitude=100.0)],
+            stimuli=[DcStimulusConfig(targets=["nonexistent"], amplitude=100.0, delay=DelayDistribution(value=1.0))],
         )
 
 
@@ -145,7 +150,7 @@ def test_loader_reads_stimuli_yaml_when_declared(tmp_path: Path) -> None:
         yaml.safe_dump(
             {
                 "stimuli": [
-                    {"type": "dc", "targets": ["E"], "amplitude": 200.0, "start": 50.0}
+                    {"type": "dc", "targets": ["E"], "amplitude": 200.0, "delay": {"value": 1.0}, "start": 50.0}
                 ]
             }
         )
@@ -171,7 +176,7 @@ def test_loader_rejects_stimulus_targeting_unknown_population(tmp_path: Path) ->
 
     (network_dir / "stimuli.yaml").write_text(
         yaml.safe_dump(
-            {"stimuli": [{"type": "dc", "targets": ["nope"], "amplitude": 200.0}]}
+            {"stimuli": [{"type": "dc", "targets": ["nope"], "amplitude": 200.0, "delay": {"value": 1.0}}]}
         )
     )
 
@@ -207,7 +212,7 @@ def _isolated_network(stimuli: list[StimulusConfig]) -> NetworkConfig:
 
 def test_create_stimuli_builds_correct_nest_models():
     stimuli = [
-        DcStimulusConfig(targets=["E"], amplitude=500.0, start=10.0, stop=20.0),
+        DcStimulusConfig(targets=["E"], amplitude=500.0, delay=DelayDistribution(value=1.0), start=10.0, stop=20.0),
         PoissonStimulusConfig(
             targets=["E"], rate=50.0, weight=_weight(), delay=_delay(),
             start=0.0, stop=30.0,
@@ -253,7 +258,7 @@ def test_dc_stimulus_drives_spiking_only_after_start():
     population spike, and only once the pulse starts."""
 
     stimuli = [
-        DcStimulusConfig(targets=["E"], amplitude=2000.0, start=50.0, stop=150.0)
+        DcStimulusConfig(targets=["E"], amplitude=2000.0, delay=DelayDistribution(value=1.0), start=50.0, stop=150.0)
     ]
     network = _isolated_network(stimuli)
     simulation_config = SimulationConfig.model_validate(
@@ -270,8 +275,8 @@ def test_dc_stimulus_drives_spiking_only_after_start():
 
 
 def test_a_stimulus_time_off_the_time_step_is_refused():
-    on_step = DcStimulusConfig(targets=["E"], amplitude=100.0, start=100.0, stop=200.0)
-    off_step = DcStimulusConfig(targets=["E"], amplitude=100.0, start=100.05)
+    on_step = DcStimulusConfig(targets=["E"], amplitude=100.0, delay=DelayDistribution(value=1.0), start=100.0, stop=200.0)
+    off_step = DcStimulusConfig(targets=["E"], amplitude=100.0, delay=DelayDistribution(value=1.0), start=100.05)
 
     check_times_on_time_step([on_step], resolution=0.1)
     with pytest.raises(ValueError, match="start = 100.05 ms is not a multiple"):

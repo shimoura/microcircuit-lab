@@ -193,6 +193,7 @@ stimuli:
     amplitude: 200.0         # pA
     start: 500.0             # ms
     stop: 600.0
+    delay: {value: 1.0}      # ms, to the neurons: the current is on from 501 to 601 ms
 
   - type: poisson            # a Poisson spike train
     targets: [E, I]

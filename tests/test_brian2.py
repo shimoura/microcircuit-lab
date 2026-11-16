@@ -324,7 +324,7 @@ def test_weights_of_both_signs_go_each_to_the_variable_of_its_sign() -> None:
     # excitatory (+30 pA) and those onto an odd one inhibitory (-30 pA).
     weight = WeightDistribution(mean=30.0, unit="pA", distribution="alternating")
     connection = _row("S", "T", weight, DelayDistribution(value=1.0))
-    drive = DcStimulusConfig(targets=["S"], amplitude=2000.0, start=0.0, stop=200.0)
+    drive = DcStimulusConfig(targets=["S"], amplitude=2000.0, delay=DelayDistribution(value=1.0), start=0.0, stop=200.0)
     backend = _backend(_network("iaf_psc_exp", connections=[connection], stimuli=[drive], size=4), extensions=[__name__])
     backend.build()
     backend.simulate()
@@ -536,7 +536,7 @@ def test_gap_junction_pulls_the_target_toward_the_source() -> None:
 
 
 def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
-    stimulus = DcStimulusConfig(targets=["T"], amplitude=2000.0, start=50.0, stop=150.0)
+    stimulus = DcStimulusConfig(targets=["T"], amplitude=2000.0, delay=DelayDistribution(value=1.0), start=50.0, stop=150.0)
     backend = _backend(_network("iaf_psc_exp", stimuli=[stimulus], size=5))
     backend.build()
     backend.simulate()

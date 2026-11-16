@@ -169,17 +169,20 @@ def _stimulus_curve(backend: Brian2Backend, stimulus) -> np.ndarray:
 def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
     """
     The current of the dc stimuli of each population, as one table (time
-    step x curve) and each population's curve in it (0: no current).
+    step x curve) and each population's curve in it (0: no current). Each
+    stimulus reaches the neurons its ``delay`` later, as in NEST.
     """
 
-    curves = [np.zeros(int(np.ceil(backend.simulation_config.t_sim / backend.simulation_config.resolution)) + 1)]
+    dt = backend.simulation_config.resolution
+    curves = [np.zeros(int(np.ceil(backend.simulation_config.t_sim / dt)) + 1)]
     index = {}
     for pop_name in backend.network.populations:
-        dc = [
-            _stimulus_curve(backend, stimulus)
-            for stimulus in backend.network.stimuli
-            if isinstance(stimulus, DcStimulusConfig) and pop_name in stimulus.targets
-        ]
+        dc = []
+        for stimulus in backend.network.stimuli:
+            if isinstance(stimulus, DcStimulusConfig) and pop_name in stimulus.targets:
+                curve = _stimulus_curve(backend, stimulus)
+                steps = round(stimulus.delay.value / dt)
+                dc.append(np.concatenate([np.zeros(steps), curve[:len(curve) - steps]]))
         index[pop_name] = 0
         if dc:
             index[pop_name] = len(curves)

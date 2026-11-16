@@ -544,7 +544,7 @@ class NestBackend:
         """
         Connect each stimulus device to its target populations.
 
-        `dc` devices are connected with the default synapse (weight 1.0
+        `dc` devices are connected with their delay (and NEST's weight of 1.0
         per pA of amplitude); `poisson`/`inhomogeneous_poisson` devices
         use the configured weight, delay and synapse, same as background input.
         """
@@ -554,8 +554,9 @@ class NestBackend:
                 weight, delay = self.weight_and_delay(stimulus.weight, stimulus.delay)
 
             for target in stimulus.targets:
-                syn_spec = None
-                if not isinstance(stimulus, DcStimulusConfig):
+                if isinstance(stimulus, DcStimulusConfig):
+                    syn_spec = {"delay": stimulus.delay.value}
+                else:
                     syn_spec = self.synapse_spec(weight, delay, stimulus.synapse, target)
                 nest.Connect(device, self.get_population(target), syn_spec=syn_spec)
 

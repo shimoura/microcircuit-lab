@@ -85,7 +85,7 @@ def test_manifest_uses_the_conventional_names(tmp_path: Path) -> None:
 
 def test_stimuli_adds_both_the_file_and_the_manifest_key(tmp_path: Path) -> None:
     write_network_directory(
-        **_parts(tmp_path, stimuli=[{"type": "dc", "targets": ["E"], "amplitude": 100.0}])
+        **_parts(tmp_path, stimuli=[{"type": "dc", "targets": ["E"], "amplitude": 100.0, "delay": {"value": 1.0}}])
     )
 
     assert (tmp_path / "net" / "stimuli.yaml").exists()

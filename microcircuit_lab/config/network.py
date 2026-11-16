@@ -382,7 +382,6 @@ class NetworkConfig(FrozenConfig):
         delays += [
             (f"stimulus onto {target!r}", stimulus.delay)
             for stimulus in self.stimuli
-            if not isinstance(stimulus, DcStimulusConfig)
             for target in stimulus.targets
         ]
         for user, delay in delays:
