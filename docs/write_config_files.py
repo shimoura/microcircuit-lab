@@ -83,7 +83,7 @@ EXCERPTS = [
         "  [I]:", "    rate: 8.0", "    indegree: 1000", "    weight: …"]),
     ("stimuli.yaml", "uses population names", None, [
         "stimuli:", "  - type: dc", "    targets: \\[[E]\\]", "    amplitude: 200.0",
-        "    start: 500.0", "    stop: 600.0"]),
+        "    start: 500.0", "    stop: 600.0", "    delay: …"]),
     ("reference.yaml", "uses population names", None, [
         "full_mean_rates:", "  [E]: 20.0", "  [I]: 20.0"]),
 ]
@@ -242,9 +242,10 @@ class _Writer:
         if model := _model_of(annotation):
             if model in self.seen:
                 # The fields with an example (and the required ones), so that the
-                # short form is a valid entry too.
-                example = {key: _example(key, f) for key, f in model.model_fields.items()
-                           if f.is_required() or f.examples}
+                # short form is a valid entry too; or the example of this use of it.
+                example = field.examples[0] if field.examples else {
+                    key: _example(key, f) for key, f in model.model_fields.items() if f.is_required() or f.examples
+                }
                 return [f"{indent}{name}: {_value(example)}   # all fields as in {self.seen[model]}"]
             self.seen[model] = self.file
             return [f"{indent}{name}:", *self.model(model, inner)]

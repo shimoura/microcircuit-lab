@@ -38,7 +38,7 @@ def _connection(rule="fixed_total_number", weight=10.0, unit="pA", source="S", t
     )
 
 
-def _network(connections, synapses=None, background_synapse=None, target_neuron=None):
+def _network(connections, synapses=None, background_synapse=None, target_neuron=None, extra_population=None):
     neuron = NeuronConfig(
         name="plain",
         model="iaf_psc_exp",
@@ -50,7 +50,7 @@ def _network(connections, synapses=None, background_synapse=None, target_neuron=
             size=size,
             neuron=target_neuron if (name == "T" and target_neuron) else neuron,
         )
-        for name, size in SIZES.items()
+        for name, size in (SIZES | ({extra_population: 50} if extra_population else {})).items()
     }
     background = {
         name: PoissonBackgroundConfig(
@@ -406,3 +406,45 @@ def test_conductance_weights_stop_the_compensation():
     assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
     with pytest.raises(ValueError, match="mean background current is known only"):
         replace_background_by_mean_current(network)
+
+
+def test_a_delay_that_can_round_to_zero_steps_is_refused_before_building():
+    short = DelayDistribution(distribution="normal", mean=1.0, std=0.5, lower_bound=0.0, bound_mode="redraw")
+    network = _network([_connection(n_synapses=100).model_copy(update={"delay": short})])
+
+    with pytest.raises(ValueError, match="lower_bound 0.0 ms is below half the resolution"):
+        NestBackend(network, SimulationConfig(t_sim=10.0)).check()
+
+
+def test_final_connections_leave_out_empty_rows_and_keep_file_names_apart(tmp_path):
+    from microcircuit_lab.config.yaml_files import read_yaml
+    from microcircuit_lab.run_folder.write import write_final_connections
+
+    # S -> T through synapse "x" and S -> T_x would both be S_to_T_x.csv.
+    network = _network(
+        [_connection(n_synapses=10, synapse="x"), _connection(n_synapses=10, target="T_x"), _connection(n_synapses=10)],
+        synapses={"x": SynapseEntry(model="static_synapse")},
+        extra_population="T_x",
+    )
+    some = SynapseList(np.array([0]), np.array([1]), np.array([5.0]), np.array([1.0]))
+    none = SynapseList(np.array([], dtype=int), np.array([], dtype=int), np.array([]), np.array([]))
+
+    write_final_connections(tmp_path, network, {0: some, 1: some, 2: none})
+
+    rows = read_yaml(tmp_path / "final_connections" / "connectivity.yaml")["connections"]
+    assert [row["file"] for row in rows] == ["synapses/S_to_T_x.csv", "synapses/S_to_T_x_row1.csv"]
+
+
+def test_a_network_made_in_python_checks_its_populations_and_files():
+    with pytest.raises(ValueError, match="Connection target population 'nowhere' is not defined"):
+        _network([_connection(n_synapses=10, target="nowhere")])
+
+    outside = _from_file_network(SynapseList(np.array([0]), np.array([1]), np.array([5.0]), np.array([1.0])))
+    row = ConnectionConfig(source="S", target="T", rule="from_file", file="../S_to_T.csv",
+                           weight=WeightDistribution(unit="pA"))
+    with pytest.raises(ValueError, match="must be inside the network folder"):
+        NetworkConfig(**{
+            **{name: getattr(outside, name) for name in ("populations", "poisson_background", "reference")},
+            "connections": ConnectionTable.from_yaml_rows([row]),
+            "synapse_lists": {"../S_to_T.csv": outside.synapse_lists["synapses/S_to_T.csv"]},
+        })

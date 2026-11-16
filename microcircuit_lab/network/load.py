@@ -193,19 +193,6 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
     connections = directory.connection_table
     if connections is None:
         connections = ConnectionTable.from_yaml_rows(directory.connectivity.connections)
-    for role in ("source", "target"):
-        unknown = sorted(set(connections[role].tolist()) - set(populations))
-        if unknown:
-            raise ValueError(
-                f"Connection {role} population '{unknown[0]}' is not defined in populations.yaml."
-            )
-
-    for name in directory.poisson_background.poisson_background:
-        if name not in populations:
-            raise ValueError(
-                f"poisson_background.yaml references population '{name}', "
-                "which is not defined in populations.yaml."
-            )
 
     try:
         return NetworkConfig(

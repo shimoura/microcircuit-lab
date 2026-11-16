@@ -46,10 +46,31 @@ class StimulusBase(FrozenConfig):
 
 
 class DcStimulusConfig(StimulusBase):
-    """A constant current from ``start`` to ``stop``, injected directly (no weight or delay)."""
+    """A constant current from ``start`` to ``stop``, which reaches the neurons ``delay`` later (no weight)."""
 
     type: Literal["dc"] = Field(default="dc", description="dc: a constant current")
     amplitude: float = Field(examples=[200.0], description="current (pA)")
+    delay: DelayDistribution = Field(
+        examples=[{"value": 1.0}],
+        description="time from the stimulus to the neurons (ms), a fixed value: the current is on "
+        "from start + delay to stop + delay",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _ask_for_the_delay(cls, data):
+        if isinstance(data, dict) and "delay" not in data:
+            raise ValueError(
+                "a dc stimulus needs its delay, the time from the stimulus to the neurons, e.g. "
+                "delay: {value: 1.0} (so far it was not in the file: 1 ms on NEST, none on Brian2)"
+            )
+        return data
+
+    @model_validator(mode="after")
+    def _check_delay_is_fixed(self) -> DcStimulusConfig:
+        if self.delay.distribution is not None:
+            raise ValueError("a dc stimulus takes a fixed delay, e.g. delay: {value: 1.0}, not a distribution")
+        return self
 
 
 class PoissonStimulusConfig(StimulusBase):

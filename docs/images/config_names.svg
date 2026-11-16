@@ -57,6 +57,7 @@
 <text x="320.667" y="464" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    amplitude: 200.0</text>
 <text x="320.667" y="485" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    start: 500.0</text>
 <text x="320.667" y="506" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    stop: 600.0</text>
+<text x="320.667" y="527" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328" xml:space="preserve">    delay: …</text>
 <rect x="593.333" y="327" width="266.667" height="259" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.2"/>
 <path d="M593.333 379h266.667" stroke="#8c959f" stroke-width="1"/>
 <text x="607.333" y="349" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15" font-weight="700" fill="#1f2328">reference.yaml</text>

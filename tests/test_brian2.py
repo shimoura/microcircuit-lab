@@ -324,7 +324,7 @@ def test_weights_of_both_signs_go_each_to_the_variable_of_its_sign() -> None:
     # excitatory (+30 pA) and those onto an odd one inhibitory (-30 pA).
     weight = WeightDistribution(mean=30.0, unit="pA", distribution="alternating")
     connection = _row("S", "T", weight, DelayDistribution(value=1.0))
-    drive = DcStimulusConfig(targets=["S"], amplitude=2000.0, start=0.0, stop=200.0)
+    drive = DcStimulusConfig(targets=["S"], amplitude=2000.0, delay=DelayDistribution(value=1.0), start=0.0, stop=200.0)
     backend = _backend(_network("iaf_psc_exp", connections=[connection], stimuli=[drive], size=4), extensions=[__name__])
     backend.build()
     backend.simulate()
@@ -536,7 +536,7 @@ def test_gap_junction_pulls_the_target_toward_the_source() -> None:
 
 
 def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
-    stimulus = DcStimulusConfig(targets=["T"], amplitude=2000.0, start=50.0, stop=150.0)
+    stimulus = DcStimulusConfig(targets=["T"], amplitude=2000.0, delay=DelayDistribution(value=1.0), start=50.0, stop=150.0)
     backend = _backend(_network("iaf_psc_exp", stimuli=[stimulus], size=5))
     backend.build()
     backend.simulate()
@@ -609,3 +609,46 @@ def test_a_second_build_starts_afresh() -> None:
 
     np.testing.assert_array_equal(spikes[0]["senders"], spikes[1]["senders"])
     np.testing.assert_array_equal(spikes[0]["times"], spikes[1]["times"])
+
+
+def test_what_cannot_be_built_or_saved_is_refused_by_the_check() -> None:
+    from microcircuit_lab.backends.brian2.simulator import Brian2Backend
+
+    # A gap junction has no delays to save as final connections.
+    saving = SimulationConfig(t_sim=200.0, print_time=False, recording=RecordingConfig(final_connections=True))
+    backend = Brian2Backend(_synapse_network("gap_neuron", "gap", {}), saving, **NUMPY, extensions=[__name__])
+    with pytest.raises(ValueError, match="final_connections: connection S -> T has no delays"):
+        backend.check()
+
+    # A stimulus goes only through a static synapse.
+    stimulus = PoissonStimulusConfig(
+        targets=["T"], rate=100.0, synapse="stdp",
+        weight=WeightDistribution(value=1.0, unit="mV"), delay=DelayDistribution(value=1.0),
+    )
+    network = _network("pacemaker", stimuli=[stimulus], size=5, synapses={"stdp": SynapseEntry(model="stdp")})
+    with pytest.raises(NotImplementedError, match="stimulus onto .'T'. uses synapse 'stdp'"):
+        _backend(network, extensions=[__name__]).check()
+
+
+@pytest.mark.parametrize("delays", [(5.0, 5.0), (5.0, 2.0)], ids=["one delay", "delays differ"])
+def test_background_input_starts_one_delay_into_the_run(delays) -> None:
+    import brian2 as b2
+
+    from microcircuit_lab.config.poisson_background import PoissonBackgroundConfig
+
+    background = {
+        name: PoissonBackgroundConfig(
+            rate=1000.0, indegree=100, weight=WeightDistribution(value=1.0, unit="pA"),
+            delay=DelayDistribution(value=delay),
+        )
+        for name, delay in zip(("S", "T"), delays)
+    }
+    network = _network("two_inputs", size=5).model_copy(update={"poisson_background": background})
+    backend = _backend(network, extensions=[__name__])
+    backend.build()
+    neurons = backend.groups[0].neurons
+
+    b2.run(4.9 * b2.ms)
+    assert np.all(neurons.I_a[:10] == 0 * b2.amp)  # S, delay 5 ms: nothing yet
+    b2.run(1.0 * b2.ms)
+    assert np.all(neurons.I_a[:10] > 0 * b2.amp)
