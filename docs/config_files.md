@@ -133,8 +133,8 @@ connections:
     #   fixed_total_number, fixed_indegree, fixed_outdegree or pairwise_bernoulli, each
     #   with its own number (n_synapses, indegree, outdegree or p); one_to_one or
     #   all_to_all, with no number; from_file, with its file; or another rule, which the
-    #   simulator looks up, with its arguments as keys of their own (e.g.
-    #   pairwise_avg_num_conns: 0.3)
+    #   simulator looks up, with its arguments as keys of their own, each a number or
+    #   true / false (e.g. pairwise_avg_num_conns: 0.3, make_symmetric: true)
     rule: fixed_total_number
     # optional · text · from_file: CSV file, relative to the network folder (e.g.
     #   synapses/E_to_I.csv), with one row per synapse: source_index and target_index
@@ -150,11 +150,11 @@ connections:
     # optional · number ≥ 0, ≤ 1 · pairwise_bernoulli: probability that a source-target
     #   pair is connected
     p:
-    # optional · true or false · whether a neuron may connect to itself; omit for the
-    #   simulator's default
+    # optional · true or false · whether a neuron may connect to itself; omit to allow
+    #   it (true)
     allow_autapses:
-    # optional · true or false · whether a pair may have several synapses; omit for the
-    #   simulator's default
+    # optional · true or false · whether a pair may have several synapses; omit to allow
+    #   them (true)
     allow_multapses:
     # optional · text · name of an entry in synapses.yaml; omit for the default synapse
     synapse: depressing

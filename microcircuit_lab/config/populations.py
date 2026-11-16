@@ -37,7 +37,6 @@ class PopulationEntry(FrozenConfig):
         "a variable left out starts at the model's default",
     )
 
-
     @model_validator(mode="before")
     @classmethod
     def _refuse_background_indegree(cls, data):

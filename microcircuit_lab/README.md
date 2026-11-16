@@ -170,6 +170,7 @@ configs/
   populations.yaml: populations.0.size: Input should be greater than 0
   ```
   `read_network("configs/network/<name>")` runs the whole check without simulating. A neuron's `parameters:` are the one block checked by the simulator, not here, since every neuron model takes different ones.
+- **What is left out.** A parameter that `neurons.yaml` or `synapses.yaml` does not give keeps the value of the simulator's model (NEST: `nest.GetDefaults("iaf_psc_exp")`; Brian2: the model's `defaults` in `extensions/brian2/`), so write every parameter your model depends on. A connection without `allow_autapses` or `allow_multapses` allows both.
 - **Units.** Every number in the files is in the package's units, whichever simulator runs it: mV, ms, pF, pA, nS, and spikes/s for rates.
 - **Names the simulator looks up.** Some fields name something. The shared names run on every simulator; any other name is looked up by the simulator that runs the network, and one it doesn't have stops the run, saying so: Brian2 before anything is built, NEST when it builds that part (a distribution before):
 
@@ -305,7 +306,7 @@ Each connection has a `rule` and the number that rule takes:
 | `all_to_all` | none | every pair |
 | `from_file` | `file` | every synapse as listed in a CSV file ([below](#connections-from-a-file)) |
 
-These rules run on every simulator. Any other name, with its arguments as keys of their own instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, pairwise_avg_num_conns: 2`), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
+These rules run on every simulator. Any other name, with its arguments as keys of their own instead of a number, is looked up by the simulator: on NEST one of its own rules (e.g. `rule: pairwise_poisson, pairwise_avg_num_conns: 2`; an argument is a number or `true`/`false`, e.g. `make_symmetric: true`, and may be called `p`, `indegree`, ...), on Brian2 a rule of your own (see [Connection rules of your own](#connection-rules-of-your-own)).
 
 Scaling keeps each neuron's share of synapses whatever the rule (`p` grows when the populations shrink). Some cases can't keep it, and stop with an error: `one_to_one` with `K_scaling` other than 1 (each neuron always gets one input), `all_to_all` with `K_scaling` different from `N_scaling` (each neuron gets the whole source population), `from_file` with either factor other than 1 (the file lists every synapse), and any other rule. `allow_autapses` and `allow_multapses` are passed to the simulator if given; left out, both are allowed.
 
@@ -387,7 +388,7 @@ source,target,rule,p,weight.distribution,weight.mean,weight.std,weight.lower_bou
 E,I,pairwise_bernoulli,0.1,normal,87.8,8.78,0.0,redraw,pA,normal,1.5,0.75,0.1,redraw
 ```
 
-The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. An argument of a rule or distribution of your own is a column of its own (`pairwise_avg_num_conns`, `weight.beta`), empty in the rows that don't use it. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
+The rule's number goes under its own name (`p`, `n_synapses`, ...); rows with another rule leave that cell empty. An argument of a rule or distribution of your own is a column of its own (`pairwise_avg_num_conns`, `weight.beta`), empty in the rows that don't use it. A rule's argument may also be `true`/`false`. Columns with a default (`rule`, `distribution`) can be left out when reading. It opens in a spreadsheet. `write_network_directory` writes it when given a `ConnectionTable` (`config/connection_table.py`), and a run with more than 20,000 connections saves its connections the same way, next to `config.yaml`.
 
 ## Scaling a network
 

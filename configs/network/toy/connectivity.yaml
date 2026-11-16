@@ -15,6 +15,7 @@ connections:
 
   - source: E
     target: E
+    rule: fixed_total_number
     n_synapses: 64000
     weight:
       distribution: normal
@@ -32,6 +33,7 @@ connections:
 
   - source: I
     target: E
+    rule: fixed_total_number
     n_synapses: 16000
     weight:
       distribution: normal
@@ -49,6 +51,7 @@ connections:
 
   - source: E
     target: I
+    rule: fixed_total_number
     n_synapses: 16000
     weight:
       distribution: normal
@@ -66,6 +69,7 @@ connections:
 
   - source: I
     target: I
+    rule: fixed_total_number
     n_synapses: 4000
     weight:
       distribution: normal
