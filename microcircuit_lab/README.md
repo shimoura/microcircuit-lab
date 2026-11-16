@@ -581,6 +581,7 @@ Runs in one script go one after another. For runs in parallel, start several scr
 output/<network>/<timestamp>/
 ├── recordings/          spikes (and recorded variables), written by the simulator
 ├── plots/               made by microcircuit-lab run
+├── measures/            only if saved: analysis results kept for re-plotting (firing_rates.npz, ...)
 ├── final_connections/   only if asked: every synapse at the end of the run (below)
 ├── config.yaml          the network and the simulation settings used
 └── metadata.json        versions (core, simulator, Python), git commits, MPI processes, run times, spike counts
@@ -737,7 +738,7 @@ register_plot("rate_bars", rate_bars)
 microcircuit-lab run --run-dir output/toy/<timestamp> --rate-bars
 ```
 
-The figure is saved in `plots/` (for a multi-area network, one per area in `plots/<area>/`), and listed in `metadata.json`. The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
+The figure is saved in `plots/` (for a multi-area network, one per area in `plots/<area>/`). The first parameter is the run, read with `read_run`; name only what else you need, and the command fills it in:
 
 | Parameter | What you get |
 |---|---|
@@ -814,7 +815,7 @@ microcircuit-lab run --network toy --backend brian2
 
 or `Simulation.from_yaml(network_name="toy", backend="brian2")`. With `--brian2-device cpp_standalone` (`backend_options={"device": "cpp_standalone"}`) the network is compiled to C++ and runs with the simulation's `local_num_threads`.
 
-A simulation file can choose the simulator and its options itself, so a profile such as `configs/simulation/toy_brian2.yaml` runs the same network on Brian2 (`--simulation toy_brian2`):
+A simulation file can choose the simulator and its options itself, so a profile of your own, e.g. `configs/simulation/toy_brian2.yaml`, runs the same network on Brian2 (`--simulation toy_brian2`):
 
 ```yaml
 backend:

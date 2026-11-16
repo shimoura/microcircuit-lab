@@ -67,7 +67,7 @@ class Run:
         The simulation settings (from ``config.yaml``).
     metadata : dict
         The content of ``metadata.json``: the simulator, the seed, the spike
-        statistics of each population, the files of the run.
+        statistics of each population, the run times.
     """
 
     def __init__(self, folder: Path, saved: dict, metadata: dict) -> None:

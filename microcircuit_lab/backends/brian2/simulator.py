@@ -527,10 +527,13 @@ class Brian2Backend:
         inhibitory variable of ``target`` by its own sign, as in NEST: its
         weights have both signs, its synapse has no receptor port, and the
         model has a variable for each. Any other connection adds to one
-        variable (see :meth:`target_variable`).
+        variable (see :meth:`target_variable`); a synapse model without
+        on_pre (a gap junction) adds its weight to none.
         """
 
         model = self.neuron_model(target)
+        if not self.synapse_model(synapse).on_pre:
+            return False
         return bool(both_signs) and self.network.receptor_port(synapse) is None and model.excitatory != model.inhibitory
 
     def weight_units(self, target: str, variable: str) -> tuple[str, str]:
