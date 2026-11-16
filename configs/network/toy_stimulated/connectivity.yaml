@@ -14,6 +14,7 @@ connections:
 
   - source: E
     target: E
+    rule: fixed_total_number
     n_synapses: 64000
     weight:
       distribution: normal
@@ -31,6 +32,7 @@ connections:
 
   - source: I
     target: E
+    rule: fixed_total_number
     n_synapses: 16000
     weight:
       distribution: normal
@@ -48,6 +50,7 @@ connections:
 
   - source: E
     target: I
+    rule: fixed_total_number
     n_synapses: 16000
     weight:
       distribution: normal
@@ -65,6 +68,7 @@ connections:
 
   - source: I
     target: I
+    rule: fixed_total_number
     n_synapses: 4000
     weight:
       distribution: normal
@@ -97,6 +101,7 @@ connections:
   # population silent).
   - source: E_adex
     target: E_adex
+    rule: fixed_total_number
     n_synapses: 64000
     weight:
       distribution: normal
@@ -114,6 +119,7 @@ connections:
 
   - source: I_adex
     target: E_adex
+    rule: fixed_total_number
     n_synapses: 16000
     weight:
       distribution: normal
@@ -131,6 +137,7 @@ connections:
 
   - source: E_adex
     target: I_adex
+    rule: fixed_total_number
     n_synapses: 16000
     weight:
       distribution: normal
@@ -148,6 +155,7 @@ connections:
 
   - source: I_adex
     target: I_adex
+    rule: fixed_total_number
     n_synapses: 4000
     weight:
       distribution: normal
@@ -175,6 +183,7 @@ connections:
   # neuron model: nS for E_adex/I_adex targets, pA for E/I targets.
   - source: E
     target: E_adex
+    rule: fixed_total_number
     n_synapses: 8000
     weight:
       distribution: normal
@@ -192,6 +201,7 @@ connections:
 
   - source: E
     target: I_adex
+    rule: fixed_total_number
     n_synapses: 8000
     weight:
       distribution: normal
@@ -209,6 +219,7 @@ connections:
 
   - source: E_adex
     target: E
+    rule: fixed_total_number
     n_synapses: 8000
     weight:
       distribution: normal
@@ -226,6 +237,7 @@ connections:
 
   - source: E_adex
     target: I
+    rule: fixed_total_number
     n_synapses: 8000
     weight:
       distribution: normal

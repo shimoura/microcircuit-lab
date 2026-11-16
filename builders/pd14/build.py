@@ -82,6 +82,10 @@ def _build_connections() -> list[dict[str, Any]]:
                 data.full_num_neurons[target_index],
             )
 
+            # A pair with no synapses is left out.
+            if n_synapses == 0:
+                continue
+
             if _neuron_type(source) == "excitatory":
                 weight_mean = data.PSP_exc_mean
                 delay_mean = data.delay_exc_mean

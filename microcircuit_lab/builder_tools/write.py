@@ -117,7 +117,9 @@ def write_network_directory(
         connections.write_csv(directory / "connections.csv")
         connectivity_payload["connections_file"] = "connections.csv"
     else:
-        connectivity_payload["connections"] = flow_records(list(connections))
+        # The rows as checked, with the rule (and any other default that is
+        # set) stated on every connection.
+        connectivity_payload["connections"] = flow_records(ConnectionTable.from_yaml_rows(connections).to_yaml_rows())
 
     # connections (and, with compact, populations / poisson_background) go
     # one-record-per-line: they run to thousands of uniform rows for
