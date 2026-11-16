@@ -58,8 +58,12 @@ def _welch(
     with 50% overlap, matching scipy.signal.welch's defaults.
     """
 
-    signal = signal - signal.mean()
     n = len(signal)
+    # A Hann window of 2 bins is all zeros.
+    if n < 3:
+        raise ValueError(f"The power spectrum needs at least 3 bins, and the time window has {n}: "
+                         "use a longer window or a smaller bin_size.")
+    signal = signal - signal.mean()
     nperseg = min(nperseg or min(256, n), n)
     step = nperseg - nperseg // 2
     window = np.hanning(nperseg)

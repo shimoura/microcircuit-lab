@@ -534,6 +534,12 @@ def test_gap_junction_pulls_the_target_toward_the_source() -> None:
     assert np.mean(neurons.V_m[10:] / b2.mV) > -65.0
     assert np.all(neurons.I_gap[10:] > 0 * b2.amp)
 
+    # Its weight adds to no variable, so one drawn with both signs is no problem.
+    drawn = WeightDistribution(distribution="normal", mean=1.0, std=0.5, unit="pA")
+    row = _row("S", "T", drawn, DelayDistribution(value=1.0), synapse="gap")
+    network = _network("two_inputs", connections=[row], size=5, synapses={"gap": SynapseEntry(model="gap")})
+    _backend(network, extensions=[__name__]).check()
+
 
 def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
     stimulus = DcStimulusConfig(targets=["T"], amplitude=2000.0, delay=DelayDistribution(value=1.0), start=50.0, stop=150.0)
@@ -545,6 +551,13 @@ def test_dc_stimulus_drives_spiking_only_during_pulse() -> None:
     assert len(times) > 0
     assert min(times) >= 50.0
     assert max(times) < 155.0
+
+    # A delay longer than the run: the current never arrives.
+    late = stimulus.model_copy(update={"delay": DelayDistribution(value=500.0)})
+    backend = _backend(_network("iaf_psc_exp", stimuli=[late], size=5))
+    backend.build()
+    backend.simulate()
+    assert len(backend.get_spike_events("T")["times"]) == 0
 
 
 def test_a_poisson_stimulus_gives_several_spikes_per_step() -> None:

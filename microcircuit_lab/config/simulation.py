@@ -146,7 +146,7 @@ class OutputConfig(FrozenConfig):
     )
     save_metadata: bool = Field(
         default=True,
-        description="write metadata.json (versions, spike counts, files written); "
+        description="write metadata.json (versions, spike counts, run times); "
         "needed with config.yaml to re-plot the run",
     )
     save_config: bool = Field(

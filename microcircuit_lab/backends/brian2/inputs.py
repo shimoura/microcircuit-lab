@@ -4,8 +4,8 @@ Inputs of the Brian2 backend: the Poisson background and the stimuli.
 Functions of ``Brian2Backend`` (``simulator.py``), kept here to keep that file
 short; each takes the backend and adds the input to its groups. The background
 input and the ``dc`` stimuli are part of their targets' equations and are made
-with the populations; the Poisson stimuli are generators connected to their
-targets.
+with the populations; a Poisson stimulus is one more update of its targets,
+which draws each neuron's number of spikes at each step.
 """
 
 from __future__ import annotations
@@ -208,7 +208,7 @@ def dc_curves(backend: Brian2Backend) -> tuple[b2.TimedArray, dict[str, int]]:
             if isinstance(stimulus, DcStimulusConfig) and pop_name in stimulus.targets:
                 curve = _stimulus_curve(backend, stimulus)
                 steps = round(stimulus.delay.value / dt)
-                dc.append(np.concatenate([np.zeros(steps), curve[:len(curve) - steps]]))
+                dc.append(np.concatenate([np.zeros(steps), curve])[:len(curve)])
         index[pop_name] = 0
         if dc:
             index[pop_name] = len(curves)

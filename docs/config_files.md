@@ -415,7 +415,7 @@ output:
   #   <output_dir>/<date_time> folder; true: every run writes into output_dir itself
   overwrite: false
   # optional, default true · true or false · write metadata.json (versions, spike
-  #   counts, files written); needed with config.yaml to re-plot the run
+  #   counts, run times); needed with config.yaml to re-plot the run
   save_metadata: true
   # optional, default true · true or false · write config.yaml (the network and the
   #   simulation settings); needed to re-plot the run

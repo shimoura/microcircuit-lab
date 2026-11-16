@@ -79,7 +79,7 @@ Before building, the simulator runs `check()`. Brian2 stops on a model, rule or 
 output/<name>/<date_time>/
 ├── recordings/     spikes, written by the simulator
 ├── config.yaml     the network and the settings used
-├── metadata.json   versions, git commits, spike counts, files
+├── metadata.json   versions, git commits, spike counts, run times
 └── plots/          step 4
 ```
 
@@ -105,7 +105,7 @@ microcircuit-lab run --run-dir output/<name>/<date_time>
 | :--- | :--- |
 | a file is refused | the module named after the file, in `config/` |
 | a name "is not defined" | `network/load.py` (populations, neurons), `config/network.py` (synapses) |
-| Brian2 "has no" model, rule or distribution | its `check()`, in `backends/brian2/simulator.py`, and `extensions/brian2/` |
+| Brian2 "has no" model, rule or distribution | its checks, in `backends/brian2/checks.py`, and `extensions/brian2/` |
 | NEST "has no" model, rule or receptor | NEST's own message when building; `check()` in `backends/nest/simulator.py` covers distributions only (`extensions/nest/`) |
 | a background generator fires at a different rate than the files | step 2: the rate is `rate × indegree` (`generator_rate`, `config/poisson_background.py`) |
 | rates drop in a scaled run | `builder_tools/scaling.py`, `builder_tools/constant_current.py`; full-scale rates in `reference.yaml` |
