@@ -119,9 +119,9 @@ def cached_population_firing_rates(
     Like :func:`compute_population_firing_rates`, but saved in the run folder and
     read back the next time (see :mod:`microcircuit_lab.analysis.measure_files`).
 
-    Useful when re-plotting a comparison of many runs. The saved result does not
-    know which window, populations or area it was computed for: pass
-    ``recompute=True`` after changing them.
+    Useful when re-plotting a comparison of many runs. Each area has its own
+    file (``measures/firing_rates_<area>.npz``); a result saved for another time
+    window or other populations is computed again.
 
     Parameters
     ----------
@@ -144,12 +144,13 @@ def cached_population_firing_rates(
         ``{population: mean rate}``, in spikes/s.
     """
 
+    settings = {"begin": begin, "end": end, "populations": populations, "area": area}
+
     return load_or_compute(
         run.folder,
-        "firing_rates",
-        lambda: compute_population_firing_rates(
-            run, begin, end, populations=populations, area=area
-        ),
+        "firing_rates" if area is None else f"firing_rates_{area}",
+        lambda: compute_population_firing_rates(run, **settings),
+        settings,
         recompute=recompute,
         save=save,
     )

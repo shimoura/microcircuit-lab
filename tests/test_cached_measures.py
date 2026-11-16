@@ -66,3 +66,15 @@ def test_cached_population_firing_rates_recompute_true_ignores_cache(tmp_path):
 
     assert recomputed == cached  # same spikes, same result -- just not read from disk
 
+
+
+def test_cached_firing_rates_are_computed_again_for_another_window_or_area(tmp_path):
+    run = _run_toy(tmp_path)
+    whole_run = cached_population_firing_rates(run)
+    population = next(iter(whole_run))
+
+    later = cached_population_firing_rates(run, begin=200.0)
+    one_population = cached_population_firing_rates(run, populations=[population])
+
+    assert later != whole_run
+    assert list(one_population) == [population]
