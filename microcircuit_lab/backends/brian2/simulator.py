@@ -333,42 +333,10 @@ class Brian2Backend:
                     "per pair, which allow_multapses: false does not allow."
                 )
 
-        # A fixed delay rounds to a whole number of steps. NEST refuses one that
-        # rounds to 0 (below half a step); Brian2 would deliver the spike in the
-        # same step. A drawn delay is kept at its lower_bound or more.
-        shortest = 0.5 * self.simulation_config.resolution
         # A synapse model without on_pre (a gap junction) has no spikes to delay.
         delayed = {name: bool(self.synapse_model(name).on_pre) for name in set(table["synapse"].tolist())}
         has_delay = np.asarray([delayed[name] for name in table["synapse"].tolist()], dtype=bool)
-        fixed = np.asarray([name is None for name in table["delay.distribution"]], dtype=bool)
-        smallest = np.where(fixed, table["delay.value"], table["delay.lower_bound"])
-        from_file = table["rule"] == "from_file"
-        for row in np.flatnonzero(from_file):
-            smallest[row] = self.network.synapse_lists[table["file"][row]].delay.min()
-        too_short = has_delay & (smallest < shortest)
-        if too_short.any():
-            row = int(np.flatnonzero(too_short)[0])
-            what = "shortest delay in its file" if from_file[row] else "fixed delay" if fixed[row] else "delay's lower_bound"
-            raise ValueError(
-                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the {what} "
-                f"{smallest[row]} ms is below half the resolution ({shortest} ms), so a delay "
-                f"rounds to 0; use at least {shortest} ms."
-            )
-        delays = [(f"background input of {name!r}", b.delay) for name, b in self.network.poisson_background.items()]
-        delays += [
-            (f"stimulus onto {target!r}", stimulus.delay)
-            for stimulus in self.network.stimuli
-            if not isinstance(stimulus, DcStimulusConfig)
-            for target in stimulus.targets
-        ]
-        for user, delay in delays:
-            smallest = delay.value if delay.distribution is None else delay.lower_bound
-            if smallest < shortest:
-                raise ValueError(
-                    f"{user}: the delay {'' if delay.distribution is None else 'lower_bound '}{smallest} ms "
-                    f"is below half the resolution ({shortest} ms), so a delay rounds to 0; use at least "
-                    f"{shortest} ms."
-                )
+        self.network.check_shortest_delays(self.simulation_config.resolution, has_delay)
 
         # A weight's unit must be that of the variable it adds to (which also
         # checks that a port name is a variable of the target's model): once

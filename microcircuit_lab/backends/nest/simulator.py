@@ -136,7 +136,8 @@ class NestBackend:
         Find the project's distributions, and raise before anything is built
         if the network uses a distribution that neither NEST nor the project
         has, leaves out an argument its function takes, or gives one it
-        does not take (most likely a typo).
+        does not take (most likely a typo); also if a delay can round to 0
+        steps.
         Neuron and synapse model names and connection rules other than the
         shared ones are left to NEST, which knows them only once the modules
         are installed.
@@ -147,6 +148,7 @@ class NestBackend:
                 "recording.final_connections is not supported with several MPI processes: each holds "
                 "only its own synapses."
             )
+        self.network.check_shortest_delays(self.simulation_config.resolution)
         self._functions = distributions.load_functions(self._extensions)
         for use in self.network.distributions_not_shared():
             try:
@@ -349,12 +351,17 @@ class NestBackend:
                     if column[option][i] is not None:
                         conn_spec[option] = bool(column[option][i])
 
-                nest.Connect(
-                    self.populations[source],
-                    self.populations[target],
-                    conn_spec=conn_spec,
-                    syn_spec=self.synapse_spec(weight, delay, synapse, target),
-                )
+                try:
+                    nest.Connect(
+                        self.populations[source],
+                        self.populations[target],
+                        conn_spec=conn_spec,
+                        syn_spec=self.synapse_spec(weight, delay, synapse, target),
+                    )
+                except nest.NESTError as error:
+                    # NEST's message does not say which connection it is about.
+                    error.add_note(f"While connecting connections.{start + i} ({source} -> {target}).")
+                    raise
 
     def final_connections(self, rows: list[int]) -> dict[int, SynapseList]:
         """

@@ -349,6 +349,51 @@ class NetworkConfig(FrozenConfig):
             weight[i] = self.synapse_lists[table["file"][i]].weight.mean()
         return weight
 
+    def check_shortest_delays(self, resolution: float, has_delay: np.ndarray | None = None) -> None:
+        """
+        Raise if a delay can be below half the simulation step
+        (``resolution``, ms): a fixed delay, the ``lower_bound`` of a drawn
+        one, or the shortest delay of a file. Such a delay rounds to 0 steps,
+        which a simulator refuses while building or delivers in the same step.
+
+        ``has_delay`` marks the rows of the connection table to check (a
+        simulator's synapse model may have no delay); by default, all.
+        """
+
+        shortest = 0.5 * resolution
+        table = self.connections
+        fixed = np.asarray([name is None for name in table["delay.distribution"]], dtype=bool)
+        smallest = np.where(fixed, table["delay.value"], table["delay.lower_bound"])
+        from_file = table["rule"] == "from_file"
+        for row in np.flatnonzero(from_file):
+            smallest[row] = self.synapse_lists[table["file"][row]].delay.min()
+        too_short = smallest < shortest
+        if has_delay is not None:
+            too_short &= has_delay
+        if too_short.any():
+            row = int(np.flatnonzero(too_short)[0])
+            what = "shortest delay in its file" if from_file[row] else "fixed delay" if fixed[row] else "delay's lower_bound"
+            raise ValueError(
+                f"connections.{row} ({table['source'][row]} -> {table['target'][row]}): the {what} "
+                f"{smallest[row]} ms is below half the resolution ({shortest} ms), so a delay "
+                f"rounds to 0; use at least {shortest} ms."
+            )
+        delays = [(f"background input of {name!r}", b.delay) for name, b in self.poisson_background.items()]
+        delays += [
+            (f"stimulus onto {target!r}", stimulus.delay)
+            for stimulus in self.stimuli
+            if not isinstance(stimulus, DcStimulusConfig)
+            for target in stimulus.targets
+        ]
+        for user, delay in delays:
+            smallest = delay.value if delay.distribution is None else delay.lower_bound
+            if smallest < shortest:
+                raise ValueError(
+                    f"{user}: the delay {'' if delay.distribution is None else 'lower_bound '}{smallest} ms "
+                    f"is below half the resolution ({shortest} ms), so a delay rounds to 0; use at least "
+                    f"{shortest} ms."
+                )
+
     def receptor_port(self, synapse: str | None) -> int | str | None:
         """The receptor port of a synapse name (``None``: the default port)."""
         return None if synapse is None else self.synapses[synapse].receptor_port

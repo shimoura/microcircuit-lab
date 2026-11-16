@@ -406,3 +406,11 @@ def test_conductance_weights_stop_the_compensation():
     assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
     with pytest.raises(ValueError, match="mean background current is known only"):
         replace_background_by_mean_current(network)
+
+
+def test_a_delay_that_can_round_to_zero_steps_is_refused_before_building():
+    short = DelayDistribution(distribution="normal", mean=1.0, std=0.5, lower_bound=0.0, bound_mode="redraw")
+    network = _network([_connection(n_synapses=100).model_copy(update={"delay": short})])
+
+    with pytest.raises(ValueError, match="lower_bound 0.0 ms is below half the resolution"):
+        NestBackend(network, SimulationConfig(t_sim=10.0)).check()
