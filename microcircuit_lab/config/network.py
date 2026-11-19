@@ -8,6 +8,7 @@ analysis all use it.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
@@ -187,7 +188,10 @@ class NetworkConfig(FrozenConfig):
     @model_validator(mode="after")
     def _check_synapse_lists(self) -> NetworkConfig:
         table = self.connections
-        for i in np.flatnonzero(table["rule"] == "from_file"):
+        rows = np.flatnonzero(table["rule"] == "from_file")
+        # How many connections name each file, counted once for all rows.
+        uses = Counter(table["file"][rows])
+        for i in rows:
             file = table["file"][i]
             if file not in self.synapse_lists:
                 raise ValueError(f"connections.{i}: the synapses of its file {file!r} were not read.")
@@ -195,7 +199,7 @@ class NetworkConfig(FrozenConfig):
             if Path(file).is_absolute() or ".." in Path(file).parts:
                 raise ValueError(f"connections.{i}: file {file!r} must be inside the network folder "
                                  "(e.g. synapses/E_to_I.csv).")
-            if (table["file"] == file).sum() > 1:
+            if uses[file] > 1:
                 raise ValueError(f"connections.{i}: file {file!r} is named by more than one connection; "
                                  "give each connection its own file.")
             source, target = table["source"][i], table["target"][i]
