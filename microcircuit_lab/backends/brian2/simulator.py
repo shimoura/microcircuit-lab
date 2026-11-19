@@ -725,7 +725,7 @@ class Brian2Backend:
                 for row in rows
             ]
             name = f"synapses_{len(self.synapses)}"
-            calls, numbers = connections.connect_calls(placed, source.size, target.size, self._rng, name)
+            calls, numbers = connections.connect_calls(placed, source.size, self._rng, name)
 
             n_target = len(target.populations)
             weights, delays = {}, {}

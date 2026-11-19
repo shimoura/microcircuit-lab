@@ -2,13 +2,16 @@
 Who connects to whom in the Brian2 backend, for each connection rule.
 
 All rows of the connection table between two Brian2 groups through the same
-synapse go into one ``Synapses`` object (see ``simulator.py``), and Brian2 draws
-their pairs itself, from the ``Synapses.connect`` calls made here, so the
-indices of millions of synapses are never held in Python (in C++ standalone
-mode they are drawn in C++). Each call costs Brian2 a fixed time, so the rows
-with multapses (NEST's default) are made by one call for all of them; the
-others by one call each, whose numbers Brian2 reads from the namespace, so
-that the calls of one rule share their compiled code.
+synapse go into one ``Synapses`` object (see ``simulator.py``), made by the
+``Synapses.connect`` calls made here:
+
+- The rows with multapses (NEST's default) under fixed_total_number,
+  fixed_indegree or fixed_outdegree: their pairs are drawn here with numpy
+  and given to Brian2 as arrays, in one call for all of them. Nothing is
+  compiled, so this takes about the same time for any number of rows.
+- Any other row: one call each, in which Brian2 draws the pairs itself (in
+  C++ standalone mode, in C++) and reads the row's numbers from the
+  namespace, so the calls of one rule share their compiled code.
 
 The pairs are drawn as NEST draws them: autapses and multapses are allowed
 unless the connection says otherwise, and without multapses no pair is drawn
@@ -17,7 +20,6 @@ twice.
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 import brian2 as b2
@@ -74,69 +76,28 @@ def _counts(row: Row, rng: np.random.Generator) -> np.ndarray:
     return np.full(size, int(row.number))
 
 
-def _merged(rows: list[Row], outward: bool, n_outer: int, prefix: str, rng) -> tuple[dict, dict, list[int]]:
+def _pairs(row: Row, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
     """
-    One ``connect`` call for rows with multapses: for each neuron of an outer
-    population (the sources, or the targets of fixed_indegree), its k-th
-    synapse belongs to the row whose cumulative count it is under, and its
-    other end is drawn uniformly from that row's other population (without
-    the neuron itself, without autapses). One call for all rows is faster
-    than one per row or per population, in both devices: each call costs
-    Brian2 a fixed time, more than the table reads it saves.
+    The synapses of a row with multapses, as (sources, targets) in their
+    Brian2 groups: each neuron of the outer population makes its number of
+    synapses (see _counts), and the other end of each is drawn uniformly
+    from the other population (without the neuron itself, without autapses).
     """
 
-    outer, drawn = ("i", "j") if outward else ("j", "i")
-    by_outer = defaultdict(list)
-    for row in rows:
-        by_outer[row.source_start if outward else row.target_start].append(row)
-    slots = max(len(members) for members in by_outer.values())
+    inward = row.rule == "fixed_indegree"
+    outer_start = row.target_start if inward else row.source_start
+    other_start, other_size = (row.source_start, row.source_size) if inward else (row.target_start, row.target_size)
 
-    cum = np.zeros((slots, n_outer))
-    population = np.zeros(n_outer)
-    first, size, no_autapses = (np.zeros(len(by_outer) * slots) for _ in range(3))
-    size += 1
-    numbers = []
-    for p, (start, members) in enumerate(by_outer.items()):
-        n = members[0].source_size if outward else members[0].target_size
-        population[start:start + n] = p
-        running = np.zeros(n)
-        for q in range(slots):
-            if q < len(members):
-                row = members[q]
-                counts = _counts(row, rng)
-                running += counts
-                numbers.append(int(counts.sum()))
-                slot = p * slots + q
-                first[slot] = row.target_start if outward else row.source_start
-                size[slot] = row.target_size if outward else row.source_size
-                no_autapses[slot] = row.no_autapses
-            cum[q, start:start + n] = running
+    counts = _counts(row, rng)
+    # 32-bit indices, as Brian2 keeps them: half the memory of numpy's default.
+    outer = np.repeat(np.arange(counts.size, dtype=np.int32), counts)
+    other = rng.integers(0, other_size - row.no_autapses, size=outer.size, dtype=np.int32)
+    # Without autapses, the neuron itself is skipped: the ones after it move up by one.
+    other += row.no_autapses * (other >= outer)
 
-    # The row (slot) of the k-th synapse: how many cumulative counts it is past.
-    slot = " + ".join([f"int(k >= {prefix}cum({q}*second, {outer}))" for q in range(slots - 1)] or ["0"])
-    slot = f"int({prefix}population({outer}*second))*{slots} + {slot}"
-
-    def read(name: str) -> str:
-        return f"int({prefix}{name}(({slot})*second))"
-
-    expression = (
-        f"{read('first')} + (int(rand()*({read('size')} - {read('self')})) "
-        f"+ {read('self')}*({outer} - {read('first')} + 1)) % {read('size')}"
-    )
-    total = f"int({prefix}cum({slots - 1}*second, {outer}))"
-    if outward:
-        arguments = {drawn: f"{expression} for k in range({total})"}
-    else:
-        # Brian2 wants a constant range for i: up to the largest count, then
-        # only the target's own.
-        arguments = {drawn: f"{expression} for k in range({int(cum[-1].max())}) if k < {total}"}
-    namespace = {
-        f"{prefix}{name}": table(values, f"{prefix}{name}")
-        for name, values in (
-            ("cum", cum), ("population", population), ("first", first), ("size", size), ("self", no_autapses)
-        )
-    }
-    return arguments, namespace, numbers
+    outer += outer_start
+    other += other_start
+    return (other, outer) if inward else (outer, other)
 
 
 def _single(row: Row, n_source: int, prefix: str, rng) -> tuple[dict, dict, int]:
@@ -211,7 +172,7 @@ def _single(row: Row, n_source: int, prefix: str, rng) -> tuple[dict, dict, int]
 
 
 def connect_calls(
-    rows: list[Row], n_source: int, n_target: int, rng: np.random.Generator, name: str
+    rows: list[Row], n_source: int, rng: np.random.Generator, name: str
 ) -> tuple[list[tuple[dict, dict]], list[int]]:
     """
     The ``Synapses.connect`` calls that make the rows of one ``Synapses``
@@ -243,26 +204,18 @@ def connect_calls(
 
     calls: list[tuple[dict, dict]] = []
     numbers: dict[int, int] = {}
-    outward = [k for k, row in enumerate(rows) if row.multapses and row.rule in ("fixed_total_number", "fixed_outdegree")]
-    inward = [k for k, row in enumerate(rows) if row.multapses and row.rule == "fixed_indegree"]
+    # The rows with multapses: their pairs drawn here (see _pairs), one call for all.
+    drawn = [k for k, row in enumerate(rows)
+             if row.multapses and row.rule in ("fixed_total_number", "fixed_indegree", "fixed_outdegree")]
+    if drawn:
+        pairs = [_pairs(rows[k], rng) for k in drawn]
+        calls.append(({"i": np.concatenate([i for i, _ in pairs]), "j": np.concatenate([j for _, j in pairs])}, {}))
+        numbers.update((k, i.size) for k, (i, _) in zip(drawn, pairs))
 
-    for members, is_outward, n_outer in ((outward, True, n_source), (inward, False, n_target)):
-        if not members:
-            continue
-        arguments, namespace, counts = _merged([rows[k] for k in members], is_outward, n_outer, f"{name}_c{len(calls)}_", rng)
-        calls.append((arguments, namespace))
-        # _merged counts rows grouped by their outer population.
-        by_outer = defaultdict(list)
-        for k in members:
-            by_outer[rows[k].source_start if is_outward else rows[k].target_start].append(k)
-        order = [k for group in by_outer.values() for k in group]
-        numbers.update(zip(order, counts))
-
+    # Any other row: one call each, Brian2 draws its pairs.
     for k, row in enumerate(rows):
-        if k in numbers:
-            continue
-        arguments, namespace, number = _single(row, n_source, f"{name}_c{len(calls)}_", rng)
-        calls.append((arguments, namespace))
-        numbers[k] = number
+        if k not in numbers:
+            arguments, namespace, numbers[k] = _single(row, n_source, f"{name}_c{k}_", rng)
+            calls.append((arguments, namespace))
 
     return calls, [numbers[k] for k in range(len(rows))]
