@@ -162,10 +162,8 @@ class ConnectionConfig(FrozenConfig):
         if from_file and (self.model_extra or self.allow_autapses is not None or self.allow_multapses is not None):
             raise ValueError("rule from_file: the file gives every synapse; remove allow_autapses, "
                              "allow_multapses and any argument")
-        problems = [f"{what}.{problem}" for what in ("weight", "delay")
-                    for problem in getattr(self, what).problems(from_file=from_file)]
-        if problems:
-            raise ValueError("; ".join(problems))
+        # Whether its weight and delay fit the rule is checked by the
+        # connection table, for all connections at once.
         return self
 
     @property

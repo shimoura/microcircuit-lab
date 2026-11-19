@@ -452,6 +452,13 @@ def test_final_connections_leave_out_empty_rows_and_keep_file_names_apart(tmp_pa
     assert [row["file"] for row in rows] == ["synapses/S_to_T_x.csv", "synapses/S_to_T_x_row1.csv"]
 
 
+def test_a_from_file_row_that_sets_weight_fields_is_told_to_write_only_the_unit():
+    row = {"source": "S", "target": "T", "rule": "from_file", "file": "synapses/S_to_T.csv",
+           "weight": {"mean": 5.0, "unit": "pA"}}
+    with pytest.raises(ValueError, match="connections.0.weight.mean: with rule: from_file, the file gives every value"):
+        ConnectionTable.from_yaml_rows([row])
+
+
 def test_a_network_made_in_python_checks_its_populations_and_files():
     with pytest.raises(ValueError, match="Connection target population 'nowhere' is not defined"):
         _network([_connection(n_synapses=10, target="nowhere")])
