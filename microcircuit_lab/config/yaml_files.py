@@ -52,10 +52,12 @@ class FlowRecord(dict):
     """Marker: dump this mapping in YAML flow style (one line) via write_yaml."""
 
 
-class _Dumper(yaml.SafeDumper):
+class _Dumper(getattr(yaml, "CSafeDumper", yaml.SafeDumper)):
     """The YAML writer of :func:`write_yaml`: one-line ``FlowRecord`` mappings,
     and a value used twice written out twice, never as an anchor (``&id001``)
-    and its alias, which people reading the file would not expect."""
+    and its alias, which people reading the file would not expect. libyaml's
+    writer where PyYAML has it (about three times faster on large files, same
+    text), as for reading."""
 
     def ignore_aliases(self, data: Any) -> bool:
         return True
