@@ -1,29 +1,32 @@
-"""Create the folders of a new project, with an example.
+"""Create the folders of a new project, with the toy example.
 
-    microcircuit-lab init <project>               # builders/, analyses/, configs/, experiments/, extensions/, and the toy example
-    microcircuit-lab init <project> --with-core   # also a copy of the core, and every example
+    microcircuit-lab init <project>                   # builders/, analyses/, configs/, experiments/, extensions/, and the toy example
+    microcircuit-lab init <project> --example pd14    # also the pd14 example (--example can be given several times)
+    microcircuit-lab init <project> --with-core       # also a copy of the core
 
-Nothing that already exists is touched. Plain ``init`` copies the toy network
-twice, once per way of working: ``configs/network/toy`` written by hand, with
-comments, and ``builders/toy``, which writes the same network to
-``configs/network/toy_from_builder``; with the toy's simulation and analysis
-settings, and the Brian2 models of ``extensions/brian2`` if Brian2 is installed.
-They are fetched from the core repository, at the release of the installed
-version, as ``--with-core`` does. With ``--with-core`` the core (the release
-of the installed version, or the latest ``main`` if it has none) is copied into
-``<project>/microcircuit-lab/`` and installed in editable mode. The copy is part of
-the project: it can be read, changed and committed with the project's own code, and
-the project's git commit then records the core's code too. Only the backends of
-the installed simulators are copied (``--backends nest brian2`` to choose); running
-``init --with-core --backends <name>`` again adds a missing one to an existing copy.
+Nothing that already exists is touched, so ``init .`` is safe in an existing
+repository. Everything is fetched from the core repository, at the release of
+the installed version (the latest ``main`` if it has none).
 
-``--with-core`` also copies the examples into the project: every builder
-under ``builders/``, every network, simulation and analysis config under
-``configs/``, and the example models under ``extensions/``. They can then be run as they are (``run --network <name>``) or
-regenerated first (``generate <builder>``). An example whose name already exists
-in the project is skipped, so ``init .`` is safe in an existing repository.
+Plain ``init`` copies the toy network twice, once per way of working:
+``configs/network/toy`` written by hand, with comments, and ``builders/toy``,
+which writes the same network to ``configs/network/toy_from_builder``; with the
+toy's simulation and analysis settings, and its models for the installed
+simulators (``extensions/brian2``).
+
+``--example <name>`` copies one of the core repository's ``examples/<name>/``
+into the project's folders: its builder, networks, simulation and analysis
+settings, plots, experiments and models, each where the project keeps it
+(``builders/pd14``, ``configs/network/pd14``, ...). An item the project already
+has, such as ``builders/pd14``, is skipped as a whole.
+
+With ``--with-core`` the core is copied into ``<project>/microcircuit-lab/`` and
+installed in editable mode. The copy is part of the project: it can be read,
+changed and committed with the project's own code, and the project's git commit
+then records the core's code too. Only the backends of the installed simulators
+are copied (``--backends nest brian2`` to choose); running ``init --with-core
+--backends <name>`` again adds a missing one to an existing copy.
 """
-
 import argparse
 import importlib.util
 import shutil
@@ -37,11 +40,16 @@ PROJECT_FOLDERS = ("builders", "analyses", "configs", "experiments", "extensions
 CORE_URL = "https://github.com/shimoura/microcircuit-lab.git"
 CORE_FOLDER = "microcircuit-lab"
 BACKENDS = ("nest", "brian2")
-EXAMPLE_FOLDERS = ("builders", "configs/network", "configs/simulation", "configs/analysis", "extensions")
+# The folders of an example whose entries are copied one by one, each to the
+# same place in the project: a builder, a network, a plot, a model file, ...
+EXAMPLE_FOLDERS = (
+    "builders", "analyses", "experiments", "configs/network", "configs/simulation", "configs/analysis",
+    *(f"extensions/{name}" for name in BACKENDS),
+)
 # What the copy of the core needs to be installed and edited: the package, its
 # docs (the README links to them), and the files pyproject.toml names (readme, license).
 CORE_FILES = ("microcircuit_lab", "docs", "pyproject.toml", "README.md", "LICENSE", "CITATION.cff")
-# What plain init copies from the core repository.
+# What plain init copies from examples/toy, with the toy's models (see _example_items).
 TOY_EXAMPLE = (
     "builders/toy",
     "configs/network/toy",
@@ -116,27 +124,32 @@ def _add_backends(source: Path, core: Path, backends: list[str]) -> None:
             print(f"Added the {name} backend to {core}")
 
 
-def _copy_example(core: Path, project: Path, path: str) -> None:
-    """Copy ``core/<path>`` to ``project/<path>``, unless the project has it."""
-    target = project / path
-    if target.exists():
-        print(f"Skipped {path} (already exists)")
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _copy(core / path, target)
-    print(f"Copied {path}")
-
-
-def _copy_examples(core: Path, project: Path, backends: list[str]) -> None:
-    not_chosen = {core / "extensions" / name for name in BACKENDS if name not in backends}
+def _example_items(example: Path, backends: list[str]) -> list[str]:
+    """Every item of an example (see EXAMPLE_FOLDERS), leaving out the
+    packages' ``__init__.py`` and the models of the simulators not chosen."""
+    items = []
     for folder in EXAMPLE_FOLDERS:
-        source = core / folder
-        if not source.is_dir():
+        if folder.startswith("extensions/") and folder.split("/")[1] not in backends:
             continue
-        for entry in sorted(source.iterdir()):
-            if entry.name.startswith("__") or entry in not_chosen:
-                continue
-            _copy_example(core, project, f"{folder}/{entry.name}")
+        if (example / folder).is_dir():
+            items += [f"{folder}/{entry.name}" for entry in sorted((example / folder).iterdir())
+                      if not entry.name.startswith("__")]
+    return items
+
+
+def _copy_example(example: Path, project: Path, items: list[str]) -> None:
+    """Copy each item of ``example`` to the same place in ``project``, unless the project has it."""
+    for item in items:
+        target = project / item
+        # A model file several examples share is already there: nothing to say.
+        if target.is_file() and target.read_bytes() == (example / item).read_bytes():
+            continue
+        if target.exists():
+            print(f"Skipped {item} (already exists)")
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _copy(example / item, target)
+        print(f"Copied {item}")
 
 
 def _release_tag() -> str | None:
@@ -164,43 +177,13 @@ def _clone_core(source: Path) -> None:
     subprocess.run(["git", "clone", "--quiet", "--filter=blob:none", *branch, CORE_URL, str(source)], check=True)
 
 
-def _copy_toy(project: Path) -> None:
-    """Copy the toy example (see the module docstring). Without git or a
-    connection, the project keeps its empty folders and says why."""
-    paths = list(TOY_EXAMPLE)
-    # NEST has the toy's neuron built in; Brian2 takes it from extensions/brian2.
-    if importlib.util.find_spec("brian2") is not None:
-        paths.append("extensions/brian2")
-    with tempfile.TemporaryDirectory() as tmp:
-        source = Path(tmp) / "core"
-        try:
-            _clone_core(source)
-        except OSError:
-            print(f"The toy example was not copied: git is not installed. Install it, then run `microcircuit-lab init {project}` again.")
-            return
-        except subprocess.CalledProcessError:
-            print(
-                f"The toy example was not copied: git could not reach {CORE_URL}. "
-                f"Run `microcircuit-lab init {project}` again once you are online."
-            )
-            return
-        for path in paths:
-            # An older release may not have every part of the example.
-            if (source / path).exists():
-                _copy_example(source, project, path)
-
-
-def _install_core(project: Path, backends: list[str]) -> None:
+def _install_core(source: Path, project: Path, backends: list[str]) -> None:
     core = project / CORE_FOLDER
-    with tempfile.TemporaryDirectory() as tmp:
-        source = Path(tmp) / "core"
-        _clone_core(source)
-        if core.exists():
-            print(f"{core} already exists, left as it is.")
-            _add_backends(source, core, backends)
-        else:
-            _copy_core(source, core, backends)
-        _copy_examples(source, project, backends)
+    if core.exists():
+        print(f"{core} already exists, left as it is.")
+        _add_backends(source, core, backends)
+    else:
+        _copy_core(source, core, backends)
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", str(core)], check=True)
     _ignore_build_files(project)
 
@@ -211,18 +194,23 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("project", type=Path)
     parser.add_argument(
+        "--example",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="Also copy the example NAME (e.g. pd14) into the project's folders; can be given several times.",
+    )
+    parser.add_argument(
         "--with-core",
         action="store_true",
-        help=(
-            f"Copy the core into <project>/{CORE_FOLDER}/, install it in editable mode "
-            "and copy the example builders, configs and models into the project."
-        ),
+        help=f"Also copy the core into <project>/{CORE_FOLDER}/ and install it in editable mode.",
     )
     parser.add_argument(
         "--backends",
         nargs="+",
         choices=BACKENDS,
-        help="Backends to copy with --with-core (default: those of the installed simulators).",
+        help="Simulators whose backend (with --with-core) and example models are copied "
+        "(default: the installed ones).",
     )
     args = parser.parse_args(argv)
 
@@ -234,7 +222,31 @@ def main(argv: list[str] | None = None) -> None:
             folder.mkdir(parents=True)
             print(f"Created {folder}")
 
-    if args.with_core:
-        _install_core(args.project, args.backends or _installed_backends())
-    else:
-        _copy_toy(args.project)
+    backends = args.backends or _installed_backends()
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / "core"
+        # Without git or a connection, the project keeps its empty folders and says why.
+        try:
+            _clone_core(source)
+        except OSError:
+            print("Nothing was copied from the core repository: git is not installed. "
+                  f"Install it, then run `microcircuit-lab init {args.project}` again.")
+            return
+        except subprocess.CalledProcessError:
+            print(f"Nothing was copied from the core repository: git could not reach {CORE_URL}. "
+                  f"Run `microcircuit-lab init {args.project}` again once you are online.")
+            return
+
+        examples = source / "examples"
+        unknown = [name for name in args.example if not (examples / name).is_dir()]
+        if unknown:
+            found = sorted(path.name for path in examples.iterdir() if path.is_dir())
+            raise SystemExit(f"No example named {', '.join(unknown)}; the examples are: {', '.join(found)}.")
+
+        toy = [item for item in _example_items(examples / "toy", backends)
+               if item in TOY_EXAMPLE or item.startswith("extensions/")]
+        _copy_example(examples / "toy", args.project, toy)
+        for name in args.example:
+            _copy_example(examples / name, args.project, _example_items(examples / name, backends))
+        if args.with_core:
+            _install_core(source, args.project, backends)
