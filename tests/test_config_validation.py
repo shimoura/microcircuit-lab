@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from conftest import EXAMPLES
 from pydantic import ValidationError
 
 from microcircuit_lab.config.network import NetworkDirectory, NetworkManifest
@@ -14,14 +15,14 @@ from microcircuit_lab.network.load import read_network, read_network_files
 
 TOY = Path("configs/network/toy")
 NETWORK_CONFIGS = sorted(
-    path.parent for path in Path("configs/network").glob("*/network.yaml")
+    path.parent for path in EXAMPLES.glob("*/configs/network/*/network.yaml")
 )
 
 
 @pytest.mark.parametrize("network_config", NETWORK_CONFIGS, ids=lambda path: path.name)
 def test_every_network_config_in_the_repository_is_valid(network_config: Path) -> None:
-    """The core reads every network config under configs/network, however
-    it was written: by hand or by a builder."""
+    """The core reads every network config of the examples, however it was
+    written: by hand or by a builder."""
     assert read_network(network_config).populations
 
 

@@ -1,6 +1,6 @@
 """The core on a multi-area network whose areas have different layers and cell types.
 
-Uses ``configs/network/toy_two_areas``: area A has L23-L6 with E, PV and SOM
+Uses ``examples/toy_two_areas/configs/network/toy_two_areas``: area A has L23-L6 with E, PV and SOM
 cells, area B has no L4 and adds VIP cells; some neuron entries are shared by
 several populations, others are split by layer. Nothing here relies on the
 population names meaning E or I: the checks work from the weights and neuron
@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from conftest import EXAMPLES, run_from
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import list_areas, select_populations
@@ -19,6 +20,11 @@ from microcircuit_lab.config.distributions import WeightDistribution
 from microcircuit_lab.network.load import assemble_network, read_network_files
 
 NETWORK = "configs/network/toy_two_areas"
+
+
+@pytest.fixture(autouse=True)
+def _run_from_its_example(monkeypatch):
+    run_from("toy_two_areas", monkeypatch)
 
 
 def _config(**scaling):
@@ -83,7 +89,7 @@ def test_a_population_without_an_area_is_an_area_of_its_own():
 
 
 def test_a_single_area_network_has_no_areas():
-    run = SimpleNamespace(populations=list(assemble_network(read_network_files("configs/network/toy")).populations))
+    run = SimpleNamespace(populations=list(assemble_network(read_network_files(EXAMPLES / "toy/configs/network/toy")).populations))
 
     assert list_areas(run) == []
 

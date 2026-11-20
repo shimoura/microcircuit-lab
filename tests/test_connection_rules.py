@@ -4,6 +4,7 @@
 import nest
 import numpy as np
 import pytest
+from conftest import EXAMPLES
 
 from microcircuit_lab.backends.nest.simulator import NestBackend
 from microcircuit_lab.builder_tools import (
@@ -400,7 +401,7 @@ def test_advanced_example_uses_every_feature():
     """The bundled example of these features loads, and still shows them all."""
     from microcircuit_lab.network.load import read_network
 
-    network = read_network("configs/network/toy_two_areas_advanced")
+    network = read_network(EXAMPLES / "toy_two_areas/configs/network/toy_two_areas_advanced")
     rules = set(network.connections["rule"])
     assert rules == {"pairwise_bernoulli", "fixed_indegree"}
     assert {entry.model for entry in network.synapses.values()} == {"static_synapse", "tsodyks2_synapse"}

@@ -1,5 +1,5 @@
-output/*
-extensions/nestml/**/build/*
+output/
+**/extensions/nestml/**/build/
 microcircuit_lab.egg-info/*
 **/__pycache__/*
 *.pyc
