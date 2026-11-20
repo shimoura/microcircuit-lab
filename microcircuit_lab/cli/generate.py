@@ -13,7 +13,7 @@ builder owns its own argument parsing. Run it from the project root.
 
 import sys
 
-from microcircuit_lab.project_code import discover_builders
+from microcircuit_lab.project_code import NO_PROJECT_HINT, discover_builders
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -22,7 +22,7 @@ def main(argv: list[str] | None = None) -> None:
     names = sorted(builders)
 
     if not argv or argv[0] in ("-h", "--help"):
-        listing = "\n".join(f"  {name}" for name in names) or "  (none found)"
+        listing = "\n".join(f"  {name}" for name in names) or f"  (none found: {NO_PROJECT_HINT})"
         print(f"Available models:\n{listing}")
         print("\nRun `microcircuit-lab generate <model> --help` for a model's options.")
         return
