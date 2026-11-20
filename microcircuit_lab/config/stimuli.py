@@ -68,8 +68,10 @@ class DcStimulusConfig(StimulusBase):
 
     @model_validator(mode="after")
     def _check_delay_is_fixed(self) -> DcStimulusConfig:
-        if self.delay.distribution is not None:
-            raise ValueError("a dc stimulus takes a fixed delay, e.g. delay: {value: 1.0}, not a distribution")
+        # A delay alone does not know whether a file gives it (see DrawnValue):
+        # a dc stimulus's never comes from a file, so it is checked in full here.
+        if self.delay.distribution is not None or self.delay.problems(from_file=False):
+            raise ValueError("a dc stimulus takes a fixed delay, written as delay: {value: 1.0}")
         return self
 
 
