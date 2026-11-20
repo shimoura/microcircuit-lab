@@ -126,7 +126,7 @@ def check_weight_units(backend: Brian2Backend) -> None:
         if backend.synapse_model(synapse) is not backend.synapse_models["static_synapse"]:
             raise NotImplementedError(
                 f"{user} uses synapse {synapse!r}; the Brian2 backend connects background input "
-                "and stimuli only through static synapses."
+                "and stimuli only through static synapses (other synapses aren't implemented yet)."
             )
 
     def add_user(user: str, target: str, synapse: str | None, weight: float, both_signs: bool, unit: str) -> None:

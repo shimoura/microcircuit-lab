@@ -145,8 +145,8 @@ class NestBackend:
 
         if self.simulation_config.recording.final_connections and self.num_processes() > 1:
             raise ValueError(
-                "recording.final_connections is not supported with several MPI processes: each holds "
-                "only its own synapses."
+                "recording.final_connections with several MPI processes isn't implemented yet: each "
+                "process holds only its own synapses."
             )
         self.network.check_shortest_delays(self.simulation_config.resolution)
         self._functions = distributions.load_functions(self._extensions)

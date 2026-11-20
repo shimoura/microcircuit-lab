@@ -174,10 +174,26 @@ def num_synapses_from_conn_prob(
     -------
     int
         Expected total number of synapses.
+
+    Raises
+    ------
+    ValueError
+        If a population is empty, or if ``conn_prob`` is 1 or more (the
+        expected number of synapses grows without bound).
     """
 
     if conn_prob <= 0.0:
         return 0
+    if n_source < 1 or n_target < 1:
+        raise ValueError(
+            f"num_synapses_from_conn_prob needs at least one source and one target neuron "
+            f"(n_source={n_source}, n_target={n_target})."
+        )
+    if conn_prob >= 1.0:
+        raise ValueError(
+            f"num_synapses_from_conn_prob needs conn_prob below 1 (got {conn_prob}): with multapses, "
+            "a probability of 1 needs infinitely many synapses."
+        )
 
     prod = n_source * n_target
 

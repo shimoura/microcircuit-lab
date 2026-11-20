@@ -246,7 +246,8 @@ class NetworkConfig(FrozenConfig):
                 if distribution is not None and distribution not in SHARED_DISTRIBUTIONS:
                     raise ValueError(
                         f"The {user} has a {what} from distribution {distribution!r}, which is not shared; "
-                        f"background inputs and stimuli take a fixed value or {', '.join(SHARED_DISTRIBUTIONS)} only."
+                        f"background inputs and stimuli take a fixed value or {', '.join(SHARED_DISTRIBUTIONS)} "
+                        "(other distributions aren't implemented yet for them)."
                     )
         return self
 

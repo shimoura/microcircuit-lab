@@ -87,8 +87,8 @@ def _recurrent_compensation(original: NetworkConfig, K_scaling: float) -> np.nda
             else f"synapse {synapse!r} on receptor port {original.receptor_port(synapse)!r}"
         )
         raise ValueError(
-            f"The mean input lost by scaling is known only for weights in pA on the default "
-            f"receptor port; connection {table['source'][i]} -> {table['target'][i]} has "
+            f"The mean input lost by scaling is computed only for weights in pA on the default "
+            f"receptor port (other units and ports aren't implemented yet); connection {table['source'][i]} -> {table['target'][i]} has "
             f"{reason}. Set preserve_mean_input or "
             "compensate_recurrent_input to false, or preserve_variance to false (no current needed)."
         )
@@ -130,8 +130,8 @@ def _background_compensation(original: NetworkConfig, K_scaling: float) -> np.nd
     unknown = _background_without_known_current(original)
     if unknown:
         raise ValueError(
-            f"The mean input lost by scaling is known only for weights in pA on the default "
-            f"receptor port; the background input of {unknown} has another unit or port. Set "
+            f"The mean input lost by scaling is computed only for weights in pA on the default "
+            f"receptor port (other units and ports aren't implemented yet); the background input of {unknown} has another unit or port. Set "
             "preserve_mean_input to false, or preserve_variance to false (no current needed)."
         )
 
@@ -169,8 +169,8 @@ def replace_background_by_mean_current(network: NetworkConfig) -> NetworkConfig:
     unknown = _background_without_known_current(network)
     if unknown:
         raise ValueError(
-            f"The mean background current is known only for weights in pA on the default "
-            f"receptor port; the background input of {unknown} has another unit or uses "
+            f"The mean background current is computed only for weights in pA on the default "
+            f"receptor port (other units and ports aren't implemented yet); the background input of {unknown} has another unit or uses "
             "another port."
         )
 

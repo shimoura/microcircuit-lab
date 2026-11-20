@@ -89,8 +89,9 @@ def scale_network(
 
     if network.scaling is not None:
         raise ValueError(
-            f"This network was already scaled (from {network.scaling.scaled_from!r}); scale the "
-            "full-scale network instead, with the product of the factors."
+            f"This network was already scaled (from {network.scaling.scaled_from!r}), and scaling it "
+            "again isn't implemented yet: scale the full-scale network instead, with the product of "
+            "the factors."
         )
     # The record of this scaling: this function and its arguments. A copy of
     # this function in a project records itself, by its module's name.
@@ -280,13 +281,13 @@ def _check_connections_can_scale(table, N_scaling: float, K_scaling: float) -> N
          "all_to_all gives each neuron n_source inputs, which shrink with N_scaling, so "
          "K_scaling must equal N_scaling"),
         (~np.isin(rule, SHARED_RULES),
-         "rule {rule} is not a shared one, and how it scales is not known"),
+         "rule {rule} is not a shared one: scaling it isn't implemented yet (scale it in the builder)"),
         ((rule == "from_file") & ((N_scaling != 1.0) | (K_scaling != 1.0)),
-         "rule from_file: its file gives every synapse, which scaling cannot change, so N_scaling and "
-         "K_scaling must be 1 (scale the file in the builder)"),
+         "rule from_file: its file gives every synapse, and scaling such a file isn't implemented yet, "
+         "so N_scaling and K_scaling must be 1 (scale the file in the builder)"),
         ((K_scaling != 1.0) & not_shared_rows(table["weight.distribution"]),
-         "weights from distribution {weight} are drawn with its arguments, which scaling "
-         "cannot divide, so K_scaling must be 1 (scale them in the builder)"),
+         "weights from distribution {weight} are drawn with its arguments, and scaling them "
+         "isn't implemented yet, so K_scaling must be 1 (scale them in the builder)"),
     )
     for rows, why in reasons:
         if rows.any():
