@@ -174,6 +174,11 @@ def _build_poisson_background(stp: bool) -> dict[str, dict[str, Any]]:
     }
 
 
+def default_network_name(stp: bool) -> str:
+    """The network's name when none is given: ``jiang24``, or ``jiang24_stp`` for the Base-STP model."""
+    return "jiang24_stp" if stp else "jiang24"
+
+
 def generate_jiang24(
     *,
     config_dir: str | Path = "configs",
@@ -187,8 +192,7 @@ def generate_jiang24(
     The Base model, or with ``stp`` the Base-STP model. ``network_name`` defaults
     to ``jiang24``, or ``jiang24_stp`` with ``stp``."""
 
-    if network_name is None:
-        network_name = "jiang24_stp" if stp else "jiang24"
+    network_name = network_name or default_network_name(stp)
     style = {"color_mode": "cell_type", "cell_type_colors": data.cell_type_colors}
     write_yaml(
         Path(config_dir) / "simulation" / f"{network_name}.yaml",
@@ -245,7 +249,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    name = args.network_name or ("jiang24_stp" if args.stp else "jiang24")
+    name = args.network_name or default_network_name(args.stp)
     generate_jiang24(config_dir=args.config_dir, network_name=name, stp=args.stp)
     print(f"Generated and validated {Path(args.config_dir) / 'network' / name}")
     print(f"Generated {Path(args.config_dir) / 'simulation' / name}.yaml")
