@@ -8,3 +8,7 @@ build/
 dist/
 environment.yml
 .micromamba
+# the docs site, built by mkdocs
+site/
+# The docs' notebook cache (mkdocs-jupyter)
+.cache/

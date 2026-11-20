@@ -1,0 +1,147 @@
+# The documentation site, built from the Markdown files where they are
+# (README.md, docs/, examples/*/README.md, CONTRIBUTING.md), so the same files
+# read on GitHub, in a copy of the core and on the site.
+#   pip install -e ".[docs]"
+#   mkdocs serve           # http://127.0.0.1:8000
+#   mkdocs build --strict  # as the docs workflow does
+# A plugin prints a notice about MkDocs 2 at every build; the site is not
+# affected. DISABLE_MKDOCS_2_WARNING=true NO_MKDOCS_2_WARNING=1 hides it.
+site_name: Microcircuit Lab
+site_description: Simulate spiking network models, from a single microcircuit to many areas, in NEST or Brian2.
+site_url: https://shimoura.github.io/microcircuit-lab/
+repo_url: https://github.com/shimoura/microcircuit-lab
+repo_name: shimoura/microcircuit-lab
+edit_uri: edit/main/
+
+# The pages are the Markdown files of the repository itself (same-dir plugin);
+# everything else in it is left out.
+docs_dir: .
+site_dir: site
+exclude_docs: |
+  /*
+  # assets/ holds the theme's own CSS and scripts, which /* would also leave out.
+  !/assets/
+  !/README.md
+  !/CONTRIBUTING.md
+  !/docs/
+  /docs/*.py
+  /docs/__pycache__/
+  /docs/tutorials/.ipynb_checkpoints/
+  /docs/overrides/
+  !/examples/
+  /examples/*/*
+  !/examples/README.md
+  !/examples/*/README.md
+
+nav:
+  - Getting started:
+      - Overview: README.md
+      - Installation: docs/installation.md
+      - How it works: docs/how-it-works.md
+      - Your project: docs/project.md
+  - Tutorials:
+      - docs/tutorials/README.md
+      - 1 · Your first run: docs/tutorials/1_first_run.md
+      - 2 · Change a parameter: docs/tutorials/2_change_a_parameter.md
+      - 3 · Your own network model: docs/tutorials/3_own_network_model.md
+      - 4 · A builder: docs/tutorials/4_builder.md
+      - 5 · A parameter sweep: docs/tutorials/5_parameter_sweep.ipynb
+      - 6 · NEST and Brian2: docs/tutorials/6_nest_and_brian2.ipynb
+  - User guide:
+      - Network models:
+          - Network files: docs/network-files.md
+          - Weights and delays: docs/weights-and-delays.md
+          - Connections: docs/connections.md
+          - Scaling a network model: docs/scaling.md
+          - A new network model: docs/new-network.md
+          - Builders (optional): docs/builders.md
+      - Running:
+          - From a script: docs/scripts.md
+          - The run folder: docs/run-folder.md
+          - Analysing a run: docs/analysis.md
+      - Simulators:
+          - NEST: docs/nest.md
+          - Brian2: docs/brian2.md
+  - Examples:
+      - examples/README.md
+      - Toy: examples/toy/README.md
+      - Two-area toy: examples/toy_two_areas/README.md
+      - PD14: examples/pd14/README.md
+      - Jiang et al. (2024): examples/jiang24/README.md
+      - HuMAM: examples/humam/README.md
+  - Reference:
+      - Configuration files: docs/config_files.md
+      - Python API: docs/api.md
+  - Contributing:
+      - CONTRIBUTING.md
+      - From a builder to the plots: docs/workflow.md
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.footer
+    - content.code.copy
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: {icon: material/weather-sunny, name: Light mode}
+
+plugins:
+  - same-dir
+  - search
+  # The tutorials are notebooks, shown with their saved outputs (not run here).
+  # A cell tagged remove-output shows its code only (e.g. NEST's log lines).
+  - mkdocs-jupyter:
+      include: ["*.ipynb"]
+      execute: false
+      include_source: true
+      no_prompt: true
+      markdown_cell_processor: mkdocs
+      remove_tag_config:
+        remove_all_outputs_tags: ["remove-output"]
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            heading_level: 3
+
+markdown_extensions:
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_css:
+  - docs/stylesheets/extra.css
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
