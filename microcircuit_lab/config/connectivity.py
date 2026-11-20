@@ -11,6 +11,7 @@ from pydantic import (
     StrictBool,
     StrictFloat,
     StrictInt,
+    field_validator,
     model_validator,
 )
 
@@ -126,6 +127,18 @@ class ConnectionConfig(FrozenConfig):
         default_factory=DelayDistribution,
         description="delay of each synapse; required, except with rule: from_file (the file gives the delays)",
     )
+
+    @field_validator(*RULE_NUMBER.values(), mode="wrap")
+    @classmethod
+    def _limit_shared_rules_only(cls, value, handler, info):
+        # A rule that is not shared takes these names as arguments of its own,
+        # which its simulator checks: here only that each is a number or
+        # true / false, as any other argument.
+        if info.data.get("rule") in SHARED_RULES:
+            return handler(value)
+        if not isinstance(value, (bool, int, float)):
+            raise ValueError(f"an argument of rule {info.data.get('rule')!r} is a number or true / false")
+        return value
 
     @model_validator(mode="before")
     @classmethod
