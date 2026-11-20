@@ -45,6 +45,18 @@ flowchart TD
 
 The files hold the numbers that are simulated; the simulator only turns each background rate per synapse into the rate of its generator (rate × indegree, `generator_rate` in `config/poisson_background.py`). Scaling and constant currents are builder steps (`builder_tools/`). The code behind each step from a builder to the plots: [docs/workflow.md](docs/workflow.md).
 
+### Who checks what
+
+Every mistake is reported once, by whoever knows the name it is about, and as early as that one can:
+
+| What | Checked by | When |
+| :--- | :--- | :--- |
+| The file format; the values the core computes with (sizes, indegrees, rates, a weight's `mean`); what each shared name means (`p` is a probability, a draw has a spread, a delay lasts at least one time step) | the core: `Field(...)` limits and validators in `config/` | when the files are read; a check that needs the simulation file too (a delay against the time step), in the backend's `check()` through a core function |
+| What its simulator cannot do with a shared name and would not say itself (it would run something else, or stop without a message); the names it looks up or the core writes (a project's distribution, a receptor port's name, an `I_e` added by a builder) | the backend | in its `check()`, before anything is built |
+| Everything under a simulator's own name (neuron and synapse parameters, the arguments of its own rules and distributions), and its own stricter limits | the simulator (for Brian2, its models in `extensions/brian2/`) | when it builds; the core passes them on unchecked |
+
+So the core never checks a simulator's name: `{rule: symmetric_pairwise_bernoulli, p: 2.5}` is refused by NEST. And a shared name means the same on every simulator: `{distribution: normal, mean: 1, std: 0}` is refused by the core (a value without spread is written as `value`), not left to run on one simulator and fail on the other.
+
 ### Does your idea fit what already exists?
 
 ```mermaid
