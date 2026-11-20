@@ -123,8 +123,8 @@ def write_network_directory(
 
     # connections (and, with compact, populations / poisson_background) go
     # one-record-per-line: they run to thousands of uniform rows for
-    # multi-area networks and the compact form parses identically (see the
-    # package README). neurons / scaling / reference stay in block style.
+    # multi-area networks and the compact form parses identically (see
+    # docs/connections.md, "Large networks"). neurons / scaling / reference stay in block style.
     payloads: dict[str, Any] = {
         "network.yaml": file_names,
         "populations.yaml": {"populations": table(list(populations))},

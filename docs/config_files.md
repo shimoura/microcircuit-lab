@@ -20,7 +20,7 @@ What this means for a model:
 
 A small working example to copy: [`examples/toy/configs/network/toy/`](https://github.com/shimoura/microcircuit-lab/tree/main/examples/toy/configs/network/toy).
 
-### network.yaml
+### `network.yaml`
 
 Names the file of each part. The names below are the usual ones.
 
@@ -34,7 +34,8 @@ connectivity: connectivity.yaml
 # required · text · file holding the background Poisson input of each population
 poisson_background: poisson_background.yaml
 # optional · text · file recording how this network was scaled (written by
-#   scale_network, never applied); omit the key for a network that was not scaled
+#   scale_network, a record only, not applied); omit the key for a network that was not
+#   scaled
 scaling: scaling.yaml
 # optional · text · file holding the reference rates; omit the key for none
 reference: reference.yaml
@@ -45,7 +46,7 @@ stimuli: stimuli.yaml
 synapses: synapses.yaml
 ```
 
-### populations.yaml
+### `populations.yaml`
 
 The populations: size, neuron and initial state.
 
@@ -68,7 +69,7 @@ populations:
       V_m: {distribution: normal, mean: -58.0, std: 10.0}
 ```
 
-### neurons.yaml
+### `neurons.yaml`
 
 The neuron models, by name. Several populations can share one.
 
@@ -94,7 +95,7 @@ neurons:
       t_ref: 2.0
 ```
 
-### synapses.yaml
+### `synapses.yaml`
 
 Optional: synapse models and receptor ports, by name. Without it, every connection uses the default synapse.
 
@@ -117,7 +118,7 @@ synapses:
     receptor_port: 1
 ```
 
-### connectivity.yaml
+### `connectivity.yaml`
 
 The connections between populations.
 
@@ -227,7 +228,7 @@ connections:
 connections_file:
 ```
 
-### poisson_background.yaml
+### `poisson_background.yaml`
 
 The background Poisson input of each population: synapses per neuron and their rate. Other always-on inputs are stimuli without start/stop.
 
@@ -258,9 +259,9 @@ poisson_background:
     generator: L23_E
 ```
 
-### stimuli.yaml
+### `stimuli.yaml`
 
-Optional: inputs for an experiment, applied as written (never scaled).
+Optional: inputs for an experiment, applied as written (not scaled).
 
 ```yaml
 # optional, default empty · list of entries · one entry per stimulus; `type` selects its
@@ -324,9 +325,9 @@ stimuli:
     synapse: depressing
 ```
 
-### scaling.yaml
+### `scaling.yaml`
 
-Only in a scaled network: how it was scaled, written by `scale_network` and never applied (the other files hold the scaled numbers); see "Scaling a network" in the README.
+Only in a scaled network: how it was scaled, written by `scale_network` as a record only, not applied (the other files hold the scaled numbers); see [Scaling a network model](scaling.md).
 
 ```yaml
 # required · text · the full-scale network this one was scaled from (or the builder
@@ -341,7 +342,7 @@ parameters:
   K_scaling: 0.1
 ```
 
-### reference.yaml
+### `reference.yaml`
 
 Optional: published values to compare with, and to compensate a scaled network.
 
@@ -358,7 +359,7 @@ full_mean_rates:
 
 `microcircuit-lab run --network <name>` uses `configs/simulation/<name>.yaml` and `configs/analysis/<name>.yaml`, or the defaults below for a file that is missing. `--simulation` and `--analysis` pick other files.
 
-### simulation/<name>.yaml
+### `simulation/<name>.yaml`
 
 How to run: duration, seed, threads, what to record and save.
 
@@ -379,7 +380,7 @@ backend:
   #   with
   name: nest
   # optional, default empty · mapping · options of that simulator, passed to its backend
-  #   as-is; the backend validates them (see the simulator's section in the README)
+  #   as-is; the backend validates them (see docs/nest.md and docs/brian2.md)
   options:
     device: cpp_standalone
 # optional · what to record
@@ -412,7 +413,7 @@ output:
   # optional · path · folder for the runs; omit for output/<network name>
   output_dir: output/toy
   # optional, default false · true or false · false: each run gets its own
-  #   <output_dir>/<date_time> folder; true: every run writes into output_dir itself
+  #   <output_dir>/<timestamp> folder; true: every run writes into output_dir itself
   overwrite: false
   # optional, default true · true or false · write metadata.json (versions, spike
   #   counts, run times); needed with config.yaml to re-plot the run
@@ -422,7 +423,7 @@ output:
   save_config: true
 ```
 
-### analysis/<name>.yaml
+### `analysis/<name>.yaml`
 
 Which plots to make and how they look. Each bundled plot has its own section; a plot of your own (`register_plot`) adds one with its name.
 

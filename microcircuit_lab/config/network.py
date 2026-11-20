@@ -85,7 +85,7 @@ class NetworkManifest(FrozenConfig):
         default=None,
         examples=["scaling.yaml"],
         description="file recording how this network was scaled (written by scale_network, "
-        "never applied); omit the key for a network that was not scaled",
+        "a record only, not applied); omit the key for a network that was not scaled",
     )
     reference: str | None = Field(
         default=None,

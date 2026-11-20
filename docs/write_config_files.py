@@ -54,8 +54,8 @@ FILES = [
     ("synapses.yaml", SynapsesFile, "Optional: synapse models and receptor ports, by name. Without it, every connection uses the default synapse."),
     ("connectivity.yaml", ConnectivityFile, "The connections between populations."),
     ("poisson_background.yaml", PoissonBackgroundFile, "The background Poisson input of each population: synapses per neuron and their rate. Other always-on inputs are stimuli without start/stop."),
-    ("stimuli.yaml", StimuliFile, "Optional: inputs for an experiment, applied as written (never scaled)."),
-    ("scaling.yaml", ScalingRecord, "Only in a scaled network: how it was scaled, written by `scale_network` and never applied (the other files hold the scaled numbers); see \"Scaling a network\" in the README."),
+    ("stimuli.yaml", StimuliFile, "Optional: inputs for an experiment, applied as written (not scaled)."),
+    ("scaling.yaml", ScalingRecord, "Only in a scaled network: how it was scaled, written by `scale_network` as a record only, not applied (the other files hold the scaled numbers); see [Scaling a network model](scaling.md)."),
     ("reference.yaml", ReferenceConfig, "Optional: published values to compare with, and to compensate a scaled network."),
 ]
 SIMULATION = ("simulation/<name>.yaml", SimulationConfig, "How to run: duration, seed, threads, what to record and save.")
@@ -345,7 +345,7 @@ def _analysis_section(writer: _Writer) -> str:
     config = model.model_validate(yaml.safe_load(body))
     for name, spec in plots.items():
         config.plot_config(name, spec.config_cls)
-    return f"### {file}\n\n{intro}\n\n```yaml\n{body}\n```"
+    return f"### `{file}`\n\n{intro}\n\n```yaml\n{body}\n```"
 
 
 def render() -> str:
@@ -356,7 +356,7 @@ def render() -> str:
         body = "\n".join(writer.model(model, ""))
         # The example must itself be a valid file.
         model.model_validate(yaml.safe_load(body))
-        sections.append(f"### {file}\n\n{intro}\n\n```yaml\n{body}\n```")
+        sections.append(f"### `{file}`\n\n{intro}\n\n```yaml\n{body}\n```")
     network, simulation = sections[: len(FILES)], sections[len(FILES):]
     analysis = _analysis_section(writer)
     return "\n".join(
