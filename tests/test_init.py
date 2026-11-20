@@ -192,26 +192,27 @@ def test_an_unknown_example_lists_the_examples(tmp_path, monkeypatch):
         init.main([str(tmp_path), "--example", "nope"])
 
 
-def test_an_example_skips_what_the_project_already_has(tmp_path, monkeypatch, capsys):
+def test_an_example_that_clashes_with_the_project_is_not_copied(tmp_path, monkeypatch, capsys):
     _fake_clone(monkeypatch)
     (tmp_path / "configs" / "network" / "demo").mkdir(parents=True)
     (tmp_path / "configs" / "network" / "demo" / "mine.yaml").write_text("keep")
     init.main([str(tmp_path), "--example", "demo"])
 
     assert sorted(p.name for p in (tmp_path / "configs" / "network" / "demo").iterdir()) == ["mine.yaml"]
-    assert "Skipped configs/network/demo (already exists)" in capsys.readouterr().out
-    assert (tmp_path / "configs" / "simulation" / "demo.yaml").is_file()
+    assert not (tmp_path / "builders" / "demo").exists()
+    assert "Not copied: the demo example, because the project has a different configs/network/demo" in capsys.readouterr().out
 
 
-def test_init_twice_changes_nothing(tmp_path, monkeypatch, capsys):
+def test_init_twice_says_nothing_and_keeps_a_changed_toy(tmp_path, monkeypatch, capsys):
     _fake_clone(monkeypatch)
     init.main([str(tmp_path), "--example", "demo", "--with-core"])
-    (tmp_path / "configs" / "simulation" / "demo.yaml").write_text("edited")
+    (tmp_path / "configs" / "simulation" / "toy.yaml").write_text("edited")
     capsys.readouterr()
     init.main([str(tmp_path), "--example", "demo", "--with-core"])
 
-    assert (tmp_path / "configs" / "simulation" / "demo.yaml").read_text() == "edited"
-    assert "Copied" not in capsys.readouterr().out
+    assert (tmp_path / "configs" / "simulation" / "toy.yaml").read_text() == "edited"
+    out = capsys.readouterr().out
+    assert "Copied" not in out and "Not copied" not in out
 
 
 def _fake_source(tmp_path):

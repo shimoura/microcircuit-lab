@@ -17,8 +17,9 @@ simulators (``extensions/brian2``).
 ``--example <name>`` copies one of the core repository's ``examples/<name>/``
 into the project's folders: its builder, networks, simulation and analysis
 settings, plots, experiments and models, each where the project keeps it
-(``builders/pd14``, ``configs/network/pd14``, ...). An item the project already
-has, such as ``builders/pd14``, is skipped as a whole.
+(``builders/pd14``, ``configs/network/pd14``, ...). What the project already has
+the same is passed over; if it has a different one, such as its own
+``builders/pd14``, the example is not copied, and ``init`` says which item.
 
 With ``--with-core`` the core is copied into ``<project>/microcircuit-lab/`` and
 installed in editable mode. The copy is part of the project: it can be read,
@@ -137,19 +138,35 @@ def _example_items(example: Path, backends: list[str]) -> list[str]:
     return items
 
 
-def _copy_example(example: Path, project: Path, items: list[str]) -> None:
-    """Copy each item of ``example`` to the same place in ``project``, unless the project has it."""
+def _files(path: Path) -> dict[Path, bytes]:
+    """The files of a file or folder, by their path inside it, without ``__pycache__``."""
+    if path.is_file():
+        return {Path(): path.read_bytes()}
+    return {file.relative_to(path): file.read_bytes() for file in path.rglob("*")
+            if file.is_file() and "__pycache__" not in file.parts}
+
+
+def _copy_example(example: Path, project: Path, items: list[str], asked: bool) -> None:
+    """Copy the items of ``example`` that the project does not have, each to
+    the same place. An item the project has the same (e.g. a model file several
+    examples share) is passed over. If the project has an item that differs,
+    such as its own ``builders/pd14``, nothing of the example is copied, so the
+    project never holds half an example next to its own files; ``asked`` (by
+    ``--example``) says so, while the toy, which comes with every ``init``, is
+    left out quietly in a project that changed it."""
+    differ = [item for item in items
+              if (project / item).exists() and _files(project / item) != _files(example / item)]
+    if differ:
+        if asked:
+            print(f"Not copied: the {example.name} example, because the project has a different "
+                  f"{', '.join(differ)}. Rename or remove it to get the example.")
+        return
     for item in items:
         target = project / item
-        # A model file several examples share is already there: nothing to say.
-        if target.is_file() and target.read_bytes() == (example / item).read_bytes():
-            continue
-        if target.exists():
-            print(f"Skipped {item} (already exists)")
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        _copy(example / item, target)
-        print(f"Copied {item}")
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _copy(example / item, target)
+            print(f"Copied {item}")
 
 
 def _release_tag() -> str | None:
@@ -243,10 +260,12 @@ def main(argv: list[str] | None = None) -> None:
             found = sorted(path.name for path in examples.iterdir() if path.is_dir())
             raise SystemExit(f"No example named {', '.join(unknown)}; the examples are: {', '.join(found)}.")
 
-        toy = [item for item in _example_items(examples / "toy", backends)
-               if item in TOY_EXAMPLE or item.startswith("extensions/")]
-        _copy_example(examples / "toy", args.project, toy)
+        # The toy comes with every init (all of it with --example toy, below).
+        if "toy" not in args.example:
+            toy = [item for item in _example_items(examples / "toy", backends)
+                   if item in TOY_EXAMPLE or item.startswith("extensions/")]
+            _copy_example(examples / "toy", args.project, toy, asked=False)
         for name in args.example:
-            _copy_example(examples / name, args.project, _example_items(examples / name, backends))
+            _copy_example(examples / name, args.project, _example_items(examples / name, backends), asked=True)
         if args.with_core:
             _install_core(source, args.project, backends)

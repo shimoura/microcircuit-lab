@@ -146,7 +146,7 @@ Good to know:
 - Run the commands from the project folder; that is where `builders/`, `analyses/`, `configs/` and `extensions/` are looked for.
 - With `--with-core`, the copy of the core is yours: change it and commit it with your project. Your edits take effect at once, and each run's `metadata.json` records your project's git commit, which then covers the core too.
 - A later core release is not applied to the copy by itself; compare and merge it by hand if you want it. To propose a change to the original core, see [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md).
-- The examples copied are yours as well. Anything the project already has (e.g. `builders/pd14/`) is skipped, so `microcircuit-lab init .` (with any options) is safe in an existing repository, and adds only what is missing.
+- The examples copied are yours as well. `microcircuit-lab init .` (with any options) never changes a file, so it is safe in an existing repository and adds only what is missing. If the project has its own, different version of an example's item (e.g. its own `builders/pd14/`), that example is not copied at all, and `init` says which item; a toy you changed is kept as it is.
 - After an upgrade that changes the file format, delete the toy's folders and run `microcircuit-lab init .` again to get them in the new format.
 
 ## Configuration
