@@ -179,6 +179,17 @@ def test_a_fixed_weight_or_delay_has_no_bounds() -> None:
     assert weight(1.0, unit="pA", lower_bound=0.0, bound_mode="clip") == {"value": 1.0, "unit": "pA"}
 
 
+@pytest.mark.parametrize("fields", [
+    {"distribution": "normal", "mean": 1.0, "std": 0.0},
+    {"distribution": "uniform", "min": 1.0, "max": 1.0},
+    {"distribution": "normal", "mean": 1.0, "std": 1.0, "lower_bound": 1.0, "upper_bound": 1.0, "bound_mode": "redraw"},
+])
+def test_a_draw_without_spread_is_refused(fields) -> None:
+    # NEST refuses it while building, Brian2 would run it: written as value instead.
+    with pytest.raises(ValueError, match="greater than 0|for one value, write it as value"):
+        WeightDistribution(**fields, unit="pA")
+
+
 def test_a_drawn_delay_needs_a_lower_bound() -> None:
     with pytest.raises(ValueError, match="needs lower_bound"):
         delay(1.5, rel_std=0.5)

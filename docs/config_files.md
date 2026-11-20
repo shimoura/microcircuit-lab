@@ -173,7 +173,7 @@ connections:
       #   any bound (normal, lognormal: of the weights, not of their log); a negative
       #   weight is inhibitory
       mean: 87.8
-      # optional · number ≥ 0 · standard deviation of the distribution the weights are
+      # optional · number > 0 · standard deviation of the distribution the weights are
       #   drawn from, before any bound (normal, lognormal: of the weights, not of their
       #   log)
       std: 8.78
@@ -206,7 +206,7 @@ connections:
       # optional · number · mean (ms) of the distribution the delays are drawn from,
       #   before any bound (normal, lognormal: of the delays, not of their log)
       mean: 1.5
-      # optional · number ≥ 0 · standard deviation (ms) of the distribution the delays
+      # optional · number > 0 · standard deviation (ms) of the distribution the delays
       #   are drawn from, before any bound (normal, lognormal: of the delays, not of
       #   their log)
       std: 0.75
