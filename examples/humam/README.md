@@ -1,4 +1,4 @@
-# HuMAM builder
+# HuMAM example
 
 Writes the network files of the human multi-area model (HuMAM) from its data, for one area or all 34. Everything specific to HuMAM stays here; the core runs the result like any other network.
 
@@ -11,7 +11,9 @@ Writes the network files of the human multi-area model (HuMAM) from its data, fo
 
 ## Generate and run
 
-From the repository root, these commands reproduce the bundled configs:
+Run these commands from this folder (`cd examples/humam` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example humam`).
+
+These commands reproduce the bundled configs:
 
 ```bash
 microcircuit-lab generate humam                    # humam_single: area rostralanteriorcingulate, 0.1 % of the neurons
@@ -60,7 +62,7 @@ simulation = Simulation.from_yaml(
 simulation.run()
 ```
 
-## Package contents
+## Files (in `builders/humam/`)
 
 - `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `microcircuit-lab generate humam` discovers and forwards to. Ends by checking its output with `read_network`.
 - `data/`: bundled source data used by the builder.

@@ -1,4 +1,4 @@
-# PD14 builder
+# PD14 example
 
 Writes the network files of the Potjans & Diesmann (2014) cortical microcircuit. Everything specific to PD14 stays here; the core runs the result like any other network.
 
@@ -8,6 +8,8 @@ Writes the network files of the Potjans & Diesmann (2014) cortical microcircuit.
 - The official PyNEST implementation, [INM-6/microcircuit-PD14-model](https://github.com/INM-6/microcircuit-PD14-model), commit `f79f8ac`, `network_params.py`. The optimized initial membrane potentials and the reference rates come from this implementation only.
 
 ## Generate and run
+
+Run these commands from this folder (`cd examples/pd14` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example pd14`).
 
 The bundled `configs/network/pd14/` was written by this builder. Write it again after changing `data.py`:
 
@@ -37,7 +39,7 @@ microcircuit-lab run --network pd14_downscaled --analysis pd14
 
 (see "Scaling a network" in `microcircuit_lab/README.md`).
 
-## Files
+## Files (in `builders/pd14/`)
 
 - `data.py`: the PD14 parameters, each with its source.
 - `build.py`: writes `configs/network/pd14/` from `data.py`; connection probabilities become synapse numbers with `num_synapses_from_conn_prob`, and the PSPs (mV) the currents (pA) that give them with `psp_to_psc_iaf_psc_exp`, both from `microcircuit_lab.builder_tools`. `main(argv)` is the entry point `microcircuit-lab generate pd14` calls.

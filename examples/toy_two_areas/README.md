@@ -2,6 +2,8 @@
 
 A small synthetic multi-area network (24 populations, about 1,700 neurons) that shows how a multi-area model is described, and tests that the core handles areas with different layers and cell types. The numbers are made up: it is a test case and an example, not a model of cortex.
 
+Run these commands from this folder (`cd examples/toy_two_areas` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example toy_two_areas`).
+
 ```bash
 microcircuit-lab run --network toy_two_areas     # plots for each area under plots/A and plots/B
 microcircuit-lab generate toy_two_areas          # rewrite configs/network/toy_two_areas/ from data.py
@@ -118,7 +120,7 @@ The reference rates in `reference.yaml` are the mean of four 2 s runs of this ne
 
 Its rates differ from those above. It has no reference rates, and its receptor ports take input whose mean current the core can't compute, so a scaled copy needs `preserve_mean_input=False` (`scale_network`).
 
-## Files
+## Files (in `builders/toy_two_areas/`)
 
 - `data.py`: every number above, as small tables.
 - `build.py`: turns the tables into `configs/network/toy_two_areas/` (`main(argv)` is the entry point `microcircuit-lab generate` calls).

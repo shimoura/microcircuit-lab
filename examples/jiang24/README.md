@@ -1,4 +1,4 @@
-# Jiang et al. (2024) builder
+# Jiang et al. (2024) example
 
 Writes the network files of the layered microcircuit model of mouse somatosensory cortex of Jiang et al. (2024), with PV, SOM and VIP interneurons, without thalamic input: 13 populations and 6,448 neurons. It writes either of two versions:
 
@@ -13,6 +13,8 @@ Everything specific to this model stays here; the core runs the result like any 
 - The official code, https://zenodo.org/doi/10.5281/zenodo.10069507. Where the publication rounds a value, `data.py` has the one the code uses.
 
 ## Generate and run
+
+Run these commands from this folder (`cd examples/jiang24` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example jiang24`).
 
 ```bash
 microcircuit-lab generate jiang24           # writes configs/network/jiang24/, jiang24.yaml in configs/simulation/ and configs/analysis/, and jiang24_fig6.yaml in configs/analysis/
@@ -36,9 +38,9 @@ microcircuit-lab run --network jiang24_stp --analysis jiang24_stp_fig6
 microcircuit-lab run --run-dir output/jiang24/<timestamp> --analysis jiang24_fig6     # a finished run, without simulating it again
 ```
 
-`microcircuit-lab init --with-core` copies this builder and the configs, but not `analyses/` or `experiments/`. In such a project, first copy `analyses/jiang24_raster.py` and `analyses/jiang24_firing_rates.py` from this repository, or `jiang24_fig6` and `jiang24_stp_fig6` stop with an error about unknown plot sections, after any simulation.
+`jiang24_fig6` and `jiang24_stp_fig6` need the plots in `analyses/` (`jiang24_raster.py`, `jiang24_firing_rates.py`); `init --example jiang24` copies them with the rest of the example.
 
-The publication's firing rate panel pools the neurons of 20 simulations, while this plot shows one run. For the pooled panel (in a project, copy `experiments/jiang24/run_seeds.py` or `experiments/jiang24_stp/run_seeds.py` too; the plot takes its settings from `jiang24_fig6` for both versions, which is fine because they are the same):
+The publication's firing rate panel pools the neurons of 20 simulations, while this plot shows one run. For the pooled panel (the plot takes its settings from `jiang24_fig6` for both versions, which is fine because they are the same):
 
 ```bash
 python experiments/jiang24/run_seeds.py     # the publication's 20 seeds, in output/jiang24_seeds/
@@ -72,7 +74,7 @@ The current implementation follows the original code, which made the published r
 - In the paper, the Methods say L5 Exc→SOM, SOM→Exc and SOM→SOM are averages of L2/3 and L4. In the original code `Helper.hybrid_conn` averages L5 SOM→PV, PV→SOM and SOM→SOM instead, and the values in Fig. 3 agree with the code.
 - In the original code `model/net_dict.json` holds other background rates (`K_ext`) and scaled PSPs (`psp_means`, `w_mod_custom`). The code replaces them when it builds the network, so neither model uses them; the input columns saved with the published runs (`results_pop.csv` of `snake_gs-static` and `snake_gs-stp` in `snakes_main.zip`) match the values here.
 
-## Files
+## Files (in `builders/jiang24/`)
 
 - `data.py`: the parameters, each with its source; those of the Base-STP model alone are in the section at the end.
 - `build.py`: writes `configs/network/jiang24/`, or `configs/network/jiang24_stp/` with `--stp`, and the simulation and analysis files from `data.py`. `main(argv)` is the entry point `microcircuit-lab generate jiang24` calls.

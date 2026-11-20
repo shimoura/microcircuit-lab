@@ -29,7 +29,7 @@ microcircuit_lab/
 └── project_code.py    finds the builders/, analyses/ and extensions/ of a project
 ```
 
-Only this folder is installed by `pip`. In a clone, `builders/`, `configs/`, `experiments/` and `extensions/` hold the examples, laid out like a project's.
+Only this folder is installed by `pip`. In a clone, `examples/` holds one folder per model, each laid out like a project (`builders/`, `configs/`, `extensions/`, ...) and run from its own folder. The tests run from `examples/toy/` (`tests/conftest.py`).
 
 ### Follow the name
 
@@ -38,7 +38,7 @@ A concept keeps its name from the YAML file to the test. To change something, st
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 400}}}%%
 flowchart TD
-  Y["configs/network/toy_stimulated/stimuli.yaml"] --> C["config/stimuli.py<br/>what the file may contain"]
+  Y["examples/toy/configs/network/toy_stimulated/stimuli.yaml"] --> C["config/stimuli.py<br/>what the file may contain"]
   C --> B["backends/nest/simulator.py<br/>create_stimuli: builds it in NEST"]
   B --> T["tests/test_stimuli.py"]
 ```
