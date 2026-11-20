@@ -400,7 +400,7 @@ def render() -> str:
             "- **Names are only labels.** `E` does not make a population excitatory: the sign of "
             "its outgoing weights does.",
             "",
-            "A small working example to copy: [`examples/toy/configs/network/toy/`](../examples/toy/configs/network/toy/).",
+            "A small working example to copy: [`examples/toy/configs/network/toy/`](https://github.com/shimoura/microcircuit-lab/tree/main/examples/toy/configs/network/toy).",
             "",
             "\n\n".join(network),
             "",
