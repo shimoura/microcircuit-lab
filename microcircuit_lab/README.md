@@ -98,7 +98,7 @@ pip install -e ".[dev,nest]"
 
 `pd14` is full scale (77,169 neurons, about 15 GB of memory) and simulates 11 s; for a quick look, run `pd14_downscaled` (N and K scaled by 0.1; see [Scaling a network](#scaling-a-network)). `jiang24` and `jiang24_stp` have 6,448 neurons and simulate 15 s; both are written by the builder `jiang24` (`jiang24_stp` with `--stp`), whose README shows how to make the plots of the publication's Fig. 6A and 6B.
 
-Each network belongs to an example of the repository, [examples/](../examples/), one folder per model with its README and the model's sources (`toy`, `toy_two_areas`, `pd14`, `jiang24`, `humam`). An example is laid out like a project: run it from its folder (`cd examples/pd14`), or add it to your project with `microcircuit-lab init <project> --example pd14`.
+Each network belongs to an example of the repository, [examples/](https://github.com/shimoura/microcircuit-lab/tree/main/examples), one folder per model with its README and the model's sources (`toy`, `toy_two_areas`, `pd14`, `jiang24`, `humam`). An example is laid out like a project: run it from its folder (`cd examples/pd14`), or add it to your project with `microcircuit-lab init <project> --example pd14`.
 
 ## Starting a project
 
@@ -332,7 +332,7 @@ connections:
 - A port can also be given by name (`receptor_port: AMPA`), which the simulator resolves: NEST looks it up in the `receptor_types` of the target's neuron model (e.g. `ht_neuron`), Brian2 takes it as the variable the connection adds to.
 - The core knows the time constants of the default port only (`tau_syn_ex`, `tau_syn_in`). The input lost by scaling is compensated only for weights in pA on the default port; with other units (e.g. conductances) or ports, scaling stops with an error (see [Scaling a network](#scaling-a-network)). A neuron with several ports (e.g. `iaf_psc_exp_multisynapse`) takes its time constants as a list: `tau_syn: [0.5, 100.0]`. Such a neuron may have no default port at all, so its background input needs a `synapse` too.
 - With a plastic synapse, the scaling compensation uses the initial weights. With short-term plasticity (`tsodyks2_synapse`, ...) each spike transmits weight × u × x, so a weight converted from a PSP gives that PSP at u·x = 1: with U = 0.5 the first spike gives half of it.
-- A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([examples/toy_two_areas](../examples/toy_two_areas/README.md#advanced-variant)).
+- A runnable example with all of this, and values drawn per neuron: `microcircuit-lab run --network toy_two_areas_advanced` ([examples/toy_two_areas](https://github.com/shimoura/microcircuit-lab/blob/main/examples/toy_two_areas/README.md#advanced-variant)).
 
 #### Connections from a file
 
@@ -449,7 +449,7 @@ With $K \to k K$ ($k$ = `K_scaling`), the weights alone can keep $\mu$ or $\sigm
 - The DC is known only for weights in pA on the default receptor port; another unit (e.g. nS) or port stops the scaling with an error, unless `preserve_mean_input=False` or `preserve_variance=False` (no DC needed).
 - With `replace_background_by_mean_current` after scaling, the current is computed from the scaled background, and the DC adds the lost part, so together they are the full-scale mean.
 - Excitatory and inhibitory inputs each use their own $\tau_s$ (`tau_syn_ex`, `tau_syn_in`).
-- These are the mean and variance only. A scaled network is close to the full one, not equal; compare its rates with `reference.yaml` (the example numbers are in the [PD14 README](../examples/pd14/README.md)).
+- These are the mean and variance only. A scaled network is close to the full one, not equal; compare its rates with `reference.yaml` (the example numbers are in the [PD14 README](https://github.com/shimoura/microcircuit-lab/blob/main/examples/pd14/README.md)).
 - A connection left with less than one synapse is dropped.
 
 <a id="adding-a-new-model"></a>
@@ -501,7 +501,7 @@ write_network_directory(
 - `builder_tools` also has `num_synapses_from_conn_prob`, `psp_to_psc_iaf_psc_exp` ([Weights and delays](#weights-and-delays)), `scale_network` ([Scaling a network](#scaling-a-network)) and `replace_background_by_mean_current` ([Background input](#background-input)).
 - `write_network_directory` is optional: files written any other way are checked the same way when loaded.
 - `write_network_directory` writes every value, defaults included (e.g. `rule`), so the files keep their meaning if a default of the core changes.
-- Worked examples: the builders of [examples/](../examples/) (`pd14`, `jiang24`, `toy_two_areas`, `humam`). Add a `README.md` with your model's sources.
+- Worked examples: the builders of [examples/](https://github.com/shimoura/microcircuit-lab/tree/main/examples) (`pd14`, `jiang24`, `toy_two_areas`, `humam`). Add a `README.md` with your model's sources.
 - A builder in another installed package can register under the `microcircuit_lab.builders` entry-point group (see `microcircuit_lab/project_code.py`).
 
 ## Running from a script
@@ -831,7 +831,7 @@ backend:
 
 #### Models of your own
 
-Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `extensions/brian2/` of your project, or in a module given with `--extensions`. A name it cannot find is an error that says so, before anything is built. Each example has the NEST models its networks use in its own `extensions/brian2/` (e.g. [the toy's](../examples/toy/extensions/brian2/)), `static_synapse` is built in, and `init` copies them into a project with the example.
+Brian2 has no neuron models of its own, so the core holds none: each model that `neurons.yaml` and `synapses.yaml` name is a `NeuronModel` or `SynapseModel` (`microcircuit_lab/backends/brian2/models.py`) in a Python file in `extensions/brian2/` of your project, or in a module given with `--extensions`. A name it cannot find is an error that says so, before anything is built. Each example has the NEST models its networks use in its own `extensions/brian2/` (e.g. [the toy's](https://github.com/shimoura/microcircuit-lab/tree/main/examples/toy/extensions/brian2)), `static_synapse` is built in, and `init` copies them into a project with the example.
 
 ```python
 # extensions/brian2/my_lif.py
