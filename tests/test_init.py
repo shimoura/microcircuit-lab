@@ -9,6 +9,13 @@ import pytest
 from microcircuit_lab.cli import init
 
 
+@pytest.fixture(autouse=True)
+def _not_from_a_clone(monkeypatch):
+    # The tests run from a clone of the core; init would copy from it. Here it
+    # fetches the core as from an installed package, unless a test says otherwise.
+    monkeypatch.setattr(init, "_local_clone", lambda: None)
+
+
 def _recorder(commands, tag_exists=True):
     """A stand-in for subprocess.run that records each command; `git ls-remote`
     answers as if the release tag exists (or not)."""
@@ -130,13 +137,15 @@ def test_copies_only_the_toy_example_and_the_brian2_models_with_brian2(tmp_path,
 
 def test_without_a_connection_the_folders_are_still_made(tmp_path, monkeypatch, capsys):
     def offline(command, check, **kwargs):
-        raise subprocess.CalledProcessError(128, command)
+        raise subprocess.CalledProcessError(128, command, stderr="fatal: unable to access")
 
     monkeypatch.setattr(subprocess, "run", offline)
     init.main([str(tmp_path)])
 
     assert (tmp_path / "builders").is_dir()
-    assert "Nothing was copied from the core repository" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Nothing was copied from the core repository" in out
+    assert "fatal: unable to access" in out
 
 
 def test_with_core_copies_the_core_without_its_git_history(tmp_path, monkeypatch):
@@ -249,3 +258,20 @@ def test_adding_a_backend_to_an_existing_copy_changes_nothing_else(tmp_path, mon
     backends = tmp_path / "core" / "microcircuit_lab" / "backends"
     assert (backends / "brian2" / "simulator.py").read_text() == "brian2"
     assert nest_file.read_text() == "my edit"
+
+
+def test_a_clone_the_package_runs_from_is_copied_without_fetching(tmp_path, monkeypatch, capsys):
+    clone = tmp_path / "clone"
+    _fake_clone(monkeypatch)
+    subprocess.run(["git", "clone", init.CORE_URL, str(clone)], check=True)
+    (clone / "examples" / "toy" / "configs" / "simulation" / "toy.yaml").write_text("changed, not committed")
+
+    def no_fetch(command, check, **kwargs):
+        raise AssertionError(f"fetched: {command}")
+
+    monkeypatch.setattr(subprocess, "run", no_fetch)
+    monkeypatch.setattr(init, "_local_clone", lambda: clone)
+    init.main([str(tmp_path / "proj")])
+
+    assert (tmp_path / "proj" / "configs" / "simulation" / "toy.yaml").read_text() == "changed, not committed"
+    assert f"Copying from your clone at {clone}" in capsys.readouterr().out
