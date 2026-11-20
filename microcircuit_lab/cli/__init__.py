@@ -1,6 +1,6 @@
 """The ``microcircuit-lab`` command.
 
-    microcircuit-lab init <project>            create a project's folders (--with-core: keep the core inside)
+    microcircuit-lab init <project>            create a project's folders with the toy (--example <name>: also that example; --with-core: keep the core inside)
     microcircuit-lab generate <model> [opts]   write a model's network configs
     microcircuit-lab run [opts]                simulate a network and plot it
     microcircuit-lab new-builder <name>        scaffold ./builders/<name>/

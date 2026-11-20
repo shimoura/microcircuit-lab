@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import EXAMPLES
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.analysis import PLOT_REGISTRY, PlotSpec
@@ -14,7 +15,7 @@ from microcircuit_lab.network.load import assemble_network, read_network_files
 
 
 def _toy_network() -> NetworkConfig:
-    network_files = read_network_files("configs/network/toy")
+    network_files = read_network_files(EXAMPLES / "toy/configs/network/toy")
     config = assemble_network(network_files)
     return config
 
@@ -127,7 +128,7 @@ def test_a_plot_from_the_project_analyses_folder_runs(
     request.addfinalizer(lambda: sys.modules.pop("analyses", None))
     monkeypatch.syspath_prepend(str(tmp_path))
     monkeypatch.chdir(tmp_path)
-    config_dir = Path(__file__).resolve().parents[1] / "configs"
+    config_dir = EXAMPLES / "toy" / "configs"
     monkeypatch.setattr(
         sys,
         "argv",

@@ -1,0 +1,70 @@
+# HuMAM example
+
+Writes the network files of the human multi-area model (HuMAM) from its data, for one area or all 34. Everything specific to HuMAM stays here; the core runs the result like any other network.
+
+## Sources
+
+- Pronold, J., van Meegen, A., Shimoura, R. O., Vollenbröker, H., Senden, M., Hilgetag, C. C., Bakker, R., & van Albada, S. J. (2024). Multi-scale spiking network model of human cerebral cortex. *Cerebral Cortex*. https://doi.org/10.1093/cercor/bhae409
+- The HuMAM code, [INM-6/human-multi-area-model](https://github.com/INM-6/human-multi-area-model), `main` at commit `cab39b3`.
+
+`data/` holds network data produced by the HuMAM code at full scale (neuron and synapse numbers, weights, delays, external input, theoretical rates), with cortico-cortical scaling 1.0 (E→E) and 2.0 (E→I); the parameters it was produced with are in `data/network_params.yaml`.
+
+## Generate and run
+
+Run these commands from this folder (`cd examples/humam` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example humam`).
+
+These commands reproduce the bundled configs:
+
+```bash
+microcircuit-lab generate humam                    # humam_single: area rostralanteriorcingulate, 0.1 % of the neurons
+microcircuit-lab generate humam --area all --n-scaling 0.004 --k-scaling 0.004 --t-sim 2000 --threads 16   # humam_all
+```
+
+`--area <name>` picks another area (names from `data/net.yaml`, `area_list`). A single area gets a constant current in place of the input from the areas it is cut off from (`--no-compensate-missing-areas` turns it off).
+
+The command generates configurations under `configs/network/` and `configs/simulation/`. The network is written scaled (`--n-scaling`, `--k-scaling`, 0.001 by default): its files hold the numbers that are simulated, with that current in `I_e`, and `scaling.yaml` records how it was made. The recurrent and background input lost by scaling are replaced by a constant current computed from the full-scale rates in `reference.yaml` (mean-field estimates). At the default 0.001 the network keeps its mean rates near those estimates, but not its fluctuations or correlations: it is a quick check, not the model's result.
+
+Generation only writes portable configuration files. Run them separately with `microcircuit-lab run`. Use `microcircuit-lab generate humam --help` for the available generation options.
+
+## What follows HuMAM
+
+The builder reproduces how HuMAM `main` ([INM-6/human-multi-area-model](https://github.com/INM-6/human-multi-area-model), commit `cab39b3`, `src/simulation.py`, `src/default_sim_params.py`) builds the network:
+
+- weights are written in pA (`unit: pA`), as in the bundled data; normal, and clipped at 0 keeping their sign (`lower_bound: 0` or `upper_bound: 0`, `bound_mode: clip`);
+- delays follow `delay_distribution` in `data/net.yaml` (lognormal), clipped at the resolution (`lower_bound: 0.1`, `bound_mode: clip`), locally and between areas;
+- the background input has a fixed delay of the resolution;
+- initial membrane potentials are drawn from a normal with mean −150 mV and SD 50 mV;
+- neuron parameters come from `neuron_params_<type>` in `data/net.yaml`, one entry per population type; a local connection gets the excitatory or inhibitory delay by the sign of its weight, so no population name is assumed;
+- connections with a weight of 0 are skipped.
+
+## Python API
+
+```python
+from builders.humam import generate_humam_configs
+
+paths = generate_humam_configs(
+    area="rostralanteriorcingulate",
+    config_dir="configs",
+    network_name="humam_single",
+    simulation_name="humam_single",
+)
+```
+
+After generation, the model is no longer special to the simulator:
+
+```python
+from microcircuit_lab import Simulation
+
+simulation = Simulation.from_yaml(
+    network_name="humam_single",
+    simulation_name="humam_single",
+)
+simulation.run()
+```
+
+## Files (in `builders/humam/`)
+
+- `build.py`: HuMAM source-data translation and config generation. Defines `main(argv)` (re-exported from `__init__`), the entry point `microcircuit-lab generate humam` discovers and forwards to. Ends by checking its output with `read_network`.
+- `data/`: bundled source data used by the builder.
+
+New HuMAM-specific transformations belong here rather than in generic `network/` or `backends/` modules.

@@ -43,6 +43,9 @@ from types import ModuleType
 from typing import Any
 
 BUILDER_ENTRY_POINT_GROUP = "microcircuit_lab.builders"
+# Said when a command runs outside a project (no configs/ or builders/ here).
+NO_PROJECT_HINT = ("run it from a project folder, such as examples/toy/ in the core repository, "
+                   "or make one with `microcircuit-lab init <project>`")
 
 
 def import_folder_modules(

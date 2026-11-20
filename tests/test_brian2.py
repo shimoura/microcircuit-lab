@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from conftest import run_from
 
 from microcircuit_lab import Simulation
 from microcircuit_lab.backends.brian2.models import (
@@ -595,8 +596,9 @@ def test_missing_model_fails_before_the_run_folder_and_says_where_to_define_it(t
     assert not (tmp_path / "runs").exists()
 
 
-@pytest.mark.parametrize("network_name", ["toy_stimulated", "toy_two_areas_advanced"])
-def test_networks_with_every_feature_spike(network_name: str, tmp_path: Path) -> None:
+@pytest.mark.parametrize(("example", "network_name"), [("toy", "toy_stimulated"), ("toy_two_areas", "toy_two_areas_advanced")])
+def test_networks_with_every_feature_spike(example: str, network_name: str, tmp_path: Path, monkeypatch) -> None:
+    run_from(example, monkeypatch)
     # Stimuli and a conductance-based model; drawn values, connection rules,
     # synapse models and receptor ports.
     simulation = _run(network_name, tmp_path, t_sim=100.0)
