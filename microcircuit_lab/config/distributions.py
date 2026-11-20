@@ -110,16 +110,23 @@ def drawn_value_problems(
     limits (e.g. ``std`` >= 0) are checked by pydantic with its ``Field``.
 
     ``from_file`` marks the values a file gives (a connection with ``rule:
-    from_file``): they have no field set. None leaves an entry with no field
-    set unchecked, for whoever knows where it is used (see
-    :meth:`DrawnValue.problems`).
+    from_file``): they have no field set. None (not known yet) leaves out the
+    checks that depend on it (a value or a distribution is needed; a fixed
+    value takes only ``value``), for whoever knows where the entry is used
+    (see :meth:`DrawnValue.problems`).
     """
 
     distribution = fields["distribution"]
     arguments = [name for name in fields if name not in DelayDistribution.model_fields]
     given = {name: ~is_unset(values) for name, values in fields.items()}
     empty = ~np.logical_or.reduce(list(given.values()))
-    from_file = empty if from_file is None else np.asarray(from_file, dtype=bool)
+    if from_file is None:
+        # Not known yet (an entry checked on its own): the checks that depend
+        # on it are left to whoever knows, e.g. the connection table.
+        from_file = not_from_file = np.zeros(empty.shape, dtype=bool)
+    else:
+        from_file = np.asarray(from_file, dtype=bool)
+        not_from_file = ~from_file
     fixed = ~given["distribution"]
     kinds = {name: distribution == name for name in SHARED_DISTRIBUTIONS}
     bounded = given["lower_bound"] | given["upper_bound"]
@@ -127,9 +134,9 @@ def drawn_value_problems(
         checks = [
             ("distribution", distribution == "fixed",
              "fixed was removed: write a fixed value as value: (e.g. {value: 87.8})"),
-            ("value", ~from_file & empty,
+            ("value", not_from_file & empty,
              "needed: a value, or a distribution (only a connection with rule: from_file leaves it out)"),
-            ("value", ~from_file & ~empty & fixed & ~given["value"],
+            ("value", not_from_file & ~empty & fixed & ~given["value"],
              "a fixed value needs value; a drawn one, a distribution"),
             ("value", ~fixed & given["value"], "value is a fixed value: with a distribution, remove it"),
             ("lower_bound", fixed & bounded, "a fixed value is not drawn: remove its bounds"),
@@ -147,7 +154,7 @@ def drawn_value_problems(
                 if field not in takes:
                     checks.append((field, kinds[name] & given[field], f"{name} takes {' and '.join(takes)}, not {field}"))
         for field in ("mean", "std", "min", "max", *arguments):
-            checks.append((field, ~from_file & fixed & given[field], f"a fixed value takes value, not {field}"))
+            checks.append((field, not_from_file & fixed & given[field], f"a fixed value takes value, not {field}"))
         for field in fields:
             checks.append((field, from_file & given[field], "with rule: from_file, the file gives every value: "
                            "write only the weight's unit, and no delay"))
@@ -211,7 +218,9 @@ class DrawnValue(FrozenConfig):
 
     @model_validator(mode="after")
     def _check_fields_fit(self):
-        for problem in self.problems(from_file=None):
+        # Only a connection's weight or delay can come from a file, and only
+        # its connection knows.
+        for problem in self.problems(from_file=False if self.kind == "neuron" else None):
             raise ValueError(problem)
         return self
 

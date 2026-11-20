@@ -298,6 +298,12 @@ class NestBackend:
             "fixed_outdegree": "outdegree",
             "pairwise_bernoulli": "p",
         }
+        # The fields of a weight and of a delay, with their column names
+        # ("weight.mean", ...): worked out once, not for every row.
+        fields_of = {
+            group: [(name, f"{group}.{name}") for name in DelayDistribution.model_fields]
+            for group in ("weight", "delay")
+        }
 
         table = self.network.connections
         rows_per_piece = 100_000
@@ -336,7 +342,7 @@ class NestBackend:
                 synapse = column["synapse"][i]
                 weight, delay = (
                     distributions.drawn_parameter(
-                        {name: column[f"{group}.{name}"][i] for name in DelayDistribution.model_fields}
+                        {name: column[key][i] for name, key in fields_of[group]}
                         | given_arguments({name: values[i] for name, values in arguments[group].items()}),
                         self._functions,
                     )

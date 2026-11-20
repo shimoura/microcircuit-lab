@@ -192,7 +192,10 @@ def assemble_network(directory: NetworkDirectory) -> NetworkConfig:
 
     connections = directory.connection_table
     if connections is None:
-        connections = ConnectionTable.from_yaml_rows(directory.connectivity.connections)
+        try:
+            connections = ConnectionTable.from_yaml_rows(directory.connectivity.connections)
+        except ValueError as error:
+            raise ValueError(f"{directory.manifest.connectivity}: {error}") from None
 
     try:
         return NetworkConfig(
