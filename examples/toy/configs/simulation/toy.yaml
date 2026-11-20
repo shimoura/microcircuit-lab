@@ -2,7 +2,8 @@ t_sim: 1000.0
 resolution: 0.1
 rng_seed: 42
 local_num_threads: 4
-print_time: true
+# Off: in a notebook, NEST's progress line hangs runs with many short steps (docs/nest.md)
+print_time: false
 
 recording:
   spike_recording: true
