@@ -152,6 +152,9 @@ def test_nest_runs_its_own_rule_with_its_arguments(tmp_path):
     table.write_csv(tmp_path / "connections.csv")
     assert ConnectionTable.read_csv(tmp_path / "connections.csv") == table
 
+    # Its arguments are its simulator's to check, also under a shared rule's name.
+    _connection(rule="symmetric_pairwise_bernoulli", source="S", target="S", p=2.5)
+
 
 @pytest.mark.parametrize(
     ("connection", "scaling", "message"),

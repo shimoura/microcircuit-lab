@@ -143,8 +143,10 @@ def drawn_value_problems(
             ("bound_mode", bounded & ~given["bound_mode"],
              "a bound needs bound_mode: redraw (draw again) or clip (set to the bound)"),
             ("bound_mode", ~bounded & given["bound_mode"], "bound_mode needs lower_bound or upper_bound"),
-            ("upper_bound", fields["lower_bound"] > fields["upper_bound"], "lower_bound is above upper_bound"),
-            ("max", kinds["uniform"] & (fields["min"] > fields["max"]), "min is above max"),
+            ("upper_bound", fields["lower_bound"] >= fields["upper_bound"],
+             "lower_bound must be below upper_bound (for one value, write it as value)"),
+            ("max", kinds["uniform"] & (fields["min"] >= fields["max"]),
+             "min must be below max (for one value, write it as value)"),
             ("mean", kinds["lognormal"] & (fields["mean"] == 0), "a lognormal value needs a mean other than 0"),
         ]
         for name, takes in SHARED_DISTRIBUTIONS.items():
@@ -317,7 +319,7 @@ class WeightDistribution(DrawnValue):
         "before any bound (normal, lognormal: of the weights, not of their log); a negative weight is inhibitory"
     )
     std: float | None = Field(
-        default=None, ge=0.0, examples=[8.78], description="standard deviation of the distribution the weights are drawn from, before any bound "
+        default=None, gt=0.0, examples=[8.78], description="standard deviation of the distribution the weights are drawn from, before any bound "
         "(normal, lognormal: of the weights, not of their log)"
     )
     min: float | None = Field(default=None, description="smallest weight a uniform draw gives")
@@ -362,7 +364,7 @@ class DelayDistribution(DrawnValue):
         "before any bound (normal, lognormal: of the delays, not of their log)"
     )
     std: float | None = Field(
-        default=None, ge=0.0, examples=[0.75], description="standard deviation (ms) of the distribution the "
+        default=None, gt=0.0, examples=[0.75], description="standard deviation (ms) of the distribution the "
         "delays are drawn from, before any bound (normal, lognormal: of the delays, not of their log)"
     )
     min: float | None = Field(default=None, description="shortest delay (ms) a uniform draw gives")
@@ -402,7 +404,7 @@ class DrawnNeuronValue(DrawnValue):
         "before any bound (normal, lognormal: of the values, not of their log)"
     )
     std: float | None = Field(
-        default=None, ge=0.0, examples=[10.0], description="standard deviation of the distribution the values "
+        default=None, gt=0.0, examples=[10.0], description="standard deviation of the distribution the values "
         "are drawn from, before any bound (normal, lognormal: of the values, not of their log)"
     )
     min: float | None = Field(default=None, description="smallest value a uniform draw gives")

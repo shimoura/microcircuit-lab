@@ -106,6 +106,8 @@ def test_dc_stimulus_needs_a_fixed_delay_and_no_weight():
     drawn = DelayDistribution(distribution="normal", mean=1.0, std=0.5, lower_bound=0.1, bound_mode="redraw")
     with pytest.raises(ValidationError, match="takes a fixed delay"):
         DcStimulusConfig(targets=["E"], amplitude=100.0, delay=drawn)
+    with pytest.raises(ValidationError, match="takes a fixed delay"):
+        DcStimulusConfig(targets=["E"], amplitude=100.0, delay={"mean": 1.0})
 
 
 # -----------------------------------------------------------------------------
