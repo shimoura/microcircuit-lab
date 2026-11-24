@@ -47,7 +47,8 @@ def main(argv: list[str] | None = None) -> None:
     The four blocks below are the contents of the files in
     configs/network/{name}/, without the key that opens each file
     (write_network_directory adds it). Replace the example values with this
-    model's numbers. Every field, with units and defaults: docs/config_files.md.
+    model's numbers. Every field, with units and defaults:
+    https://shimoura.github.io/microcircuit-lab/docs/config_files/
     """
     parser = argparse.ArgumentParser(
         prog="microcircuit-lab generate {name}", description="Generate the {name} network config."

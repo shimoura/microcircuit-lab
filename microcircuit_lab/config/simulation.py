@@ -23,7 +23,8 @@ class BackendConfig(FrozenConfig):
         default={},
         examples=[{"device": "cpp_standalone"}],
         description="options of that simulator, passed to its backend as-is; the backend "
-        "validates them (see docs/nest.md and docs/brian2.md)",
+        "validates them (see https://shimoura.github.io/microcircuit-lab/docs/nest/ and "
+        "https://shimoura.github.io/microcircuit-lab/docs/brian2/)",
     )
 
 
