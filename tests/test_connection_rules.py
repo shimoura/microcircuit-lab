@@ -162,7 +162,7 @@ def test_nest_runs_its_own_rule_with_its_arguments(tmp_path):
     [
         (dict(rule="one_to_one", source="S", target="S"), dict(N_scaling=0.5, K_scaling=0.5), "K_scaling must be 1"),
         (dict(rule="all_to_all"), dict(N_scaling=0.5, K_scaling=1.0), "K_scaling must equal N_scaling"),
-        (dict(rule="ring", width=2), dict(N_scaling=0.5), "rule 'ring' is not a shared one, and how it scales is not known"),
+        (dict(rule="ring", width=2), dict(N_scaling=0.5), "rule 'ring' is not a shared one: scaling it isn't implemented yet"),
     ],
 )
 def test_rules_that_cannot_follow_the_scaling_are_an_error(connection, scaling, message):
@@ -393,7 +393,7 @@ def test_a_model_without_I_e_says_so_when_it_gets_one():
 def test_background_on_another_port():
     synapses = {"fast": SynapseEntry(model="static_synapse", receptor_port=1)}
     network = _network([_connection(n_synapses=10)], synapses, background_synapse="fast")
-    with pytest.raises(ValueError, match="mean background current is known only"):
+    with pytest.raises(ValueError, match="mean background current is computed only"):
         replace_background_by_mean_current(network)
 
 
@@ -425,7 +425,7 @@ def test_conductance_weights_stop_the_compensation():
         _scaled(network, K_scaling=0.5)
     scaled = _scaled(network, K_scaling=0.5, preserve_mean_input=False)
     assert all(p.neuron.parameters.I_e is None for p in scaled.populations.values())
-    with pytest.raises(ValueError, match="mean background current is known only"):
+    with pytest.raises(ValueError, match="mean background current is computed only"):
         replace_background_by_mean_current(network)
 
 

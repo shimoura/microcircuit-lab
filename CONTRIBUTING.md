@@ -3,12 +3,13 @@
 First ask whether the change belongs in the core. Behaviour that only your project needs goes in your project's `builders/` or `analyses/`, which the core finds without edits. Change the core when the fix or feature would help any project.
 
 1. Fork the repository on GitHub and clone your fork.
-2. Install it editable: `pip install -e ".[dev]"`. Tests that run a simulation need NEST, and the Brian2 tests need `.[brian2]` (they are skipped without it); see the installation section of [microcircuit_lab/README.md](microcircuit_lab/README.md#installation) for the ways to get it. The version number is set when you install: in a clone, `microcircuit_lab_version` in a run's `metadata.json` stays at that number until you install again, while `core_git` always has the commit that ran.
+2. Install it editable: `pip install -e ".[dev]"`. Tests that simulate need NEST ([Installation](docs/installation.md)); the Brian2 tests need `.[brian2]` and are skipped without it.
 3. Create a branch, make the change and add a test for it.
 4. Run `ruff check .` and `pytest`. CI runs both.
 5. Push the branch to your fork and open a pull request into `main`.
 
-A project made with `init --with-core` has a copy of the core with only the backends of the simulators installed when it was made; `init <project> --with-core --backends <name>` adds another.
+- The version number is set when you install. In a clone, `microcircuit_lab_version` in a run's `metadata.json` stays at that number until you install again; `core_git` always has the commit that ran.
+- A project made with `init --with-core` has a copy of the core with the backends of the simulators installed at the time; `init <project> --with-core --backends <name>` adds another.
 
 To pull later changes into your fork, add this repository as a remote: `git remote add upstream git@github.com:shimoura/microcircuit-lab.git`.
 
@@ -55,7 +56,7 @@ Every mistake is reported once, by whoever knows the name it is about, and as ea
 | What its simulator cannot do with a shared name and would not say itself (it would run something else, or stop without a message); the names it looks up or the core writes (a project's distribution, a receptor port's name, an `I_e` added by a builder) | the backend | in its `check()`, before anything is built |
 | Everything under a simulator's own name (neuron and synapse parameters, the arguments of its own rules and distributions), and its own stricter limits | the simulator (for Brian2, its models in `extensions/brian2/`) | when it builds; the core passes them on unchecked |
 
-So the core never checks a simulator's name: `{rule: symmetric_pairwise_bernoulli, p: 2.5}` is refused by NEST. And a shared name means the same on every simulator: `{distribution: normal, mean: 1, std: 0}` is refused by the core (a value without spread is written as `value`), not left to run on one simulator and fail on the other.
+So the core leaves a simulator's names to the simulator: `{rule: symmetric_pairwise_bernoulli, p: 2.5}` is refused by NEST. And a shared name means the same on every simulator: `{distribution: normal, mean: 1, std: 0}` is refused by the core (a value without spread is written as `value`), not left to run on one simulator and fail on the other.
 
 ### Does your idea fit what already exists?
 
@@ -71,7 +72,7 @@ A new concept touches every step and raises scientific questions to answer befor
 
 ### Recipes
 
-Click the kind of change. Each recipe ends with a test and a line in the README. A change in `config/` also needs `python docs/write_config_files.py`, which rewrites [docs/config_files.md](docs/config_files.md); a test fails until you do.
+Click the kind of change. Each recipe ends with a test and a line in the docs (`docs/`). A change in `config/` also needs `python docs/write_config_files.py`, which rewrites [docs/config_files.md](docs/config_files.md); a test fails until you do.
 
 <details>
 <summary><b>A stimulus type</b></summary>
@@ -87,7 +88,7 @@ The [worked example](#an-example-a-single-spike-stimulus) below does exactly thi
 <details>
 <summary><b>A weight or delay distribution</b></summary>
 
-A distribution only one project needs doesn't go in the core: with NEST it is a function in the project's `extensions/nest/`, with Brian2 a `Distribution` in `extensions/brian2/` (see "Other distributions" and "Distributions of your own" in the core's README). A shared one, which every simulator draws:
+A distribution only one project needs doesn't go in the core: with NEST it is a function in the project's `extensions/nest/`, with Brian2 a `Distribution` in `extensions/brian2/` (see [Other distributions](docs/weights-and-delays.md#other-distributions-optional) and [Distributions of your own](docs/brian2.md#distributions-of-your-own-optional)). A shared one, which every simulator draws:
 
 1. `config/distributions.py`: add its name and the fields it takes to `SHARED_DISTRIBUTIONS` (e.g. `"gamma": ("mean", "std")`, the mean and standard deviation of the drawn values).
 2. `backends/nest/distributions.py`: draw it in `drawn_parameter`.
@@ -107,7 +108,7 @@ A distribution only one project needs doesn't go in the core: with NEST it is a 
 <details>
 <summary><b>A field on a connection, or a connection rule</b></summary>
 
-A rule only one project needs doesn't go in the core: with Brian2 it is a `ConnectionRule` in the project's `extensions/brian2/` (see "Connection rules of your own" in the core's README). A shared rule, one that every simulator runs:
+A rule only one project needs doesn't go in the core: with Brian2 it is a `ConnectionRule` in the project's `extensions/brian2/` (see [Connection rules of your own](docs/brian2.md#connection-rules-of-your-own-optional)). A shared rule, one that every simulator runs:
 
 1. `config/connectivity.py`: add it to `ConnectionConfig` (a field), or to `SHARED_RULES` (a rule; to `RULE_NUMBER` too if it takes a number).
 2. `config/connection_table.py`: add a field's column to `COLUMNS` (the core holds all connections as one table; it refuses to load until the new field has a column).
@@ -157,7 +158,7 @@ register_plot("spectrogram", plot_spectrogram,
 3. Add its name to `BackendName` (`microcircuit_lab/config/simulation.py`). Select it with `backend: {name: <name>, options: {...}}` in the simulation file, or `Simulation.from_yaml(..., backend="<name>", backend_options={...})`; the options go to its constructor unchanged.
 </details>
 
-**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see "Models of your own" under "Brian2" in the README), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see "Names the simulator looks up" under "Configuration" in the README), or for a new network (a network folder or a builder; see "Adding a new network" in the README).
+**No change to the core** is needed for a neuron model (name it in `neurons.yaml`, NESTML models too; for Brian2, define it in `extensions/brian2/`, see [Models of your own](docs/brian2.md#models-of-your-own)), for a connection rule, distribution or synapse model only one project needs (for Brian2, in `extensions/brian2/`; see [Names the simulator looks up](docs/network-files.md#names-the-simulator-looks-up)), or for a new network model (a network folder or a builder; see [A new network model](docs/new-network.md)).
 
 When a stimulus `type` is not known, the error message points to this section.
 
@@ -195,11 +196,11 @@ When a stimulus `type` is not known, the error message points to this section.
        params["spike_times"] = stimulus.spike_times
    ```
    Connecting it needs nothing new: every stimulus except `dc` connects with its own weight, delay and synapse, like `poisson`.
-5. A test in `tests/test_stimuli.py`, and the new type in the README's list of stimuli.
+5. A test in `tests/test_stimuli.py`, and the new type in the list of stimuli in [Network files](docs/network-files.md#stimuli-optional).
 
 ## Testing
 
-```bash
+```bash title="Terminal"
 pytest
 ```
 
@@ -209,7 +210,7 @@ The tests cover the core: reading and checking configs, preparing a network, the
 
 - Use plain names close to the papers and reference codes (`N_scaling`, `K_ext`, `tau_syn_ex`), no extra layers, no logic written twice.
 - Use pydantic models for anything read from a file, so a mistake is reported with the file and the field. A field's limits go in `Field(...)`, not in separate checks, together with a `description` (with its unit) and, for a required field, `examples=[...]`: [docs/config_files.md](docs/config_files.md) is written from them.
-- Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `config.yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, never at the end of a line.
+- Docstrings explain what the code does and why. Functions meant to be called from outside the core (the top-level API, `builder_tools`, `Simulation`, `analysis`, `config.yaml_files`) use the NumPy docstring style (`Parameters`, `Returns`, `Raises`); internal ones can stay in prose. Comments are full lines above the code, not at the end of a line.
 - Core tests check the core and how it reads a builder's output. They must not depend on a specific builder.
 - Keep the dependencies few (`pyproject.toml`), and add one only when it is clearly worth it. pandas is there for one reason: reading and writing large CSV files fast (the connection table, the spike files). A connection table of 1M rows takes 0.1 s with pandas and about 4 s with Python's `csv` module, and a large multi-area network has millions. Everywhere else, the code holds numpy arrays and plain structures, not DataFrames.
 - Keep the field names of the config models stable (`populations`, `size`, `indegree`, ...): every run saves its network in `config.yaml` with those names, and renaming one breaks re-plotting old runs. A new field needs a default for the same reason. Rename a field only when its old name is wrong or misleading. The old name then fails with a message giving the new one (no conversion is kept), and the rename is listed in the release notes. Command-line flags, backend options and folder names follow the same rule but matter less, because they don't end up in a run folder.

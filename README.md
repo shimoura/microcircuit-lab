@@ -2,39 +2,71 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23547742.svg)](https://doi.org/10.5281/zenodo.23547742)
 
-Microcircuit Lab builds, simulates and analyses spiking neural network models, from a single microcircuit to multi-area models. A network is described in plain YAML files; the same core checks it, runs it in NEST or Brian2 and analyses the result, whatever model it came from. Model-specific code lives apart, in *builders*, so published models share one tested simulation path.
+Microcircuit Lab is a framework for spiking network models in which every model is defined the same way. Populations, neurons, connections and inputs are set in text files, and one shared core reads and simulates them. No parameter is hard-coded, and nothing specific to one model is mixed into the core.
 
-The full documentation is in [`microcircuit_lab/README.md`](microcircuit_lab/README.md).
+It is made for networks of spiking neurons, from a single microcircuit to models of several areas. The core runs them in NEST or Brian2 for now. Another simulator can be added as a new backend, within what that simulator supports. More detailed neuron models may also work, as far as the simulator allows.
+
+**Documentation:** [shimoura.github.io/microcircuit-lab](https://shimoura.github.io/microcircuit-lab/): installation, tutorials and guides.
+
+## Why
+
+A published network model usually comes with its own simulation code, and the model's choices are spread through it: which data it uses, how a PSP becomes a synaptic current, how the network is scaled down. Before you can check, reuse or compare the model, you have to find them.
+
+Here a network model is a few text files with every number the simulator gets. Write them by hand, or let your own code write them when the numbers come from data (a *builder*).
+
+```mermaid
+flowchart LR
+  H["<b>You</b><br/>write the files"] --> F
+  B["<b>Your builder</b><br/>(optional)<br/>writes the files"] -.-> F
+  F["<b>Network files</b><br/>plain text:<br/>YAML and CSV"] --> C["<b>The core</b><br/>reads, builds<br/>and simulates"]
+  classDef optional stroke-dasharray: 5 4
+  class B optional
+```
+
+- The files are what is simulated. Nothing is converted or scaled when the network runs, so you can open the YAML files to read a network, compare it with another, or check it against the paper.
+- A builder is optional. Write one when the numbers come from tables or data, or need converting; any code that writes valid files counts. See [Builders](docs/builders.md).
+- The core is shared. The checks, the two simulators and the plots are the same for every model, so you can run one network on NEST and on Brian2, and a fix in the core helps every model.
 
 ## Quick start
 
-Install the core, start a project with the examples, and run the smallest one:
+Install the package, make a project folder, and run the toy network:
 
-```bash
+```bash title="Terminal"
 python -m venv .venv
 source .venv/bin/activate
 pip install "microcircuit_lab[nest] @ git+https://github.com/shimoura/microcircuit-lab"
 
-microcircuit-lab init my_project --with-core   # copies the backends of the installed simulators
+microcircuit-lab init my_project --with-core   # --with-core (optional): also a copy of the core, to read and change
 cd my_project
 microcircuit-lab run --network toy
 ```
 
-The plots and spikes are saved in `output/toy/<timestamp>/`. The other networks (`pd14`, `jiang24`, `toy_two_areas`, the HuMAM networks) are in [examples/](https://github.com/shimoura/microcircuit-lab/tree/main/examples), one folder each with its README; add one to the project with `microcircuit-lab init . --example pd14` and run it the same way. NEST can also come from conda-forge or a build from source; see [Installation](microcircuit_lab/README.md#installation).
+The run is saved in `output/toy/<timestamp>/`, with its spikes and plots, such as this raster:
 
-Next:
+<img src="docs/images/toy_raster.png" alt="Raster plot of the toy network: excitatory (E) and inhibitory (I) spikes over one second" width="500">
 
-- **Other settings** (duration, seed, threads): edit `configs/simulation/toy.yaml` and run again.
-- **Your own analysis:** read a finished run with `read_run`; see [Reading a run](microcircuit_lab/README.md#reading-a-run).
-- **Parameter sweeps, several seeds, any batch:** a Python script; recipes in [Running from a script](microcircuit_lab/README.md#running-from-a-script).
-- **Your own network:** [Adding a new network](microcircuit_lab/README.md#adding-a-new-network).
+Other ways to get NEST (conda-forge, from source), and Brian2: [Installation](docs/installation.md).
 
-A project holds your own builders, analyses and configs, and with `--with-core` your own copy of the core to change as you like; see [Starting a project](microcircuit_lab/README.md#starting-a-project). To propose a change to the core here, see [CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md).
+## Where next
+
+| You want to | Read |
+| :--- | :--- |
+| learn step by step | the [tutorials](docs/tutorials/README.md): run, change a parameter, write your own network model; then sweeps and comparisons in notebooks |
+| run a published model (Potjans & Diesmann 2014, Jiang et al. 2024, the human multi-area model) | [examples/](https://github.com/shimoura/microcircuit-lab/tree/main/examples), one folder per model; add one to your project with `microcircuit-lab init . --example pd14` |
+| see what happens when you run | [How it works](docs/how-it-works.md) |
+| build your own network model | [A new network model](docs/new-network.md) |
+| let code write a network (optional) | [Builders](docs/builders.md) |
+| run a sweep, several seeds, any batch | [Running from a script](docs/scripts.md) |
+| analyse a run yourself | [Analysing a run](docs/analysis.md) |
+| look up a field of the files | [Configuration files](docs/config_files.md) |
+| change the core | in your project's copy ([Your project](docs/project.md)), or for everyone ([CONTRIBUTING.md](https://github.com/shimoura/microcircuit-lab/blob/main/CONTRIBUTING.md)) |
+
+The whole documentation is at https://shimoura.github.io/microcircuit-lab/, and as Markdown in [`docs/`](https://github.com/shimoura/microcircuit-lab/tree/main/docs).
 
 ## How to cite
 
-If you use Microcircuit Lab in your work, please cite it. [`CITATION.cff`](CITATION.cff) has the reference; on GitHub, "Cite this repository" in the sidebar gives it in APA and BibTeX. The DOI [10.5281/zenodo.23547742](https://doi.org/10.5281/zenodo.23547742) cites all versions; each release also has its own DOI on Zenodo. Please also cite the papers of the models you use (listed in each builder's README).
+If you use Microcircuit Lab in your work, please cite it. [`CITATION.cff`](https://github.com/shimoura/microcircuit-lab/blob/main/CITATION.cff) has the reference; on GitHub, "Cite this repository" in the sidebar gives it in APA and BibTeX. The DOI [10.5281/zenodo.23547742](https://doi.org/10.5281/zenodo.23547742) cites all versions; each release also has its own DOI on Zenodo. Please also cite the papers of the models you use (listed in each example's README).
 
 ## License
 
-BSD 3-Clause, see [`LICENSE`](LICENSE).
+BSD 3-Clause, see [`LICENSE`](https://github.com/shimoura/microcircuit-lab/blob/main/LICENSE).

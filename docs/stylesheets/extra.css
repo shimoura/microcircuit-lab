@@ -1,0 +1,4 @@
+/* The tutorial notebooks: hide the cell tags (remove-output), which are for the site build only. */
+.jupyter-wrapper .tag-container {
+  display: none;
+}

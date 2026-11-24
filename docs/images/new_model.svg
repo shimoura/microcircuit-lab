@@ -27,5 +27,5 @@
 <path d="M670 300 L540 335" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
 <rect x="230" y="336" width="440" height="58" rx="8" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
 <text x="242" y="359" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">$ microcircuit-lab run --network my_model</text>
-<text x="242" y="380" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">checks the files, simulates, saves output/my_model/&lt;date_time&gt;/</text>
+<text x="242" y="380" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">checks the files, simulates, saves output/my_model/&lt;timestamp&gt;/</text>
 </svg>

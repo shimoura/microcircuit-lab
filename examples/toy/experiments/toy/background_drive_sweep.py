@@ -1,89 +1,58 @@
-"""How much external drive does the toy network need to actually spike?
+"""How much background input does the toy network need to fire?
 
-An example experiment: a small parameter sweep over one population
-parameter (the indegree in poisson_background.yaml), using the public Simulation/analysis
-API directly -- no new abstraction beyond what microcircuit_lab already
-provides. This is the same question (and the same answer, K_ext=1000)
-that calibrated configs/network/toy/poisson_background.yaml in the first place;
-see the toy network's own comments for how that value was chosen.
+A sweep over the background indegree: each value becomes a network folder of
+its own, a copy of the toy with that one number changed, run with the toy's
+settings. The toy's 1000 inputs were chosen this way. Tutorial 5
+(docs/tutorials/5_parameter_sweep.ipynb) runs the same loop in a notebook.
 
-Run from the repository root:
+Run from the toy example's folder (examples/toy), or from a project that has it:
 
     python experiments/toy/background_drive_sweep.py
 """
 
-from __future__ import annotations
+import shutil
+from pathlib import Path
 
 import matplotlib.pyplot as plt
+import yaml
 
 from microcircuit_lab import Simulation, read_network, read_run
 from microcircuit_lab.analysis import compute_population_firing_rates
 from microcircuit_lab.config.simulation import SimulationConfig
 
-BACKGROUND_INDEGREES = [200, 500, 1000, 2000, 4000]
-OUTPUT_DIR = "output/experiments/toy_background_drive_sweep"
+# The toy's settings, as a dict. Seven short runs need no progress line from NEST
+# (in a notebook, it would hang the kernel).
+settings = yaml.safe_load(Path("configs/simulation/toy.yaml").read_text())
+settings["print_time"] = False
 
-
-def run_one(indegree: float) -> dict[str, float]:
-    network = read_network("configs/network/toy")
-    poisson_background = {
-        name: entry.model_copy(update={"indegree": indegree})
-        for name, entry in network.poisson_background.items()
-    }
-    network = network.model_copy(update={"poisson_background": poisson_background})
-
-    simulation_config = SimulationConfig.model_validate(
-        {
-            "t_sim": 1000.0,
-            "local_num_threads": 4,
-            "print_time": False,
-            "output": {
-                "output_dir": f"{OUTPUT_DIR}/k_ext_{int(indegree)}",
-                "overwrite": True,
-            },
-        }
-    )
+indegrees = [600, 700, 800, 900, 1000, 1100, 1200]
+rates = {}
+for indegree in indegrees:
+    # Each value is a network folder of its own: a copy of the toy with another indegree.
+    name = f"toy_indegree_{indegree}"
+    folder = Path("configs/network") / name
+    shutil.copytree("configs/network/toy", folder, dirs_exist_ok=True)
+    background_file = folder / "poisson_background.yaml"
+    background = yaml.safe_load(background_file.read_text())
+    for entry in background["poisson_background"].values():
+        entry["indegree"] = indegree
+    background_file.write_text(yaml.safe_dump(background, sort_keys=False))
 
     simulation = Simulation(
-        network=network,
-        simulation_config=simulation_config,
-        network_name="toy",
-        simulation_name=f"k_ext_{int(indegree)}",
+        read_network(folder), SimulationConfig(**settings), network_name=name, simulation_name="toy"
     )
     simulation.run()
+    rates[indegree] = compute_population_firing_rates(read_run(simulation.output_dir), begin=200.0)
 
-    return compute_population_firing_rates(read_run(simulation.output_dir))
+for indegree, rate in rates.items():
+    print(f"indegree {indegree:5d}:  E {rate['E']:5.1f}   I {rate['I']:5.1f}  spikes/s")
 
-
-def main() -> None:
-    results = [
-        {"indegree": k_ext, **run_one(k_ext)} for k_ext in BACKGROUND_INDEGREES
-    ]
-
-    pop_names = [name for name in results[0] if name != "indegree"]
-
-    print(f"\n{'K_ext':>8}  " + "  ".join(f"{name:>10}" for name in pop_names))
-    for row in results:
-        rates = "  ".join(f"{row[name]:>10.2f}" for name in pop_names)
-        print(f"{row['indegree']:>8}  {rates}")
-
-    fig, ax = plt.subplots(figsize=(5, 3.5), dpi=150)
-    for name in pop_names:
-        ax.plot(
-            [row["indegree"] for row in results],
-            [row[name] for row in results],
-            marker="o",
-            label=name,
-        )
-    ax.set_xlabel("Background indegree (K_ext)")
-    ax.set_ylabel("Mean firing rate (spikes/s)")
-    ax.legend(frameon=False)
-    fig.tight_layout()
-
-    plot_path = f"{OUTPUT_DIR}/rate_vs_indegree.png"
-    fig.savefig(plot_path, dpi=150, bbox_inches="tight")
-    print(f"\nSaved comparison plot: {plot_path}")
-
-
-if __name__ == "__main__":
-    main()
+fig, ax = plt.subplots(figsize=(4, 3))
+for population in ["E", "I"]:
+    ax.plot(indegrees, [rates[k][population] for k in indegrees], "o-", label=population)
+ax.set_xlabel("background indegree")
+ax.set_ylabel("rate (spikes/s)")
+ax.legend()
+fig.tight_layout()
+fig.savefig("output/background_sweep.png")
+print("Saved output/background_sweep.png")

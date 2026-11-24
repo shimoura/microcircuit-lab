@@ -1,0 +1,10 @@
+{#- A download button on each tutorial notebook's page (mkdocs-jupyter sets page.nb_url). -#}
+{% extends "base.html" %}
+{% block content %}
+  {% if page.nb_url %}
+    <a href="{{ page.nb_url }}" title="Download this notebook" class="md-content__button md-icon" download>
+      {% include ".icons/material/download.svg" %}
+    </a>
+  {% endif %}
+  {{ super() }}
+{% endblock content %}

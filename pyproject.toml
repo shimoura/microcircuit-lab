@@ -77,6 +77,15 @@ nestml = [
 brian2 = [
     "brian2>=2.10",
 ]
+# The documentation site (mkdocs.yml): mkdocs serve to read it locally.
+docs = [
+    # MkDocs 2 is announced to drop the plugins and themes this site uses.
+    "mkdocs>=1.6,<2",
+    "mkdocs-material",
+    "mkdocs-same-dir",
+    "mkdocstrings[python]",
+    "mkdocs-jupyter",
+]
 
 [tool.ruff.lint]
 # The rule list is pinned so a ruff upgrade cannot add new rules by itself.

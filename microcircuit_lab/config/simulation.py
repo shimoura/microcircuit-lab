@@ -23,7 +23,7 @@ class BackendConfig(FrozenConfig):
         default={},
         examples=[{"device": "cpp_standalone"}],
         description="options of that simulator, passed to its backend as-is; the backend "
-        "validates them (see the simulator's section in the README)",
+        "validates them (see docs/nest.md and docs/brian2.md)",
     )
 
 
@@ -141,7 +141,7 @@ class OutputConfig(FrozenConfig):
     )
     overwrite: bool = Field(
         default=False,
-        description="false: each run gets its own <output_dir>/<date_time> folder; "
+        description="false: each run gets its own <output_dir>/<timestamp> folder; "
         "true: every run writes into output_dir itself",
     )
     save_metadata: bool = Field(

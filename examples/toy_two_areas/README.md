@@ -1,14 +1,29 @@
-# Two-area toy network
+# Two-area toy network model
 
 A small synthetic multi-area network (24 populations, about 1,700 neurons) that shows how a multi-area model is described, and tests that the core handles areas with different layers and cell types. The numbers are made up: it is a test case and an example, not a model of cortex.
 
-Run these commands from this folder (`cd examples/toy_two_areas` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example toy_two_areas`).
+## Run it
 
-```bash
-microcircuit-lab run --network toy_two_areas     # plots for each area under plots/A and plots/B
-microcircuit-lab generate toy_two_areas          # rewrite configs/network/toy_two_areas/ from data.py
-microcircuit-lab run --network toy_two_areas_advanced   # the same network with optional features on (below)
-microcircuit-lab run --network toy_two_areas_clustered  # the same network split into clusters (below)
+From this folder (`cd examples/toy_two_areas` in the repository), or from a project that has the example (`microcircuit-lab init <project> --example toy_two_areas`):
+
+```bash title="Terminal"
+microcircuit-lab run --network toy_two_areas             # plots for each area, in plots/A and plots/B
+microcircuit-lab run --network toy_two_areas_advanced
+microcircuit-lab run --network toy_two_areas_clustered
+```
+
+| Network | What it is |
+| :--- | :--- |
+| `toy_two_areas` | the network below |
+| `toy_two_areas_advanced` | the same, with the optional features of the config files on: an example to copy ([below](#advanced-variant)) |
+| `toy_two_areas_clustered` | the same, with every population split into 3 clusters ([below](#clustered-variant)) |
+
+To write them again after changing `data.py` (optional):
+
+```bash title="Terminal"
+microcircuit-lab generate toy_two_areas                 # toy_two_areas
+microcircuit-lab generate toy_two_areas --advanced      # toy_two_areas_advanced
+microcircuit-lab generate toy_two_areas --clusters 3    # toy_two_areas_clustered
 ```
 
 ## Areas and populations
@@ -109,7 +124,7 @@ The reference rates in `reference.yaml` are the mean of four 2 s runs of this ne
 
 ## Advanced variant
 
-`microcircuit-lab generate toy_two_areas --advanced` writes `configs/network/toy_two_areas_advanced/`: the same areas, populations and probabilities, with the optional features of the config files turned on, as an example to copy:
+`toy_two_areas_advanced` has the same areas, populations and probabilities, with the optional features of the config files on:
 
 | Feature | Where | In this network |
 | :--- | :--- | :--- |
@@ -118,18 +133,11 @@ The reference rates in `reference.yaml` are the mean of four 2 s runs of this ne
 | Synapse models | `synapses.yaml` | between areas, a depressing `tsodyks2_synapse`, with lognormal delays |
 | Receptor ports | `synapses.yaml`, `neurons.yaml` | `B__L23_E` is an `iaf_psc_exp_multisynapse` neuron with a port for excitatory (2 ms), inhibitory (4 ms) and input from the other area (20 ms, depressing); its PSPs are converted with the time constant of their port, and its background input names a port too |
 
-Its rates differ from those above. It has no reference rates, and its receptor ports take input whose mean current the core can't compute, so a scaled copy needs `preserve_mean_input=False` (`scale_network`).
-
-## Files (in `builders/toy_two_areas/`)
-
-- `data.py`: every number above, as small tables.
-- `build.py`: turns the tables into `configs/network/toy_two_areas/` (`main(argv)` is the entry point `microcircuit-lab generate` calls).
-- `advanced.py`: the advanced variant, built from the same tables and functions.
-- `clustered.py`: the clustered variant, built the same way.
+Its rates differ from those above. It has no reference rates, and the mean current through receptor ports isn't implemented yet in scaling, so a scaled copy needs `preserve_mean_input=False` (`scale_network`).
 
 ## Clustered variant
 
-`microcircuit-lab generate toy_two_areas --clusters 3` writes `configs/network/toy_two_areas_clustered/`: the same network with every population split into Q clusters (`A__L23_E__c0`, `A__L23_E__c1`, ...), following a common rule for clustered networks:
+`toy_two_areas_clustered` is the same network with every population split into Q clusters (`A__L23_E__c0`, `A__L23_E__c1`, ...), following a common rule for clustered networks:
 
 | What | Rule | In this network (Q = 3) |
 | :--- | :--- | :--- |
@@ -141,3 +149,10 @@ Its rates differ from those above. It has no reference rates, and its receptor p
 | Background | each neuron keeps its background indegree; the clusters of a population share one Poisson generator (`generator:`), and each neuron still gets its own spike train | 24 generators for 72 populations |
 
 The minus factors keep each neuron's mean input as without clusters (the factors over the Q source clusters average to 1); `J_E_plus` must stay below Q. Rounding up changes the input of the small populations: PV clusters have 27 neurons instead of 25, and a small connection split nine ways gets at least one synapse per cluster pair (the inhibitory input of VIP grows by about half). The rates stay close to those of `toy_two_areas`. The numbers are in `data.py`. Like the advanced variant, it has no `scaling.yaml` and no reference rates.
+
+## The builder (`builders/toy_two_areas/`)
+
+- `data.py`: every number above, as small tables.
+- `build.py`: turns the tables into `configs/network/toy_two_areas/`. `main(argv)` is what `microcircuit-lab generate toy_two_areas` calls.
+- `advanced.py`: the advanced variant, built from the same tables and functions.
+- `clustered.py`: the clustered variant, built the same way.

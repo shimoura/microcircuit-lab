@@ -5,8 +5,10 @@
     microcircuit-lab init <project> --with-core       # also a copy of the core
 
 Nothing that already exists is touched, so ``init .`` is safe in an existing
-repository. Everything is fetched from the core repository, at the release of
-the installed version (the latest ``main`` if it has none).
+repository. Everything comes from the core of the code that runs: from the core
+repository at the release of the installed version (the latest ``main`` if it
+has none), or, when the package runs from a git clone (an editable install),
+from that clone, as it is now.
 
 Plain ``init`` copies the toy network twice, once per way of working:
 ``configs/network/toy`` written by hand, with comments, and ``builders/toy``,
@@ -169,6 +171,15 @@ def _copy_example(example: Path, project: Path, items: list[str], asked: bool) -
             print(f"Copied {item}")
 
 
+def _local_clone() -> Path | None:
+    """The git clone this package runs from (an editable install), or None.
+    Its examples are those of the code that runs, so init copies from it."""
+    root = Path(__file__).resolve().parents[2]
+    if (root / ".git").exists() and (root / "examples").is_dir():
+        return root
+    return None
+
+
 def _release_tag() -> str | None:
     """The tag of the installed version (e.g. ``v0.1.0``) if the core repository
     has it, else None (e.g. a development version that was never released)."""
@@ -191,7 +202,15 @@ def _clone_core(source: Path) -> None:
     branch = [] if tag is None else ["--branch", tag]
     if tag is None:
         print("The installed version has no release tag; using the latest main instead.")
-    subprocess.run(["git", "clone", "--quiet", "--filter=blob:none", *branch, CORE_URL, str(source)], check=True)
+    # git's messages are kept back and shown only if the clone fails: --quiet
+    # does not silence the progress lines of the file download that
+    # --filter=blob:none starts during the checkout.
+    subprocess.run(
+        ["git", "clone", "--quiet", "--filter=blob:none", *branch, CORE_URL, str(source)],
+        check=True,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
 
 
 def _install_core(source: Path, project: Path, backends: list[str]) -> None:
@@ -240,19 +259,26 @@ def main(argv: list[str] | None = None) -> None:
             print(f"Created {folder}")
 
     backends = args.backends or _installed_backends()
+    clone = _local_clone()
     with tempfile.TemporaryDirectory() as tmp:
-        source = Path(tmp) / "core"
-        # Without git or a connection, the project keeps its empty folders and says why.
-        try:
-            _clone_core(source)
-        except OSError:
-            print("Nothing was copied from the core repository: git is not installed. "
-                  f"Install it, then run `microcircuit-lab init {args.project}` again.")
-            return
-        except subprocess.CalledProcessError:
-            print(f"Nothing was copied from the core repository: git could not reach {CORE_URL}. "
-                  f"Run `microcircuit-lab init {args.project}` again once you are online.")
-            return
+        if clone is not None:
+            source = clone
+            print(f"Copying from your clone at {clone} (an editable install).")
+        else:
+            source = Path(tmp) / "core"
+            # Without git or a connection, the project keeps its empty folders and says why.
+            try:
+                _clone_core(source)
+            except OSError:
+                print("Nothing was copied from the core repository: git is not installed. "
+                      f"Install it, then run `microcircuit-lab init {args.project}` again.")
+                return
+            except subprocess.CalledProcessError as error:
+                git_says = (error.stderr or "").strip()
+                print(f"Nothing was copied from the core repository: git could not reach {CORE_URL}. "
+                      f"Run `microcircuit-lab init {args.project}` again once you are online."
+                      + (f"\ngit said:\n{git_says}" if git_says else ""))
+                return
 
         examples = source / "examples"
         unknown = [name for name in args.example if not (examples / name).is_dir()]

@@ -46,7 +46,7 @@
 <text x="378" y="439" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">per configs/analysis, and analyses/</text>
 <path d="M313 284 L351 284" stroke="#59636e" stroke-width="2" fill="none" marker-end="url(#head)"/>
 <rect x="649" y="76" width="255" height="382" rx="8" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
-<text x="663" y="104" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">output/&lt;name&gt;/&lt;date_time&gt;/</text>
+<text x="663" y="104" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13.5" font-weight="700" fill="#1f2328" text-anchor="start" xml:space="preserve">output/&lt;name&gt;/&lt;timestamp&gt;/</text>
 <text x="663" y="140" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">recordings/</text>
 <text x="663" y="159" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="400" fill="#59636e" text-anchor="start" xml:space="preserve">spikes, recorded variables</text>
 <text x="663" y="192" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13" font-weight="400" fill="#1f2328" text-anchor="start" xml:space="preserve">config.yaml</text>

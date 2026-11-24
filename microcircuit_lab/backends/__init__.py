@@ -39,8 +39,7 @@ def _import_backend(name: str, module: str):
         if error.name == name:
             raise ModuleNotFoundError(
                 f"The {name} backend needs the Python package {name}, which is not installed. "
-                f'Install it, e.g. pip install "microcircuit_lab[{name}]" (see Installation '
-                "in microcircuit_lab/README.md)."
+                f'Install it, e.g. pip install "microcircuit_lab[{name}]" (see docs/installation.md).'
             ) from None
         if error.name != f"{__name__}.{name}":
             raise
