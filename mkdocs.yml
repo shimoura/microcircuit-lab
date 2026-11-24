@@ -7,7 +7,7 @@
 # A plugin prints a notice about MkDocs 2 at every build; the site is not
 # affected. DISABLE_MKDOCS_2_WARNING=true NO_MKDOCS_2_WARNING=1 hides it.
 site_name: Microcircuit Lab
-site_description: Simulate spiking network models, from a single microcircuit to many areas, in NEST or Brian2.
+site_description: A framework for spiking network models, each defined the same way in text files and simulated by one shared core in NEST or Brian2.
 site_url: https://shimoura.github.io/microcircuit-lab/
 repo_url: https://github.com/shimoura/microcircuit-lab
 repo_name: shimoura/microcircuit-lab
