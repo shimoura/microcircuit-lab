@@ -2,19 +2,23 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23547742.svg)](https://doi.org/10.5281/zenodo.23547742)
 
-Microcircuit Lab simulates spiking network models, from a single microcircuit to many areas, in NEST or Brian2.
+Microcircuit Lab is a framework for spiking network models in which every model is defined the same way. Populations, neurons, connections and inputs are set in text files, and one shared core reads and simulates them. No parameter is hard-coded, and nothing specific to one model is mixed into the core.
+
+It is made for networks of spiking neurons, from a single microcircuit to models of several areas. The core runs them in NEST or Brian2 for now. Another simulator can be added as a new backend, within what that simulator supports. More detailed neuron models may also work, as far as the simulator allows.
+
+**Documentation:** [shimoura.github.io/microcircuit-lab](https://shimoura.github.io/microcircuit-lab/): installation, tutorials and guides.
 
 ## Why
 
 A published network model usually comes with its own simulation code, and the model's choices are spread through it: which data it uses, how a PSP becomes a synaptic current, how the network is scaled down. Before you can check, reuse or compare the model, you have to find them.
 
-Here they live apart. A network is a few text files that hold every number the simulator gets. You can write these files by hand, or, when the numbers come from data, let your own code write them (a *builder*). The core reads the files and simulates them, the same way for every model.
+Here a network model is a few text files with every number the simulator gets. Write them by hand, or let your own code write them when the numbers come from data (a *builder*).
 
 ```mermaid
 flowchart LR
-  H["<b>You</b><br/>write the YAML files<br/>(start from a copy of the toy's)"] --> F
-  B["<b>Your builder</b> (optional)<br/>any code that writes the files:<br/>data, conversions, scaling"] -.-> F
-  F["<b>Network files</b><br/>YAML and CSV:<br/>exactly what is simulated"] -->|read by| C["<b>The core</b><br/>the same for every model:<br/>checks, NEST or Brian2, plots"]
+  H["<b>You</b><br/>write the files"] --> F
+  B["<b>Your builder</b><br/>(optional)<br/>writes the files"] -.-> F
+  F["<b>Network files</b><br/>plain text:<br/>YAML and CSV"] --> C["<b>The core</b><br/>reads, builds<br/>and simulates"]
   classDef optional stroke-dasharray: 5 4
   class B optional
 ```
