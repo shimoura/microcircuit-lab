@@ -1,4 +1,5 @@
-/* The tutorial notebooks: hide the cell tags (remove-output), which are for the site build only. */
-.jupyter-wrapper .tag-container {
-  display: none;
+/* The tutorial notebooks: hide the cell tags (remove-output), which are for the site build only.
+   The toolbar above a cell holds only the tags; mkdocs-jupyter's own, more specific rule shows it. */
+.jupyter-wrapper .celltoolbar {
+  display: none !important;
 }
