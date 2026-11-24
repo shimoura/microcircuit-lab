@@ -96,6 +96,10 @@ theme:
       primary: indigo
       toggle: {icon: material/weather-sunny, name: Light mode}
 
+# Removes a style block that mkdocs-jupyter shows as text on the notebook pages.
+hooks:
+  - docs/hooks.py
+
 plugins:
   - same-dir
   - search
