@@ -380,7 +380,9 @@ backend:
   #   with
   name: nest
   # optional, default empty · mapping · options of that simulator, passed to its backend
-  #   as-is; the backend validates them (see docs/nest.md and docs/brian2.md)
+  #   as-is; the backend validates them (see
+  #   https://shimoura.github.io/microcircuit-lab/docs/nest/ and
+  #   https://shimoura.github.io/microcircuit-lab/docs/brian2/)
   options:
     device: cpp_standalone
 # optional · what to record
